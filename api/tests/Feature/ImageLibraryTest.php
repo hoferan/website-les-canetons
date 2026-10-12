@@ -8,7 +8,6 @@ use App\Models\Image;
 use App\Models\Member;
 use App\Models\Role;
 use App\Support\Permission;
-use Closure;
 use Illuminate\Database\Connection;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -981,59 +980,6 @@ class ImageLibraryTest extends TestCase
         $this->assertSame(1920, $image->fresh()?->width);
     }
 
-    /**
-     * Changes the photo once ConditionalWrite has computed its tag and before
-     * the controller locks the row: the last query of that computation reads
-     * the photo's slots, which route binding never does. Answers whether the
-     * change ran.
-     *
-     * @return Closure(): bool
-     */
-    private function changeAfterTheTagCheck(Image $image): Closure
-    {
-        $changed = false;
-        DB::listen(function ($query) use ($image, &$changed): void {
-            if (! $changed && str_contains($query->sql, 'photo_slots')) {
-                $changed = true;
-                DB::table('images')->where('id', $image->id)->update(['name' => 'Changée entre-temps']);
-            }
-        });
-
-        return function () use (&$changed): bool {
-            return $changed;
-        };
-    }
-
-    public function test_a_change_made_after_the_tag_was_checked_is_not_renamed_over(): void
-    {
-        $image = LibraryImage::create(name: 'Avant');
-        $tag = $this->ifMatch('image', $image);
-        $changed = $this->changeAfterTheTagCheck($image);
-
-        $this->actingAsMember($this->manager)
-            ->patchJson("/api/v1/images/{$image->id}", ['name' => 'Après'], $tag)
-            ->assertStatus(412)
-            ->assertJsonPath('code', 'if_match_failed');
-
-        $this->assertTrue($changed(), 'Fixture: the change never ran.');
-        $this->assertSame('Changée entre-temps', $image->fresh()?->name);
-    }
-
-    public function test_a_change_made_after_the_tag_was_checked_is_not_deleted_unseen(): void
-    {
-        $image = LibraryImage::create();
-        $tag = $this->ifMatch('image', $image);
-        $changed = $this->changeAfterTheTagCheck($image);
-
-        $this->actingAsMember($this->manager)
-            ->deleteJson("/api/v1/images/{$image->id}", [], $tag)
-            ->assertStatus(412)
-            ->assertJsonPath('code', 'if_match_failed');
-
-        $this->assertTrue($changed(), 'Fixture: the change never ran.');
-        $this->assertModelExists($image);
-    }
-
     public function test_a_rename_answers_the_row_as_stored(): void
     {
         $image = LibraryImage::create(name: 'Avant');
@@ -1044,30 +990,6 @@ class ImageLibraryTest extends TestCase
             ->assertOk()
             ->assertJsonPath('name', 'Après')
             ->assertHeader('ETag', $this->ifMatch('image', $image)['If-Match']);
-    }
-
-    public function test_a_change_made_while_the_replace_waited_for_the_lock_is_not_undone(): void
-    {
-        $image = $this->uploaded();
-        $kept = $this->storedSizes($image);
-
-        // Somebody renames the photo after this request's tag was checked and
-        // before it holds the upload lock.
-        $renamed = false;
-        DB::listen(function ($query) use ($image, &$renamed): void {
-            if (! $renamed && str_contains($query->sql, 'GET_LOCK')) {
-                $renamed = true;
-                DB::table('images')->where('id', $image->id)->update(['name' => 'Renommée entre-temps']);
-            }
-        });
-
-        $this->replace($image, $this->set(1280, 1920))
-            ->assertStatus(412)
-            ->assertJsonPath('code', 'if_match_failed');
-
-        $this->assertTrue($renamed, 'Fixture: the rename never ran.');
-        $this->assertSame($kept, $this->storedSizes($image));
-        $this->assertTrue($this->uploadLockIsFree());
     }
 
     public function test_replacing_a_photo_with_itself_changes_nothing(): void

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
-use App\Http\Middleware\ConditionalWrite;
 use App\Http\Requests\ReplaceImageFileRequest;
 use App\Http\Requests\StoreImageRequest;
 use App\Http\Requests\UpdateImageRequest;
@@ -12,7 +11,6 @@ use App\Http\Resources\ImageResource;
 use App\Models\Image;
 use App\Support\Audit;
 use App\Support\Emits;
-use App\Support\EntityTag;
 use Closure;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
@@ -151,21 +149,14 @@ class ImageController extends Controller
     {
         $name = $request->photoName();
 
-        $renamed = DB::transaction(function () use ($request, $image, $name): ?Image {
-            $current = $this->lockedIfCurrent($request, $image->id);
-            if ($current === null || $current->name === $name) {
-                return $current;
-            }
+        // ConditionalWrite holds the image's row lock from its tag check to
+        // the commit, and hands this method the row it locked.
+        if ($image->name !== $name) {
+            $image->update(['name' => $name]);
+            Audit::record($request->user(), 'image.renamed', 'image', $image->id, $name);
+        }
 
-            $current->update(['name' => $name]);
-            Audit::record($request->user(), 'image.renamed', 'image', $current->id, $name);
-
-            return $current;
-        });
-
-        // The row as read under the lock, so the body and the tag the
-        // middleware adds describe the same state.
-        return $renamed === null ? $this->stale() : response()->json(new ImageResource($renamed));
+        return response()->json(new ImageResource($image));
     }
 
     /**
@@ -193,22 +184,19 @@ class ImageController extends Controller
     {
         $sizes = $this->withBytes($request->sizes());
 
-        return $this->underUploadLock(fn (): JsonResponse => $this->swap($request, $image->id, $sizes));
+        return $this->underUploadLock(fn (): JsonResponse => $this->swap($request, $image, $sizes));
     }
 
     /**
      * The replacement's database work, run inside the transaction and under
-     * the upload lock.
+     * the upload lock. The image is the row ConditionalWrite locked when it
+     * checked the tag, and that lock is held until the commit.
      *
      * @param  list<array{width: int, height: int, bytes: int, path: string, data: string}>  $sizes
      */
-    private function swap(Request $request, int $id, array $sizes): JsonResponse
+    private function swap(Request $request, Image $image, array $sizes): JsonResponse
     {
-        $image = $this->lockedIfCurrent($request, $id);
-        if ($image === null) {
-            return $this->stale();
-        }
-
+        $id = $image->id;
         $sha256 = hash('sha256', $sizes[0]['data']);
         $bytes = array_sum(array_column($sizes, 'bytes'));
 
@@ -263,15 +251,10 @@ class ImageController extends Controller
     public function destroy(Request $request, Image $image): JsonResponse
     {
         $outcome = DB::transaction(function () use ($request, $image): string {
-            // Locked first, so a placement being saved at the same moment
-            // either commits before the check below sees it or waits for the
-            // delete and fails on its foreign key.
-            $current = $this->lockedIfCurrent($request, $image->id);
-            if ($current === null) {
-                return 'stale';
-            }
-            $image = $current;
-
+            // ConditionalWrite locked the row before checking the tag, so a
+            // placement being saved at the same moment either commits before
+            // the check below sees it or waits for the delete and fails on
+            // its foreign key.
             if ($image->isUsed()) {
                 return 'in_use';
             }
@@ -297,35 +280,9 @@ class ImageController extends Controller
         });
 
         return match ($outcome) {
-            'stale' => $this->stale(),
             'in_use' => ApiError::json(409, 'image_in_use', 'This image is still shown on the site. Remove it from there first.'),
             default => response()->json(['ok' => true]),
         };
-    }
-
-    /**
-     * The image, locked FOR UPDATE, when the request's `If-Match` still names
-     * its state; null when it does not, or when the image is gone.
-     *
-     * ConditionalWrite checks the tag before the write holds any lock, so a
-     * replacement, a rename or a delete can land in between and this write
-     * would undo it unseen. Checked again here, nothing else can change the
-     * image until the transaction commits. Every write on an image goes
-     * through this.
-     */
-    private function lockedIfCurrent(Request $request, int $id): ?Image
-    {
-        $image = Image::query()->whereKey($id)->lockForUpdate()->first();
-        $current = $image === null ? null : EntityTag::compute('image', $image);
-
-        return $current !== null && ConditionalWrite::matches((string) $request->header('If-Match'), $current)
-            ? $image
-            : null;
-    }
-
-    private function stale(): JsonResponse
-    {
-        return ApiError::json(412, 'if_match_failed', 'The If-Match header does not match the current state');
     }
 
     /**

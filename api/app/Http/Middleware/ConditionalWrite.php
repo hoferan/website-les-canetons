@@ -5,8 +5,11 @@ namespace App\Http\Middleware;
 use App\Exceptions\ApiError;
 use App\Support\EntityTag;
 use Closure;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Hands out an `ETag` on a read, and demands a matching `If-Match` on a write.
@@ -87,26 +90,89 @@ class ConditionalWrite
     {
         $method = strtoupper($request->method());
 
-        if (in_array($method, self::CONDITIONED, true)) {
-            $refusal = $this->check($request, $facet);
-
-            if ($refusal !== null) {
-                return $refusal;
-            }
+        if (! in_array($method, self::CONDITIONED, true)) {
+            return $this->tagged($next($request), $request, $facet, $method);
         }
 
-        $response = $next($request);
+        $header = $request->headers->get('If-Match');
 
-        // Emitted only on success, and never on a DELETE: there is no entity
-        // left to tag, and an `ETag` on a 200 that announces a deletion would
-        // name something that no longer exists.
+        if ($header === null || trim($header) === '') {
+            return ApiError::json(
+                428,
+                'if_match_required',
+                'If-Match is required on this request',
+            );
+        }
+
+        // ONE TRANSACTION FROM THE CHECK TO THE COMMIT (#231). The row is
+        // locked before its tag is compared and stays locked until the write
+        // commits, so a second request carrying the same tag waits, re-reads
+        // the state the first one left, and is refused. Comparing first and
+        // writing after, with nothing held in between, let both pass and the
+        // second silently undo the first.
         //
-        // Never on a 412 either, which is the one worth saying out loud: the
-        // refusal knows the current tag and sending it would be a kindness
-        // that defeats the mechanism — a client could retry blindly with the
-        // fresh tag and land exactly the overwrite it was just stopped from
-        // making. The fix for a 412 is to re-read and re-decide, not to
-        // re-send.
+        // A RESPONSE THAT IS NOT A SUCCESS ROLLS BACK. Laravel renders a
+        // controller's exception into a response before it reaches here, so
+        // a write that failed half-way would otherwise commit its first half.
+        DB::beginTransaction();
+
+        try {
+            $this->lockBound($request, $facet);
+
+            $response = $this->stale($header, $request, $facet)
+                ?? $this->tagged($next($request), $request, $facet, $method);
+        } catch (Throwable $e) {
+            DB::rollBack();
+
+            throw $e;
+        }
+
+        $response->isSuccessful() ? DB::commit() : DB::rollBack();
+
+        return $response;
+    }
+
+    /**
+     * Re-reads the bound row FOR UPDATE and hands that copy to the
+     * controller, so it writes from the state the check is about to compare
+     * rather than from the one route model binding read before any lock.
+     *
+     * A row that is gone by now stays as it was bound: its tag is null, and
+     * the check refuses it.
+     */
+    private function lockBound(Request $request, string $facet): void
+    {
+        $parameter = EntityTag::parameter($facet);
+        $bound = $request->route($parameter);
+
+        if (! $bound instanceof Model) {
+            return;
+        }
+
+        $locked = $bound->newQuery()->whereKey($bound->getKey())->lockForUpdate()->first();
+
+        if ($locked !== null) {
+            $request->route()?->setParameter($parameter, $locked);
+        }
+    }
+
+    /**
+     * The tag on a successful response, computed under the same lock as the
+     * write, so it names the state the body describes and not one another
+     * request wrote a moment later.
+     *
+     * Never on a DELETE: there is no entity left to tag, and an `ETag` on a
+     * 200 that announces a deletion would name something that no longer
+     * exists.
+     *
+     * Never on a 412 either, which is the one worth saying out loud: the
+     * refusal knows the current tag and sending it would be a kindness that
+     * defeats the mechanism — a client could retry blindly with the fresh tag
+     * and land exactly the overwrite it was just stopped from making. The fix
+     * for a 412 is to re-read and re-decide, not to re-send.
+     */
+    private function tagged(Response $response, Request $request, string $facet, string $method): Response
+    {
         if ($response->isSuccessful() && $method !== 'DELETE') {
             $tag = EntityTag::of($facet, $request);
 
@@ -118,19 +184,9 @@ class ConditionalWrite
         return $response;
     }
 
-    /** The refusal this write earns, or null to let it through. */
-    private function check(Request $request, string $facet): ?Response
+    /** The 412 this write earns, or null to let it through. */
+    private function stale(string $header, Request $request, string $facet): ?Response
     {
-        $header = $request->headers->get('If-Match');
-
-        if ($header === null || trim($header) === '') {
-            return ApiError::json(
-                428,
-                'if_match_required',
-                'If-Match is required on this request',
-            );
-        }
-
         $current = EntityTag::of($facet, $request);
 
         if ($current === null || ! self::matches($header, $current)) {
@@ -153,11 +209,8 @@ class ConditionalWrite
      * NOTHING here, because strong comparison requires both sides to be
      * strong. We never emit one, so the only way a client sends a weak tag is
      * by having invented it.
-     *
-     * Public for ImageController::replace(), which checks the tag a second
-     * time once it holds the upload lock.
      */
-    public static function matches(string $header, string $current): bool
+    private static function matches(string $header, string $current): bool
     {
         if (trim($header) === '*') {
             return true;
