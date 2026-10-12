@@ -327,6 +327,7 @@ export const de: typeof fr = {
     members: "Mitglieder",
     inbox: "Posteingang",
     media: "Medien",
+    registers: "Register",
     roles: "Rollen",
     gallery: "Galerie",
     galleryLabel: "Galerie auf Flickr (neuer Tab)",
@@ -1246,7 +1247,6 @@ export const de: typeof fr = {
     heading: "Register",
     intro:
       "Die Register der Guggenmusik, in der Reihenfolge der Seite «Die Canetons» und des Mitgliederformulars. Ein deutscher Name ist freiwillig: Ohne ihn zeigt die deutsche Seite den französischen.",
-    manageLink: "Register bearbeiten",
     players_one: "{{count}} Musiker",
     players_other: "{{count}} Musiker",
     instructors_one: "{{count}} Leiter",

@@ -450,6 +450,7 @@ export const fr = {
     members: "Membres",
     inbox: "Boîte de réception",
     media: "Médias",
+    registers: "Pupitres",
     roles: "Rôles",
     gallery: "Galerie",
     // THE EXTERNAL LINKS' WHOLE NAMES. Each says it opens a new tab, and each
@@ -1771,9 +1772,6 @@ export const fr = {
     heading: "Pupitres",
     intro:
       "Les pupitres de la guggen, dans l'ordre de la page « Les canetons » et du formulaire d'un membre. Un nom en allemand est facultatif : sans lui, la page allemande affiche le nom français.",
-    // The roster link's accessible name. It shows only "Modifier", and a name
-    // has to contain the visible word for voice control to reach it.
-    manageLink: "Modifier les pupitres",
     players_one: "{{count}} musicien",
     players_other: "{{count}} musiciens",
     instructors_one: "{{count}} moniteur",

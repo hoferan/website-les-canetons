@@ -1,7 +1,6 @@
 import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 
@@ -441,15 +440,6 @@ export function Members() {
           ))}
           <option value="none">{t("members.noSection")}</option>
         </select>
-        {/* Beside the filter it edits, as the planning's tag filter does.
-            Short on screen; its accessible name says what it edits. */}
-        <Link
-          to="/registers"
-          aria-label={t("registers.manageLink")}
-          className="inline-flex min-h-touch shrink-0 items-center text-sm text-violet underline underline-offset-2"
-        >
-          {t("common.edit")}
-        </Link>
         <label htmlFor="roster-role" className="sr-only">
           {t("members.roleFilter")}
         </label>
