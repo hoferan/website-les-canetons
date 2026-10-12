@@ -316,6 +316,7 @@ export type MemberRoleReplace409Code =
   (typeof MemberRoleReplace409Code)[keyof typeof MemberRoleReplace409Code];
 
 export const MemberRoleReplace409Code = {
+  baseline_role_is_fixed: "baseline_role_is_fixed",
   cannot_demote_self: "cannot_demote_self",
   cannot_remove_last_administrator: "cannot_remove_last_administrator",
 } as const;

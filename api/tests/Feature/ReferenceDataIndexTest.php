@@ -122,7 +122,20 @@ class ReferenceDataIndexTest extends TestCase
         // response shape so a French field cannot creep back in.
         $body = $this->actingAsAdministrator()->getJson('/api/v1/roles')->assertOk()->json('data');
 
-        $this->assertSame(['id', 'key', 'permissions'], array_keys($body[0]));
+        $this->assertSame(['id', 'key', 'isBaseline', 'permissions'], array_keys($body[0]));
+    }
+
+    public function test_exactly_the_baseline_role_says_so(): void
+    {
+        // A client needs this to keep the baseline in every PUT of a member's
+        // roles, which refuses a list without it. The only other way to find it
+        // is by key, and nothing may decide anything from a role's name.
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/roles')->assertOk()->json('data');
+
+        $this->assertSame(
+            [Role::baseline()->id],
+            array_column(array_filter($body, fn (array $role): bool => $role['isBaseline'] === true), 'id'),
+        );
     }
 
     /**

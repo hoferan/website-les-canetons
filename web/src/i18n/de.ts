@@ -51,6 +51,8 @@ export const de: typeof fr = {
     cannot_delete_self: "Sie können Ihr eigenes Konto nicht löschen.",
     cannot_demote_self: "Sie können sich Ihre eigenen Administrationsrechte nicht entziehen.",
     cannot_remove_last_administrator: "Das ist die letzte Person, die Mitglieder verwalten kann.",
+    baseline_role_is_fixed:
+      "Die Rolle «Mitglied» kann weder entzogen noch geändert noch gelöscht werden. Alle Konten behalten sie.",
     // Sagt, was zu tun ist, ohne die Regel zu erklären: ein vom Vorstand
     // ausgegebenes Passwort wurde mündlich mitgeteilt, ein «Wechsel» auf
     // dasselbe Passwort liesse das Konto also auf einem bereits gehörten.

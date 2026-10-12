@@ -4651,7 +4651,7 @@
         "/members/{member}/roles": {
             "put": {
                 "operationId": "memberRole.replace",
-                "description": "Requires `members.manage`. `roleIds` is the complete set the member is\nleft with, so send every role they should keep; an empty array removes\nall of them. Read the roles that exist from `GET /api/v1/roles`.\n\nThis is the only way any permission is granted or taken away. A role is\nwhat groups permissions, and no endpoint in this API authorises by role\nname, so nothing is ever granted to one member directly.\n\nThe change ends every session the member has open, so a permission that\nhas just been removed stops working immediately rather than at their\nnext login. Answers the updated member and `sessionsEnded`.\n\nRefuses with `409 cannot_remove_last_administrator` when the new set\nwould leave nobody able to administer members, and\n`409 cannot_demote_self` when callers would strip their own member\nadministration. Both are `409` rather than `403` because the caller does\nhold the permission; the request conflicts with the state of the roster.\nWhen both apply, the last-administrator refusal is the one returned. An\nunknown role id answers `400 validation_failed` against `roleIds`.",
+                "description": "Requires `members.manage`. `roleIds` is the complete set the member is\nleft with, so send every role they should keep. It must include the\nbaseline role, the one `GET /api/v1/roles` marks `isBaseline`: every\naccount holds it, so sending only that one removes every other role.\n\nThis is the only way any permission is granted or taken away. A role is\nwhat groups permissions, and no endpoint in this API authorises by role\nname, so nothing is ever granted to one member directly.\n\nThe change ends every session the member has open, so a permission that\nhas just been removed stops working immediately rather than at their\nnext login. Answers the updated member and `sessionsEnded`.\n\nRefuses with `409 baseline_role_is_fixed` when `roleIds` leaves out the\nbaseline role, `409 cannot_remove_last_administrator` when the new set\nwould leave nobody able to administer members, and\n`409 cannot_demote_self` when callers would strip their own member\nadministration. All three are `409` rather than `403` because the caller\ndoes hold the permission; the request conflicts with the state of the\nroster. When the last two both apply, the last-administrator refusal is\nthe one returned. An unknown role id answers `400 validation_failed`\nagainst `roleIds`.",
                 "summary": "Replace a member's roles",
                 "tags": [
                     "Members"
@@ -4765,6 +4765,7 @@
                                             "type": "string",
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
+                                                "baseline_role_is_fixed",
                                                 "cannot_demote_self",
                                                 "cannot_remove_last_administrator"
                                             ]
@@ -8306,6 +8307,10 @@
                         "type": "string",
                         "description": "Stable identifier. Roles carry no display name; clients translate by this key."
                     },
+                    "isBaseline": {
+                        "type": "boolean",
+                        "description": "True for exactly one role: the one every account holds. It cannot be removed from anyone, so keep it in\nevery `roleIds` sent to `PUT /api/v1/members/{member}/roles`."
+                    },
                     "permissions": {
                         "type": "array",
                         "description": "Everything this role grants, as permission strings.",
@@ -8317,6 +8322,7 @@
                 "required": [
                     "id",
                     "key",
+                    "isBaseline",
                     "permissions"
                 ],
                 "title": "RoleResource"

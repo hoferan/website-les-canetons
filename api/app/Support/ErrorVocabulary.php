@@ -187,6 +187,13 @@ final class ErrorVocabulary
         'cannot_remove_last_administrator' => [409, 'This change would leave nobody able to administer '
             .'members. Grant members.manage to somebody else first.'],
 
+        // One code for removing, editing and deleting it, because the answer
+        // to all three is the same: leave it alone. The editor endpoints that
+        // will raise the other two do not exist yet (#194).
+        'baseline_role_is_fixed' => [409, 'The baseline role (`isBaseline` in GET /api/v1/roles) belongs to '
+            .'every account and grants a fixed set of permissions. Keep it in every `roleIds`; it '
+            .'cannot be edited or deleted.'],
+
         // Says what to do and nothing about why the rule exists. The reason is
         // mustChangePassword: a committee-issued password has been read out
         // loud, so an account allowed to "change" it to itself keeps a

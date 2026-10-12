@@ -735,11 +735,14 @@ Until then, `roles` carries no display name and the SPA translates by `key`.
 Adding `system.manage` to the enum before its middleware exists is forbidden by
 the rule in row one.
 
-**The deferred editor release is not small**, and one part of it is a safety
-gap: `AccessIntegrity` guards *assigning* roles and *deleting* members, but not
-*editing what a role grants*. A role editor shipped without that invariant could
-strip `members.manage` from `direction` and lock the band out, with no shell to
-repair it.
+**The deferred editor release is not small.** Its safety check exists already
+(#193): `AccessIntegrity::assertMayReplacePermissions()` and
+`assertMayDeleteRole()` refuse an edit that would leave nobody holding
+`members.manage`, take it from the person making the edit, or touch the
+baseline role. The editor's endpoints have to call them, before the write.
+Without them, one save could strip `members.manage` from `direction` and lock
+the band out, with no shell to repair it. The editor also brings `roles.manage`,
+which joins `members.manage` in that check.
 
 ## Language
 

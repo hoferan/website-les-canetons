@@ -296,11 +296,25 @@ test("refuses to remove your own administration", async () => {
   const response = await fetch("/api/v1/members/1/roles", {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...(await ifMatchFor("/api/v1/members/1")) },
-    body: JSON.stringify({ roleIds: [] }),
+    // Role 3 is the baseline, which every list must keep.
+    body: JSON.stringify({ roleIds: [3] }),
   });
 
   expect(response.status).toBe(409);
   expect(((await response.json()) as { code: string }).code).toBe("cannot_demote_self");
+});
+
+test("refuses a role list without the baseline role", async () => {
+  setMockUser("demo.direction");
+  // Perrine (2) holds no administration, so only the baseline rule applies.
+  const response = await fetch("/api/v1/members/2/roles", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...(await ifMatchFor("/api/v1/members/2")) },
+    body: JSON.stringify({ roleIds: [4] }),
+  });
+
+  expect(response.status).toBe(409);
+  expect(((await response.json()) as { code: string }).code).toBe("baseline_role_is_fixed");
 });
 
 test("a destructive roster call needs no password, only the session", async () => {
