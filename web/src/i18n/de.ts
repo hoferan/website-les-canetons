@@ -156,6 +156,10 @@ export const de: typeof fr = {
       "Eine bereits gebuchte Option kann nicht gelöscht werden. Stornieren Sie zuerst die betroffenen Anmeldungen.",
     xlsx_unavailable:
       "Der Excel-Export ist auf diesem Server nicht verfügbar. Verwenden Sie das CSV-Format.",
+    register_in_use:
+      "In diesem Register spielen oder unterrichten noch Mitglieder. Teilen Sie sie zuerst einem anderen Register zu.",
+    registers_changed:
+      "Jemand hat inzwischen ein Register hinzugefügt oder gelöscht. Laden Sie die Seite neu und versuchen Sie es noch einmal.",
     image_in_use:
       "Dieses Foto wird noch auf der Website angezeigt. Entfernen Sie es zuerst von den Seiten, die es verwenden.",
     image_already_in_library:
@@ -219,8 +223,12 @@ export const de: typeof fr = {
     important: "Wichtiger Meilenstein",
     icon: "Symbol",
     files: "Datei",
-    // The library's label for a photo, on /media.
+    // The library's label for a photo on /media, and a register's French name.
     name: "Name",
+    // A register's German name, on /registers.
+    nameDe: "Name auf Deutsch",
+    // The registers in their new order, on /registers.
+    sectionIds: "Reihenfolge der Register",
     imageId: "Foto",
     path: "Seite",
     registrationOpensAt: "Anmeldebeginn",
@@ -1233,5 +1241,29 @@ export const de: typeof fr = {
     deleteUnused: "Kein Anlass hat diese Kategorie.",
     saveFailed: "Die Kategorie konnte nicht gespeichert werden.",
     deleteFailed: "Die Kategorie konnte nicht gelöscht werden.",
+  },
+  registers: {
+    heading: "Register",
+    intro:
+      "Die Register der Guggenmusik, in der Reihenfolge der Seite «Die Canetons» und des Mitgliederformulars. Ein deutscher Name ist freiwillig: Ohne ihn zeigt die deutsche Seite den französischen.",
+    manageLink: "Register bearbeiten",
+    players_one: "{{count}} Musiker",
+    players_other: "{{count}} Musiker",
+    instructors_one: "{{count}} Leiter",
+    instructors_other: "{{count}} Leiter",
+    moveUpAria: "«{{label}}» nach oben",
+    moveDownAria: "«{{label}}» nach unten",
+    editAria: "«{{label}}» bearbeiten",
+    deleteAria: "«{{label}}» löschen",
+    newHeading: "Neues Register",
+    add: "Hinzufügen",
+    deleteTitle: "«{{label}}» löschen?",
+    deleteUnused: "Niemand spielt oder unterrichtet in diesem Register.",
+    deleteInUse:
+      "Dieses Register hat {{players}} und {{instructors}}. Teilen Sie sie zuerst auf der Mitgliederseite einem anderen Register zu.",
+    close: "Schliessen",
+    saveFailed: "Das Register konnte nicht gespeichert werden.",
+    deleteFailed: "Das Register konnte nicht gelöscht werden.",
+    moveFailed: "Die Reihenfolge konnte nicht gespeichert werden.",
   },
 };

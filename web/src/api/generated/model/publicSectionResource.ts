@@ -312,8 +312,13 @@ import type { PublicMemberResource } from "./publicMemberResource";
 
 export interface PublicSectionResource {
   id: number;
-  /** The register's name, as the band typed it. Content, so never translated. */
+  /** The register's French name, as the band typed it. */
   name: string;
+  /**
+   * Its German name, or null when nobody has typed one: show `name` then (ADR 0026).
+   * @nullable
+   */
+  nameDe: string | null;
   /** Everyone who plays in it and has consented to appear. May be empty. */
   members: PublicMemberResource[];
   /** Everyone who teaches it and has consented to appear. May be empty. */

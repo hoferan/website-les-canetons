@@ -196,6 +196,8 @@ class AuthController extends Controller
             'permissions' => $member->permissions()->map(fn ($p) => $p->value)->all(),
             /** The register they play in, or null if they do not play. */
             'sectionName' => $member->section?->name,
+            /** The register's German name, or null when nobody has typed one: show `sectionName` then. */
+            'sectionNameDe' => $member->section?->name_de,
             /** Their seat on the committee, or null if they hold none. */
             'committeeFunctionName' => $member->committeeFunction?->name,
             /** The roles they hold, by key, with the names the committee typed (null for a seeded role nobody renamed: translate the key). For display only: authorise on `permissions`. */

@@ -12,6 +12,7 @@ use App\Models\Image;
 use App\Models\Member;
 use App\Models\Registration;
 use App\Models\Role;
+use App\Models\Section;
 use App\Support\EntityTag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -403,6 +404,7 @@ class ConditionalWriteTest extends TestCase
             ]),
             'event_tag' => EventTag::query()->firstOrFail(),
             'role' => Role::factory()->create(),
+            'section' => Section::query()->firstOrFail(),
         ];
 
         foreach (EntityTag::facets() as $facet) {

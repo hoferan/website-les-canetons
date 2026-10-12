@@ -435,6 +435,7 @@ import type {
   RegistrationStore400,
   RegistrationStore409,
   RenameRoleRequest,
+  ReorderSectionsRequest,
   ReplaceImageFileRequest,
   ReplaceMemberRolesRequest,
   ReplaceRegistrationOptionsRequest,
@@ -449,8 +450,13 @@ import type {
   RoleStore201,
   RoleUpdate200,
   RoleUpdate409,
+  SectionDestroy200,
+  SectionDestroy409,
   SectionIndex200,
   SectionIndexParams,
+  SectionReorder200,
+  SectionReorder409,
+  SectionResource,
   StoreEventRequest,
   StoreEventSeriesRequest,
   StoreEventTagRequest,
@@ -459,6 +465,7 @@ import type {
   StoreMemberRequest,
   StoreRegistrationRequest,
   StoreRoleRequest,
+  StoreSectionRequest,
   UpdateEventRequest,
   UpdateImageRequest,
   UpdateMemberRequest,
@@ -8324,12 +8331,12 @@ export const getSectionIndexUrl = (params?: SectionIndexParams) => {
 };
 
 /**
- * Requires `members.manage`. Read-only reference data, for a client
- * building the roster form.
+ * Requires `members.manage`. The roster form reads it to offer a
+ * register, and the register editor to list them.
  *
- * Returns every register ("pupitre") with its name, in the order the
- * band has configured. A member's register is what makes them a player,
- * and therefore answerable for an event.
+ * Returns every register ("pupitre") with its names, in the order the
+ * band has configured, and how many members play in and teach each one.
+ * A register groups and displays; it grants nothing.
  * @summary List the registers
  */
 export const sectionIndex = async (
@@ -8445,6 +8452,897 @@ export function useSectionIndex<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type sectionStoreResponse201 = {
+  data: SectionResource;
+  status: 201;
+};
+
+export type sectionStoreResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type sectionStoreResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type sectionStoreResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type sectionStoreResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type sectionStoreResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type sectionStoreResponseSuccess = sectionStoreResponse201 & {
+  headers: Headers;
+};
+export type sectionStoreResponseError = (
+  | sectionStoreResponse400
+  | sectionStoreResponse401
+  | sectionStoreResponse403
+  | sectionStoreResponse419
+  | sectionStoreResponse503
+) & {
+  headers: Headers;
+};
+
+export type sectionStoreResponse = sectionStoreResponseSuccess | sectionStoreResponseError;
+
+export const getSectionStoreUrl = () => {
+  return `/sections`;
+};
+
+/**
+ * Requires `members.manage`. The new register goes last on the band page
+ * and the roster form. Answers `201` with it.
+ * @summary Create a register
+ */
+export const sectionStore = async (
+  storeSectionRequest: StoreSectionRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<sectionStoreResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<sectionStoreResponse>(getSectionStoreUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeSectionRequest),
+  });
+};
+
+export const getSectionStoreMutationKey = () => ["sectionStore"] as const;
+
+export const getSectionStoreMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sectionStore>>,
+    TError,
+    SectionStoreMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sectionStore>>,
+  TError,
+  SectionStoreMutationVariables,
+  TContext
+> => {
+  const mutationKey = getSectionStoreMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sectionStore>>,
+    SectionStoreMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sectionStore(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SectionStoreMutationResult = NonNullable<Awaited<ReturnType<typeof sectionStore>>>;
+export type SectionStoreMutationBody = StoreSectionRequest;
+export type SectionStoreMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem419Response
+  | Problem503Response;
+export type SectionStoreMutationVariables = { data: StoreSectionRequest };
+
+/**
+ * @summary Create a register
+ */
+export const useSectionStore = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof sectionStore>>,
+      TError,
+      SectionStoreMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof sectionStore>>,
+  TError,
+  SectionStoreMutationVariables,
+  TContext
+> => {
+  return useMutation(getSectionStoreMutationOptions(options), queryClient);
+};
+
+export type sectionReorderResponse200 = {
+  data: SectionReorder200;
+  status: 200;
+};
+
+export type sectionReorderResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type sectionReorderResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type sectionReorderResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type sectionReorderResponse409 = {
+  data: SectionReorder409;
+  status: 409;
+};
+
+export type sectionReorderResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type sectionReorderResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type sectionReorderResponseSuccess = sectionReorderResponse200 & {
+  headers: Headers;
+};
+export type sectionReorderResponseError = (
+  | sectionReorderResponse400
+  | sectionReorderResponse401
+  | sectionReorderResponse403
+  | sectionReorderResponse409
+  | sectionReorderResponse419
+  | sectionReorderResponse503
+) & {
+  headers: Headers;
+};
+
+export type sectionReorderResponse = sectionReorderResponseSuccess | sectionReorderResponseError;
+
+export const getSectionReorderUrl = () => {
+  return `/sections/order`;
+};
+
+/**
+ * Requires `members.manage`. Takes every register's id, first to last;
+ * the band page and the roster form follow it. Refuses with
+ * `409 registers_changed` when the list does not name every register
+ * exactly once, which means somebody added or deleted one meanwhile:
+ * read the list again.
+ *
+ * No `If-Match`: the body is the whole order, so there is no part of
+ * somebody else's order it could keep or lose. Two people reordering at
+ * once leave the order the second one chose, which is the one they saw.
+ * @summary Put the registers in a new order
+ */
+export const sectionReorder = async (
+  reorderSectionsRequest: ReorderSectionsRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<sectionReorderResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<sectionReorderResponse>(getSectionReorderUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(reorderSectionsRequest),
+  });
+};
+
+export const getSectionReorderMutationKey = () => ["sectionReorder"] as const;
+
+export const getSectionReorderMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | SectionReorder409
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sectionReorder>>,
+    TError,
+    SectionReorderMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sectionReorder>>,
+  TError,
+  SectionReorderMutationVariables,
+  TContext
+> => {
+  const mutationKey = getSectionReorderMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sectionReorder>>,
+    SectionReorderMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sectionReorder(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SectionReorderMutationResult = NonNullable<Awaited<ReturnType<typeof sectionReorder>>>;
+export type SectionReorderMutationBody = ReorderSectionsRequest;
+export type SectionReorderMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | SectionReorder409
+  | Problem419Response
+  | Problem503Response;
+export type SectionReorderMutationVariables = { data: ReorderSectionsRequest };
+
+/**
+ * @summary Put the registers in a new order
+ */
+export const useSectionReorder = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | SectionReorder409
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof sectionReorder>>,
+      TError,
+      SectionReorderMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof sectionReorder>>,
+  TError,
+  SectionReorderMutationVariables,
+  TContext
+> => {
+  return useMutation(getSectionReorderMutationOptions(options), queryClient);
+};
+
+export type sectionShowResponse200 = {
+  data: SectionResource;
+  status: 200;
+};
+
+export type sectionShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type sectionShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type sectionShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type sectionShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type sectionShowResponseSuccess = sectionShowResponse200 & {
+  headers: Headers;
+};
+export type sectionShowResponseError = (
+  sectionShowResponse401 | sectionShowResponse403 | sectionShowResponse404 | sectionShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type sectionShowResponse = sectionShowResponseSuccess | sectionShowResponseError;
+
+export const getSectionShowUrl = (section: number) => {
+  return `/sections/${section}`;
+};
+
+/**
+ * Requires `members.manage`. Quote the `ETag` it returns in the
+ * `If-Match` header of a rename or a delete.
+ * @summary Read one register
+ */
+export const sectionShow = async (
+  section: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<sectionShowResponse> => {
+  return customFetch<sectionShowResponse>(getSectionShowUrl(section), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSectionShowQueryKey = (section: number) => {
+  return [`/sections/${section}`] as const;
+};
+
+export const getSectionShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof sectionShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  section: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSectionShowQueryKey(section);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof sectionShow>>> = ({ signal }) =>
+    sectionShow(section, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: section !== null && section !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof sectionShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type SectionShowQueryResult = NonNullable<Awaited<ReturnType<typeof sectionShow>>>;
+export type SectionShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useSectionShow<
+  TData = Awaited<ReturnType<typeof sectionShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  section: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sectionShow>>,
+          TError,
+          Awaited<ReturnType<typeof sectionShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSectionShow<
+  TData = Awaited<ReturnType<typeof sectionShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  section: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sectionShow>>,
+          TError,
+          Awaited<ReturnType<typeof sectionShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSectionShow<
+  TData = Awaited<ReturnType<typeof sectionShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  section: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read one register
+ */
+
+export function useSectionShow<
+  TData = Awaited<ReturnType<typeof sectionShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  section: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getSectionShowQueryOptions(section, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type sectionUpdateResponse200 = {
+  data: SectionResource;
+  status: 200;
+};
+
+export type sectionUpdateResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type sectionUpdateResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type sectionUpdateResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type sectionUpdateResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type sectionUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type sectionUpdateResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type sectionUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type sectionUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type sectionUpdateResponseSuccess = sectionUpdateResponse200 & {
+  headers: Headers;
+};
+export type sectionUpdateResponseError = (
+  | sectionUpdateResponse400
+  | sectionUpdateResponse401
+  | sectionUpdateResponse403
+  | sectionUpdateResponse404
+  | sectionUpdateResponse412
+  | sectionUpdateResponse419
+  | sectionUpdateResponse428
+  | sectionUpdateResponse503
+) & {
+  headers: Headers;
+};
+
+export type sectionUpdateResponse = sectionUpdateResponseSuccess | sectionUpdateResponseError;
+
+export const getSectionUpdateUrl = (section: number) => {
+  return `/sections/${section}`;
+};
+
+/**
+ * Requires `members.manage` and the `If-Match` from its read. Replaces
+ * both names; a blank German name is stored as null.
+ * @summary Rename a register
+ */
+export const sectionUpdate = async (
+  section: number,
+  storeSectionRequest: StoreSectionRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<sectionUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<sectionUpdateResponse>(getSectionUpdateUrl(section), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeSectionRequest),
+  });
+};
+
+export const getSectionUpdateMutationKey = () => ["sectionUpdate"] as const;
+
+export const getSectionUpdateMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sectionUpdate>>,
+    TError,
+    SectionUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sectionUpdate>>,
+  TError,
+  SectionUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getSectionUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sectionUpdate>>,
+    SectionUpdateMutationVariables
+  > = (props) => {
+    const { section, data } = props ?? {};
+
+    return sectionUpdate(section, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SectionUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof sectionUpdate>>>;
+export type SectionUpdateMutationBody = StoreSectionRequest;
+export type SectionUpdateMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type SectionUpdateMutationVariables = { section: number; data: StoreSectionRequest };
+
+/**
+ * @summary Rename a register
+ */
+export const useSectionUpdate = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof sectionUpdate>>,
+      TError,
+      SectionUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof sectionUpdate>>,
+  TError,
+  SectionUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getSectionUpdateMutationOptions(options), queryClient);
+};
+
+export type sectionDestroyResponse200 = {
+  data: SectionDestroy200;
+  status: 200;
+};
+
+export type sectionDestroyResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type sectionDestroyResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type sectionDestroyResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type sectionDestroyResponse409 = {
+  data: SectionDestroy409;
+  status: 409;
+};
+
+export type sectionDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type sectionDestroyResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type sectionDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type sectionDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type sectionDestroyResponseSuccess = sectionDestroyResponse200 & {
+  headers: Headers;
+};
+export type sectionDestroyResponseError = (
+  | sectionDestroyResponse401
+  | sectionDestroyResponse403
+  | sectionDestroyResponse404
+  | sectionDestroyResponse409
+  | sectionDestroyResponse412
+  | sectionDestroyResponse419
+  | sectionDestroyResponse428
+  | sectionDestroyResponse503
+) & {
+  headers: Headers;
+};
+
+export type sectionDestroyResponse = sectionDestroyResponseSuccess | sectionDestroyResponseError;
+
+export const getSectionDestroyUrl = (section: number) => {
+  return `/sections/${section}`;
+};
+
+/**
+ * Requires `members.manage` and the `If-Match` from its read. Refuses
+ * with `409 register_in_use` while anybody plays in or teaches it: move
+ * them to another register first. Its photo on the band page goes with
+ * it.
+ * @summary Delete a register
+ */
+export const sectionDestroy = async (
+  section: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<sectionDestroyResponse> => {
+  return customFetch<sectionDestroyResponse>(getSectionDestroyUrl(section), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getSectionDestroyMutationKey = () => ["sectionDestroy"] as const;
+
+export const getSectionDestroyMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | SectionDestroy409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sectionDestroy>>,
+    TError,
+    SectionDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sectionDestroy>>,
+  TError,
+  SectionDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getSectionDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sectionDestroy>>,
+    SectionDestroyMutationVariables
+  > = (props) => {
+    const { section } = props ?? {};
+
+    return sectionDestroy(section, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SectionDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof sectionDestroy>>>;
+
+export type SectionDestroyMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | SectionDestroy409
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type SectionDestroyMutationVariables = { section: number };
+
+/**
+ * @summary Delete a register
+ */
+export const useSectionDestroy = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | SectionDestroy409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof sectionDestroy>>,
+      TError,
+      SectionDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof sectionDestroy>>,
+  TError,
+  SectionDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getSectionDestroyMutationOptions(options), queryClient);
+};
 
 export type committeeFunctionIndexResponse200 = {
   data: CommitteeFunctionIndex200;

@@ -32,6 +32,8 @@ class ChaseListEntryResource extends JsonResource
             'lastName' => $this->last_name,
             /** The register they play in, or null for a member who answers without one. For grouping only: holding `attendance.respond` is what puts somebody on this list. */
             'sectionName' => $this->sectionName(),
+            /** The register's German name, or null when nobody has typed one: show `sectionName` then. */
+            'sectionNameDe' => $this->sectionNameDe(),
             /** Their answer, or null if they have not replied. The nulls are what this list is read for. */
             'attendance' => $this->answer(),
         ];
@@ -46,6 +48,12 @@ class ChaseListEntryResource extends JsonResource
     private function sectionName(): ?string
     {
         return $this->section?->name;
+    }
+
+    /** Typed for the same reason as sectionName(). */
+    private function sectionNameDe(): ?string
+    {
+        return $this->section?->name_de;
     }
 
     /**

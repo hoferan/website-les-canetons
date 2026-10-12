@@ -27,6 +27,7 @@ import { Inbox } from "./pages/Inbox";
 import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
 import { Media } from "./pages/Media";
+import { Registers } from "./pages/Registers";
 import { Roles } from "./pages/Roles";
 import { MediaDetail } from "./pages/MediaDetail";
 import { Members } from "./pages/Members";
@@ -160,6 +161,9 @@ export function AppRoutes() {
 
           <Route element={<RequirePermission permission="members.manage" />}>
             <Route path="/members" element={<Members />} />
+            {/* The register list (#276). The same people as the roster:
+                whoever puts somebody in a register decides which exist. */}
+            <Route path="/registers" element={<Registers />} />
           </Route>
 
           {/* messages.view, both routes: the worklist across every open

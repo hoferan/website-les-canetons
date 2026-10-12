@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 
 import { HttpResponse, delay, http } from "msw";
 
-import { setMemberVisibility } from "../mocks/handlers";
+import { setMemberVisibility, setSectionNameDe } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Band } from "./Band";
@@ -112,6 +112,22 @@ test("renders the heading, the register index and a placeholder gap in German", 
   // Lyre is the empty one in the seeded roster (see the French test above).
   const lyre = await screen.findByRole("article", { name: "Lyre" });
   expect(within(lyre).getByText(/noch zu ergänzen/)).toBeInTheDocument();
+});
+
+test("names a register in German where it has a German name, and in French where not", async () => {
+  setSectionNameDe(3, "Leier");
+  await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
+
+  expect(await screen.findByRole("article", { name: "Leier" })).toBeInTheDocument();
+  expect(screen.getByRole("article", { name: "Cloches" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Leier" })).toBeInTheDocument();
+});
+
+test("keeps the French name on the French page", async () => {
+  setSectionNameDe(3, "Leier");
+  await renderWithSession(<Band />, { route: "/band" });
+
+  expect(await screen.findByRole("article", { name: "Lyre" })).toBeInTheDocument();
 });
 
 test("shows the German photo placeholder in every empty slot", async () => {

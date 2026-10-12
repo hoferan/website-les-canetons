@@ -311,8 +311,17 @@
 
 export interface SectionResource {
   id: number;
-  /** The register's name, as the band writes it. */
+  /** The register's French name, as the band writes it. */
   name: string;
+  /**
+   * Its German name, or null when nobody has typed one: show `name` then (ADR 0026).
+   * @nullable
+   */
+  nameDe: string | null;
   /** Ascending display order. */
   sortOrder: number;
+  /** How many members play in it. */
+  playerCount?: number;
+  /** How many members teach it. */
+  instructorCount?: number;
 }

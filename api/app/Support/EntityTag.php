@@ -11,6 +11,7 @@ use App\Http\Resources\MemberResource;
 use App\Http\Resources\RegistrationOptionResource;
 use App\Http\Resources\RegistrationResource;
 use App\Http\Resources\RoleResource;
+use App\Http\Resources\SectionResource;
 use App\Models\Event;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -88,6 +89,7 @@ final class EntityTag
         'image' => 'image',
         'event_tag' => 'eventTag',
         'role' => 'role',
+        'section' => 'section',
     ];
 
     /**
@@ -219,6 +221,10 @@ final class EntityTag
             // role since the read must refuse it; a rename refused for the
             // same reason is the cheaper mistake.
             'role' => (new RoleResource($model->load('members')))->toArray(self::bare()),
+            // Without the counts, which the roster changes: renaming a
+            // register must not 412 because somebody joined it meanwhile.
+            // The delete refuses on members by itself.
+            'section' => (new SectionResource($model))->toArray(self::bare()),
 
             default => throw new InvalidArgumentException("No state is defined for the facet `{$facet}`."),
         };

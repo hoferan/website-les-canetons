@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 
@@ -31,7 +32,7 @@ import { PageSection } from "../components/PageSection";
 import { SearchField, useDebouncedValue } from "../components/SearchField";
 import { RowActions, type RowAction } from "../components/RowActions";
 import { t } from "../i18n";
-import { roleName } from "../i18n";
+import { registerName, roleName } from "../i18n";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { GeneratedPasswordDialog } from "../members/GeneratedPasswordDialog";
 import { LoginState } from "../members/LoginState";
@@ -166,6 +167,14 @@ export function Members() {
   const sectionList = rowsOf<SectionResource>(sections.data);
   const committeeFunctionList = rowsOf<CommitteeFunctionResource>(committeeFunctions.data);
   const roleList = rowsOf<RoleResource>(roles.data);
+
+  // From the register list rather than the card's own sectionName, which
+  // is French only: a German name on the member would be hashed into their
+  // entity tag, so renaming a register would refuse every open roster edit.
+  const labelForSection = (member: MemberResource) => {
+    const section = sectionList.find((candidate) => candidate.id === member.sectionId);
+    return section === undefined ? member.sectionName : registerName(section.name, section.nameDe);
+  };
 
   const labelForRole = (id: number) => {
     const role = roleList.find((candidate) => candidate.id === id);
@@ -427,11 +436,20 @@ export function Members() {
           <option value="">{t("members.allSections")}</option>
           {sectionList.map((section) => (
             <option key={section.id} value={String(section.id)}>
-              {section.name}
+              {registerName(section.name, section.nameDe)}
             </option>
           ))}
           <option value="none">{t("members.noSection")}</option>
         </select>
+        {/* Beside the filter it edits, as the planning's tag filter does.
+            Short on screen; its accessible name says what it edits. */}
+        <Link
+          to="/registers"
+          aria-label={t("registers.manageLink")}
+          className="inline-flex min-h-touch shrink-0 items-center text-sm text-violet underline underline-offset-2"
+        >
+          {t("common.edit")}
+        </Link>
         <label htmlFor="roster-role" className="sr-only">
           {t("members.roleFilter")}
         </label>
@@ -498,7 +516,7 @@ export function Members() {
             </p>
             <p className="text-sm">
               {t("members.sectionLabel", {
-                value: member.sectionName ?? t("members.noSection"),
+                value: labelForSection(member) ?? t("members.noSection"),
               })}
             </p>
             <p className="text-sm">

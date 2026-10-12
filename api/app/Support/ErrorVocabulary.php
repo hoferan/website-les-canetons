@@ -235,6 +235,13 @@ final class ErrorVocabulary
         'option_has_registrations' => [409, 'That option has already been booked, so it cannot be deleted. '
             .'Cancel the bookings that reference it first.'],
 
+        'register_in_use' => [409, 'Somebody plays in or teaches this register, so it cannot be deleted. '
+            .'`playerCount` and `instructorCount` on GET /api/v1/sections/{section} say how many; give each '
+            .'of them another register first.'],
+
+        'registers_changed' => [409, 'The order does not name every register exactly once, so somebody added '
+            .'or deleted one meanwhile. Read GET /api/v1/sections again and send the whole list.'],
+
         'image_in_use' => [409, 'This image is still shown somewhere on the site, so it cannot be deleted. '
             .'`usages` on GET /api/v1/images/{image} lists where; remove it from each place first.'],
 

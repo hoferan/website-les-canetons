@@ -184,6 +184,10 @@ export const fr = {
     option_has_registrations:
       "Impossible de supprimer une option déjà réservée. Annulez d'abord les inscriptions concernées.",
     xlsx_unavailable: "L'export Excel n'est pas disponible sur ce serveur. Utilisez le format CSV.",
+    register_in_use:
+      "Des membres jouent dans ce pupitre ou l'enseignent. Attribuez-leur d'abord un autre pupitre.",
+    registers_changed:
+      "Quelqu'un a ajouté ou supprimé un pupitre entre-temps. Rechargez la page, puis recommencez.",
     image_in_use:
       "Cette photo est encore affichée sur le site. Retirez-la d'abord des pages qui l'utilisent.",
     image_already_in_library:
@@ -259,8 +263,12 @@ export const fr = {
     important: "Étape importante",
     icon: "Icône",
     files: "Fichier",
-    // The library's label for a photo, on /media.
+    // The library's label for a photo on /media, and a register's French name.
     name: "Nom",
+    // A register's German name, on /registers.
+    nameDe: "Nom en allemand",
+    // The registers in their new order, on /registers.
+    sectionIds: "Ordre des pupitres",
     // The photo a placement shows.
     imageId: "Photo",
     // The page a photo slot is on, sent with a placement.
@@ -1758,5 +1766,32 @@ export const fr = {
     deleteUnused: "Aucun événement ne la porte.",
     saveFailed: "La catégorie n'a pas pu être enregistrée.",
     deleteFailed: "La catégorie n'a pas pu être supprimée.",
+  },
+  registers: {
+    heading: "Pupitres",
+    intro:
+      "Les pupitres de la guggen, dans l'ordre de la page « Les canetons » et du formulaire d'un membre. Un nom en allemand est facultatif : sans lui, la page allemande affiche le nom français.",
+    // The roster link's accessible name. It shows only "Modifier", and a name
+    // has to contain the visible word for voice control to reach it.
+    manageLink: "Modifier les pupitres",
+    players_one: "{{count}} musicien",
+    players_other: "{{count}} musiciens",
+    instructors_one: "{{count}} moniteur",
+    instructors_other: "{{count}} moniteurs",
+    moveUpAria: "Monter « {{label}} »",
+    moveDownAria: "Descendre « {{label}} »",
+    editAria: "Modifier « {{label}} »",
+    deleteAria: "Supprimer « {{label}} »",
+    newHeading: "Nouveau pupitre",
+    add: "Ajouter",
+    deleteTitle: "Supprimer « {{label}} » ?",
+    deleteUnused: "Personne ne joue dans ce pupitre ni ne l'enseigne.",
+    // Shown instead of a Delete button: the server refuses it anyway.
+    deleteInUse:
+      "Ce pupitre compte {{players}} et {{instructors}}. Attribuez-leur d'abord un autre pupitre sur la page des membres.",
+    close: "Fermer",
+    saveFailed: "Le pupitre n'a pas pu être enregistré.",
+    deleteFailed: "Le pupitre n'a pas pu être supprimé.",
+    moveFailed: "L'ordre n'a pas pu être enregistré.",
   },
 };
