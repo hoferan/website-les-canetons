@@ -173,10 +173,10 @@ class AuthController extends Controller
      * the caller answers for events is `attendance.respond` in that list; their
      * register does not decide it.
      *
-     * `sectionName`, `committeeFunctionName` and `roleKeys` say where the
-     * caller sits in the band, for their own account page. They are for
-     * display only. Nothing in this API is authorised by role, so a client
-     * decides what to show from `permissions` and ignores `roleKeys` for that.
+     * `sectionName`, `committeeFunctionName` and `roles` say where the caller
+     * sits in the band, for their own account page. They are for display
+     * only. Nothing in this API is authorised by role, so a client decides
+     * what to show from `permissions` and ignores `roles` for that.
      *
      * The response is never cacheable. An anonymous caller answers
      * `401 not_authenticated`.
@@ -198,8 +198,8 @@ class AuthController extends Controller
             'sectionName' => $member->section?->name,
             /** Their seat on the committee, or null if they hold none. */
             'committeeFunctionName' => $member->committeeFunction?->name,
-            /** The keys of the roles they hold. For display only: authorise on `permissions`. */
-            'roleKeys' => $this->roleKeys($member),
+            /** The roles they hold, by key, with the names the committee typed (null for a seeded role nobody renamed: translate the key). For display only: authorise on `permissions`. */
+            'roles' => $this->roles($member),
             // Redundant with the `no-store` middleware the whole authenticated
             // group carries, and kept: this body IS an identity, so it should
             // not depend on a route registration elsewhere to stay out of a
@@ -208,15 +208,24 @@ class AuthController extends Controller
     }
 
     /**
-     * A typed method rather than an inline pluck, for the reason
+     * A typed method rather than an inline map, for the reason
      * MemberResource::roleIds() gives: the docblock is what makes Scramble
-     * publish string[] instead of an untyped object.
+     * publish a typed list instead of an untyped object. Ordered by key, so
+     * the account page lists them the same way every time.
      *
-     * @return list<string>
+     * @return list<array{key: string, labelFr: string|null, labelDe: string|null}>
      */
-    private function roleKeys(Member $member): array
+    private function roles(Member $member): array
     {
-        return $member->roles->pluck('key')->map(fn ($key): string => (string) $key)->sort()->values()->all();
+        return $member->roles
+            ->sortBy('key')
+            ->map(fn ($role): array => [
+                'key' => (string) $role->key,
+                'labelFr' => $role->label_fr,
+                'labelDe' => $role->label_de,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

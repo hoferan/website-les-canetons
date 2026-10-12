@@ -41,6 +41,71 @@ export const fr = {
     },
   },
 
+  /**
+   * The permissions, by token with `_` for `.` (see permissionLabel), for the
+   * role editor's checkboxes. Developer-defined like the token itself, so this
+   * is catalogue copy rather than data, and PermissionCopyTest fails until
+   * every case of App\Support\Permission has an entry in both files.
+   */
+  permissions: {
+    events_manage: {
+      label: "Gérer le planning",
+      hint: "Crée, modifie, publie et supprime les événements.",
+    },
+    attendance_view_all: {
+      label: "Voir les réponses",
+      hint: "Voit qui vient à chaque événement et qui n’a pas encore répondu.",
+    },
+    attendance_record_for_others: {
+      label: "Répondre pour quelqu’un",
+      hint: "Enregistre la réponse d’un membre à sa place.",
+    },
+    members_manage: {
+      label: "Gérer les membres",
+      hint: "Ajoute et modifie les membres, leurs rôles et leurs mots de passe.",
+    },
+    registrations_view: {
+      label: "Voir les inscriptions",
+      hint: "Consulte la liste des personnes inscrites à un événement.",
+    },
+    registrations_manage: {
+      label: "Gérer les inscriptions",
+      hint: "Corrige ou annule l’inscription d’une personne.",
+    },
+    messages_view: {
+      label: "Lire les messages",
+      hint: "Lit les messages envoyés depuis le site.",
+    },
+    messages_manage: {
+      label: "Traiter les messages",
+      hint: "Marque les messages comme traités et les supprime.",
+    },
+    history_manage: {
+      label: "Gérer l’historique",
+      hint: "Ajoute, corrige et supprime les entrées de l’historique.",
+    },
+    images_manage: {
+      label: "Gérer les photos",
+      hint: "Ajoute et supprime des photos, et choisit celles du site.",
+    },
+    roles_manage: {
+      label: "Gérer les rôles",
+      hint: "Crée les rôles et choisit ce que chacun permet.",
+    },
+    events_view: {
+      label: "Voir le planning",
+      hint: "Consulte les événements à venir.",
+    },
+    attendance_respond: {
+      label: "Répondre aux événements",
+      hint: "Indique sa présence et compte parmi les personnes attendues.",
+    },
+    account_manage: {
+      label: "Gérer son compte",
+      hint: "Change son propre mot de passe.",
+    },
+  },
+
   errors: {
     // The sentence translateApiError falls back to when a code or reason has
     // no copy. It is NOT an API token, so no server-side guard can see it:
@@ -61,6 +126,7 @@ export const fr = {
     cannot_delete_self: "Vous ne pouvez pas supprimer votre propre compte.",
     cannot_demote_self: "Vous ne pouvez pas retirer vos propres droits d'administration.",
     cannot_remove_last_administrator: "C'est la dernière personne pouvant administrer les membres.",
+    cannot_remove_last_role_administrator: "C'est la dernière personne pouvant gérer les rôles.",
     baseline_role_is_fixed:
       "Le rôle « Membre » ne peut être ni retiré, ni modifié, ni supprimé. Tous les comptes le gardent.",
     // Dit quoi faire, sans expliquer pourquoi la règle existe : un mot de passe
@@ -209,6 +275,7 @@ export const fr = {
     instructorOfSectionId: "Moniteur du pupitre",
     publicVisible: "Visible publiquement",
     roleIds: "Rôles",
+    permissions: "Droits",
     currentPassword: "Mot de passe actuel",
     newPassword: "Nouveau mot de passe",
     id: "Identifiant",
@@ -375,6 +442,7 @@ export const fr = {
     members: "Membres",
     inbox: "Boîte de réception",
     media: "Médias",
+    roles: "Rôles",
     gallery: "Galerie",
     // THE EXTERNAL LINKS' WHOLE NAMES. Each says it opens a new tab, and each
     // begins with the words on screen, so voice control still finds it. The
@@ -1632,6 +1700,27 @@ export const fr = {
     bookingNumber: "numéro pour les prestations",
     committeeSeats: "les fonctions et les noms du comité",
     joinContact: "nom et numéro",
+  },
+  // The role editor (#194), at /roles.
+  rolesPage: {
+    heading: "Rôles",
+    intro: "Un rôle regroupe des droits. On donne les rôles aux personnes sur la page Membres.",
+    baselineNote: "Tous les comptes ont ce rôle. Il ne se modifie pas.",
+    grantsNothing: "Ne donne aucun droit.",
+    permissionsLegend: "Droits",
+    editAria: "Modifier le rôle {{name}}",
+    deleteAria: "Supprimer le rôle {{name}}",
+    deleteTitle: "Supprimer le rôle {{name}} ?",
+    // The damage, named: who loses the role. "Seul à leur donner" because a
+    // right somebody also holds through another role stays.
+    deleteHolders_one: "{{names}} perdra ce rôle, et les droits qu’il est seul à lui donner.",
+    deleteHolders_other:
+      "{{count}} personnes perdront ce rôle, et les droits qu’il est seul à leur donner : {{names}}.",
+    deleteNobody: "Personne n’a ce rôle. Il disparaîtra simplement de la liste.",
+    newHeading: "Nouveau rôle",
+    add: "Créer le rôle",
+    saveFailed: "Le rôle n’a pas pu être enregistré.",
+    deleteFailed: "Le rôle n’a pas pu être supprimé.",
   },
   // The tag editor (#107). "Catégorie" on screen: "étiquette" or "tag" would
   // be the developer's word, and the committee sorts the planning into

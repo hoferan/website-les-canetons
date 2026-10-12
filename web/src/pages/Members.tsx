@@ -31,7 +31,7 @@ import { PageSection } from "../components/PageSection";
 import { SearchField, useDebouncedValue } from "../components/SearchField";
 import { RowActions, type RowAction } from "../components/RowActions";
 import { t } from "../i18n";
-import { roleLabel } from "../i18n";
+import { roleName } from "../i18n";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { GeneratedPasswordDialog } from "../members/GeneratedPasswordDialog";
 import { LoginState } from "../members/LoginState";
@@ -168,8 +168,8 @@ export function Members() {
   const roleList = rowsOf<RoleResource>(roles.data);
 
   const labelForRole = (id: number) => {
-    const key = roleList.find((role) => role.id === id)?.key;
-    return key === undefined ? "" : roleLabel(key);
+    const role = roleList.find((candidate) => candidate.id === id);
+    return role === undefined ? "" : roleName(role);
   };
   // From what the roles GRANT, joined on roleIds as the roster's own docs say
   // to, never from a role's key: renaming the role that answers must not
@@ -444,7 +444,7 @@ export function Members() {
           <option value="">{t("members.allRoles")}</option>
           {roleList.map((role) => (
             <option key={role.id} value={String(role.id)}>
-              {roleLabel(role.key)}
+              {roleName(role)}
             </option>
           ))}
         </select>

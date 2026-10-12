@@ -13,25 +13,26 @@ use Illuminate\Support\Facades\DB;
  * Three failure modes these exist to prevent, each of which ends with someone
  * needing database access to repair a website, on a host with no shell:
  *
- *   1. The last holder of members.manage loses it, and nobody can administer
- *      members any more.
+ *   1. The last holder of members.manage or roles.manage loses it, and nobody
+ *      can administer members, or roles, any more.
  *   2. An administrator removes their own administration and cannot undo it.
  *   3. An account loses the baseline role, and with it the planning and its
  *      own password, or the baseline changes for every account at once.
  *
- * ONE RULE FOR EVERY PATH. Who holds members.manage changes when a member's
+ * ONE RULE FOR EVERY PATH. Who holds a permission changes when a member's
  * roles are replaced, when a member is deleted, when a role's permissions are
  * replaced and when a role is deleted. Each public method below describes its
  * write as the state it would leave and hands that to
  * assertAdministrationSurvives(), so the four cannot drift into four rules.
- * Only the first two have an endpoint so far. The other two wait for the role
- * editor (#194).
  *
  * These are deliberately NOT permission checks — the caller has the permission.
  * They are state checks, which is why they raise 409 rather than 403.
  */
 final class AccessIntegrity
 {
+    /** The permissions that must keep a holder, in the order they are checked. */
+    private const GUARDED = [Permission::MembersManage, Permission::RolesManage];
+
     public static function assertMayDelete(Member $actor, Member $target): void
     {
         // The orphan check runs FIRST, deliberately. When the actor is deleting
@@ -81,6 +82,18 @@ final class AccessIntegrity
         self::assertAdministrationSurvives($actor, rolePermissions: [$role->id => $permissions]);
     }
 
+    /**
+     * Renaming changes nobody's permissions, so only the baseline is checked:
+     * the editor offers it read-only, whole, rather than fixed in what it
+     * grants and editable in what it is called.
+     */
+    public static function assertMayRename(Role $role): void
+    {
+        if ($role->is_baseline) {
+            self::refuseBaseline();
+        }
+    }
+
     public static function assertMayDeleteRole(Member $actor, Role $role): void
     {
         if ($role->is_baseline) {
@@ -93,14 +106,15 @@ final class AccessIntegrity
     }
 
     /**
-     * The shared rule: after the write, somebody still holds members.manage,
-     * and the actor has not taken it from themselves.
+     * The shared rule, for each permission in GUARDED: a write may not take
+     * it from its last holder, and the actor may not take it from
+     * themselves. Those are the permissions that let somebody undo a write
+     * through the site: members.manage for who holds what, roles.manage for
+     * what each role grants.
      *
-     * The orphan refusal outranks the self-demotion one when both apply, for
-     * the reason assertMayDelete() gives.
-     *
-     * roles.manage joins members.manage here with the role editor (#194), so
-     * that nobody can remove the permission that lets them undo the edit.
+     * Every orphan refusal outranks every self-demotion, for the reason
+     * assertMayDelete() gives, and members.manage is checked before
+     * roles.manage, so a write that orphans both answers as it always did.
      *
      * @param  array<int, array<int, int>|null>  $memberRoles  member id => the roles they would hold, or null once deleted
      * @param  array<int, array<int, Permission>>  $rolePermissions  role id => what it would grant
@@ -110,30 +124,56 @@ final class AccessIntegrity
         array $memberRoles = [],
         array $rolePermissions = [],
     ): void {
-        $after = self::holders(Permission::MembersManage, $memberRoles, $rolePermissions);
+        $before = [];
+        $after = [];
 
-        // This also refuses when nobody held members.manage in the first
-        // place. A controller cannot reach that state (every caller is gated
-        // on members.manage), but a seeder or console command calling in
-        // against such a database would find every write refused.
-        if ($after === []) {
-            throw new AccessIntegrityViolation(
-                'cannot_remove_last_administrator',
-                'This is the last member who can administer members',
-            );
+        foreach (self::GUARDED as $permission) {
+            $before[$permission->value] = self::holders($permission);
+            $after[$permission->value] = self::holders($permission, $memberRoles, $rolePermissions);
+
+            // Only a write that TAKES the last holder away is refused. A
+            // permission nobody held is no reason to refuse a write that did
+            // not cause it: on a database where nobody holds roles.manage,
+            // refusing would freeze member administration as well, with no
+            // way out from the site.
+            if ($before[$permission->value] !== [] && $after[$permission->value] === []) {
+                self::refuseOrphan($permission);
+            }
         }
 
         // A deleted actor is not demoted; assertMayDelete() has its own
         // refusal for that, and it must be the one the caller sees.
         $actorRemains = ! array_key_exists($actor->id, $memberRoles) || $memberRoles[$actor->id] !== null;
-        $heldBefore = in_array($actor->id, self::holders(Permission::MembersManage), true);
 
-        if ($actorRemains && $heldBefore && ! in_array($actor->id, $after, true)) {
-            throw new AccessIntegrityViolation(
-                'cannot_demote_self',
-                'A member cannot remove their own member administration',
-            );
+        foreach (self::GUARDED as $permission) {
+            $heldBefore = in_array($actor->id, $before[$permission->value], true);
+
+            if ($actorRemains && $heldBefore && ! in_array($actor->id, $after[$permission->value], true)) {
+                throw new AccessIntegrityViolation(
+                    'cannot_demote_self',
+                    'A member cannot remove their own member or role administration',
+                );
+            }
         }
+    }
+
+    /**
+     * One literal throw per code, rather than a code looked up from a map:
+     * ApiErrorVocabularyTest finds the codes this class can raise by reading
+     * `new AccessIntegrityViolation('…'` out of the source.
+     */
+    private static function refuseOrphan(Permission $permission): never
+    {
+        throw match ($permission) {
+            Permission::RolesManage => new AccessIntegrityViolation(
+                'cannot_remove_last_role_administrator',
+                'This is the last member who can manage roles',
+            ),
+            default => new AccessIntegrityViolation(
+                'cannot_remove_last_administrator',
+                'This is the last member who can administer members',
+            ),
+        };
     }
 
     /**

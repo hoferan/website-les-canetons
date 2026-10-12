@@ -114,15 +114,18 @@ class ReferenceDataIndexTest extends TestCase
         );
     }
 
-    public function test_a_role_carries_no_display_name_for_the_api_to_translate(): void
+    public function test_a_role_carries_only_the_names_the_committee_typed(): void
     {
         // The whole API is English; the only untranslated text is what a user
-        // typed, and nobody typed "Team Direction" — a migration did. So the
-        // UI resolves the name from `key` through fr.ts, and this pins the
-        // response shape so a French field cannot creep back in.
+        // typed, and nobody typed "Team Direction" — a migration did. So a
+        // seeded role sends no name and the UI resolves it from `key` through
+        // fr.ts. labelFr and labelDe carry what the role editor stores (#194),
+        // and this pins the shape so no other name field creeps in.
         $body = $this->actingAsAdministrator()->getJson('/api/v1/roles')->assertOk()->json('data');
 
-        $this->assertSame(['id', 'key', 'isBaseline', 'permissions'], array_keys($body[0]));
+        $this->assertSame(['id', 'key', 'labelFr', 'labelDe', 'isBaseline', 'permissions'], array_keys($body[0]));
+        $this->assertNull($body[0]['labelFr']);
+        $this->assertNull($body[0]['labelDe']);
     }
 
     public function test_exactly_the_baseline_role_says_so(): void

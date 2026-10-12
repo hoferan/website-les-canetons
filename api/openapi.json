@@ -377,7 +377,7 @@
         "/me": {
             "get": {
                 "operationId": "auth.me",
-                "description": "Any logged-in member. Returns the caller's id, username, first and last\nname, whether they must change their password before anything else\n(`mustChangePassword`), and `permissions`.\n\n`permissions` is the flat list of permission tokens the caller's roles\nadd up to, and it is what a client shows or hides a screen on. Whether\nthe caller answers for events is `attendance.respond` in that list; their\nregister does not decide it.\n\n`sectionName`, `committeeFunctionName` and `roleKeys` say where the\ncaller sits in the band, for their own account page. They are for\ndisplay only. Nothing in this API is authorised by role, so a client\ndecides what to show from `permissions` and ignores `roleKeys` for that.\n\nThe response is never cacheable. An anonymous caller answers\n`401 not_authenticated`.",
+                "description": "Any logged-in member. Returns the caller's id, username, first and last\nname, whether they must change their password before anything else\n(`mustChangePassword`), and `permissions`.\n\n`permissions` is the flat list of permission tokens the caller's roles\nadd up to, and it is what a client shows or hides a screen on. Whether\nthe caller answers for events is `attendance.respond` in that list; their\nregister does not decide it.\n\n`sectionName`, `committeeFunctionName` and `roles` say where the caller\nsits in the band, for their own account page. They are for display\nonly. Nothing in this API is authorised by role, so a client decides\nwhat to show from `permissions` and ignores `roles` for that.\n\nThe response is never cacheable. An anonymous caller answers\n`401 not_authenticated`.",
                 "summary": "Read the current member and what they may do",
                 "tags": [
                     "Session"
@@ -425,11 +425,33 @@
                                             ],
                                             "description": "Their seat on the committee, or null if they hold none."
                                         },
-                                        "roleKeys": {
+                                        "roles": {
                                             "type": "array",
-                                            "description": "The keys of the roles they hold. For display only: authorise on `permissions`.",
+                                            "description": "The roles they hold, by key, with the names the committee typed (null for a seeded role nobody renamed: translate the key). For display only: authorise on `permissions`.",
                                             "items": {
-                                                "type": "string"
+                                                "type": "object",
+                                                "properties": {
+                                                    "key": {
+                                                        "type": "string"
+                                                    },
+                                                    "labelFr": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "labelDe": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "key",
+                                                    "labelFr",
+                                                    "labelDe"
+                                                ]
                                             }
                                         }
                                     },
@@ -442,7 +464,7 @@
                                         "permissions",
                                         "sectionName",
                                         "committeeFunctionName",
-                                        "roleKeys"
+                                        "roles"
                                     ]
                                 }
                             }
@@ -3884,11 +3906,11 @@
                 }
             }
         },
-        "/sections": {
+        "/roles": {
             "get": {
-                "operationId": "section.index",
-                "description": "Requires `members.manage`. Read-only reference data, for a client\nbuilding the roster form.\n\nReturns every register (\"pupitre\") with its name, in the order the\nband has configured. A member's register is what makes them a player,\nand therefore answerable for an event.",
-                "summary": "List the registers",
+                "operationId": "role.index",
+                "description": "Requires `members.manage` or `roles.manage`: the roster form reads it\nto assign roles, and the role editor to list them.\n\nReturns every role with what it grants and the names the committee\ntyped. A role with neither name is a seeded one nobody has renamed;\ntranslate its `key` instead.",
+                "summary": "List the roles",
                 "tags": [
                     "Members"
                 ],
@@ -3917,7 +3939,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `SectionResource`",
+                        "description": "Array of `RoleResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3927,7 +3949,7 @@
                                             "type": "array",
                                             "description": "This page of the collection, in the collection's own order.",
                                             "items": {
-                                                "$ref": "#/components/schemas/SectionResource"
+                                                "$ref": "#/components/schemas/RoleResource"
                                             }
                                         },
                                         "meta": {
@@ -3981,13 +4003,560 @@
                         "$ref": "#/components/responses/Problem503"
                     }
                 }
+            },
+            "post": {
+                "operationId": "role.store",
+                "description": "Requires `roles.manage`. Takes the role's names and everything it\ngrants, and answers `201` with it. Nobody holds a new role until\nsomebody is given it on the roster, so creating one changes nobody's\npermissions.",
+                "summary": "Create a role",
+                "tags": [
+                    "Members"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreRoleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new role.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/RoleResource"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "holders"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
             }
         },
-        "/roles": {
+        "/roles/{role}": {
             "get": {
-                "operationId": "role.index",
-                "description": "Requires `members.manage`. Read-only reference data, for a client\nbuilding the roster form.\n\nReturns every role with the permissions it grants. A role carries no\ndisplay name: `key` is the fixed identifier and the client translates\nit.",
-                "summary": "List the roles",
+                "operationId": "role.show",
+                "description": "Requires `roles.manage`. Quote the `ETag` it returns in the `If-Match`\nheader of a rename, a grant change or a delete. `holders` is what a\ndelete takes the role from, so a client confirming one can name them.",
+                "summary": "Read one role, with who holds it",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "role",
+                        "in": "path",
+                        "required": true,
+                        "description": "The role ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`RoleResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/RoleResource"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "holders"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "role.update",
+                "description": "Requires `roles.manage` and the `If-Match` from its read. Replaces both\nnames; a blank German name is stored as null. Refuses the baseline role\nwith `409 baseline_role_is_fixed`.",
+                "summary": "Rename a role",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "role",
+                        "in": "path",
+                        "required": true,
+                        "description": "The role ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RenameRoleRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The role as it now stands.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/RoleResource"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "holders"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "baseline_role_is_fixed"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "role.destroy",
+                "description": "Requires `roles.manage` and the `If-Match` from its read. Everybody who\nheld it loses it, and with it whatever only it granted them; the read's\n`holders` names them. Refuses with `409 baseline_role_is_fixed` for the\nbaseline role, `409 cannot_remove_last_administrator` or\n`409 cannot_remove_last_role_administrator` when it is the last source\nof either permission, and `409 cannot_demote_self` when the caller would\nlose one of them.",
+                "summary": "Delete a role",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "role",
+                        "in": "path",
+                        "required": true,
+                        "description": "The role ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "baseline_role_is_fixed",
+                                                "cannot_demote_self",
+                                                "cannot_remove_last_administrator",
+                                                "cannot_remove_last_role_administrator"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/{role}/permissions": {
+            "put": {
+                "operationId": "rolePermission.replace",
+                "description": "Requires `roles.manage` and the `If-Match` from the role's read.\n`permissions` is everything the role grants afterwards, so send the ones\nit should keep too. The change reaches every holder on their next\nrequest.\n\nRefuses with `409 baseline_role_is_fixed` for the baseline role,\n`409 cannot_remove_last_administrator` or\n`409 cannot_remove_last_role_administrator` when the change would leave\nnobody holding that permission, and `409 cannot_demote_self` when the\ncaller would lose one of them. When several apply, the baseline refusal\ncomes first and a last-holder refusal before the self-demotion.",
+                "summary": "Replace what a role grants",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "role",
+                        "in": "path",
+                        "required": true,
+                        "description": "The role ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceRolePermissionsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The role as it now stands.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/RoleResource"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "holders"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "baseline_role_is_fixed",
+                                                "cannot_demote_self",
+                                                "cannot_remove_last_administrator",
+                                                "cannot_remove_last_role_administrator"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sections": {
+            "get": {
+                "operationId": "section.index",
+                "description": "Requires `members.manage`. Read-only reference data, for a client\nbuilding the roster form.\n\nReturns every register (\"pupitre\") with its name, in the order the\nband has configured. A member's register is what makes them a player,\nand therefore answerable for an event.",
+                "summary": "List the registers",
                 "tags": [
                     "Members"
                 ],
@@ -4016,7 +4585,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `RoleResource`",
+                        "description": "Array of `SectionResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4026,7 +4595,7 @@
                                             "type": "array",
                                             "description": "This page of the collection, in the collection's own order.",
                                             "items": {
-                                                "$ref": "#/components/schemas/RoleResource"
+                                                "$ref": "#/components/schemas/SectionResource"
                                             }
                                         },
                                         "meta": {
@@ -4515,7 +5084,7 @@
             },
             "delete": {
                 "operationId": "member.destroy",
-                "description": "Requires `members.manage`. Deletes the person outright and ends every\nsession they have open, so a deleted member stops being logged in at\nonce. There is no deactivation flag and no undo: leaving the band is\nthis call. Answers `{\"ok\": true, \"sessionsEnded\": n}`.\n\nRefuses with `409 cannot_remove_last_administrator` when the target is\nthe only member left who could administer members, and\n`409 cannot_delete_self` when the target is the caller. Both are `409`\nrather than `403` because the caller does hold the permission; the\nrequest conflicts with the state of the roster. When both apply, the\nlast-administrator refusal is the one returned.",
+                "description": "Requires `members.manage`. Deletes the person outright and ends every\nsession they have open, so a deleted member stops being logged in at\nonce. There is no deactivation flag and no undo: leaving the band is\nthis call. Answers `{\"ok\": true, \"sessionsEnded\": n}`.\n\nRefuses with `409 cannot_remove_last_administrator` or\n`409 cannot_remove_last_role_administrator` when the target is the only\nmember left who could administer members or roles, and\n`409 cannot_delete_self` when the target is the caller. Both are `409`\nrather than `403` because the caller does hold the permission; the\nrequest conflicts with the state of the roster. When both apply, the\nlast-administrator refusal is the one returned.",
                 "summary": "Remove a member from the roster",
                 "tags": [
                     "Members"
@@ -4608,7 +5177,8 @@
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
                                                 "cannot_delete_self",
-                                                "cannot_remove_last_administrator"
+                                                "cannot_remove_last_administrator",
+                                                "cannot_remove_last_role_administrator"
                                             ]
                                         },
                                         "errors": {
@@ -4646,7 +5216,7 @@
         "/members/{member}/roles": {
             "put": {
                 "operationId": "memberRole.replace",
-                "description": "Requires `members.manage`. `roleIds` is the complete set the member is\nleft with, so send every role they should keep. It must include the\nbaseline role, the one `GET /api/v1/roles` marks `isBaseline`: every\naccount holds it, so sending only that one removes every other role.\n\nThis is the only way any permission is granted or taken away. A role is\nwhat groups permissions, and no endpoint in this API authorises by role\nname, so nothing is ever granted to one member directly.\n\nThe change ends every session the member has open, so a permission that\nhas just been removed stops working immediately rather than at their\nnext login. Answers the updated member and `sessionsEnded`.\n\nRefuses with `409 baseline_role_is_fixed` when `roleIds` leaves out the\nbaseline role, `409 cannot_remove_last_administrator` when the new set\nwould leave nobody able to administer members, and\n`409 cannot_demote_self` when callers would strip their own member\nadministration. All three are `409` rather than `403` because the caller\ndoes hold the permission; the request conflicts with the state of the\nroster. When the last two both apply, the last-administrator refusal is\nthe one returned. An unknown role id answers `400 validation_failed`\nagainst `roleIds`.",
+                "description": "Requires `members.manage`. `roleIds` is the complete set the member is\nleft with, so send every role they should keep. It must include the\nbaseline role, the one `GET /api/v1/roles` marks `isBaseline`: every\naccount holds it, so sending only that one removes every other role.\n\nThis is the only way any permission is granted or taken away. A role is\nwhat groups permissions, and no endpoint in this API authorises by role\nname, so nothing is ever granted to one member directly.\n\nThe change ends every session the member has open, so a permission that\nhas just been removed stops working immediately rather than at their\nnext login. Answers the updated member and `sessionsEnded`.\n\nRefuses with `409 baseline_role_is_fixed` when `roleIds` leaves out the\nbaseline role, `409 cannot_remove_last_administrator` or\n`409 cannot_remove_last_role_administrator` when the new set would leave\nnobody able to administer members or roles, and `409 cannot_demote_self`\nwhen callers would strip their own administration of either. All are\n`409` rather than `403` because the caller does hold the permission; the\nrequest conflicts with the state of the roster. A last-holder refusal\ncomes before a self-demotion when both apply. An unknown role id answers\n`400 validation_failed` against `roleIds`.",
                 "summary": "Replace a member's roles",
                 "tags": [
                     "Members"
@@ -4762,7 +5332,8 @@
                                             "enum": [
                                                 "baseline_role_is_fixed",
                                                 "cannot_demote_self",
-                                                "cannot_remove_last_administrator"
+                                                "cannot_remove_last_administrator",
+                                                "cannot_remove_last_role_administrator"
                                             ]
                                         },
                                         "errors": {
@@ -8173,6 +8744,27 @@
                 ],
                 "title": "RegistrationResource"
             },
+            "RenameRoleRequest": {
+                "type": "object",
+                "description": "A role's names, typed by the committee (ADR 0026).\n\nThe French name is required and unique among the roles, so two roles never\nread the same on the roster form. A blank German name is stored as null and\nthe SPA falls back to the French one, as for an event tag.",
+                "properties": {
+                    "labelFr": {
+                        "type": "string",
+                        "maxLength": 60
+                    },
+                    "labelDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 60
+                    }
+                },
+                "required": [
+                    "labelFr"
+                ],
+                "title": "RenameRoleRequest"
+            },
             "ReplaceImageFileRequest": {
                 "type": "object",
                 "description": "New sizes for a photo already in the library, sent exactly as an upload\nsends them: `multipart/form-data`, one `files[]` part per size, one to\nthree of them.\n\nEvery check an upload makes is made here, by the same code, and refuses\nwith the same reasons: `image_not_jpeg`, `image_too_large`,\n`image_too_heavy`, `image_has_metadata`, `image_unexpected_data` or\n`image_trailing_data` against `files.N`, and `image_set_too_many`,\n`image_set_too_heavy`, `image_set_widths_repeated` or\n`image_set_aspect_mismatch` against `files`.",
@@ -8195,11 +8787,11 @@
             },
             "ReplaceMemberRolesRequest": {
                 "type": "object",
-                "description": "The complete set of roles a member is to be left with.\n\nThis is a replacement, not a partial update: send every role the member\nshould hold afterwards, including the ones they already have. Anything left\nout is removed, and an empty array removes all of them.\n\n`roleIds` must be sent, even when empty. Read the ids that exist from\n`GET /api/v1/roles`; an unknown one fails validation against `roleIds`.",
+                "description": "The complete set of roles a member is to be left with.\n\nThis is a replacement, not a partial update: send every role the member\nshould hold afterwards, including the ones they already have. Anything left\nout is removed, except the baseline role, which every account keeps: a list\nwithout it is refused with `409 baseline_role_is_fixed`.\n\nRead the ids that exist from `GET /api/v1/roles`; an unknown one fails\nvalidation against `roleIds`.",
                 "properties": {
                     "roleIds": {
                         "type": "array",
-                        "description": "Every role the member should hold afterwards. Send `[]` to leave them with none.",
+                        "description": "Every role the member should hold afterwards, the baseline role included.",
                         "items": {
                             "type": "integer"
                         }
@@ -8287,6 +8879,39 @@
                 ],
                 "title": "ReplaceRegistrationOptionsRequest"
             },
+            "ReplaceRolePermissionsRequest": {
+                "type": "object",
+                "description": "Everything a role is to grant afterwards, replacing what it grants now.\n\n`permissions` must be sent, even when empty: a role may grant nothing. An\nunknown name fails validation against its own index, `permissions.0` and so\non. A name sent twice is granted once.",
+                "properties": {
+                    "permissions": {
+                        "type": "array",
+                        "description": "Every permission the role grants afterwards, by name. Send `[]` for none.",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "events.manage",
+                                "attendance.view_all",
+                                "attendance.record_for_others",
+                                "members.manage",
+                                "registrations.view",
+                                "registrations.manage",
+                                "messages.view",
+                                "messages.manage",
+                                "history.manage",
+                                "images.manage",
+                                "roles.manage",
+                                "events.view",
+                                "attendance.respond",
+                                "account.manage"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "permissions"
+                ],
+                "title": "ReplaceRolePermissionsRequest"
+            },
             "RoleResource": {
                 "type": "object",
                 "properties": {
@@ -8295,7 +8920,21 @@
                     },
                     "key": {
                         "type": "string",
-                        "description": "Stable identifier. Roles carry no display name; clients translate by this key."
+                        "description": "Stable identifier, never shown. A role with no typed name is translated by this key."
+                    },
+                    "labelFr": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The name the committee typed in French, or null for a seeded role nobody has renamed."
+                    },
+                    "labelDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The name in German, or null. Show the French one when only that exists."
                     },
                     "isBaseline": {
                         "type": "boolean",
@@ -8307,11 +8946,36 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "holders": {
+                        "type": "array",
+                        "description": "Who holds it, by last name. Only on `GET /api/v1/roles/{role}`, where deleting it starts.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "firstName": {
+                                    "type": "string"
+                                },
+                                "lastName": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "firstName",
+                                "lastName"
+                            ]
+                        }
                     }
                 },
                 "required": [
                     "id",
                     "key",
+                    "labelFr",
+                    "labelDe",
                     "isBaseline",
                     "permissions"
                 ],
@@ -8812,6 +9476,50 @@
                     "website"
                 ],
                 "title": "StoreRegistrationRequest"
+            },
+            "StoreRoleRequest": {
+                "type": "object",
+                "description": "A new role: its names, as RenameRoleRequest takes them, and everything it\ngrants. Nobody holds a new role, so granting anything here locks nobody out\nand needs no AccessIntegrity check.",
+                "properties": {
+                    "labelFr": {
+                        "type": "string",
+                        "maxLength": 60
+                    },
+                    "labelDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 60
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "events.manage",
+                                "attendance.view_all",
+                                "attendance.record_for_others",
+                                "members.manage",
+                                "registrations.view",
+                                "registrations.manage",
+                                "messages.view",
+                                "messages.manage",
+                                "history.manage",
+                                "images.manage",
+                                "roles.manage",
+                                "events.view",
+                                "attendance.respond",
+                                "account.manage"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "labelFr",
+                    "permissions"
+                ],
+                "title": "StoreRoleRequest"
             },
             "TagColour": {
                 "type": "string",

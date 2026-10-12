@@ -32,24 +32,37 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class RequirePermission
 {
-    public function handle(Request $request, Closure $next, string $permission): Response
+    /**
+     * `permission:a` requires a; `permission:a,b` requires a OR b. The list
+     * form is for a read that two screens share, such as GET /roles: the
+     * roster form and the role editor, either of which somebody may hold
+     * alone. Every name is checked before any is matched, so a typo in a
+     * list fails as loudly as a typo on its own.
+     */
+    public function handle(Request $request, Closure $next, string ...$permissions): Response
     {
-        $required = Permission::tryFrom($permission);
+        if ($permissions === []) {
+            throw new InvalidArgumentException('A `permission:` middleware names no permission.');
+        }
 
-        if ($required === null) {
-            throw new InvalidArgumentException(
+        $accepted = array_map(function (string $permission): Permission {
+            return Permission::tryFrom($permission) ?? throw new InvalidArgumentException(
                 "Unknown permission '{$permission}' on a route. ".
                 'It must be a case of App\Support\Permission.'
             );
-        }
+        }, $permissions);
 
         // The request's memoized set rather than hasPermission(), so the
         // gates that run after this one on the same request read the same
         // set without a second query. See EffectivePermissions::ofRequest().
-        if (! EffectivePermissions::ofRequest($request)->contains($required)) {
-            throw new AuthorizationException;
+        $held = EffectivePermissions::ofRequest($request);
+
+        foreach ($accepted as $permission) {
+            if ($held->contains($permission)) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        throw new AuthorizationException;
     }
 }

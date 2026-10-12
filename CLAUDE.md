@@ -715,7 +715,8 @@ translated. The reasoning is in ADR 0014.
 | --- | --- |
 | The permission set (`App\Support\Permission`) | developer, code + deploy — a permission is real only if middleware checks it |
 | UI text (`web/src/i18n/`) | developer, code + deploy |
-| Which roles exist, what each grants, the register list | **nobody yet — by hand in the DB (DbGate on :8091).** A deferred editor release owns this |
+| Which roles exist, what each is called and grants | `roles.manage`, on `/roles` (#194). The baseline role is fixed |
+| The register list | **nobody yet — by hand in the DB (DbGate on :8091).** #178 owns this |
 | Members: identity, register, roles, password | `members.manage` |
 | One's own password | any account holder |
 | Events, attendance | `events.manage` |
@@ -725,24 +726,22 @@ translated. The reasoning is in ADR 0014.
 name is a fixed key, so a second language costs one catalogue file; a user-typed
 name is content, rendered verbatim, and no translation layer reaches it. German
 shipped 2026-09-19 to 2026-09-21, so the second catalogue exists and the rule
-above is load-bearing: registers and roles keep an immutable `key` for identity
-and will gain **per-locale labels stored as data** when their editor is built —
-editable and translatable at once. A register or role name therefore reads the
-same on a German page as on a French one, because nothing stores a second
-spelling.
+above is load-bearing. A role keeps an immutable `key` for identity, and since
+#194 it also carries `label_fr` and `label_de`, typed in the role editor
+(ADR 0026). A seeded role nobody has renamed has neither, so the SPA translates
+its `key` through the catalogue; `roleName()` in `web/src/i18n/` does both.
+Registers have no labels yet (#178), so a register name reads the same on a
+German page as on a French one.
 
-Until then, `roles` carries no display name and the SPA translates by `key`.
 Adding `system.manage` to the enum before its middleware exists is forbidden by
 the rule in row one.
 
-**The deferred editor release is not small.** Its safety check exists already
-(#193): `AccessIntegrity::assertMayReplacePermissions()` and
-`assertMayDeleteRole()` refuse an edit that would leave nobody holding
-`members.manage`, take it from the person making the edit, or touch the
-baseline role. The editor's endpoints have to call them, before the write.
-Without them, one save could strip `members.manage` from `direction` and lock
-the band out, with no shell to repair it. The editor also brings `roles.manage`,
-which joins `members.manage` in that check.
+**The role editor goes through `AccessIntegrity` on every write.** Nobody may
+take `members.manage` or `roles.manage` from its last holder, or from
+themselves, and nobody may touch the baseline role. Those are the two
+permissions that let somebody undo a change through the site, and this host has
+no shell to repair a lockout from. A new write that changes who holds a
+permission has to call the same check before it writes.
 
 ## Language
 

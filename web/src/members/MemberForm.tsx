@@ -10,7 +10,7 @@ import type {
 } from "../api/generated/model";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import type { TranslatedError } from "../i18n";
-import { roleHint, roleLabel, t } from "../i18n";
+import { roleDescription, roleName, t } from "../i18n";
 import { OUTLINED_CARD } from "../carnival/raised";
 
 export type MemberDraft = {
@@ -312,9 +312,9 @@ export function MemberForm({
               }
             />
             <div>
-              <label htmlFor={`role-${role.id}`}>{roleLabel(role.key)}</label>
+              <label htmlFor={`role-${role.id}`}>{roleName(role)}</label>
               <span id={`role-${role.id}-hint`} className="block text-sm text-ink-muted">
-                {roleHint(role.key)}
+                {roleDescription(role)}
               </span>
             </div>
           </div>

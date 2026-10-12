@@ -308,6 +308,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { AuthMe200RolesItem } from "./authMe200RolesItem";
 
 export type AuthMe200 = {
   id: number;
@@ -326,6 +327,6 @@ export type AuthMe200 = {
    * @nullable
    */
   committeeFunctionName: string | null;
-  /** The keys of the roles they hold. For display only: authorise on `permissions`. */
-  roleKeys: string[];
+  /** The roles they hold, by key, with the names the committee typed (null for a seeded role nobody renamed: translate the key). For display only: authorise on `permissions`. */
+  roles: AuthMe200RolesItem[];
 };

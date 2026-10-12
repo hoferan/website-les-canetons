@@ -1,6 +1,7 @@
 import { HttpResponse, http } from "msw";
 
 import type { ApiErrorField } from "../api/http";
+import { StoreRoleRequestPermissionsItem } from "../api/generated/model";
 import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
 import { REFUSED } from "../images/photoName";
 import { plannedSizes } from "../images/shrink";
@@ -64,6 +65,11 @@ import type {
 // drifting from the real contract.
 type MockUser = AuthMe200;
 
+/** Seeded roles as /me names them: by key, with no typed name. */
+function seeded(...keys: string[]): MockUser["roles"] {
+  return keys.map((key) => ({ key, labelFr: null, labelDe: null }));
+}
+
 const USERS = {
   // Organises, does not play — mirrors DevSeeder's demo.direction exactly.
   "demo.direction": {
@@ -74,7 +80,7 @@ const USERS = {
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
-    roleKeys: ["direction", "member"],
+    roles: seeded("direction", "member"),
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -88,6 +94,7 @@ const USERS = {
       "messages.manage",
       "history.manage",
       "images.manage",
+      "roles.manage",
       "events.view",
       "account.manage",
     ],
@@ -101,7 +108,7 @@ const USERS = {
     mustChangePassword: false,
     sectionName: "Cloches",
     committeeFunctionName: null,
-    roleKeys: ["member", "musician"],
+    roles: seeded("member", "musician"),
     permissions: ["events.view", "account.manage", "attendance.respond"],
   },
   // BOTH — the case the old role matrix could not express: an organiser who
@@ -119,7 +126,7 @@ const USERS = {
     mustChangePassword: true,
     sectionName: "Trompettes",
     committeeFunctionName: null,
-    roleKeys: ["direction", "member", "musician"],
+    roles: seeded("direction", "member", "musician"),
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -131,6 +138,7 @@ const USERS = {
       "messages.manage",
       "history.manage",
       "images.manage",
+      "roles.manage",
       "events.view",
       "account.manage",
       "attendance.respond",
@@ -150,7 +158,7 @@ const USERS = {
     mustChangePassword: false,
     sectionName: "Trombones",
     committeeFunctionName: "Responsable intendance",
-    roleKeys: ["committee", "member", "musician"],
+    roles: seeded("committee", "member", "musician"),
     permissions: [
       "registrations.view",
       "messages.view",
@@ -171,7 +179,7 @@ const USERS = {
     mustChangePassword: true,
     sectionName: "Cloches",
     committeeFunctionName: null,
-    roleKeys: ["member", "musician"],
+    roles: seeded("member", "musician"),
     permissions: ["events.view", "account.manage", "attendance.respond"],
   },
   // Edits the roster and the history and holds nothing else: no images.manage,
@@ -185,7 +193,7 @@ const USERS = {
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
-    roleKeys: ["member"],
+    roles: seeded("member"),
     permissions: ["members.manage", "history.manage", "events.view", "account.manage"],
   },
   // A young member whose parent uses the login on their behalf. Plays and
@@ -198,7 +206,7 @@ const USERS = {
     mustChangePassword: false,
     sectionName: "Batteurs",
     committeeFunctionName: null,
-    roleKeys: ["member", "musician"],
+    roles: seeded("member", "musician"),
     permissions: ["events.view", "account.manage", "attendance.respond"],
   },
   // THE TWO CASES THAT PROVE THE REGISTER IS DISPLAY ONLY (#192), session
@@ -213,7 +221,7 @@ const USERS = {
     mustChangePassword: false,
     sectionName: "Cloches",
     committeeFunctionName: null,
-    roleKeys: ["member"],
+    roles: seeded("member"),
     permissions: ["events.view", "account.manage"],
   },
   "demo.unplaced": {
@@ -224,7 +232,7 @@ const USERS = {
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
-    roleKeys: ["member", "musician"],
+    roles: seeded("member", "musician"),
     permissions: ["events.view", "account.manage", "attendance.respond"],
   },
   // No role at all, not even the baseline: the API refuses to produce this
@@ -239,7 +247,7 @@ const USERS = {
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
-    roleKeys: [],
+    roles: seeded(),
     permissions: [],
   },
 } satisfies Record<string, MockUser>;
@@ -391,43 +399,195 @@ const COMMITTEE_FUNCTIONS: CommitteeFunctionResource[] = [
 ];
 
 /**
- * The two roles 2026_09_07_000001 seeds, with what each grants — including
- * the committee inbox tokens 2026_09_15_000002 granted onto both roles
- * afterwards, which is why they are not part of that first migration's own
- * set.
+ * The seeded roles, with what each grants — including the tokens later
+ * migrations granted onto `direction`, which is why they are not part of the
+ * first migration's own set.
  *
- * No display name, deliberately (ADR 0014): the API is English without
- * exception, and the UI resolves the French from `key` through
- * web/src/i18n/fr.ts. A `label` here would let a screen render a name the real
- * API never sends.
+ * No typed name on any of them, as on a real database nobody has edited: the
+ * UI resolves the name from `key` through web/src/i18n/fr.ts. A role made in
+ * the mocked editor gets the names it was given.
  */
-const ROLES: RoleResource[] = [
-  {
-    id: 1,
-    key: "direction",
-    isBaseline: false,
-    permissions: [
-      "events.manage",
-      "attendance.view_all",
-      "attendance.record_for_others",
-      "members.manage",
-      "registrations.view",
-      "registrations.manage",
-      "messages.view",
-      "messages.manage",
-      "history.manage",
-      "images.manage",
-    ],
-  },
-  {
-    id: 2,
-    key: "committee",
-    isBaseline: false,
-    permissions: ["registrations.view", "messages.view"],
-  },
-  { id: 3, key: "member", isBaseline: true, permissions: ["events.view", "account.manage"] },
-  { id: 4, key: "musician", isBaseline: false, permissions: ["attendance.respond"] },
-];
+function initialRoles(): RoleResource[] {
+  return [
+    {
+      id: 1,
+      key: "direction",
+      labelFr: null,
+      labelDe: null,
+      isBaseline: false,
+      permissions: [
+        "events.manage",
+        "attendance.view_all",
+        "attendance.record_for_others",
+        "members.manage",
+        "registrations.view",
+        "registrations.manage",
+        "messages.view",
+        "messages.manage",
+        "history.manage",
+        "images.manage",
+        "roles.manage",
+      ],
+    },
+    {
+      id: 2,
+      key: "committee",
+      labelFr: null,
+      labelDe: null,
+      isBaseline: false,
+      permissions: ["registrations.view", "messages.view"],
+    },
+    {
+      id: 3,
+      key: "member",
+      labelFr: null,
+      labelDe: null,
+      isBaseline: true,
+      permissions: ["events.view", "account.manage"],
+    },
+    {
+      id: 4,
+      key: "musician",
+      labelFr: null,
+      labelDe: null,
+      isBaseline: false,
+      permissions: ["attendance.respond"],
+    },
+  ];
+}
+
+/**
+ * MUTABLE, like the roster: the mocked role editor changes it, and
+ * resetRoles() puts the seeded four back between tests. Changed in place, so
+ * every handler holding the array sees the same one.
+ */
+const ROLES: RoleResource[] = initialRoles();
+let nextRoleId = 5;
+
+function resetRoles(): void {
+  ROLES.splice(0, ROLES.length, ...initialRoles());
+  nextRoleId = 5;
+}
+
+/** One role as GET /roles/{role} renders it: with who holds it, by last name. */
+function roleRead(role: RoleResource): RoleResource {
+  const holders = members
+    .filter((member) => member.roleIds.includes(role.id))
+    .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName))
+    .map((member) => ({ id: member.id, firstName: member.firstName, lastName: member.lastName }));
+  return { ...role, holders };
+}
+
+/**
+ * What every role write does first, in the real API's order: the permission,
+ * the role, the tag (ConditionalWrite runs before the controller), then the
+ * baseline, which no write may touch.
+ */
+async function roleForWrite(request: Request, id: number): Promise<RoleResource | Response> {
+  const refusal = refuseWithout("roles.manage");
+  if (refusal) {
+    return refusal;
+  }
+  const role = ROLES.find((candidate) => candidate.id === id);
+  if (!role) {
+    return notFound();
+  }
+  const stale = refuseWithoutIfMatch(request, mockEntityTag(roleRead(role)));
+  if (stale) {
+    return stale;
+  }
+  if (role.isBaseline) {
+    return conflict(
+      "baseline_role_is_fixed",
+      "The baseline role is held by every account and grants a fixed set of permissions",
+    );
+  }
+  return role;
+}
+
+/** RenameRoleRequest's rules: a French name, unique among the roles; both at most 60. */
+function refuseRoleBody(
+  body: { labelFr?: string | null; labelDe?: string | null },
+  selfId: number | null,
+) {
+  const labelFr = body.labelFr?.trim() ?? "";
+  const errors: ApiErrorField[] = [];
+  if (labelFr === "") {
+    errors.push({ field: "labelFr", reason: "required" });
+  } else if (labelFr.length > 60) {
+    errors.push({ field: "labelFr", reason: "too_long", params: { max: 60 } });
+  } else if (
+    ROLES.some(
+      (role) => role.id !== selfId && role.labelFr?.toLowerCase() === labelFr.toLowerCase(),
+    )
+  ) {
+    errors.push({ field: "labelFr", reason: "already_taken" });
+  }
+  if ((body.labelDe?.trim().length ?? 0) > 60) {
+    errors.push({ field: "labelDe", reason: "too_long", params: { max: 60 } });
+  }
+  return errors.length > 0
+    ? problem(400, "validation_failed", "Invalid form submission", errors)
+    : null;
+}
+
+/** ReplaceRolePermissionsRequest's rules: a list, of names the enum knows. */
+function refusePermissionList(permissions: string[] | undefined) {
+  const known: readonly string[] = Object.values(StoreRoleRequestPermissionsItem);
+  if (!Array.isArray(permissions)) {
+    return problem(400, "validation_failed", "Invalid form submission", [
+      { field: "permissions", reason: "invalid_type" },
+    ]);
+  }
+  const unknown = permissions.findIndex((permission) => !known.includes(permission));
+  return unknown === -1
+    ? null
+    : problem(400, "validation_failed", "Invalid form submission", [
+        { field: `permissions.${unknown}`, reason: "invalid_value" },
+      ]);
+}
+
+/**
+ * App\Support\AccessIntegrity for a role write: `permissions` is what the role
+ * would grant, or null once it is deleted. Refuses taking a guarded
+ * permission from its last holder, then the caller taking one from
+ * themselves.
+ */
+function refuseLockout(roleId: number, permissions: string[] | null) {
+  const guarded = [
+    ["members.manage", "cannot_remove_last_administrator"],
+    ["roles.manage", "cannot_remove_last_role_administrator"],
+  ] as const;
+  const holders = (permission: string, changed: boolean) =>
+    members
+      .filter((member) =>
+        member.roleIds.some((id) => {
+          const grants =
+            changed && id === roleId
+              ? (permissions ?? [])
+              : (ROLES.find((role) => role.id === id)?.permissions ?? []);
+          return grants.includes(permission);
+        }),
+      )
+      .map((member) => member.id);
+
+  for (const [permission, code] of guarded) {
+    if (holders(permission, false).length > 0 && holders(permission, true).length === 0) {
+      return conflict(code, "This change would leave nobody holding that permission");
+    }
+  }
+  for (const [permission] of guarded) {
+    const self = currentUser?.id;
+    if (
+      self !== undefined &&
+      holders(permission, false).includes(self) &&
+      !holders(permission, true).includes(self)
+    ) {
+      return conflict("cannot_demote_self", "A member cannot remove their own administration");
+    }
+  }
+  return null;
+}
 
 /**
  * Whether a roster row answers for events: one of its roles grants
@@ -2097,6 +2257,7 @@ export function resetMockState(): void {
   setCurrentUser(null);
   // Before the roster and history: their fixtures read the images.
   resetImages();
+  resetRoles();
   resetRoster();
   // Dropping this line fails tests only when the WHOLE FILE runs, which reads
   // as flakiness and is not — the roster store proved it first.
@@ -2530,10 +2691,110 @@ const overrides = [
     ({ request }) => refuseWithoutMembersManage() ?? collection(SECTIONS, request),
   ),
 
-  http.get(
-    "/api/v1/roles",
-    ({ request }) => refuseWithoutMembersManage() ?? collection(ROLES, request),
+  // Either permission reads the list, as on the real route: the roster form
+  // assigns roles, the role editor shapes them.
+  http.get("/api/v1/roles", ({ request }) =>
+    currentUser?.permissions.includes("roles.manage")
+      ? collection(ROLES, request)
+      : (refuseWithoutMembersManage() ?? collection(ROLES, request)),
   ),
+
+  /* ------------------------------------------------------------------------ *
+   * The role editor (#194). Each write checks the role's tag, which covers its
+   * holders, and the lockout rule App\Support\AccessIntegrity applies.
+   * ---------------------------------------------------------------------- */
+
+  http.get("/api/v1/roles/:id", ({ params }) => {
+    const refusal = refuseWithout("roles.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const role = ROLES.find((candidate) => candidate.id === Number(params.id));
+    if (!role) {
+      return notFound();
+    }
+    const read = roleRead(role);
+    return HttpResponse.json(read, { headers: { ETag: mockEntityTag(read) } });
+  }),
+
+  http.post("/api/v1/roles", async ({ request }) => {
+    const refusal = refuseWithout("roles.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const body = (await request.json()) as {
+      labelFr?: string | null;
+      labelDe?: string | null;
+      permissions?: string[];
+    };
+    const invalid = refuseRoleBody(body, null) ?? refusePermissionList(body.permissions);
+    if (invalid) {
+      return invalid;
+    }
+    const id = nextRoleId++;
+    const role: RoleResource = {
+      id,
+      key: `custom-${id}`,
+      labelFr: body.labelFr!.trim(),
+      labelDe: body.labelDe?.trim() ? body.labelDe.trim() : null,
+      isBaseline: false,
+      permissions: [...new Set(body.permissions)],
+    };
+    ROLES.push(role);
+    return HttpResponse.json(roleRead(role), { status: 201 });
+  }),
+
+  http.patch("/api/v1/roles/:id", async ({ request, params }) => {
+    const found = await roleForWrite(request, Number(params.id));
+    if (found instanceof Response) {
+      return found;
+    }
+    const body = (await request.json()) as { labelFr?: string | null; labelDe?: string | null };
+    const invalid = refuseRoleBody(body, found.id);
+    if (invalid) {
+      return invalid;
+    }
+    found.labelFr = body.labelFr!.trim();
+    found.labelDe = body.labelDe?.trim() ? body.labelDe.trim() : null;
+    const read = roleRead(found);
+    return HttpResponse.json(read, { headers: { ETag: mockEntityTag(read) } });
+  }),
+
+  http.put("/api/v1/roles/:id/permissions", async ({ request, params }) => {
+    const found = await roleForWrite(request, Number(params.id));
+    if (found instanceof Response) {
+      return found;
+    }
+    const body = (await request.json()) as { permissions?: string[] };
+    const invalid = refusePermissionList(body.permissions);
+    if (invalid) {
+      return invalid;
+    }
+    const permissions = [...new Set(body.permissions)];
+    const locked = refuseLockout(found.id, permissions);
+    if (locked) {
+      return locked;
+    }
+    found.permissions = permissions;
+    const read = roleRead(found);
+    return HttpResponse.json(read, { headers: { ETag: mockEntityTag(read) } });
+  }),
+
+  http.delete("/api/v1/roles/:id", async ({ request, params }) => {
+    const found = await roleForWrite(request, Number(params.id));
+    if (found instanceof Response) {
+      return found;
+    }
+    const locked = refuseLockout(found.id, null);
+    if (locked) {
+      return locked;
+    }
+    ROLES.splice(ROLES.indexOf(found), 1);
+    for (const member of members) {
+      member.roleIds = member.roleIds.filter((roleId) => roleId !== found.id);
+    }
+    return HttpResponse.json({ ok: true });
+  }),
 
   http.get(
     "/api/v1/committee-functions",

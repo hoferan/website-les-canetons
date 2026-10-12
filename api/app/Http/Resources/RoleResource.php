@@ -10,11 +10,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * A role, WITH what it grants.
  *
- * NO DISPLAY NAME. `key` is the fixed identifier the UI translates through
- * web/src/i18n/fr.ts; the API is English without exception, and a seeded
- * role's name is system text rather than something a user typed. When roles
- * become editable (ADR 0014 defers it), a committee-typed name is user
- * input and gets a nullable `label` column that is rendered verbatim.
+ * TWO KINDS OF NAME. `labelFr` and `labelDe` are what the committee typed in
+ * the role editor, rendered verbatim (ADR 0026). A seeded role nobody has
+ * renamed has neither, and the UI translates its fixed `key` through
+ * web/src/i18n/fr.ts instead: a name a developer chose is system text, and the
+ * API is English without exception.
  *
  * The permissions travel with the role because that is how the UI answers "why
  * does she have this?" — always "because she is in Team Direction", never a
@@ -31,8 +31,12 @@ class RoleResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            /** Stable identifier. Roles carry no display name; clients translate by this key. */
+            /** Stable identifier, never shown. A role with no typed name is translated by this key. */
             'key' => $this->key,
+            /** The name the committee typed in French, or null for a seeded role nobody has renamed. */
+            'labelFr' => $this->label_fr,
+            /** The name in German, or null. Show the French one when only that exists. */
+            'labelDe' => $this->label_de,
             /**
              * True for exactly one role: the one every account holds. It cannot be removed from anyone, so keep it in
              * every `roleIds` sent to `PUT /api/v1/members/{member}/roles`.
@@ -40,7 +44,27 @@ class RoleResource extends JsonResource
             'isBaseline' => $this->is_baseline,
             /** Everything this role grants, as permission strings. */
             'permissions' => $this->permissionValues(),
+            /** Who holds it, by last name. Only on `GET /api/v1/roles/{role}`, where deleting it starts. */
+            'holders' => $this->whenLoaded('members', fn () => $this->holders()),
         ];
+    }
+
+    /**
+     * Typed for the same reason as permissionValues().
+     *
+     * @return list<array{id: int, firstName: string, lastName: string}>
+     */
+    private function holders(): array
+    {
+        return $this->members
+            ->sortBy(fn ($member) => [$member->last_name, $member->first_name])
+            ->map(fn ($member): array => [
+                'id' => (int) $member->id,
+                'firstName' => (string) $member->first_name,
+                'lastName' => (string) $member->last_name,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

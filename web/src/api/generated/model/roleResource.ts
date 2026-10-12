@@ -308,11 +308,22 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { RoleResourceHoldersItem } from "./roleResourceHoldersItem";
 
 export interface RoleResource {
   id: number;
-  /** Stable identifier. Roles carry no display name; clients translate by this key. */
+  /** Stable identifier, never shown. A role with no typed name is translated by this key. */
   key: string;
+  /**
+   * The name the committee typed in French, or null for a seeded role nobody has renamed.
+   * @nullable
+   */
+  labelFr: string | null;
+  /**
+   * The name in German, or null. Show the French one when only that exists.
+   * @nullable
+   */
+  labelDe: string | null;
   /**
    * True for exactly one role: the one every account holds. It cannot be removed from anyone, so keep it in
    * every `roleIds` sent to `PUT /api/v1/members/{member}/roles`.
@@ -320,4 +331,6 @@ export interface RoleResource {
   isBaseline: boolean;
   /** Everything this role grants, as permission strings. */
   permissions: string[];
+  /** Who holds it, by last name. Only on `GET /api/v1/roles/{role}`, where deleting it starts. */
+  holders?: RoleResourceHoldersItem[];
 }

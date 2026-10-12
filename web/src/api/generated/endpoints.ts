@@ -434,11 +434,21 @@ import type {
   RegistrationResource,
   RegistrationStore400,
   RegistrationStore409,
+  RenameRoleRequest,
   ReplaceImageFileRequest,
   ReplaceMemberRolesRequest,
   ReplaceRegistrationOptionsRequest,
+  ReplaceRolePermissionsRequest,
+  RoleDestroy200,
+  RoleDestroy409,
   RoleIndex200,
   RoleIndexParams,
+  RolePermissionReplace200,
+  RolePermissionReplace409,
+  RoleShow200,
+  RoleStore201,
+  RoleUpdate200,
+  RoleUpdate409,
   SectionIndex200,
   SectionIndexParams,
   StoreEventRequest,
@@ -448,6 +458,7 @@ import type {
   StoreImageRequest,
   StoreMemberRequest,
   StoreRegistrationRequest,
+  StoreRoleRequest,
   UpdateEventRequest,
   UpdateImageRequest,
   UpdateMemberRequest,
@@ -772,10 +783,10 @@ export const getAuthMeUrl = () => {
  * the caller answers for events is `attendance.respond` in that list; their
  * register does not decide it.
  *
- * `sectionName`, `committeeFunctionName` and `roleKeys` say where the
- * caller sits in the band, for their own account page. They are for
- * display only. Nothing in this API is authorised by role, so a client
- * decides what to show from `permissions` and ignores `roleKeys` for that.
+ * `sectionName`, `committeeFunctionName` and `roles` say where the caller
+ * sits in the band, for their own account page. They are for display
+ * only. Nothing in this API is authorised by role, so a client decides
+ * what to show from `permissions` and ignores `roles` for that.
  *
  * The response is never cacheable. An anonymous caller answers
  * `401 not_authenticated`.
@@ -7156,6 +7167,1117 @@ export const useContactMessageDestroy = <
   return useMutation(getContactMessageDestroyMutationOptions(options), queryClient);
 };
 
+export type roleIndexResponse200 = {
+  data: RoleIndex200;
+  status: 200;
+};
+
+export type roleIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type roleIndexResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type roleIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type roleIndexResponseSuccess = roleIndexResponse200 & {
+  headers: Headers;
+};
+export type roleIndexResponseError = (
+  roleIndexResponse401 | roleIndexResponse403 | roleIndexResponse503
+) & {
+  headers: Headers;
+};
+
+export type roleIndexResponse = roleIndexResponseSuccess | roleIndexResponseError;
+
+export const getRoleIndexUrl = (params?: RoleIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/roles?${stringifiedParams}` : `/roles`;
+};
+
+/**
+ * Requires `members.manage` or `roles.manage`: the roster form reads it
+ * to assign roles, and the role editor to list them.
+ *
+ * Returns every role with what it grants and the names the committee
+ * typed. A role with neither name is a seeded one nobody has renamed;
+ * translate its `key` instead.
+ * @summary List the roles
+ */
+export const roleIndex = async (
+  params?: RoleIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<roleIndexResponse> => {
+  return customFetch<roleIndexResponse>(getRoleIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRoleIndexQueryKey = (params?: RoleIndexParams) => {
+  return [`/roles`, ...(params ? [params] : [])] as const;
+};
+
+export const getRoleIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: RoleIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRoleIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof roleIndex>>> = ({ signal }) =>
+    roleIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof roleIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type RoleIndexQueryResult = NonNullable<Awaited<ReturnType<typeof roleIndex>>>;
+export type RoleIndexQueryError = Problem401Response | Problem403Response | Problem503Response;
+
+export function useRoleIndex<
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params: undefined | RoleIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof roleIndex>>,
+          TError,
+          Awaited<ReturnType<typeof roleIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRoleIndex<
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: RoleIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof roleIndex>>,
+          TError,
+          Awaited<ReturnType<typeof roleIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRoleIndex<
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: RoleIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List the roles
+ */
+
+export function useRoleIndex<
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: RoleIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getRoleIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type roleStoreResponse201 = {
+  data: RoleStore201;
+  status: 201;
+};
+
+export type roleStoreResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type roleStoreResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type roleStoreResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type roleStoreResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type roleStoreResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type roleStoreResponseSuccess = roleStoreResponse201 & {
+  headers: Headers;
+};
+export type roleStoreResponseError = (
+  | roleStoreResponse400
+  | roleStoreResponse401
+  | roleStoreResponse403
+  | roleStoreResponse419
+  | roleStoreResponse503
+) & {
+  headers: Headers;
+};
+
+export type roleStoreResponse = roleStoreResponseSuccess | roleStoreResponseError;
+
+export const getRoleStoreUrl = () => {
+  return `/roles`;
+};
+
+/**
+ * Requires `roles.manage`. Takes the role's names and everything it
+ * grants, and answers `201` with it. Nobody holds a new role until
+ * somebody is given it on the roster, so creating one changes nobody's
+ * permissions.
+ * @summary Create a role
+ */
+export const roleStore = async (
+  storeRoleRequest: StoreRoleRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<roleStoreResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<roleStoreResponse>(getRoleStoreUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeRoleRequest),
+  });
+};
+
+export const getRoleStoreMutationKey = () => ["roleStore"] as const;
+
+export const getRoleStoreMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof roleStore>>,
+    TError,
+    RoleStoreMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof roleStore>>,
+  TError,
+  RoleStoreMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRoleStoreMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof roleStore>>,
+    RoleStoreMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return roleStore(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RoleStoreMutationResult = NonNullable<Awaited<ReturnType<typeof roleStore>>>;
+export type RoleStoreMutationBody = StoreRoleRequest;
+export type RoleStoreMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem419Response
+  | Problem503Response;
+export type RoleStoreMutationVariables = { data: StoreRoleRequest };
+
+/**
+ * @summary Create a role
+ */
+export const useRoleStore = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof roleStore>>,
+      TError,
+      RoleStoreMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof roleStore>>,
+  TError,
+  RoleStoreMutationVariables,
+  TContext
+> => {
+  return useMutation(getRoleStoreMutationOptions(options), queryClient);
+};
+
+export type roleShowResponse200 = {
+  data: RoleShow200;
+  status: 200;
+};
+
+export type roleShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type roleShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type roleShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type roleShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type roleShowResponseSuccess = roleShowResponse200 & {
+  headers: Headers;
+};
+export type roleShowResponseError = (
+  roleShowResponse401 | roleShowResponse403 | roleShowResponse404 | roleShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type roleShowResponse = roleShowResponseSuccess | roleShowResponseError;
+
+export const getRoleShowUrl = (role: number) => {
+  return `/roles/${role}`;
+};
+
+/**
+ * Requires `roles.manage`. Quote the `ETag` it returns in the `If-Match`
+ * header of a rename, a grant change or a delete. `holders` is what a
+ * delete takes the role from, so a client confirming one can name them.
+ * @summary Read one role, with who holds it
+ */
+export const roleShow = async (
+  role: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<roleShowResponse> => {
+  return customFetch<roleShowResponse>(getRoleShowUrl(role), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRoleShowQueryKey = (role: number) => {
+  return [`/roles/${role}`] as const;
+};
+
+export const getRoleShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof roleShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  role: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRoleShowQueryKey(role);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof roleShow>>> = ({ signal }) =>
+    roleShow(role, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: role !== null && role !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof roleShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type RoleShowQueryResult = NonNullable<Awaited<ReturnType<typeof roleShow>>>;
+export type RoleShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useRoleShow<
+  TData = Awaited<ReturnType<typeof roleShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  role: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof roleShow>>,
+          TError,
+          Awaited<ReturnType<typeof roleShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRoleShow<
+  TData = Awaited<ReturnType<typeof roleShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  role: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof roleShow>>,
+          TError,
+          Awaited<ReturnType<typeof roleShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRoleShow<
+  TData = Awaited<ReturnType<typeof roleShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  role: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read one role, with who holds it
+ */
+
+export function useRoleShow<
+  TData = Awaited<ReturnType<typeof roleShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  role: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getRoleShowQueryOptions(role, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type roleUpdateResponse200 = {
+  data: RoleUpdate200;
+  status: 200;
+};
+
+export type roleUpdateResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type roleUpdateResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type roleUpdateResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type roleUpdateResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type roleUpdateResponse409 = {
+  data: RoleUpdate409;
+  status: 409;
+};
+
+export type roleUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type roleUpdateResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type roleUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type roleUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type roleUpdateResponseSuccess = roleUpdateResponse200 & {
+  headers: Headers;
+};
+export type roleUpdateResponseError = (
+  | roleUpdateResponse400
+  | roleUpdateResponse401
+  | roleUpdateResponse403
+  | roleUpdateResponse404
+  | roleUpdateResponse409
+  | roleUpdateResponse412
+  | roleUpdateResponse419
+  | roleUpdateResponse428
+  | roleUpdateResponse503
+) & {
+  headers: Headers;
+};
+
+export type roleUpdateResponse = roleUpdateResponseSuccess | roleUpdateResponseError;
+
+export const getRoleUpdateUrl = (role: number) => {
+  return `/roles/${role}`;
+};
+
+/**
+ * Requires `roles.manage` and the `If-Match` from its read. Replaces both
+ * names; a blank German name is stored as null. Refuses the baseline role
+ * with `409 baseline_role_is_fixed`.
+ * @summary Rename a role
+ */
+export const roleUpdate = async (
+  role: number,
+  renameRoleRequest: RenameRoleRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<roleUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<roleUpdateResponse>(getRoleUpdateUrl(role), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(renameRoleRequest),
+  });
+};
+
+export const getRoleUpdateMutationKey = () => ["roleUpdate"] as const;
+
+export const getRoleUpdateMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | RoleUpdate409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof roleUpdate>>,
+    TError,
+    RoleUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof roleUpdate>>,
+  TError,
+  RoleUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRoleUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof roleUpdate>>,
+    RoleUpdateMutationVariables
+  > = (props) => {
+    const { role, data } = props ?? {};
+
+    return roleUpdate(role, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RoleUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof roleUpdate>>>;
+export type RoleUpdateMutationBody = RenameRoleRequest;
+export type RoleUpdateMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | RoleUpdate409
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type RoleUpdateMutationVariables = { role: number; data: RenameRoleRequest };
+
+/**
+ * @summary Rename a role
+ */
+export const useRoleUpdate = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | RoleUpdate409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof roleUpdate>>,
+      TError,
+      RoleUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof roleUpdate>>,
+  TError,
+  RoleUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getRoleUpdateMutationOptions(options), queryClient);
+};
+
+export type roleDestroyResponse200 = {
+  data: RoleDestroy200;
+  status: 200;
+};
+
+export type roleDestroyResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type roleDestroyResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type roleDestroyResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type roleDestroyResponse409 = {
+  data: RoleDestroy409;
+  status: 409;
+};
+
+export type roleDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type roleDestroyResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type roleDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type roleDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type roleDestroyResponseSuccess = roleDestroyResponse200 & {
+  headers: Headers;
+};
+export type roleDestroyResponseError = (
+  | roleDestroyResponse401
+  | roleDestroyResponse403
+  | roleDestroyResponse404
+  | roleDestroyResponse409
+  | roleDestroyResponse412
+  | roleDestroyResponse419
+  | roleDestroyResponse428
+  | roleDestroyResponse503
+) & {
+  headers: Headers;
+};
+
+export type roleDestroyResponse = roleDestroyResponseSuccess | roleDestroyResponseError;
+
+export const getRoleDestroyUrl = (role: number) => {
+  return `/roles/${role}`;
+};
+
+/**
+ * Requires `roles.manage` and the `If-Match` from its read. Everybody who
+ * held it loses it, and with it whatever only it granted them; the read's
+ * `holders` names them. Refuses with `409 baseline_role_is_fixed` for the
+ * baseline role, `409 cannot_remove_last_administrator` or
+ * `409 cannot_remove_last_role_administrator` when it is the last source
+ * of either permission, and `409 cannot_demote_self` when the caller would
+ * lose one of them.
+ * @summary Delete a role
+ */
+export const roleDestroy = async (
+  role: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<roleDestroyResponse> => {
+  return customFetch<roleDestroyResponse>(getRoleDestroyUrl(role), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRoleDestroyMutationKey = () => ["roleDestroy"] as const;
+
+export const getRoleDestroyMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | RoleDestroy409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof roleDestroy>>,
+    TError,
+    RoleDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof roleDestroy>>,
+  TError,
+  RoleDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRoleDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof roleDestroy>>,
+    RoleDestroyMutationVariables
+  > = (props) => {
+    const { role } = props ?? {};
+
+    return roleDestroy(role, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RoleDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof roleDestroy>>>;
+
+export type RoleDestroyMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | RoleDestroy409
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type RoleDestroyMutationVariables = { role: number };
+
+/**
+ * @summary Delete a role
+ */
+export const useRoleDestroy = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | RoleDestroy409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof roleDestroy>>,
+      TError,
+      RoleDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof roleDestroy>>,
+  TError,
+  RoleDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getRoleDestroyMutationOptions(options), queryClient);
+};
+
+export type rolePermissionReplaceResponse200 = {
+  data: RolePermissionReplace200;
+  status: 200;
+};
+
+export type rolePermissionReplaceResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type rolePermissionReplaceResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type rolePermissionReplaceResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type rolePermissionReplaceResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type rolePermissionReplaceResponse409 = {
+  data: RolePermissionReplace409;
+  status: 409;
+};
+
+export type rolePermissionReplaceResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type rolePermissionReplaceResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type rolePermissionReplaceResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type rolePermissionReplaceResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type rolePermissionReplaceResponseSuccess = rolePermissionReplaceResponse200 & {
+  headers: Headers;
+};
+export type rolePermissionReplaceResponseError = (
+  | rolePermissionReplaceResponse400
+  | rolePermissionReplaceResponse401
+  | rolePermissionReplaceResponse403
+  | rolePermissionReplaceResponse404
+  | rolePermissionReplaceResponse409
+  | rolePermissionReplaceResponse412
+  | rolePermissionReplaceResponse419
+  | rolePermissionReplaceResponse428
+  | rolePermissionReplaceResponse503
+) & {
+  headers: Headers;
+};
+
+export type rolePermissionReplaceResponse =
+  rolePermissionReplaceResponseSuccess | rolePermissionReplaceResponseError;
+
+export const getRolePermissionReplaceUrl = (role: number) => {
+  return `/roles/${role}/permissions`;
+};
+
+/**
+ * Requires `roles.manage` and the `If-Match` from the role's read.
+ * `permissions` is everything the role grants afterwards, so send the ones
+ * it should keep too. The change reaches every holder on their next
+ * request.
+ *
+ * Refuses with `409 baseline_role_is_fixed` for the baseline role,
+ * `409 cannot_remove_last_administrator` or
+ * `409 cannot_remove_last_role_administrator` when the change would leave
+ * nobody holding that permission, and `409 cannot_demote_self` when the
+ * caller would lose one of them. When several apply, the baseline refusal
+ * comes first and a last-holder refusal before the self-demotion.
+ * @summary Replace what a role grants
+ */
+export const rolePermissionReplace = async (
+  role: number,
+  replaceRolePermissionsRequest: ReplaceRolePermissionsRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<rolePermissionReplaceResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<rolePermissionReplaceResponse>(getRolePermissionReplaceUrl(role), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(replaceRolePermissionsRequest),
+  });
+};
+
+export const getRolePermissionReplaceMutationKey = () => ["rolePermissionReplace"] as const;
+
+export const getRolePermissionReplaceMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | RolePermissionReplace409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rolePermissionReplace>>,
+    TError,
+    RolePermissionReplaceMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rolePermissionReplace>>,
+  TError,
+  RolePermissionReplaceMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRolePermissionReplaceMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rolePermissionReplace>>,
+    RolePermissionReplaceMutationVariables
+  > = (props) => {
+    const { role, data } = props ?? {};
+
+    return rolePermissionReplace(role, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RolePermissionReplaceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rolePermissionReplace>>
+>;
+export type RolePermissionReplaceMutationBody = ReplaceRolePermissionsRequest;
+export type RolePermissionReplaceMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | RolePermissionReplace409
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type RolePermissionReplaceMutationVariables = {
+  role: number;
+  data: ReplaceRolePermissionsRequest;
+};
+
+/**
+ * @summary Replace what a role grants
+ */
+export const useRolePermissionReplace = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | RolePermissionReplace409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof rolePermissionReplace>>,
+      TError,
+      RolePermissionReplaceMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof rolePermissionReplace>>,
+  TError,
+  RolePermissionReplaceMutationVariables,
+  TContext
+> => {
+  return useMutation(getRolePermissionReplaceMutationOptions(options), queryClient);
+};
+
 export type sectionIndexResponse200 = {
   data: SectionIndex200;
   status: 200;
@@ -7316,174 +8438,6 @@ export function useSectionIndex<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getSectionIndexQueryOptions(params, options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-export type roleIndexResponse200 = {
-  data: RoleIndex200;
-  status: 200;
-};
-
-export type roleIndexResponse401 = {
-  data: Problem401Response;
-  status: 401;
-};
-
-export type roleIndexResponse403 = {
-  data: Problem403Response;
-  status: 403;
-};
-
-export type roleIndexResponse503 = {
-  data: Problem503Response;
-  status: 503;
-};
-
-export type roleIndexResponseSuccess = roleIndexResponse200 & {
-  headers: Headers;
-};
-export type roleIndexResponseError = (
-  roleIndexResponse401 | roleIndexResponse403 | roleIndexResponse503
-) & {
-  headers: Headers;
-};
-
-export type roleIndexResponse = roleIndexResponseSuccess | roleIndexResponseError;
-
-export const getRoleIndexUrl = (params?: RoleIndexParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : String(value));
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/roles?${stringifiedParams}` : `/roles`;
-};
-
-/**
- * Requires `members.manage`. Read-only reference data, for a client
- * building the roster form.
- *
- * Returns every role with the permissions it grants. A role carries no
- * display name: `key` is the fixed identifier and the client translates
- * it.
- * @summary List the roles
- */
-export const roleIndex = async (
-  params?: RoleIndexParams,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<roleIndexResponse> => {
-  return customFetch<roleIndexResponse>(getRoleIndexUrl(params), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getRoleIndexQueryKey = (params?: RoleIndexParams) => {
-  return [`/roles`, ...(params ? [params] : [])] as const;
-};
-
-export const getRoleIndexQueryOptions = <
-  TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(
-  params?: RoleIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey = queryOptions?.queryKey ?? getRoleIndexQueryKey(params);
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof roleIndex>>> = ({ signal }) =>
-    roleIndex(params, { signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof roleIndex>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type RoleIndexQueryResult = NonNullable<Awaited<ReturnType<typeof roleIndex>>>;
-export type RoleIndexQueryError = Problem401Response | Problem403Response | Problem503Response;
-
-export function useRoleIndex<
-  TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(
-  params: undefined | RoleIndexParams,
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof roleIndex>>,
-          TError,
-          Awaited<ReturnType<typeof roleIndex>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useRoleIndex<
-  TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(
-  params?: RoleIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof roleIndex>>,
-          TError,
-          Awaited<ReturnType<typeof roleIndex>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useRoleIndex<
-  TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(
-  params?: RoleIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary List the roles
- */
-
-export function useRoleIndex<
-  TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(
-  params?: RoleIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getRoleIndexQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -8497,8 +9451,9 @@ export const getMemberDestroyUrl = (member: number) => {
  * once. There is no deactivation flag and no undo: leaving the band is
  * this call. Answers `{"ok": true, "sessionsEnded": n}`.
  *
- * Refuses with `409 cannot_remove_last_administrator` when the target is
- * the only member left who could administer members, and
+ * Refuses with `409 cannot_remove_last_administrator` or
+ * `409 cannot_remove_last_role_administrator` when the target is the only
+ * member left who could administer members or roles, and
  * `409 cannot_delete_self` when the target is the caller. Both are `409`
  * rather than `403` because the caller does hold the permission; the
  * request conflicts with the state of the roster. When both apply, the
@@ -8697,14 +9652,14 @@ export const getMemberRoleReplaceUrl = (member: number) => {
  * next login. Answers the updated member and `sessionsEnded`.
  *
  * Refuses with `409 baseline_role_is_fixed` when `roleIds` leaves out the
- * baseline role, `409 cannot_remove_last_administrator` when the new set
- * would leave nobody able to administer members, and
- * `409 cannot_demote_self` when callers would strip their own member
- * administration. All three are `409` rather than `403` because the caller
- * does hold the permission; the request conflicts with the state of the
- * roster. When the last two both apply, the last-administrator refusal is
- * the one returned. An unknown role id answers `400 validation_failed`
- * against `roleIds`.
+ * baseline role, `409 cannot_remove_last_administrator` or
+ * `409 cannot_remove_last_role_administrator` when the new set would leave
+ * nobody able to administer members or roles, and `409 cannot_demote_self`
+ * when callers would strip their own administration of either. All are
+ * `409` rather than `403` because the caller does hold the permission; the
+ * request conflicts with the state of the roster. A last-holder refusal
+ * comes before a self-demotion when both apply. An unknown role id answers
+ * `400 validation_failed` against `roleIds`.
  * @summary Replace a member's roles
  */
 export const memberRoleReplace = async (

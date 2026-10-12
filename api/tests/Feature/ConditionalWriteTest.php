@@ -402,6 +402,7 @@ class ConditionalWriteTest extends TestCase
                 'name' => 'Photo', 'sha256' => str_repeat('a', 64), 'width' => 8, 'height' => 8, 'bytes' => 100,
             ]),
             'event_tag' => EventTag::query()->firstOrFail(),
+            'role' => Role::factory()->create(),
         ];
 
         foreach (EntityTag::facets() as $facet) {

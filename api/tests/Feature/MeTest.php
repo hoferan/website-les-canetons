@@ -93,7 +93,23 @@ class MeTest extends TestCase
 
         $this->assertSame('Clarinettes', $response->json('sectionName'));
         $this->assertSame('Présidente', $response->json('committeeFunctionName'));
-        $this->assertSame(['direction', 'member'], $response->json('roleKeys'));
+        $this->assertSame(['direction', 'member'], array_column($response->json('roles'), 'key'));
+    }
+
+    public function test_a_role_carries_the_names_the_committee_typed(): void
+    {
+        // A role made in the editor has no catalogue entry, so its key alone
+        // would put `custom-01h…` on the account page.
+        $role = Role::factory()->create();
+        $role->forceFill(['label_fr' => 'Photographes', 'label_de' => 'Fotografen'])->save();
+        $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->withRole($role)->create();
+
+        $roles = collect($this->actingAsMember($member->fresh())->getJson('/api/v1/me')->json('roles'));
+
+        $this->assertSame(
+            ['key' => $role->key, 'labelFr' => 'Photographes', 'labelDe' => 'Fotografen'],
+            $roles->firstWhere('key', $role->key),
+        );
     }
 
     public function test_a_member_with_no_place_gets_nulls_and_only_the_baseline_role(): void
@@ -111,7 +127,7 @@ class MeTest extends TestCase
         $this->assertNull($body['sectionName']);
         $this->assertArrayHasKey('committeeFunctionName', $body);
         $this->assertNull($body['committeeFunctionName']);
-        $this->assertSame(['member'], $body['roleKeys']);
+        $this->assertSame([['key' => 'member', 'labelFr' => null, 'labelDe' => null]], $body['roles']);
     }
 
     public function test_it_never_leaks_the_password_hash(): void

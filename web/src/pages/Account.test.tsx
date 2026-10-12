@@ -44,12 +44,32 @@ test("says so when the session holds no role at all", async () => {
   setMockUser("demo.young");
   server.use(
     http.get("/api/v1/me", () =>
-      HttpResponse.json({ ...currentMockUser(), roleKeys: [], permissions: [] }),
+      HttpResponse.json({ ...currentMockUser(), roles: [], permissions: [] }),
     ),
   );
   await renderWithSession(<Account />, { route: "/account" });
 
   expect(field("Rôles")).toBe("Aucun");
+});
+
+test("names a role by what the committee typed, in the page's language", async () => {
+  // A role made in the editor has no catalogue entry; its key would read
+  // `custom-01h…`.
+  setMockUser("demo.young");
+  server.use(
+    http.get("/api/v1/me", () =>
+      HttpResponse.json({
+        ...currentMockUser(),
+        roles: [
+          { key: "member", labelFr: null, labelDe: null },
+          { key: "custom-01abc", labelFr: "Photographes", labelDe: "Fotografen" },
+        ],
+      }),
+    ),
+  );
+  await renderWithSession(<Account />, { route: "/account", locale: "de-CH" });
+
+  expect(field("Rollen")).toBe("Mitglied, Fotografen");
 });
 
 test("says so when the member is in no register, without claiming they do not play", async () => {

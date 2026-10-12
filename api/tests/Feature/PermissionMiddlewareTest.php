@@ -70,6 +70,41 @@ class PermissionMiddlewareTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_a_route_may_accept_any_of_several_permissions(): void
+    {
+        // GET /roles is read by the roster form (members.manage) and by the
+        // role editor (roles.manage), and somebody may hold either alone.
+        Route::middleware(['api', 'auth:sanctum', 'permission:members.manage,roles.manage'])
+            ->get('/api/v1/_test/either', fn () => response()->json(['ok' => true]));
+
+        $this->actingAsMember($this->memberWith(Permission::MembersManage))
+            ->getJson('/api/v1/_test/either')->assertOk();
+        $this->actingAsMember(Member::factory()->create()->fresh())->getJson('/api/v1/_test/either')
+            ->assertStatus(403);
+
+        $rolesOnly = Member::factory()->create();
+        $role = Role::factory()->create();
+        $role->syncPermissions([Permission::RolesManage]);
+        $rolesOnly->roles()->attach($role);
+
+        $this->actingAsMember($rolesOnly->fresh())->getJson('/api/v1/_test/either')->assertOk();
+    }
+
+    public function test_an_unknown_name_in_a_list_is_a_loud_failure_too(): void
+    {
+        // Not skipped because another name in the list matched: a typo that
+        // only fails when nobody holds the first permission is a typo found
+        // in production.
+        Route::middleware(['api', 'auth:sanctum', 'permission:events.manage,roles.mangle'])
+            ->get('/api/v1/_test/typo-list', fn () => response()->json(['ok' => true]));
+
+        $this->withoutExceptionHandling();
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->actingAsMember($this->memberWith(Permission::EventsManage))
+            ->getJson('/api/v1/_test/typo-list');
+    }
+
     public function test_an_unknown_permission_name_is_a_loud_failure(): void
     {
         Route::middleware(['api', 'auth:sanctum', 'permission:events.mangle'])

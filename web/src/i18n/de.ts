@@ -39,6 +39,65 @@ export const de: typeof fr = {
     },
   },
 
+  permissions: {
+    events_manage: {
+      label: "Planung verwalten",
+      hint: "Erstellt, ändert, veröffentlicht und löscht Anlässe.",
+    },
+    attendance_view_all: {
+      label: "Rückmeldungen sehen",
+      hint: "Sieht, wer an jeden Anlass kommt und wer noch nicht geantwortet hat.",
+    },
+    attendance_record_for_others: {
+      label: "Für andere antworten",
+      hint: "Erfasst die Rückmeldung eines Mitglieds an dessen Stelle.",
+    },
+    members_manage: {
+      label: "Mitglieder verwalten",
+      hint: "Erfasst und ändert Mitglieder, ihre Rollen und ihre Passwörter.",
+    },
+    registrations_view: {
+      label: "Anmeldungen sehen",
+      hint: "Sieht die Liste der Angemeldeten eines Anlasses.",
+    },
+    registrations_manage: {
+      label: "Anmeldungen verwalten",
+      hint: "Korrigiert oder storniert eine Anmeldung.",
+    },
+    messages_view: {
+      label: "Nachrichten lesen",
+      hint: "Liest die über die Website gesendeten Nachrichten.",
+    },
+    messages_manage: {
+      label: "Nachrichten bearbeiten",
+      hint: "Markiert Nachrichten als erledigt und löscht sie.",
+    },
+    history_manage: {
+      label: "Geschichte verwalten",
+      hint: "Erfasst, korrigiert und löscht Einträge der Geschichte.",
+    },
+    images_manage: {
+      label: "Fotos verwalten",
+      hint: "Lädt Fotos hoch, löscht sie und wählt jene der Website.",
+    },
+    roles_manage: {
+      label: "Rollen verwalten",
+      hint: "Erstellt Rollen und legt fest, was jede erlaubt.",
+    },
+    events_view: {
+      label: "Planung sehen",
+      hint: "Sieht die kommenden Anlässe.",
+    },
+    attendance_respond: {
+      label: "Auf Anlässe antworten",
+      hint: "Meldet die eigene Teilnahme und zählt zu den erwarteten Personen.",
+    },
+    account_manage: {
+      label: "Eigenes Konto verwalten",
+      hint: "Ändert das eigene Passwort.",
+    },
+  },
+
   errors: {
     generic: "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
     validation_failed: "Das Formular enthält Fehler.",
@@ -51,6 +110,7 @@ export const de: typeof fr = {
     cannot_delete_self: "Sie können Ihr eigenes Konto nicht löschen.",
     cannot_demote_self: "Sie können sich Ihre eigenen Administrationsrechte nicht entziehen.",
     cannot_remove_last_administrator: "Das ist die letzte Person, die Mitglieder verwalten kann.",
+    cannot_remove_last_role_administrator: "Das ist die letzte Person, die Rollen verwalten kann.",
     baseline_role_is_fixed:
       "Die Rolle «Mitglied» kann weder entzogen noch geändert noch gelöscht werden. Alle Konten behalten sie.",
     // Sagt, was zu tun ist, ohne die Regel zu erklären: ein vom Vorstand
@@ -171,6 +231,7 @@ export const de: typeof fr = {
     instructorOfSectionId: "Registerleitung",
     publicVisible: "Öffentlich sichtbar",
     roleIds: "Rollen",
+    permissions: "Rechte",
     currentPassword: "Aktuelles Passwort",
     newPassword: "Neues Passwort",
     id: "Benutzername",
@@ -258,6 +319,7 @@ export const de: typeof fr = {
     members: "Mitglieder",
     inbox: "Posteingang",
     media: "Medien",
+    roles: "Rollen",
     gallery: "Galerie",
     galleryLabel: "Galerie auf Flickr (neuer Tab)",
     instagramLabel: "Instagram der Canetons (neuer Tab)",
@@ -1121,6 +1183,25 @@ export const de: typeof fr = {
     bookingNumber: "Nummer für Auftritte",
     committeeSeats: "die Ämter und Namen des Vorstands",
     joinContact: "Name und Nummer",
+  },
+  rolesPage: {
+    heading: "Rollen",
+    intro:
+      "Eine Rolle fasst Rechte zusammen. Die Rollen werden den Personen auf der Seite Mitglieder zugewiesen.",
+    baselineNote: "Alle Konten haben diese Rolle. Sie lässt sich nicht ändern.",
+    grantsNothing: "Gibt keine Rechte.",
+    permissionsLegend: "Rechte",
+    editAria: "Rolle {{name}} bearbeiten",
+    deleteAria: "Rolle {{name}} löschen",
+    deleteTitle: "Rolle {{name}} löschen?",
+    deleteHolders_one: "{{names}} verliert diese Rolle und die Rechte, die nur sie gibt.",
+    deleteHolders_other:
+      "{{count}} Personen verlieren diese Rolle und die Rechte, die nur sie gibt: {{names}}.",
+    deleteNobody: "Niemand hat diese Rolle. Sie verschwindet einfach aus der Liste.",
+    newHeading: "Neue Rolle",
+    add: "Rolle erstellen",
+    saveFailed: "Die Rolle konnte nicht gespeichert werden.",
+    deleteFailed: "Die Rolle konnte nicht gelöscht werden.",
   },
   eventTags: {
     heading: "Kategorien",

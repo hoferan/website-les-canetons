@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\PhotoSlotController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\RegistrationOptionController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\SectionController;
 use App\Http\Middleware\RunPendingMigrations;
 use App\Models\PhotoSlot;
@@ -168,12 +169,37 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // group permissions, and which role granted this one is not a question the
     // enforcement point may ask (ADR 0014). Paired with auth:sanctum so an
     // anonymous caller gets 401 rather than 403.
+    // The role list has two readers, either of which somebody may hold alone:
+    // the roster form, which assigns roles, and the role editor, which shapes
+    // them. Hence the one route in this file that accepts either permission.
+    Route::get('/roles', [RoleController::class, 'index'])
+        ->middleware('permission:members.manage,roles.manage');
+
+    // The role editor (#194). What a role is called and what it grants, which
+    // is a different job from who holds it (members.manage, below). Every
+    // write is conditional on the role's tag, which covers its holders, and
+    // every write that can change who holds a permission goes through
+    // AccessIntegrity in the controller.
+    Route::middleware('permission:roles.manage')->group(function () {
+        Route::get('/roles/{role}', [RoleController::class, 'show'])
+            ->middleware('etag:role');
+        Route::post('/roles', [RoleController::class, 'store']);
+        Route::patch('/roles/{role}', [RoleController::class, 'update'])
+            ->middleware('etag:role');
+        // PUT and replace-all, like /members/{member}/roles: an "add this
+        // one" API cannot express removal, which is the half the lockout
+        // rule exists for.
+        Route::put('/roles/{role}/permissions', RolePermissionController::class)
+            ->middleware('etag:role');
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])
+            ->middleware('etag:role');
+    });
+
     Route::middleware('permission:members.manage')->group(function () {
         // Read-only reference data the roster form needs. Gated on
         // members.manage because /members is the only consumer that exists;
         // a second consumer can widen it when there is one.
         Route::get('/sections', [SectionController::class, 'index']);
-        Route::get('/roles', [RoleController::class, 'index']);
 
         // The committee's seats. Gated with the other two rather than made
         // public alongside /committee: that page projects a member down to a

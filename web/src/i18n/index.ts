@@ -219,3 +219,61 @@ export function roleHint(key: string): string {
   const path = `roles.${key}.hint`;
   return i18next.exists(path) ? i18next.t(path) : "";
 }
+
+/** A role as every response names it: by key, with the names the committee typed. */
+type NamedRole = { key: string; labelFr: string | null; labelDe: string | null };
+
+/**
+ * A role's name on the current page.
+ *
+ * What the committee typed in the role editor, in this page's language or
+ * the other one (ADR 0026, the same fallback as tagLabel); otherwise the
+ * catalogue's translation of the key, which is every seeded role nobody has
+ * renamed.
+ */
+export function roleName(role: NamedRole): string {
+  const typed =
+    currentLocale() === "fr" ? (role.labelFr ?? role.labelDe) : (role.labelDe ?? role.labelFr);
+  return typed ?? roleLabel(role.key);
+}
+
+/**
+ * A role's name in each language, for the editor's two fields: the typed
+ * names where there are any, the catalogue's otherwise. Reads both catalogues
+ * whatever the page's language, so renaming a seeded role from a French page
+ * keeps its German name.
+ */
+export function roleNamesForEditing(role: NamedRole): { fr: string; de: string } {
+  if (role.labelFr !== null || role.labelDe !== null) {
+    return { fr: role.labelFr ?? "", de: role.labelDe ?? "" };
+  }
+  const path = `roles.${role.key}.label`;
+  const inLocale = (lng: Locale) =>
+    i18next.exists(path, { lng }) ? i18next.t(path, { lng }) : role.key;
+  return { fr: inLocale("fr"), de: inLocale("de-CH") };
+}
+
+/**
+ * What a role is for, in one line: the catalogue's hint for a seeded role, and
+ * for a role made in the editor, which has none, the names of what it grants.
+ */
+export function roleDescription(role: { key: string; permissions: string[] }): string {
+  return roleHint(role.key) || role.permissions.map(permissionLabel).join(", ");
+}
+
+/**
+ * A permission's name and hint, for the role editor's checkboxes. The
+ * catalogue keys the tokens with `_` for `.`, because i18next reads a dot as
+ * a level: `permissions.events.manage` would look for a `manage` inside an
+ * `events` that does not exist. A token with no copy shows itself, like an
+ * unknown role key.
+ */
+export function permissionLabel(token: string): string {
+  const path = `permissions.${token.replace(".", "_")}.label`;
+  return i18next.exists(path) ? i18next.t(path) : token;
+}
+
+export function permissionHint(token: string): string {
+  const path = `permissions.${token.replace(".", "_")}.hint`;
+  return i18next.exists(path) ? i18next.t(path) : "";
+}

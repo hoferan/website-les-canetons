@@ -9,10 +9,11 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * This is a replacement, not a partial update: send every role the member
  * should hold afterwards, including the ones they already have. Anything left
- * out is removed, and an empty array removes all of them.
+ * out is removed, except the baseline role, which every account keeps: a list
+ * without it is refused with `409 baseline_role_is_fixed`.
  *
- * `roleIds` must be sent, even when empty. Read the ids that exist from
- * `GET /api/v1/roles`; an unknown one fails validation against `roleIds`.
+ * Read the ids that exist from `GET /api/v1/roles`; an unknown one fails
+ * validation against `roleIds`.
  */
 class ReplaceMemberRolesRequest extends FormRequest
 {
@@ -22,10 +23,11 @@ class ReplaceMemberRolesRequest extends FormRequest
         // PUT SEMANTICS: a PATCH-style "add this one" API cannot express
         // removal, and removal is the half that needs the invariants.
         //
-        // `roleIds` is `present`, not `required`: `required` rejects an empty
-        // array, which is the most important value this endpoint accepts.
+        // `roleIds` is `present`, not `required`. An empty array is refused
+        // now, but by AccessIntegrity with a code a client can act on, not by
+        // a validation rule that would only say the field is missing.
         return [
-            /** Every role the member should hold afterwards. Send `[]` to leave them with none. */
+            /** Every role the member should hold afterwards, the baseline role included. */
             'roleIds' => ['present', 'array'],
             'roleIds.*' => ['integer', 'exists:roles,id'],
         ];

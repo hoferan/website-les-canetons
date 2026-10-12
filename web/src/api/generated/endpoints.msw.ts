@@ -364,7 +364,12 @@ import type {
   RegistrationOptionIndex200,
   RegistrationOptionReplace200,
   RegistrationResource,
+  RoleDestroy200,
   RoleIndex200,
+  RolePermissionReplace200,
+  RoleShow200,
+  RoleStore201,
+  RoleUpdate200,
   SectionIndex200,
 } from "./model";
 
@@ -395,9 +400,17 @@ export const getAuthMeResponseMock = (
     faker.string.alpha({ length: { min: 10, max: 20 } }),
     null,
   ]),
-  roleKeys: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-  ),
+  roles: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelFr: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+  })),
   ...overrideResponse,
 });
 
@@ -1371,6 +1384,145 @@ export const getContactMessageHandleResponseMock = (): ContactMessageHandle200 =
   },
 });
 
+export const getRoleIndexResponseMock = (
+  overrideResponse: Partial<Extract<RoleIndex200, object>> = {},
+): RoleIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelFr: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isBaseline: faker.datatype.boolean(),
+    permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+    ),
+    holders: faker.helpers.arrayElement([
+      Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+        id: faker.number.int(),
+        firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      })),
+      undefined,
+    ]),
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getRoleStoreResponseMock = (): RoleStore201 => ({
+  ...{
+    id: faker.number.int(),
+    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelFr: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isBaseline: faker.datatype.boolean(),
+    permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+    ),
+    holders: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      }),
+    ),
+  },
+});
+
+export const getRoleShowResponseMock = (): RoleShow200 => ({
+  ...{
+    id: faker.number.int(),
+    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelFr: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isBaseline: faker.datatype.boolean(),
+    permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+    ),
+    holders: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      }),
+    ),
+  },
+});
+
+export const getRoleUpdateResponseMock = (): RoleUpdate200 => ({
+  ...{
+    id: faker.number.int(),
+    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelFr: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isBaseline: faker.datatype.boolean(),
+    permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+    ),
+    holders: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      }),
+    ),
+  },
+});
+
+export const getRoleDestroyResponseMock = (
+  overrideResponse: Partial<Extract<RoleDestroy200, object>> = {},
+): RoleDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+
+export const getRolePermissionReplaceResponseMock = (): RolePermissionReplace200 => ({
+  ...{
+    id: faker.number.int(),
+    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelFr: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isBaseline: faker.datatype.boolean(),
+    permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+    ),
+    holders: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      }),
+    ),
+  },
+});
+
 export const getSectionIndexResponseMock = (
   overrideResponse: Partial<Extract<SectionIndex200, object>> = {},
 ): SectionIndex200 => ({
@@ -1378,21 +1530,6 @@ export const getSectionIndexResponseMock = (
     id: faker.number.int(),
     name: faker.string.alpha({ length: { min: 10, max: 20 } }),
     sortOrder: faker.number.int(),
-  })),
-  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
-  ...overrideResponse,
-});
-
-export const getRoleIndexResponseMock = (
-  overrideResponse: Partial<Extract<RoleIndex200, object>> = {},
-): RoleIndex200 => ({
-  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
-    id: faker.number.int(),
-    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    isBaseline: faker.datatype.boolean(),
-    permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
-      () => faker.string.alpha({ length: { min: 10, max: 20 } }),
-    ),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
@@ -2894,30 +3031,6 @@ export const getContactMessageDestroyMockHandler = (
   );
 };
 
-export const getSectionIndexMockHandler = (
-  overrideResponse?:
-    | SectionIndex200
-    | ((
-        info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<SectionIndex200> | SectionIndex200),
-  options?: RequestHandlerOptions,
-) => {
-  return http.get(
-    "*/sections",
-    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
-      return HttpResponse.json(
-        overrideResponse !== undefined
-          ? typeof overrideResponse === "function"
-            ? await overrideResponse(info)
-            : overrideResponse
-          : getSectionIndexResponseMock(),
-        { status: 200 },
-      );
-    },
-    options,
-  );
-};
-
 export const getRoleIndexMockHandler = (
   overrideResponse?:
     | RoleIndex200
@@ -2935,6 +3048,148 @@ export const getRoleIndexMockHandler = (
             ? await overrideResponse(info)
             : overrideResponse
           : getRoleIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRoleStoreMockHandler = (
+  overrideResponse?:
+    | RoleStore201
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<RoleStore201> | RoleStore201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/roles",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRoleStoreResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRoleShowMockHandler = (
+  overrideResponse?:
+    | RoleShow200
+    | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<RoleShow200> | RoleShow200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/roles/:role",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRoleShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRoleUpdateMockHandler = (
+  overrideResponse?:
+    | RoleUpdate200
+    | ((
+        info: Parameters<Parameters<typeof http.patch>[1]>[0],
+      ) => Promise<RoleUpdate200> | RoleUpdate200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch(
+    "*/roles/:role",
+    async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRoleUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRoleDestroyMockHandler = (
+  overrideResponse?:
+    | RoleDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<RoleDestroy200> | RoleDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/roles/:role",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRoleDestroyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRolePermissionReplaceMockHandler = (
+  overrideResponse?:
+    | RolePermissionReplace200
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<RolePermissionReplace200> | RolePermissionReplace200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/roles/:role/permissions",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRolePermissionReplaceResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getSectionIndexMockHandler = (
+  overrideResponse?:
+    | SectionIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<SectionIndex200> | SectionIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/sections",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getSectionIndexResponseMock(),
         { status: 200 },
       );
     },
@@ -3675,8 +3930,13 @@ export const getLesCanetonsAPIMock = () => [
   getContactMessageShowMockHandler(),
   getContactMessageHandleMockHandler(),
   getContactMessageDestroyMockHandler(),
-  getSectionIndexMockHandler(),
   getRoleIndexMockHandler(),
+  getRoleStoreMockHandler(),
+  getRoleShowMockHandler(),
+  getRoleUpdateMockHandler(),
+  getRoleDestroyMockHandler(),
+  getRolePermissionReplaceMockHandler(),
+  getSectionIndexMockHandler(),
   getCommitteeFunctionIndexMockHandler(),
   getMemberIndexMockHandler(),
   getMemberStoreMockHandler(),

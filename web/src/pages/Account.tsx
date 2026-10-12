@@ -3,7 +3,7 @@ import { KeyRound } from "lucide-react";
 import type { AuthMe200 } from "../api/generated/model";
 import { ButtonLink } from "../components/ButtonLink";
 import { PageSection } from "../components/PageSection";
-import { roleLabel, t } from "../i18n";
+import { roleName, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
 
@@ -67,10 +67,7 @@ function Identity({ user }: { user: AuthMe200 }) {
     },
     {
       label: t("account.roles"),
-      value:
-        user.roleKeys.length > 0
-          ? user.roleKeys.map((key) => roleLabel(key)).join(", ")
-          : t("account.rolesNone"),
+      value: user.roles.length > 0 ? user.roles.map(roleName).join(", ") : t("account.rolesNone"),
     },
   ];
 

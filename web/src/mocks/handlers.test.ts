@@ -71,7 +71,10 @@ test("GET /me reports whoever setMockUser logged in", async () => {
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
-    roleKeys: ["direction", "member"],
+    roles: [
+      { key: "direction", labelFr: null, labelDe: null },
+      { key: "member", labelFr: null, labelDe: null },
+    ],
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -84,6 +87,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
       "messages.manage",
       "history.manage",
       "images.manage",
+      "roles.manage",
       "events.view",
       "account.manage",
     ],
@@ -413,14 +417,30 @@ test("the register list is the one the migration seeds", async () => {
   ]);
 });
 
-test("roles carry a key and their permissions, and no display name", async () => {
+test("seeded roles carry a key and their permissions, and no typed name", async () => {
   setMockUser("demo.direction");
   const roles = await rowsOf<Record<string, unknown>>("/api/v1/roles");
 
-  // ADR 0014: the UI resolves the French from `key`. A label here would let
-  // a screen render a name the real API never sends.
+  // The UI resolves a seeded role's name from `key`. A name here would let a
+  // screen render one the real API never sends for a role nobody renamed.
   expect(roles.map((role) => role.key)).toEqual(["direction", "committee", "member", "musician"]);
-  expect(roles.every((role) => !("label" in role) && !("labelFr" in role))).toBe(true);
+  expect(roles.every((role) => role.labelFr === null && role.labelDe === null)).toBe(true);
+});
+
+test("the role editor refuses a grant change that would lock the band out", async () => {
+  // Dominique and Bastien administer through `direction` alone, so taking
+  // members.manage from it leaves nobody: App\Support\AccessIntegrity's rule.
+  setMockUser("demo.direction");
+  const response = await fetch("/api/v1/roles/1/permissions", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...(await ifMatchFor("/api/v1/roles/1")) },
+    body: JSON.stringify({ permissions: ["events.manage", "roles.manage"] }),
+  });
+
+  expect(response.status).toBe(409);
+  expect(((await response.json()) as { code: string }).code).toBe(
+    "cannot_remove_last_administrator",
+  );
 });
 
 test("editing a member changes only what the real request validates", async () => {

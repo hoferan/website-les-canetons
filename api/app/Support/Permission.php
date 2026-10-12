@@ -71,6 +71,18 @@ enum Permission: string
     case ImagesManage = 'images.manage';
 
     /**
+     * Creating roles, naming them, changing what they grant and deleting
+     * them: the role editor (#194).
+     *
+     * Not members.manage, which gives or takes roles for a person. Deciding
+     * what a role means and deciding who holds it are different jobs, and a
+     * holder of only this one cannot hand themselves a role. Granted to
+     * `direction` by migration, and AccessIntegrity keeps one holder of it
+     * alive through every write, as it does for members.manage.
+     */
+    case RolesManage = 'roles.manage';
+
+    /**
      * Reading the planning: the event list, a single event, and the event
      * tags that label them.
      *
