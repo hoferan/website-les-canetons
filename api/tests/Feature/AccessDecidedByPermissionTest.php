@@ -36,7 +36,7 @@ class AccessDecidedByPermissionTest extends TestCase
      * all, not even to display one: nothing here displays anything.
      *
      * Controllers are not on the list, because several load `section` to show
-     * it (the chase list is grouped by register). For them the rule is
+     * it (the chase list names each member's register). For them the rule is
      * narrower, the CALLER's register below, which is what a gate would read.
      */
     private const DECISION_FILES = [
