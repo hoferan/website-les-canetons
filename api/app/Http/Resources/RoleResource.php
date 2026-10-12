@@ -33,6 +33,11 @@ class RoleResource extends JsonResource
             'id' => $this->id,
             /** Stable identifier. Roles carry no display name; clients translate by this key. */
             'key' => $this->key,
+            /**
+             * True for exactly one role: the one every account holds. It cannot be removed from anyone, so keep it in
+             * every `roleIds` sent to `PUT /api/v1/members/{member}/roles`.
+             */
+            'isBaseline' => $this->is_baseline,
             /** Everything this role grants, as permission strings. */
             'permissions' => $this->permissionValues(),
         ];

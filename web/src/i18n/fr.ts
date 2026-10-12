@@ -61,6 +61,8 @@ export const fr = {
     cannot_delete_self: "Vous ne pouvez pas supprimer votre propre compte.",
     cannot_demote_self: "Vous ne pouvez pas retirer vos propres droits d'administration.",
     cannot_remove_last_administrator: "C'est la dernière personne pouvant administrer les membres.",
+    baseline_role_is_fixed:
+      "Le rôle « Membre » ne peut être ni retiré, ni modifié, ni supprimé. Tous les comptes le gardent.",
     // Dit quoi faire, sans expliquer pourquoi la règle existe : un mot de passe
     // transmis par le comité a été dicté de vive voix, donc le « changer » pour
     // lui-même laisserait le compte sur un mot de passe déjà entendu.

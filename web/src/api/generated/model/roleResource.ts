@@ -313,6 +313,11 @@ export interface RoleResource {
   id: number;
   /** Stable identifier. Roles carry no display name; clients translate by this key. */
   key: string;
+  /**
+   * True for exactly one role: the one every account holds. It cannot be removed from anyone, so keep it in
+   * every `roleIds` sent to `PUT /api/v1/members/{member}/roles`.
+   */
+  isBaseline: boolean;
   /** Everything this role grants, as permission strings. */
   permissions: string[];
 }

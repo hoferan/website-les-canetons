@@ -371,6 +371,7 @@ const ROLES: RoleResource[] = [
   {
     id: 1,
     key: "direction",
+    isBaseline: false,
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -384,9 +385,14 @@ const ROLES: RoleResource[] = [
       "images.manage",
     ],
   },
-  { id: 2, key: "committee", permissions: ["registrations.view", "messages.view"] },
-  { id: 3, key: "member", permissions: ["events.view", "account.manage"] },
-  { id: 4, key: "musician", permissions: ["attendance.respond"] },
+  {
+    id: 2,
+    key: "committee",
+    isBaseline: false,
+    permissions: ["registrations.view", "messages.view"],
+  },
+  { id: 3, key: "member", isBaseline: true, permissions: ["events.view", "account.manage"] },
+  { id: 4, key: "musician", isBaseline: false, permissions: ["attendance.respond"] },
 ];
 
 /** The password the seeded accounts use, and so the one re-authentication takes. */
@@ -748,6 +754,19 @@ export function setMemberSeat(id: number, committeeFunctionId: number | null): v
   const member = members.find((row) => row.id === id);
   if (member) {
     member.committeeFunctionId = committeeFunctionId;
+  }
+}
+
+/**
+ * Test seam: set one member's roles outright, past every rule the PUT applies.
+ *
+ * For the states the API no longer produces, such as an account without the
+ * baseline role, which only a hand edit in the database can leave behind.
+ */
+export function setMemberRoles(id: number, roleIds: number[]): void {
+  const member = members.find((row) => row.id === id);
+  if (member) {
+    member.roleIds = roleIds;
   }
 }
 
@@ -2695,6 +2714,13 @@ const overrides = [
     }
     const body = (await request.json()) as { roleIds?: number[] };
     const roleIds = body.roleIds ?? [];
+    // Checked first, as App\Support\AccessIntegrity does.
+    if (!ROLES.some((role) => role.isBaseline && roleIds.includes(role.id))) {
+      return conflict(
+        "baseline_role_is_fixed",
+        "The baseline role is held by every account and grants a fixed set of permissions",
+      );
+    }
     const keepsAdministration = roleIds.some((roleId) =>
       ROLES.find((role) => role.id === roleId)?.permissions.includes("members.manage"),
     );

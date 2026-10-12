@@ -4,7 +4,7 @@ import { http } from "msw";
 import { expect, test } from "vitest";
 
 import { type Locale } from "../i18n/locale";
-import { setMockUser } from "../mocks/handlers";
+import { setMemberRoles, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Members } from "./Members";
@@ -179,19 +179,29 @@ test("assigns a role to somebody who already exists", async () => {
 });
 
 test("says plainly when a person holds no role at all", async () => {
-  // No seeded account is role-less any more: every one holds the baseline. The
-  // API still lets an administrator remove it (nothing guards that yet), so the
+  // The API refuses to take the baseline from anybody, so no screen can leave
+  // an account role-less. A hand edit in the database still can, and the
   // roster has to say so instead of printing an empty line.
+  setMemberRoles(2, []);
+  await renderRoster();
+
+  expect(rowFor("Player")).toHaveTextContent("Aucun rôle");
+});
+
+test("the baseline role stays ticked and cannot be unticked", async () => {
+  // The API answers 409 to a role list without it. A checkbox that can be
+  // unticked only to have the save refused is a trap, so the form does not
+  // offer it.
   await renderRoster();
 
   await userEvent.click(
     within(rowFor("Player")).getByRole("button", { name: "Modifier Perrine Player" }),
   );
-  await userEvent.click(screen.getByLabelText("Membre"));
-  await userEvent.click(screen.getByLabelText("Musicien·ne"));
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  await expect.poll(() => rowFor("Player").textContent).toContain("Aucun rôle");
+  const baseline = screen.getByLabelText("Membre");
+  expect(baseline).toBeChecked();
+  expect(baseline).toBeDisabled();
+  expect(screen.getByLabelText("Musicien·ne")).toBeEnabled();
 });
 
 test("changing a name and a role in one save does both", async () => {

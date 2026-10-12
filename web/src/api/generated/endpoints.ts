@@ -8684,8 +8684,9 @@ export const getMemberRoleReplaceUrl = (member: number) => {
 
 /**
  * Requires `members.manage`. `roleIds` is the complete set the member is
- * left with, so send every role they should keep; an empty array removes
- * all of them. Read the roles that exist from `GET /api/v1/roles`.
+ * left with, so send every role they should keep. It must include the
+ * baseline role, the one `GET /api/v1/roles` marks `isBaseline`: every
+ * account holds it, so sending only that one removes every other role.
  *
  * This is the only way any permission is granted or taken away. A role is
  * what groups permissions, and no endpoint in this API authorises by role
@@ -8695,13 +8696,15 @@ export const getMemberRoleReplaceUrl = (member: number) => {
  * has just been removed stops working immediately rather than at their
  * next login. Answers the updated member and `sessionsEnded`.
  *
- * Refuses with `409 cannot_remove_last_administrator` when the new set
+ * Refuses with `409 baseline_role_is_fixed` when `roleIds` leaves out the
+ * baseline role, `409 cannot_remove_last_administrator` when the new set
  * would leave nobody able to administer members, and
  * `409 cannot_demote_self` when callers would strip their own member
- * administration. Both are `409` rather than `403` because the caller does
- * hold the permission; the request conflicts with the state of the roster.
- * When both apply, the last-administrator refusal is the one returned. An
- * unknown role id answers `400 validation_failed` against `roleIds`.
+ * administration. All three are `409` rather than `403` because the caller
+ * does hold the permission; the request conflicts with the state of the
+ * roster. When the last two both apply, the last-administrator refusal is
+ * the one returned. An unknown role id answers `400 validation_failed`
+ * against `roleIds`.
  * @summary Replace a member's roles
  */
 export const memberRoleReplace = async (

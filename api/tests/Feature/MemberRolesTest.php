@@ -30,12 +30,15 @@ class MemberRolesTest extends TestCase
 
     private Role $committee;
 
+    private Role $baseline;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->direction = Role::where('key', 'direction')->sole();
         $this->committee = Role::where('key', 'committee')->sole();
+        $this->baseline = Role::baseline();
 
         $this->actor = $this->administrator('dominique');
     }
@@ -75,25 +78,44 @@ class MemberRolesTest extends TestCase
         $target->roles()->attach($this->committee);
 
         $this->acting()->withHeaders($this->ifMatch('member', $target))->putJson("/api/v1/members/{$target->id}/roles", [
-            'roleIds' => [$this->direction->id],
+            'roleIds' => [$this->baseline->id, $this->direction->id],
         ])->assertOk();
 
-        $this->assertSame([$this->direction->id], $target->fresh()->roles->pluck('id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$this->baseline->id, $this->direction->id],
+            $target->fresh()->roles->pluck('id')->all(),
+        );
     }
 
-    public function test_an_empty_role_list_removes_every_role(): void
+    public function test_keeping_only_the_baseline_removes_every_other_role(): void
     {
-        // The most important value this endpoint accepts, which is why the rule
-        // is `present` rather than `required` — `required` rejects an empty
-        // array, and removal is the half that needs the invariants.
+        $target = $this->player();
+        $target->roles()->attach($this->committee);
+
+        $this->acting()->withHeaders($this->ifMatch('member', $target))->putJson("/api/v1/members/{$target->id}/roles", [
+            'roleIds' => [$this->baseline->id],
+        ])->assertOk();
+
+        $this->assertSame([$this->baseline->id], $target->fresh()->roles->pluck('id')->all());
+    }
+
+    public function test_a_role_list_without_the_baseline_is_refused_and_changes_nothing(): void
+    {
+        // An empty list used to remove every role, and a client written
+        // against that contract will still send one. It is refused rather than
+        // quietly topped up with the baseline, because the request asked for
+        // a state the API will not produce.
         $target = $this->player();
         $target->roles()->attach($this->committee);
 
         $this->acting()->withHeaders($this->ifMatch('member', $target))->putJson("/api/v1/members/{$target->id}/roles", [
             'roleIds' => [],
-        ])->assertOk();
+        ])->assertStatus(409)->assertJson(['code' => 'baseline_role_is_fixed']);
 
-        $this->assertSame([], $target->fresh()->roles->pluck('id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$this->baseline->id, $this->committee->id],
+            $target->fresh()->roles->pluck('id')->all(),
+        );
     }
 
     public function test_a_role_change_ends_that_members_sessions_immediately(): void
@@ -106,7 +128,7 @@ class MemberRolesTest extends TestCase
         $this->sessionFor('target-laptop', $target->id);
 
         $this->acting()->withHeaders($this->ifMatch('member', $target))->putJson("/api/v1/members/{$target->id}/roles", [
-            'roleIds' => [],
+            'roleIds' => [$this->baseline->id],
         ])->assertOk();
 
         $this->assertSame(0, DB::table('sessions')->where('user_id', $target->id)->count());
@@ -121,7 +143,7 @@ class MemberRolesTest extends TestCase
         $this->sessionFor('anonymous', null);
 
         $this->acting()->withHeaders($this->ifMatch('member', $target))->putJson("/api/v1/members/{$target->id}/roles", [
-            'roleIds' => [$this->committee->id],
+            'roleIds' => [$this->baseline->id, $this->committee->id],
         ])->assertOk();
 
         $this->assertDatabaseHas('sessions', ['id' => 'bystander-phone']);
@@ -133,7 +155,7 @@ class MemberRolesTest extends TestCase
         $target = $this->player();
 
         $this->acting()->withHeaders($this->ifMatch('member', $target))->putJson("/api/v1/members/{$target->id}/roles", [
-            'roleIds' => [$this->committee->id],
+            'roleIds' => [$this->baseline->id, $this->committee->id],
         ])->assertOk();
 
         $entry = AuditEntry::latest('id')->first();
@@ -149,7 +171,7 @@ class MemberRolesTest extends TestCase
         $this->administrator('other');
 
         $this->acting()->withHeaders($this->ifMatch('member', $this->actor))->putJson("/api/v1/members/{$this->actor->id}/roles", [
-            'roleIds' => [],
+            'roleIds' => [$this->baseline->id],
         ])->assertStatus(409)->assertJson(['code' => 'cannot_demote_self']);
 
         $this->assertTrue($this->actor->fresh()->hasPermission(Permission::MembersManage));
@@ -160,7 +182,7 @@ class MemberRolesTest extends TestCase
         // The orphan check outranks the self-demotion one when both apply:
         // "you would lock everyone out" is the more informative answer.
         $this->acting()->withHeaders($this->ifMatch('member', $this->actor))->putJson("/api/v1/members/{$this->actor->id}/roles", [
-            'roleIds' => [],
+            'roleIds' => [$this->baseline->id],
         ])->assertStatus(409)->assertJson(['code' => 'cannot_remove_last_administrator']);
     }
 

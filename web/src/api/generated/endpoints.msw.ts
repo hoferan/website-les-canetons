@@ -1390,6 +1390,7 @@ export const getRoleIndexResponseMock = (
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    isBaseline: faker.datatype.boolean(),
     permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
       () => faker.string.alpha({ length: { min: 10, max: 20 } }),
     ),

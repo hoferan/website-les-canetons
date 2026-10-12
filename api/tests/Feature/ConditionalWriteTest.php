@@ -258,9 +258,10 @@ class ConditionalWriteTest extends TestCase
     {
         $target = Member::factory()->inSection('Cloches')->create();
         $committee = Role::query()->where('key', 'committee')->firstOrFail();
+        $roleIds = [Role::baseline()->id, $committee->id];
 
         $this->actingAsMember($this->organiser)
-            ->putJson("/api/v1/members/{$target->id}/roles", ['roleIds' => [$committee->id]])
+            ->putJson("/api/v1/members/{$target->id}/roles", ['roleIds' => $roleIds])
             ->assertStatus(428);
 
         // Untouched: still the baseline role every factory member starts with.
@@ -268,10 +269,10 @@ class ConditionalWriteTest extends TestCase
 
         $this->actingAsMember($this->organiser)
             ->withHeaders($this->ifMatch('member', $target))
-            ->putJson("/api/v1/members/{$target->id}/roles", ['roleIds' => [$committee->id]])
+            ->putJson("/api/v1/members/{$target->id}/roles", ['roleIds' => $roleIds])
             ->assertOk();
 
-        $this->assertSame([$committee->id], $target->fresh()->roles()->pluck('roles.id')->all());
+        $this->assertEqualsCanonicalizing($roleIds, $target->fresh()->roles()->pluck('roles.id')->all());
     }
 
     public function test_an_events_options_are_tagged_apart_from_the_event(): void

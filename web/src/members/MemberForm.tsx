@@ -264,7 +264,10 @@ export function MemberForm({
               id={`role-${role.id}`}
               type="checkbox"
               className="mt-1 size-5"
-              disabled={creating}
+              // The baseline is fixed: the API refuses any role list without
+              // it, so the box stays ticked rather than offering a save that
+              // can only fail.
+              disabled={creating || role.isBaseline}
               aria-describedby={`role-${role.id}-hint`}
               checked={draft.roleIds.includes(role.id)}
               onChange={(event) =>
