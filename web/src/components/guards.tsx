@@ -32,34 +32,19 @@ function useAttemptedPath(): string {
 }
 
 /**
- * A route that needs a SESSION and nothing more.
+ * A route that needs a permission, which is every route behind login.
  *
- * The planning is the case this exists for: reading it is something everybody
- * in the band does, not something the committee administers, so gating it on a
- * permission would be the same mistake as gating the ability to answer for an
- * event. It still sits behind login — this planning is the members' tool, and
- * the public agenda is a separate page.
- *
- * REDIRECTS RATHER THAN REFUSING IN PLACE, which is the opposite of
- * RequirePermission below and is right for the opposite reason: an anonymous
- * visitor here is not being told "no", they are being told "not yet" — logging
- * in is a thing they can actually do, and `from` brings them back.
+ * There is no session-only guard. The planning and one's own account ask for
+ * `events.view` and `account.manage`, the permissions their endpoints check,
+ * and the baseline role grants both to every account.
  */
-export function RequireSession() {
-  const { user } = useSession();
-  const from = useAttemptedPath();
-
-  if (!user) {
-    return <Navigate to="/login" state={{ from }} replace />;
-  }
-
-  return <Outlet />;
-}
-
 export function RequirePermission({ permission }: { permission: string }) {
   const { user, can } = useSession();
   const from = useAttemptedPath();
 
+  // An anonymous visitor is REDIRECTED rather than refused in place: they are
+  // being told "not yet" rather than "no", because logging in is a thing they
+  // can actually do, and `from` brings them back.
   if (!user) {
     return <Navigate to="/login" state={{ from }} replace />;
   }

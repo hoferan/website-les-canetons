@@ -590,6 +590,8 @@ export const de: typeof fr = {
     rolesLabel: "Rollen: {{value}}",
     noSection: "Kein Register",
     noRoles: "Keine Rolle",
+    notAnswering: "Antwortet nicht auf Anlässe",
+    notAnsweringName: "In einem Register, antwortet aber nicht auf Anlässe",
 
     searchLabel: "Mitglied suchen",
     sectionFilter: "Register",
@@ -766,7 +768,7 @@ export const de: typeof fr = {
     identity: "Identität",
     username: "Benutzername",
     section: "Register",
-    sectionNone: "Spielt nicht",
+    sectionNone: "Kein Register",
     committeeFunction: "Funktion im Vorstand",
     committeeFunctionNone: "Keine",
     roles: "Rollen",

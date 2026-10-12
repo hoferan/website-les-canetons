@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http } from "msw";
 import { expect, test } from "vitest";
@@ -186,6 +186,87 @@ test("says plainly when a person holds no role at all", async () => {
   await renderRoster();
 
   expect(rowFor("Player")).toHaveTextContent("Aucun rôle");
+});
+
+/** The open edit form, found by its heading so the roster's own filters stay out of reach. */
+async function openEditFor(name: string): Promise<HTMLElement> {
+  const lastName = name.split(" ").at(-1)!;
+  await userEvent.click(within(rowFor(lastName)).getByRole("button", { name: `Modifier ${name}` }));
+  const form = (await screen.findByRole("heading", { name: `Modifier ${name}` })).closest("form");
+  if (!(form instanceof HTMLElement)) {
+    throw new Error(`no form for ${name}`);
+  }
+  return form;
+}
+
+test("choosing a register pre-ticks the role that answers events", async () => {
+  // A register grants nothing (#189): answering is attendance.respond, which
+  // a role grants. Somebody given a register almost always plays, though, so
+  // the form ticks the role for them, and the save is what grants it.
+  await renderRoster();
+  const form = await openEditFor("Dominique Direction");
+
+  expect(within(form).getByLabelText("Musicien·ne")).not.toBeChecked();
+  await userEvent.selectOptions(within(form).getByLabelText("Pupitre"), "Cloches");
+  expect(within(form).getByLabelText("Musicien·ne")).toBeChecked();
+
+  await userEvent.click(within(form).getByRole("button", { name: "Enregistrer" }));
+  await expect.poll(() => rowFor("Direction").textContent).toContain("Musicien·ne");
+});
+
+test("the pre-ticked role can be unticked, and the card then says so", async () => {
+  await renderRoster();
+  const form = await openEditFor("Dominique Direction");
+
+  await userEvent.selectOptions(within(form).getByLabelText("Pupitre"), "Cloches");
+  await userEvent.click(within(form).getByLabelText("Musicien·ne"));
+  await userEvent.click(within(form).getByRole("button", { name: "Enregistrer" }));
+
+  // toHaveTextContent, not textContent: it folds the non-breaking space French
+  // puts before a colon.
+  await waitFor(() => expect(rowFor("Direction")).toHaveTextContent("Pupitre : Cloches"));
+  expect(rowFor("Direction")).not.toHaveTextContent("Musicien·ne");
+  expect(
+    within(rowFor("Direction")).getByLabelText(
+      "Dans un pupitre, mais ne répond pas aux événements",
+    ),
+  ).toHaveTextContent("Ne répond pas aux événements");
+});
+
+test("the create form pre-ticks nothing, because its roles are not saved", async () => {
+  // POST /members grants the baseline and ignores roleIds, so a ticked box
+  // here would promise a grant the save never makes.
+  await renderRoster();
+  await userEvent.click(screen.getByRole("button", { name: "Ajouter une personne" }));
+  const form = (await screen.findByRole("heading", { name: "Ajouter une personne" })).closest(
+    "form",
+  )!;
+
+  await userEvent.selectOptions(within(form).getByLabelText("Pupitre"), "Cloches");
+  expect(within(form).getByLabelText("Musicien·ne")).not.toBeChecked();
+});
+
+test("opening the form ticks nothing by itself", async () => {
+  // Only CHOOSING a register pre-ticks the role. Somebody already in one
+  // without it may be that way on purpose, and opening the form to fix a
+  // typo in their name must not grant them anything.
+  setMemberRoles(2, [3]);
+  await renderRoster();
+  const form = await openEditFor("Perrine Player");
+
+  expect(within(form).getByLabelText("Musicien·ne")).not.toBeChecked();
+});
+
+test("only a register without a role that answers events raises the warning", async () => {
+  // Perrine plays and answers; Dominique answers nothing and plays in no
+  // register. Neither is a mistake, so neither card carries the pill.
+  setMemberRoles(5, [3]);
+  await renderRoster();
+
+  const warning = "Dans un pupitre, mais ne répond pas aux événements";
+  expect(within(rowFor("Sansconnexion")).getByLabelText(warning)).toBeInTheDocument();
+  expect(within(rowFor("Player")).queryByLabelText(warning)).toBeNull();
+  expect(within(rowFor("Direction")).queryByLabelText(warning)).toBeNull();
 });
 
 test("the baseline role stays ticked and cannot be unticked", async () => {

@@ -92,7 +92,12 @@ function expectNoSuchAction(name: RegExp): void {
 }
 
 async function renderPlanning(
-  as: "demo.player" | "demo.direction" | "demo.committee" = "demo.player",
+  as:
+    | "demo.player"
+    | "demo.direction"
+    | "demo.committee"
+    | "demo.registeronly"
+    | "demo.unplaced" = "demo.player",
   locale: Locale = "fr",
 ) {
   setMockUser(as);
@@ -778,16 +783,25 @@ test("the server's own refusal lands under the field it is about", async () => {
   expect(await within(dialog).findByText(/Raison est obligatoire/)).toBeInTheDocument();
 });
 
-test("somebody in no register is asked nothing", async () => {
-  // Dominique Direction organises and plays in nothing, so `myAttendance` is
-  // null on every event for her — which a naive split would file under
-  // "À répondre" and then offer her no way to answer. The API would refuse her
-  // with 403 not_answerable, and a block of questions nobody may answer is
-  // worse than the refusal.
-  await renderPlanning("demo.direction");
+test("a register without attendance.respond is asked nothing", async () => {
+  // `myAttendance` is null on every event for somebody who does not answer,
+  // which a naive split would file under "À répondre" and then offer no way
+  // to answer. The API would refuse them with 403 not_answerable, and a block
+  // of questions nobody may answer is worse than the refusal. Rita plays in
+  // Cloches, so a screen deciding from the register would ask her.
+  await renderPlanning("demo.registeronly");
 
   expect(screen.queryByRole("region", { name: "À répondre" })).toBeNull();
   expect(screen.queryAllByTestId("attendance-controls")).toHaveLength(0);
+});
+
+test("attendance.respond without a register is asked to answer", async () => {
+  // The other half of the same rule: Ulysse holds musician and plays in no
+  // register, and the permission alone is what puts the planning to him.
+  await renderPlanning("demo.unplaced");
+
+  expect(screen.getByRole("region", { name: "À répondre" })).toBeInTheDocument();
+  expect(screen.getAllByTestId("attendance-controls").length).toBeGreaterThan(0);
 });
 
 /* -------------------------------------------------------------------------- *

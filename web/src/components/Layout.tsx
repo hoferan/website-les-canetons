@@ -124,9 +124,14 @@ export function Layout() {
   ];
   // THE MEMBERS' TOOL, and first when logged in: reading the planning is what
   // everybody in the band does every week, so it is the last thing to fold.
-  // Needs a session and nothing more — gating it on a permission would be the
-  // same mistake as gating the ability to answer for an event.
-  const memberEntries: NavEntry[] = [{ key: "/events", to: "/events", label: t("nav.events") }];
+  // Shown on `events.view`, the permission its route asks for, which the
+  // baseline role grants to every account. The account link below answers to
+  // `account.manage` the same way.
+  const mayReadPlanning = can("events.view");
+  const mayManageAccount = can("account.manage");
+  const memberEntries: NavEntry[] = mayReadPlanning
+    ? [{ key: "/events", to: "/events", label: t("nav.events") }]
+    : [];
   const tools = TOOLS.filter((item) => can(item.permission));
   const countFor = (to: string) => (to === "/inbox" ? inboxTotal : 0);
   const accountTools: AccountTool[] = tools.map((item) => ({
@@ -138,7 +143,9 @@ export function Layout() {
   // The phone layer's "mine" card: Événements, then the committee's screens,
   // each with its icon and the inbox with its count.
   const mineEntries: MemberEntry[] = [
-    { key: "/events", to: "/events", label: t("nav.events"), icon: Calendar },
+    ...(mayReadPlanning
+      ? [{ key: "/events", to: "/events", label: t("nav.events"), icon: Calendar }]
+      : []),
     ...tools.map((item) => ({
       key: item.to,
       to: item.to,
@@ -244,6 +251,7 @@ export function Layout() {
           mine={user ? mineEntries : []}
           band={publicEntries}
           active={active}
+          showAccount={mayManageAccount}
         />
 
         <DesktopNav
@@ -251,7 +259,12 @@ export function Layout() {
           active={active}
           trailing={
             user ? (
-              <AccountDropdown member={user} active={active} tools={accountTools} />
+              <AccountDropdown
+                member={user}
+                active={active}
+                tools={accountTools}
+                showAccount={mayManageAccount}
+              />
             ) : (
               // The raised yellow button, its shadow pink because ink vanishes
               // on the stage.

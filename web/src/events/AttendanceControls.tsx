@@ -89,11 +89,11 @@ function patchMyAttendance(
  *     CHANGE is not undoable here, because the only thing behind undo is a
  *     DELETE — see the comment where the toast is raised.
  *
- * IT RENDERS NOTHING FOR SOMEBODY IN NO REGISTER. Dominique Direction
- * organises and plays in nothing; the API answers her `403 not_answerable`,
- * and a pair of buttons that always refuse teaches her that the site is broken
- * for her. `isPlayer` comes from the session, which is the same fact the
- * server checks.
+ * IT RENDERS NOTHING WITHOUT `attendance.respond`. Dominique Direction
+ * organises and plays nothing; the API answers her `403 not_answerable`, and a
+ * pair of buttons that always refuse teaches her that the site is broken for
+ * her. The permission comes from the session, which is the same fact the
+ * server checks. The register does not decide it either way.
  */
 export function AttendanceControls({
   event,
@@ -108,7 +108,7 @@ export function AttendanceControls({
    */
   inOwed?: boolean;
 }) {
-  const { user } = useSession();
+  const { can } = useSession();
   const queryClient = useQueryClient();
 
   const [withdrawing, setWithdrawing] = useState(false);
@@ -125,7 +125,7 @@ export function AttendanceControls({
     mutationFn: () => attendanceDestroy(event.id),
   });
 
-  if (!user?.isPlayer) {
+  if (!can("attendance.respond")) {
     return null;
   }
 

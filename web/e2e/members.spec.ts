@@ -369,7 +369,7 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
   const page = await ctx.newPage();
 
   // demo.both, NOT demo.direction. `AttendanceControls` returns `null` for
-  // anybody with `isPlayer: false` — see its own docblock — and
+  // anybody without `attendance.respond` — see its own docblock — and
   // demo.direction is exactly that member: "organises, does not play"
   // (CLAUDE.md). Under that account the region under the menu never carries
   // an attendance control at all, so no assertion about one can mean

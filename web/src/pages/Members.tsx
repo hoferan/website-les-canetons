@@ -42,9 +42,10 @@ import { OUTLINED_CARD } from "../carnival/raised";
  * The roster: everybody in the band.
  *
  * ONE ROSTER (ADR 0015), and since 2026_09_08_000001 everybody on it has an
- * account — the roster is the people the band tracks for events, and all of
- * them are answerable for one. People the band merely displays, such as
- * instructors or honorary members, are CONTENT and are not here at all.
+ * account — the roster is the people the band tracks for events. Which of
+ * them answer for one is what their roles grant. People the band merely
+ * displays, such as instructors or honorary members, are CONTENT and are not
+ * here at all.
  *
  * ONE LAYOUT: CARDS, AT EVERY WIDTH, in a grid that widens (#130). The screen
  * this replaces rendered a table that scrolled sideways at 390px, which is the
@@ -170,6 +171,13 @@ export function Members() {
     const key = roleList.find((role) => role.id === id)?.key;
     return key === undefined ? "" : roleLabel(key);
   };
+  // From what the roles GRANT, joined on roleIds as the roster's own docs say
+  // to, never from a role's key: renaming the role that answers must not
+  // silence the warning below.
+  const answersEvents = (member: MemberResource) =>
+    member.roleIds.some((id) =>
+      roleList.find((role) => role.id === id)?.permissions.includes("attendance.respond"),
+    );
 
   // No params: the key is a prefix of every filtered roster's as well, so a
   // write refreshes whichever search is on screen and the count beside it.
@@ -496,6 +504,24 @@ export function Members() {
             <p className="text-sm">
               {t("members.rolesLabel", { value: rolesOf(member, labelForRole) })}
             </p>
+            {/* A REGISTER WITHOUT A ROLE THAT ANSWERS, which is almost always
+                a role somebody forgot to tick: a register grants nothing
+                (#189), so this person is never asked about an event. The same
+                pink pill as the login state below, the roster's "something
+                needs you". Waits for the roles, or every card would flash it. */}
+            {member.sectionId !== null && roleList.length > 0 && !answersEvents(member) ? (
+              // A flex child, not `inline-block`: that class also sets the
+              // width to the `block` spacing token, 32px, and the words ran
+              // out of the pill (docs/traps.md).
+              <div className="mt-tight flex">
+                <span
+                  aria-label={t("members.notAnsweringName")}
+                  className="rounded-full bg-pink px-2 py-0.5 text-xs font-semibold text-ink"
+                >
+                  {t("members.notAnswering")}
+                </span>
+              </div>
+            ) : null}
             {/* NO `Label : value` PREFIX, unlike every field above it, and
                 that is not an oversight. The card labels each field because
                 the real <th> went when the card became the only layout

@@ -912,6 +912,11 @@ export const fr = {
     rolesLabel: "Rôles\u00a0: {{value}}",
     noSection: "Aucun pupitre",
     noRoles: "Aucun rôle",
+    // A register held without any role granting attendance.respond. The label
+    // is the consequence, worded like the musician role's own hint; the name
+    // adds the register, for a screen reader that reaches it without the card.
+    notAnswering: "Ne répond pas aux événements",
+    notAnsweringName: "Dans un pupitre, mais ne répond pas aux événements",
 
     // Searching the roster (#97). The label is the field's accessible name
     // and its placeholder; the two selects default to "all".
@@ -1182,7 +1187,9 @@ export const fr = {
     identity: "Identité",
     username: "Identifiant",
     section: "Pupitre",
-    sectionNone: "Ne joue pas",
+    // Not "Ne joue pas": a register is display only, and somebody who
+    // answers for events in no register still plays.
+    sectionNone: "Aucun pupitre",
     committeeFunction: "Fonction au comité",
     committeeFunctionNone: "Aucune",
     roles: "Rôles",

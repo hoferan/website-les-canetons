@@ -52,11 +52,14 @@ test("says so when the session holds no role at all", async () => {
   expect(field("Rôles")).toBe("Aucun");
 });
 
-test("says so when the member plays in no register", async () => {
-  setMockUser("demo.direction");
+test("says so when the member is in no register, without claiming they do not play", async () => {
+  // A register is display only (#192). Ulysse holds musician and answers for
+  // events in no register, so "Ne joue pas" would be wrong for him; the
+  // roster's own words are not.
+  setMockUser("demo.unplaced");
   await renderWithSession(<Account />, { route: "/account" });
 
-  expect(field("Pupitre")).toBe("Ne joue pas");
+  expect(field("Pupitre")).toBe("Aucun pupitre");
 });
 
 test("shows the identity card in German", async () => {

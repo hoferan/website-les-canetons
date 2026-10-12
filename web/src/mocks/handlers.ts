@@ -71,7 +71,6 @@ const USERS = {
     username: "demo.direction",
     firstName: "Dominique",
     lastName: "Direction",
-    isPlayer: false,
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
@@ -99,7 +98,6 @@ const USERS = {
     username: "demo.player",
     firstName: "Perrine",
     lastName: "Player",
-    isPlayer: true,
     mustChangePassword: false,
     sectionName: "Cloches",
     committeeFunctionName: null,
@@ -118,7 +116,6 @@ const USERS = {
     username: "demo.both",
     firstName: "Bastien",
     lastName: "Both",
-    isPlayer: true,
     mustChangePassword: true,
     sectionName: "Trompettes",
     committeeFunctionName: null,
@@ -150,7 +147,6 @@ const USERS = {
     username: "demo.committee",
     firstName: "Camille",
     lastName: "Committee",
-    isPlayer: true,
     mustChangePassword: false,
     sectionName: "Trombones",
     committeeFunctionName: "Responsable intendance",
@@ -172,7 +168,6 @@ const USERS = {
     username: "demo.mustchange",
     firstName: "Marceau",
     lastName: "Nouveau",
-    isPlayer: true,
     mustChangePassword: true,
     sectionName: "Cloches",
     committeeFunctionName: null,
@@ -187,7 +182,6 @@ const USERS = {
     username: "demo.roster",
     firstName: "Rosa",
     lastName: "Roster",
-    isPlayer: false,
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
@@ -201,12 +195,52 @@ const USERS = {
     username: "demo.young",
     firstName: "Nadia",
     lastName: "Sansconnexion",
-    isPlayer: true,
     mustChangePassword: false,
     sectionName: "Batteurs",
     committeeFunctionName: null,
     roleKeys: ["member", "musician"],
     permissions: ["events.view", "account.manage", "attendance.respond"],
+  },
+  // THE TWO CASES THAT PROVE THE REGISTER IS DISPLAY ONLY (#192), session
+  // fixtures with no roster row, like demo.mustchange. One sits in a register
+  // and does not hold musician, so nothing asks them to answer; the other
+  // holds musician in no register, and is asked.
+  "demo.registeronly": {
+    id: 8,
+    username: "demo.registeronly",
+    firstName: "Rita",
+    lastName: "Registeronly",
+    mustChangePassword: false,
+    sectionName: "Cloches",
+    committeeFunctionName: null,
+    roleKeys: ["member"],
+    permissions: ["events.view", "account.manage"],
+  },
+  "demo.unplaced": {
+    id: 9,
+    username: "demo.unplaced",
+    firstName: "Ulysse",
+    lastName: "Unplaced",
+    mustChangePassword: false,
+    sectionName: null,
+    committeeFunctionName: null,
+    roleKeys: ["member", "musician"],
+    permissions: ["events.view", "account.manage", "attendance.respond"],
+  },
+  // No role at all, not even the baseline: the API refuses to produce this
+  // (#193), so only a hand edit in the database leaves an account like it.
+  // It is what proves that /events and /account ask for a permission rather
+  // than for a session.
+  "demo.nobaseline": {
+    id: 10,
+    username: "demo.nobaseline",
+    firstName: "Noé",
+    lastName: "Sansrole",
+    mustChangePassword: false,
+    sectionName: null,
+    committeeFunctionName: null,
+    roleKeys: [],
+    permissions: [],
   },
 } satisfies Record<string, MockUser>;
 
@@ -394,6 +428,17 @@ const ROLES: RoleResource[] = [
   { id: 3, key: "member", isBaseline: true, permissions: ["events.view", "account.manage"] },
   { id: 4, key: "musician", isBaseline: false, permissions: ["attendance.respond"] },
 ];
+
+/**
+ * Whether a roster row answers for events: one of its roles grants
+ * attendance.respond, whatever its register says. The real API asks the same
+ * question of the same data, through EffectivePermissions::holders().
+ */
+function answersEvents(member: { roleIds: number[] }): boolean {
+  return member.roleIds.some((roleId) =>
+    ROLES.find((role) => role.id === roleId)?.permissions.includes("attendance.respond"),
+  );
+}
 
 /** The password the seeded accounts use, and so the one re-authentication takes. */
 const ACTOR_PASSWORD = "demo";
@@ -609,7 +654,6 @@ function initialMembers(): MemberResource[] {
       // Organises, does not play — so never in an attendance list.
       sectionId: null,
       sectionName: null,
-      isPlayer: false,
       committeeFunctionId: null,
       instructorOfSectionId: null,
       publicVisible: true,
@@ -624,7 +668,6 @@ function initialMembers(): MemberResource[] {
       lastLoginAt: null,
       sectionId: 4,
       sectionName: "Cloches",
-      isPlayer: true,
       committeeFunctionId: null,
       instructorOfSectionId: null,
       publicVisible: true,
@@ -653,7 +696,6 @@ function initialMembers(): MemberResource[] {
       lastLoginAt: null,
       sectionId: 5,
       sectionName: "Trompettes",
-      isPlayer: true,
       committeeFunctionId: null,
       // THE ONE INSTRUCTOR, mirroring DevSeeder. A different column from
       // sectionId, so the public band page lists them under the trumpets as a
@@ -672,7 +714,6 @@ function initialMembers(): MemberResource[] {
       lastLoginAt: null,
       sectionId: 6,
       sectionName: "Trombones",
-      isPlayer: true,
       // The SEAT, not the role, is what puts somebody on the public committee
       // page. `committee` grants registrations.view; this is a row in
       // committee_functions. A demo roster where the two coincide is how
@@ -693,7 +734,6 @@ function initialMembers(): MemberResource[] {
       lastLoginAt: null,
       sectionId: 1,
       sectionName: "Batteurs",
-      isPlayer: true,
       committeeFunctionId: null,
       instructorOfSectionId: null,
       publicVisible: true,
@@ -1549,18 +1589,19 @@ function withMyAttendance(event: EventResource): EventResource {
  * How many answerable members have replied to an event.
  *
  * COUNTS THROUGH THE ROSTER rather than over the answers map, so an answer
- * from somebody who is in no register is not counted — the same constraint
- * EventController::counts() puts in the subselect. The `answers` map is keyed
- * by answerKey(eventId, memberId).
+ * from somebody who no longer answers for events is not counted — the same
+ * constraint EventController::counts() puts in the subselect. The `answers`
+ * map is keyed by answerKey(eventId, memberId).
  */
 function answeredCountFor(eventId: number): number {
-  return members.filter((member) => member.isPlayer && answers.has(answerKey(eventId, member.id)))
-    .length;
+  return members.filter(
+    (member) => answersEvents(member) && answers.has(answerKey(eventId, member.id)),
+  ).length;
 }
 
-/** The denominator: everybody in a register. A property of the roster, not of the event. */
+/** The denominator: everybody who answers for events. A property of the roster, not of the event. */
 function answerableCount(): number {
-  return members.filter((member) => member.isPlayer).length;
+  return members.filter(answersEvents).length;
 }
 
 /**
@@ -1597,18 +1638,15 @@ function withCommitteeCounts(event: EventResource): EventResource {
 }
 
 /**
- * The refusal for somebody who is in no register.
+ * The refusal for somebody whose roles grant no attendance.respond.
  *
- * A 403 that is NOT about a missing permission — there is none for answering —
- * which is why it carries its own code rather than `access_denied`. Dominique
- * Direction is the case: she organises and plays nothing.
+ * Its own code rather than `access_denied`, as in the real API: on the
+ * on-behalf route the caller holds every permission it needs, and it is the
+ * member being answered for who is not asked. Dominique Direction is the
+ * case: she organises and plays nothing.
  */
 const notAnswerable = () =>
-  problem(
-    403,
-    "not_answerable",
-    "This member is not in a register and is not answerable for events",
-  );
+  problem(403, "not_answerable", "This member holds no role granting attendance.respond");
 
 /**
  * The API's `endsAt`-after-`startsAt` refusal, in the shape ApiError renders.
@@ -2593,7 +2631,6 @@ const overrides = [
       lastLoginAt: null,
       sectionId: body.sectionId ?? null,
       sectionName: sectionOf(body.sectionId ?? null),
-      isPlayer: (body.sectionId ?? null) !== null,
       committeeFunctionId: body.committeeFunctionId ?? null,
       instructorOfSectionId: body.instructorOfSectionId ?? null,
       publicVisible: body.publicVisible ?? false,
@@ -2648,10 +2685,9 @@ const overrides = [
         Object.assign(updated, { [field]: body[field] });
       }
     }
-    // Both are DERIVED from section_id in the real Resource, so they can never
-    // disagree with it. Recomputing them is what keeps that true here.
+    // DERIVED from section_id in the real Resource, so it can never disagree
+    // with it. Recomputing it is what keeps that true here.
     updated.sectionName = sectionOf(updated.sectionId);
-    updated.isPlayer = updated.sectionId !== null;
     members[index] = updated;
     // The tag of what the write just produced, so a second edit needs no read
     // in between — which is what Members.tsx chains the roles call onto.
@@ -3579,11 +3615,10 @@ const overrides = [
       return hidden;
     }
 
-    // Answerable means being in a register, which is Member::isPlayer() and
-    // deliberately not a permission: making it one is how the old site ended
-    // up unable to ask an organiser whether they were coming.
+    // Answerable means holding attendance.respond through a role, as in the
+    // real chase list. The register only says where somebody plays.
     const rows: ChaseListEntryResource[] = members
-      .filter((member) => member.isPlayer)
+      .filter(answersEvents)
       .sort(
         (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
       )
@@ -3614,7 +3649,7 @@ const overrides = [
       return draft;
     }
 
-    if (!currentUser.isPlayer) {
+    if (!currentUser.permissions.includes("attendance.respond")) {
       return notAnswerable();
     }
 
@@ -3707,7 +3742,7 @@ const overrides = [
       return conflict("cannot_record_for_self", "Answer for yourself from the planning");
     }
 
-    if (!member.isPlayer) {
+    if (!answersEvents(member)) {
       return notAnswerable();
     }
 

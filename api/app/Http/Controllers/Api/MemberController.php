@@ -29,13 +29,13 @@ class MemberController extends Controller
      *
      * Requires `members.manage`. Returns everyone the band tracks, ordered by
      * last name then first name. Each entry carries the person's register
-     * (`sectionId` and `sectionName`), whether they answer for events
-     * (`isPlayer`, from their roles), their committee title, whether they may
+     * (`sectionId` and `sectionName`), their committee title, whether they may
      * be shown on the public site, and `roleIds`, the roles they hold.
      *
      * No password and no hash is ever included, and neither are effective
-     * permissions beyond `isPlayer`: a role is what grants them, so read
-     * `GET /api/v1/roles` and join on `roleIds`.
+     * permissions: a role is what grants them, so read `GET /api/v1/roles` and
+     * join on `roleIds`. That is also how to tell who answers for events: the
+     * roles granting `attendance.respond`, whatever the register says.
      *
      * Three optional filters narrow the roster, and combine when given
      * together. `q` matches a first name, a last name, a username, or the

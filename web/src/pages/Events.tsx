@@ -43,12 +43,12 @@ import { useSession } from "../session/SessionProvider";
 /**
  * The planning: what the band is doing, and when.
  *
- * NO PERMISSION TO READ IT. Everybody in the band needs to know when the next
- * rehearsal is, so this screen is gated on having a session and nothing more
- * (RequireSession). Creating and editing are gated on `events.manage`, and
- * those controls are ABSENT rather than refused for everybody else — a link
- * that leads to "Accès refusé" teaches people that parts of the site are
- * broken for them.
+ * EVERYBODY MAY READ IT. Everybody in the band needs to know when the next
+ * rehearsal is, so this screen asks for `events.view`, which the baseline
+ * role grants to every account. Creating and editing are gated on
+ * `events.manage`, and those controls are ABSENT rather than refused for
+ * everybody else — a link that leads to "Accès refusé" teaches people that
+ * parts of the site are broken for them.
  *
  * THE PAST REPLACES THE PLANNING RATHER THAN EXTENDING IT. It is the other
  * half of the list, not a superset: by next carnival the full history is a
@@ -97,7 +97,7 @@ import { useSession } from "../session/SessionProvider";
  * to-do semantics while you are on the screen is the count under the heading.
  */
 export function Events() {
-  const { can, user, config } = useSession();
+  const { can, config } = useSession();
   const queryClient = useQueryClient();
   const [showingPast, setShowingPast] = useState(false);
 
@@ -194,11 +194,12 @@ export function Events() {
   // The split that makes the top block a to-do list. Two things are never in
   // it. PAST EVENTS, because the screen asks what you owe an answer on and
   // nobody is owed an answer about last Saturday. And EVERYTHING, for somebody
-  // who is in no register: `myAttendance` is null on every event for Dominique
-  // Direction, who organises and plays nothing, so the naive split would file
-  // the whole planning under "À répondre" and then show her no way to answer
-  // any of it.
-  const answerable = (user?.isPlayer ?? false) && !showingPast;
+  // without attendance.respond: `myAttendance` is null on every event for
+  // Dominique Direction, who organises and plays nothing, so the naive split
+  // would file the whole planning under "À répondre" and then show her no way
+  // to answer any of it. Her register would not decide it either way; the
+  // permission does.
+  const answerable = can("attendance.respond") && !showingPast;
 
   // WHAT WAS OWED WHEN THIS LIST WAS BUILT, which is what the top block
   // partitions on rather than on `myAttendance` as it stands (#95). Answering

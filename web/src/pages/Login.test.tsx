@@ -140,9 +140,10 @@ test("a member who must change their password lands on /account/password", async
         username: "demo.young",
         firstName: "Nadia",
         lastName: "Sansconnexion",
-        isPlayer: true,
         mustChangePassword: true,
-        permissions: [],
+        // The baseline role's, which every account holds: /account/password
+        // asks for account.manage like the endpoint behind it.
+        permissions: ["events.view", "account.manage", "attendance.respond"],
       }),
     ),
   );

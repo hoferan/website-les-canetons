@@ -72,6 +72,7 @@ export function PhoneNav({
   mine,
   band,
   active,
+  showAccount,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -81,6 +82,8 @@ export function PhoneNav({
   mine: MemberEntry[];
   band: NavEntry[];
   active: string;
+  /** Whether the reader may open /account, decided by Layout like every entry. */
+  showAccount: boolean;
 }) {
   const close = () => onOpenChange(false);
 
@@ -192,7 +195,7 @@ export function PhoneNav({
         </ul>
 
         {member ? (
-          <AccountFooter member={member} active={active} close={close} />
+          <AccountFooter member={member} active={active} close={close} showAccount={showAccount} />
         ) : (
           <div data-confetti-avoid className="relative mt-auto px-4 pb-6">
             <Link
@@ -222,10 +225,12 @@ function AccountFooter({
   member,
   active,
   close,
+  showAccount,
 }: {
   member: Member;
   active: string;
   close: () => void;
+  showAccount: boolean;
 }) {
   const { logOut, isPending } = useLogout(close);
 
@@ -250,15 +255,17 @@ function AccountFooter({
         </span>
       </p>
       <div className="mt-3 flex gap-2">
-        <Link
-          to="/account"
-          onClick={close}
-          aria-current={active === "/account" ? "page" : undefined}
-          className={cn(action, active.startsWith("/account") && "bg-yellow text-ink")}
-        >
-          <User aria-hidden="true" className="size-4" />
-          {t("nav.account")}
-        </Link>
+        {showAccount ? (
+          <Link
+            to="/account"
+            onClick={close}
+            aria-current={active === "/account" ? "page" : undefined}
+            className={cn(action, active.startsWith("/account") && "bg-yellow text-ink")}
+          >
+            <User aria-hidden="true" className="size-4" />
+            {t("nav.account")}
+          </Link>
+        ) : null}
         {/* aria-disabled and the guard inside logOut, never `disabled`: see
             the docblock in ui/button.tsx. */}
         <button type="button" onClick={logOut} aria-disabled={isPending} className={action}>

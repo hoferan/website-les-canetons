@@ -409,3 +409,17 @@ some drivers, and Scramble infers what the property type says. Published as
 wire. `openapi-drift` cannot see it, since the document matches what Scramble
 inferred. Cast to `(int)` where the resource publishes the id (and keep the
 null case for nullable ids). This showed up twice in the image library.
+
+## `inline-block` is 32px wide here
+
+`web/src/styles.css` names a spacing token `block` (`--spacing-block: 2rem`).
+Tailwind 4 builds the `inline-*` utilities, which set `inline-size`, from the
+spacing scale, so `.inline-block` matches two rules: the stock
+`display: inline-block`, and `inline-size: var(--spacing-block)`. A badge with
+that class is therefore 32px wide whatever it says, and its words run out of
+the background one per line. The suite cannot see it, because jsdom applies no
+CSS.
+
+It has bitten twice: the draft badge on an event card, then the roster's
+"Ne répond pas aux événements" pill. Wrap the badge in a `flex` container and
+leave the class off, as `EventCard.tsx` and `LoginState.tsx` do.
