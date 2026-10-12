@@ -728,7 +728,7 @@ translated. The reasoning is in ADR 0014.
 | The permission set (`App\Support\Permission`) | developer, code + deploy — a permission is real only if middleware checks it |
 | UI text (`web/src/i18n/`) | developer, code + deploy |
 | Which roles exist, what each is called and grants | `roles.manage`, on `/roles` (#194). The baseline role is fixed |
-| The register list | **nobody yet — by hand in the DB (DbGate on :8091).** #178 owns this |
+| The register list | **nobody yet — by hand in the DB (DbGate on :8091).** #276 adds an editor under `members.manage` |
 | Members: identity, register, roles, password | `members.manage` |
 | One's own password | any account holder |
 | Events | `events.manage` |
@@ -744,7 +744,7 @@ above is load-bearing. A role keeps an immutable `key` for identity, and since
 #194 it also carries `label_fr` and `label_de`, typed in the role editor
 (ADR 0026). A seeded role nobody has renamed has neither, so the SPA translates
 its `key` through the catalogue; `roleName()` in `web/src/i18n/` does both.
-Registers have no labels yet (#178), so a register name reads the same on a
+Registers have no labels yet (#276), so a register name reads the same on a
 German page as on a French one.
 
 Adding `system.manage` to the enum before its middleware exists is forbidden by
