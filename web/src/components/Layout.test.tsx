@@ -316,6 +316,28 @@ test("shows Événements to any logged-in member, first in the bar", async () =>
   expect(first).toHaveAttribute("href", "/events");
 });
 
+test("an account holding nothing is offered neither Événements nor Mon compte", async () => {
+  // Both entries answer to a permission, like every other screen in the nav,
+  // so a session alone does not show them. Only a hand edit in the database
+  // leaves an account without the baseline role, and that account must not
+  // be offered two links that lead to "Accès refusé".
+  const user = userEvent.setup();
+  setMockUser("demo.nobaseline");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  await user.click(await screen.findByRole("button", { name: "Compte de demo.nobaseline" }));
+  const items = await screen.findAllByRole("menuitem");
+  expect(items.map((item) => item.textContent)).toEqual(["Déconnexion"]);
+  await user.keyboard("{Escape}");
+
+  expect(screen.queryByRole("link", { name: "Événements" })).toBeNull();
+  await openPhoneMenu(user);
+  const layer = await screen.findByRole("dialog", { name: "Menu" });
+  expect(within(layer).queryByRole("link", { name: "Événements" })).toBeNull();
+  expect(within(layer).queryByRole("link", { name: "Mon compte" })).toBeNull();
+  expect(within(layer).getByRole("button", { name: "Déconnexion" })).toBeInTheDocument();
+});
+
 test("hides Événements from an anonymous visitor", async () => {
   // The planning is the members' tool. The public agenda is a separate page.
   await renderWithSession(<AppRoutes />, { route: "/login" });

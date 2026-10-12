@@ -6,7 +6,6 @@ use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Support\Emits;
-use App\Support\Permission;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
@@ -166,13 +165,13 @@ class AuthController extends Controller
      * Read the current member and what they may do.
      *
      * Any logged-in member. Returns the caller's id, username, first and last
-     * name, whether they answer for events (`isPlayer`, which is true exactly
-     * when `permissions` contains `attendance.respond`), whether they must
-     * change their password before anything else (`mustChangePassword`), and
-     * `permissions`.
+     * name, whether they must change their password before anything else
+     * (`mustChangePassword`), and `permissions`.
      *
      * `permissions` is the flat list of permission tokens the caller's roles
-     * add up to, and it is what a client shows or hides a screen on.
+     * add up to, and it is what a client shows or hides a screen on. Whether
+     * the caller answers for events is `attendance.respond` in that list; their
+     * register does not decide it.
      *
      * `sectionName`, `committeeFunctionName` and `roleKeys` say where the
      * caller sits in the band, for their own account page. They are for
@@ -188,26 +187,13 @@ class AuthController extends Controller
         /** @var Member $member */
         $member = $request->user();
 
-        // Read once: `isPlayer` and `permissions` are two views of one set.
-        // `isPlayer` is attendance.respond under its old name, until the SPA
-        // asks can() instead and the field goes (#192). Derived from the
-        // permission and not from the register, so a client still reading it
-        // shows the answer buttons to exactly the people the API lets answer.
-        //
-        // This note sits here and not on the field because Scramble publishes
-        // a plain `//` comment in this array as the field's description in
-        // /api/docs.
-        $permissions = $member->permissions();
-
         return response()->json([
             'id' => $member->id,
             'username' => $member->username,
             'firstName' => $member->first_name,
             'lastName' => $member->last_name,
-            /** Whether `permissions` contains `attendance.respond`, which is what makes a member answerable for events. Their register does not decide it. */
-            'isPlayer' => $permissions->contains(Permission::AttendanceRespond),
             'mustChangePassword' => $member->must_change_password,
-            'permissions' => $permissions->map(fn ($p) => $p->value)->all(),
+            'permissions' => $member->permissions()->map(fn ($p) => $p->value)->all(),
             /** The register they play in, or null if they do not play. */
             'sectionName' => $member->section?->name,
             /** Their seat on the committee, or null if they hold none. */

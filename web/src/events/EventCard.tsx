@@ -18,9 +18,9 @@ import { OUTLINED_CARD } from "../carnival/raised";
  *
  * IT KNOWS NOTHING ABOUT PERMISSIONS. The organiser's edit and delete controls
  * arrive as `actions` and the answer buttons as `answer`, both decided by the
- * screen. A card that checked `can("events.manage")` or `isPlayer` itself would
- * have to be edited for every future control, and would make this component
- * untestable without a session.
+ * screen. A card that checked `can("events.manage")` or
+ * `can("attendance.respond")` itself would have to be edited for every future
+ * control, and would make this component untestable without a session.
  *
  * THREE SLOTS RATHER THAN ONE, because they are read at different moments.
  * `actions` is the committee's housekeeping and sits up beside the title where

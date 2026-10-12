@@ -24,6 +24,25 @@ export type MemberDraft = {
   roleIds: number[];
 };
 
+/**
+ * The role list with a role granting attendance.respond added, unless one in
+ * it already does.
+ *
+ * Found by what the role grants, never by its key (ADR 0014), so this keeps
+ * working when roles become editable data and the one that answers events is
+ * renamed. When several grant it, the first in the API's order is ticked.
+ */
+function withAnsweringRole(roleIds: number[], roles: RoleResource[]): number[] {
+  const answering = roles.filter((role) => role.permissions.includes("attendance.respond"));
+
+  if (answering.some((role) => roleIds.includes(role.id))) {
+    return roleIds;
+  }
+
+  const first = answering[0];
+  return first ? [...roleIds, first.id] : roleIds;
+}
+
 /** An existing person as an editable draft, or an empty one for a new person. */
 export function draftFrom(member: MemberResource | null): MemberDraft {
   return {
@@ -158,12 +177,26 @@ export function MemberForm({
           id="sectionId"
           className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
           value={draft.sectionId ?? ""}
-          onChange={(event) =>
-            set("sectionId", event.target.value === "" ? null : Number(event.target.value))
-          }
+          onChange={(event) => {
+            const sectionId = event.target.value === "" ? null : Number(event.target.value);
+            // CHOOSING a register pre-ticks a role that answers events,
+            // because somebody given one almost always plays (#189). The
+            // register itself grants nothing, so it is the tick that the save
+            // turns into a grant, and it can be unticked before saving. Not on
+            // the create form, whose roles are inert until the person exists.
+            setDraft((current) => ({
+              ...current,
+              sectionId,
+              roleIds:
+                creating || sectionId === null
+                  ? current.roleIds
+                  : withAnsweringRole(current.roleIds, roles),
+            }));
+          }}
         >
           {/* Empty is a real answer: somebody who organises and does not play
-              belongs to no register and never appears in an attendance list. */}
+              belongs to no register. Whether they answer for events is their
+              roles' business, not this field's. */}
           <option value="">{t("members.noSection")}</option>
           {sections.map((section) => (
             <option key={section.id} value={section.id}>
@@ -206,8 +239,7 @@ export function MemberForm({
       </div>
 
       {/* A SECOND REGISTER FIELD, and it is not a duplicate of the one above.
-          `sectionId` is where somebody PLAYS and is what makes them answerable
-          for an event; this is the register they TEACH. An instructor commonly
+          `sectionId` is where somebody PLAYS; this is the register they TEACH. An instructor commonly
           teaches one and plays in another, and the public band page lists them
           under both — correctly, because both are true.
 

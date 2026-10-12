@@ -59,16 +59,46 @@ test("still answers an unknown path with the 404 view", async () => {
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
 });
 
-test("renders the planning at /events for any logged-in member", async () => {
+test("renders the planning at /events for a member who may read it", async () => {
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/events" });
   expect(await screen.findByRole("heading", { name: "Planning" })).toBeInTheDocument();
 });
 
-test("sends an anonymous visitor from /events to the login page", async () => {
-  // RequireSession REDIRECTS rather than refusing in place: logging in is a
-  // thing this visitor can actually do, unlike the permission case.
+test("refuses /events in place for an account without events.view", async () => {
+  // Every account holds it through the baseline role, so being logged in used
+  // to be enough. It is the permission the API checks, though, and this
+  // account holds no role at all.
+  setMockUser("demo.nobaseline");
   await renderWithSession(<AppRoutes />, { route: "/events" });
+  expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
+});
+
+test("sends an anonymous visitor from /events to the login page", async () => {
+  // A guard REDIRECTS an anonymous visitor rather than refusing in place:
+  // logging in is a thing they can actually do.
+  await renderWithSession(<AppRoutes />, { route: "/events" });
+  expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
+});
+
+test("renders /account for a member who may manage their own account", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(<AppRoutes />, { route: "/account" });
+  expect(await screen.findByRole("heading", { name: "Mon compte" })).toBeInTheDocument();
+});
+
+test("refuses /account and /account/password in place without account.manage", async () => {
+  setMockUser("demo.nobaseline");
+  const { unmount } = await renderWithSession(<AppRoutes />, { route: "/account" });
+  expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
+  unmount();
+
+  await renderWithSession(<AppRoutes />, { route: "/account/password" });
+  expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
+});
+
+test("sends an anonymous visitor from /account to the login page", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/account" });
   expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
 });
 

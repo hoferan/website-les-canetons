@@ -2,7 +2,7 @@ import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
-import { RequirePermission, RequireSession } from "./components/guards";
+import { RequirePermission } from "./components/guards";
 import { Account } from "./pages/Account";
 import { AccountPassword } from "./pages/AccountPassword";
 import { Agenda } from "./pages/Agenda";
@@ -99,14 +99,20 @@ export function AppRoutes() {
 
         <Route element={<MustChangePassword />}>
           <Route path="/login" element={<Login />} />
-          <Route path="/account" element={<Account />} />
-          <Route path="/account/password" element={<AccountPassword />} />
 
-          {/* Needs a SESSION and nothing more — reading the planning is
-              something everybody in the band does. It still sits behind
-              login: this planning is the members' tool, and the public
-              agenda is a separate page. */}
-          <Route element={<RequireSession />}>
+          {/* One's own account. `account.manage` is the permission
+              POST /api/v1/me/password checks, and every account holds it
+              through the baseline role, so in practice this is "logged in". */}
+          <Route element={<RequirePermission permission="account.manage" />}>
+            <Route path="/account" element={<Account />} />
+            <Route path="/account/password" element={<AccountPassword />} />
+          </Route>
+
+          {/* Reading the planning, which everybody in the band does: the
+              baseline role grants `events.view` to every account. It still
+              sits behind login, because this planning is the members' tool
+              and the public agenda is a separate page. */}
+          <Route element={<RequirePermission permission="events.view" />}>
             <Route path="/events" element={<Events />} />
           </Route>
 

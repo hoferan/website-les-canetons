@@ -377,7 +377,7 @@
         "/me": {
             "get": {
                 "operationId": "auth.me",
-                "description": "Any logged-in member. Returns the caller's id, username, first and last\nname, whether they answer for events (`isPlayer`, which is true exactly\nwhen `permissions` contains `attendance.respond`), whether they must\nchange their password before anything else (`mustChangePassword`), and\n`permissions`.\n\n`permissions` is the flat list of permission tokens the caller's roles\nadd up to, and it is what a client shows or hides a screen on.\n\n`sectionName`, `committeeFunctionName` and `roleKeys` say where the\ncaller sits in the band, for their own account page. They are for\ndisplay only. Nothing in this API is authorised by role, so a client\ndecides what to show from `permissions` and ignores `roleKeys` for that.\n\nThe response is never cacheable. An anonymous caller answers\n`401 not_authenticated`.",
+                "description": "Any logged-in member. Returns the caller's id, username, first and last\nname, whether they must change their password before anything else\n(`mustChangePassword`), and `permissions`.\n\n`permissions` is the flat list of permission tokens the caller's roles\nadd up to, and it is what a client shows or hides a screen on. Whether\nthe caller answers for events is `attendance.respond` in that list; their\nregister does not decide it.\n\n`sectionName`, `committeeFunctionName` and `roleKeys` say where the\ncaller sits in the band, for their own account page. They are for\ndisplay only. Nothing in this API is authorised by role, so a client\ndecides what to show from `permissions` and ignores `roleKeys` for that.\n\nThe response is never cacheable. An anonymous caller answers\n`401 not_authenticated`.",
                 "summary": "Read the current member and what they may do",
                 "tags": [
                     "Session"
@@ -401,10 +401,6 @@
                                         },
                                         "lastName": {
                                             "type": "string"
-                                        },
-                                        "isPlayer": {
-                                            "type": "boolean",
-                                            "description": "Whether `permissions` contains `attendance.respond`, which is what makes a member answerable for events. Their register does not decide it."
                                         },
                                         "mustChangePassword": {
                                             "type": "boolean"
@@ -442,7 +438,6 @@
                                         "username",
                                         "firstName",
                                         "lastName",
-                                        "isPlayer",
                                         "mustChangePassword",
                                         "permissions",
                                         "sectionName",
@@ -4189,7 +4184,7 @@
         "/members": {
             "get": {
                 "operationId": "member.index",
-                "description": "Requires `members.manage`. Returns everyone the band tracks, ordered by\nlast name then first name. Each entry carries the person's register\n(`sectionId` and `sectionName`), whether they answer for events\n(`isPlayer`, from their roles), their committee title, whether they may\nbe shown on the public site, and `roleIds`, the roles they hold.\n\nNo password and no hash is ever included, and neither are effective\npermissions beyond `isPlayer`: a role is what grants them, so read\n`GET /api/v1/roles` and join on `roleIds`.\n\nThree optional filters narrow the roster, and combine when given\ntogether. `q` matches a first name, a last name, a username, or the\nwhole name in either order, ignoring case and accents. `section` takes a\nregister id, or `none` for the members in no register. `role` takes a\nrole id. An id that names nothing matches nobody rather than failing,\nand `meta.total` counts the matches, not the whole roster.",
+                "description": "Requires `members.manage`. Returns everyone the band tracks, ordered by\nlast name then first name. Each entry carries the person's register\n(`sectionId` and `sectionName`), their committee title, whether they may\nbe shown on the public site, and `roleIds`, the roles they hold.\n\nNo password and no hash is ever included, and neither are effective\npermissions: a role is what grants them, so read `GET /api/v1/roles` and\njoin on `roleIds`. That is also how to tell who answers for events: the\nroles granting `attendance.respond`, whatever the register says.\n\nThree optional filters narrow the roster, and combine when given\ntogether. `q` matches a first name, a last name, a username, or the\nwhole name in either order, ignoring case and accents. `section` takes a\nregister id, or `none` for the members in no register. `role` takes a\nrole id. An id that names nothing matches nobody rather than failing,\nand `meta.total` counts the matches, not the whole roster.",
                 "summary": "List the roster",
                 "tags": [
                     "Members"
@@ -7714,10 +7709,6 @@
                             "null"
                         ]
                     },
-                    "isPlayer": {
-                        "type": "boolean",
-                        "description": "Whether one of their roles grants `attendance.respond`, which is what makes a member answerable for events. Their register does not decide it."
-                    },
                     "committeeFunctionId": {
                         "type": [
                             "integer",
@@ -7751,7 +7742,6 @@
                     "lastLoginAt",
                     "sectionId",
                     "sectionName",
-                    "isPlayer",
                     "committeeFunctionId",
                     "instructorOfSectionId",
                     "publicVisible",

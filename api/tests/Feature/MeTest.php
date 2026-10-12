@@ -71,7 +71,6 @@ class MeTest extends TestCase
         // expectation. Pinning both booleans here with assertSame() (identity
         // comparison) is what actually pins the contract; do not fold these
         // back into the assertJson() block above.
-        $this->assertSame(true, $response->json('isPlayer'));
         $this->assertSame(false, $response->json('mustChangePassword'));
 
         // The role made here, plus the baseline and musician the factory gave.
@@ -126,19 +125,22 @@ class MeTest extends TestCase
         $this->assertStringNotContainsString('argon2', json_encode($body));
     }
 
-    public function test_is_player_follows_attendance_respond_and_not_the_register(): void
+    public function test_answering_for_events_is_read_from_permissions_alone(): void
     {
-        // The SPA shows the answer buttons on isPlayer until #192, so it has
-        // to agree with what the API lets through: the permission, whatever
-        // the register says.
+        // The SPA shows the answer buttons on can('attendance.respond'), so
+        // `permissions` has to agree with what the API lets through, whatever
+        // the register says. There is no second field saying the same thing:
+        // `isPlayer` was one, and two answers to one question can disagree.
         $registerOnly = Member::factory()->named('Marc', 'Rossier', 'marc.rossier')->inSection('Cloches')->create();
         $unplaced = Member::factory()->named('Nora', 'Bulliard', 'nora.bulliard')->musician()->create();
 
-        // Not assertJson(): its loose (`==`) comparison would let 'isPlayer'
-        // regress to null and still satisfy an expectation of false. assertSame()
-        // is the identity comparison that actually pins the boolean contract.
-        $this->assertSame(false, $this->actingAsMember($registerOnly->fresh())->getJson('/api/v1/me')->json('isPlayer'));
-        $this->assertSame(true, $this->actingAsMember($unplaced->fresh())->getJson('/api/v1/me')->json('isPlayer'));
+        $inRegister = $this->actingAsMember($registerOnly->fresh())->getJson('/api/v1/me')->json();
+        $withRole = $this->actingAsMember($unplaced->fresh())->getJson('/api/v1/me')->json();
+
+        $this->assertNotContains('attendance.respond', $inRegister['permissions']);
+        $this->assertContains('attendance.respond', $withRole['permissions']);
+        $this->assertArrayNotHasKey('isPlayer', $inRegister);
+        $this->assertArrayNotHasKey('isPlayer', $withRole);
     }
 
     public function test_the_response_is_never_cached(): void

@@ -322,8 +322,6 @@ export interface MemberResource {
   sectionId: number | null;
   /** @nullable */
   sectionName: string | null;
-  /** Whether one of their roles grants `attendance.respond`, which is what makes a member answerable for events. Their register does not decide it. */
-  isPlayer: boolean;
   /**
    * THE ID, NOT THE NAME, unlike sectionName above. The roster
    * screen renders the register in its table and so needs the name

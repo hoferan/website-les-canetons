@@ -9,7 +9,7 @@ import {
 } from "../api/generated/endpoints";
 import { ApiError } from "../api/http";
 import { publicWriteHeaders } from "../api/publicWrite";
-import { setMockUser } from "./handlers";
+import { setMemberRoles, setMockUser } from "./handlers";
 
 /**
  * The `If-Match` a conditional write owes, read the way a screen reads it.
@@ -68,7 +68,6 @@ test("GET /me reports whoever setMockUser logged in", async () => {
     username: "demo.direction",
     firstName: "Dominique",
     lastName: "Direction",
-    isPlayer: false,
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
@@ -232,7 +231,6 @@ test("creating a member mints only the baseline role, whatever the body asks for
     member: {
       roleIds: number[];
       sectionName: string;
-      isPlayer: boolean;
       mustChangePassword: boolean;
     };
     generatedPassword: string;
@@ -242,9 +240,8 @@ test("creating a member mints only the baseline role, whatever the body asks for
   // The baseline `member` role (id 3), never `direction` (1) as asked and never
   // `musician` (4) although a register was given.
   expect(created.member.roleIds).toEqual([3]);
-  // Derived from sectionId in the real Resource, so they can never disagree.
+  // Derived from sectionId in the real Resource, so it can never disagree.
   expect(created.member.sectionName).toBe("Cloches");
-  expect(created.member.isPlayer).toBe(true);
   expect(created.member.mustChangePassword).toBe(true);
   expect(created.generatedPassword).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
 });
@@ -440,7 +437,6 @@ test("editing a member changes only what the real request validates", async () =
   const member = (await response.json()) as {
     sectionId: number | null;
     sectionName: string | null;
-    isPlayer: boolean;
     roleIds: number[];
   };
 
@@ -448,7 +444,6 @@ test("editing a member changes only what the real request validates", async () =
   // Clearing a register is an explicit null, not an absent field.
   expect(member.sectionId).toBeNull();
   expect(member.sectionName).toBeNull();
-  expect(member.isPlayer).toBe(false);
   // The write did not touch roleIds: what remains is Perrine's seeded roles,
   // member (3) and musician (4), not the [1] the body tried to set.
   expect(member.roleIds).toEqual([3, 4]);
@@ -765,6 +760,19 @@ test("a draft takes no answers: 404 for a player, 409 for a manager", async () =
   });
   expect(asManager.status).toBe(409);
   expect(((await asManager.json()) as { code: string }).code).toBe("event_not_published");
+});
+
+test("the chase list follows the roles, never the register", async () => {
+  // Perrine (2) plays in Cloches. Left with the baseline alone she holds no
+  // attendance.respond, and the real chase list leaves her out, because it
+  // asks EffectivePermissions::holders() and not the register. Nadia (5)
+  // keeps musician and stays on it.
+  setMemberRoles(2, [3]);
+  setMockUser("demo.direction");
+  const rows = await rowsOf<{ memberId: number }>("/api/v1/events/1/attendance");
+
+  expect(rows.map((row) => row.memberId)).not.toContain(2);
+  expect(rows.map((row) => row.memberId)).toContain(5);
 });
 
 test("the public agenda leaves out a public draft", async () => {

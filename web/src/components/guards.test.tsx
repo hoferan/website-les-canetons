@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 
 import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
-import { RequirePermission, RequireSession } from "./guards";
+import { RequirePermission } from "./guards";
 
 /**
  * Stands in for the login page, and reports the router STATE it was handed.
@@ -78,35 +78,18 @@ test("gives the refusal a heading, a gutter and a way out", async () => {
   expect(container.querySelector("section.px-4")).not.toBeNull();
 });
 
-test("RequireSession lets a logged-in member through, whatever they can do", async () => {
-  // demo.player holds no permission at all — that is the point: a session is
-  // the whole requirement.
-  setMockUser("demo.player");
+test("remembers where an anonymous visitor was going", async () => {
   await renderWithSession(
     <Routes>
-      <Route element={<RequireSession />}>
-        <Route path="/planning" element={<p>Le planning</p>} />
-      </Route>
-      <Route path="/login" element={<h1>Connexion</h1>} />
-    </Routes>,
-    { route: "/planning" },
-  );
-
-  expect(await screen.findByText("Le planning")).toBeInTheDocument();
-});
-
-test("RequireSession redirects an anonymous visitor, and remembers where they were going", async () => {
-  await renderWithSession(
-    <Routes>
-      <Route element={<RequireSession />}>
-        <Route path="/planning" element={<p>Le planning</p>} />
+      <Route element={<RequirePermission permission="events.view" />}>
+        <Route path="/events" element={<p>Le planning</p>} />
       </Route>
       <Route path="/login" element={<Whereabouts />} />
     </Routes>,
-    { route: "/planning" },
+    { route: "/events?past=1" },
   );
 
-  expect(await screen.findByTestId("from")).toHaveTextContent("/planning");
+  expect(await screen.findByTestId("from")).toHaveTextContent("/events?past=1");
 });
 
 /**

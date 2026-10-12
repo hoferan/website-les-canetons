@@ -38,23 +38,36 @@ export function AccountDropdown({
   member,
   active,
   tools,
+  showAccount,
 }: {
   member: Member;
   active: string;
   tools: AccountTool[];
+  /** Whether the reader may open /account, decided by Layout like every entry. */
+  showAccount: boolean;
 }) {
-  return <DesktopDropdown member={member} active={active} tools={tools} onDone={() => {}} />;
+  return (
+    <DesktopDropdown
+      member={member}
+      active={active}
+      tools={tools}
+      showAccount={showAccount}
+      onDone={() => {}}
+    />
+  );
 }
 
 function DesktopDropdown({
   member,
   active,
   tools,
+  showAccount,
   onDone,
 }: {
   member: Member;
   active: string;
   tools: AccountTool[];
+  showAccount: boolean;
   onDone: () => void;
 }) {
   const { logOut, isPending } = useLogout(onDone);
@@ -105,12 +118,14 @@ function DesktopDropdown({
         {/* asChild straight onto Link, for the reason RowActions' ItemFor
             gives: a real anchor survives middle-click, and one Slot layer is
             all it takes for Radix's props to land. */}
-        <DropdownMenuItem asChild>
-          <Link to="/account" aria-current={active === "/account" ? "page" : undefined}>
-            <User aria-hidden="true" />
-            {t("nav.account")}
-          </Link>
-        </DropdownMenuItem>
+        {showAccount ? (
+          <DropdownMenuItem asChild>
+            <Link to="/account" aria-current={active === "/account" ? "page" : undefined}>
+              <User aria-hidden="true" />
+              {t("nav.account")}
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         {tools.map((tool) => (
           <DropdownMenuItem key={tool.to} asChild>
             <Link to={tool.to} aria-current={active === tool.to ? "page" : undefined}>

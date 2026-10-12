@@ -92,7 +92,6 @@ class MemberIndexTest extends TestCase
         $this->assertSame('camille.committee', $camille['username']);
         $this->assertSame($section->id, $camille['sectionId']);
         $this->assertSame('Cloches', $camille['sectionName']);
-        $this->assertTrue($camille['isPlayer']);
         // THE ID, NOT THE NAME. The roster form renders a select over
         // GET /api/v1/committee-functions, so it resolves the name itself; a
         // `committeeFunctionName` here would be a second copy of the same fact
@@ -125,24 +124,18 @@ class MemberIndexTest extends TestCase
         $this->assertStringNotContainsString('bcrypt', $raw);
     }
 
-    public function test_is_player_follows_attendance_respond_and_not_the_register(): void
+    public function test_a_row_says_nothing_about_answering_beyond_its_roles(): void
     {
-        // An organiser without musician must not appear in an attendance
-        // list, or every count carries a permanent phantom "sans réponse".
-        // Note this is a separate question from having an account —
-        // everybody has one of those. And the register does not decide it
-        // either way: one without the role is not a player, and the role
-        // without one is.
-        Member::factory()->named('Rita', 'Registeronly')->inSection('Cloches')->create();
-        Member::factory()->named('Ulysse', 'Unplaced')->musician()->create();
+        // Whether somebody answers for events is what their roles grant, and
+        // the roster already sends roleIds beside GET /api/v1/roles. A second
+        // field saying the same thing can only disagree with it one day.
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data');
 
-        $body = collect($this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data'));
-        $dominique = $body->firstWhere('lastName', 'Direction');
+        $this->assertNotEmpty($body);
 
-        $this->assertNull($dominique['sectionId']);
-        $this->assertFalse($dominique['isPlayer']);
-        $this->assertFalse($body->firstWhere('lastName', 'Registeronly')['isPlayer']);
-        $this->assertTrue($body->firstWhere('lastName', 'Unplaced')['isPlayer']);
+        foreach ($body as $row) {
+            $this->assertArrayNotHasKey('isPlayer', $row);
+        }
     }
 
     public function test_it_answers_401_anonymously_and_403_without_the_permission(): void

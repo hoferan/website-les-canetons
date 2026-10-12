@@ -764,13 +764,13 @@ export const getAuthMeUrl = () => {
 
 /**
  * Any logged-in member. Returns the caller's id, username, first and last
- * name, whether they answer for events (`isPlayer`, which is true exactly
- * when `permissions` contains `attendance.respond`), whether they must
- * change their password before anything else (`mustChangePassword`), and
- * `permissions`.
+ * name, whether they must change their password before anything else
+ * (`mustChangePassword`), and `permissions`.
  *
  * `permissions` is the flat list of permission tokens the caller's roles
- * add up to, and it is what a client shows or hides a screen on.
+ * add up to, and it is what a client shows or hides a screen on. Whether
+ * the caller answers for events is `attendance.respond` in that list; their
+ * register does not decide it.
  *
  * `sectionName`, `committeeFunctionName` and `roleKeys` say where the
  * caller sits in the band, for their own account page. They are for
@@ -7731,13 +7731,13 @@ export const getMemberIndexUrl = (params?: MemberIndexParams) => {
 /**
  * Requires `members.manage`. Returns everyone the band tracks, ordered by
  * last name then first name. Each entry carries the person's register
- * (`sectionId` and `sectionName`), whether they answer for events
- * (`isPlayer`, from their roles), their committee title, whether they may
+ * (`sectionId` and `sectionName`), their committee title, whether they may
  * be shown on the public site, and `roleIds`, the roles they hold.
  *
  * No password and no hash is ever included, and neither are effective
- * permissions beyond `isPlayer`: a role is what grants them, so read
- * `GET /api/v1/roles` and join on `roleIds`.
+ * permissions: a role is what grants them, so read `GET /api/v1/roles` and
+ * join on `roleIds`. That is also how to tell who answers for events: the
+ * roles granting `attendance.respond`, whatever the register says.
  *
  * Three optional filters narrow the roster, and combine when given
  * together. `q` matches a first name, a last name, a username, or the
