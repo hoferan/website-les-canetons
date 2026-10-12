@@ -224,17 +224,14 @@ test("a tag nothing carries says so, and is not an empty planning", async () => 
   expect(screen.queryByText(/générez toute une saison/)).toBeNull();
 });
 
-test("only somebody who manages events is offered the tag editor", async () => {
+test("the tag editor is not linked from the planning", async () => {
+  // It is reached from the menu, like every other committee screen (#281);
+  // Layout.test.tsx pins who sees that entry.
   await renderPlanning("demo.direction");
-  expect(screen.getByRole("link", { name: "Modifier les catégories" })).toHaveAttribute(
-    "href",
-    "/event-tags",
-  );
-});
-
-test("a player is not offered the tag editor", async () => {
-  await renderPlanning("demo.player");
-  expect(screen.queryByRole("link", { name: "Modifier les catégories" })).toBeNull();
+  await screen.findAllByTestId("event-card");
+  expect(
+    screen.queryAllByRole("link").filter((link) => link.getAttribute("href") === "/event-tags"),
+  ).toEqual([]);
 });
 
 test("no tag filter is offered when the band has no tags", async () => {

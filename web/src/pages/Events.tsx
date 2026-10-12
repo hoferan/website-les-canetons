@@ -574,23 +574,8 @@ export function Events() {
         ) : null}
       </div>
 
-      {/* The editor's link ends the filter's own row rather than taking a
-          line under it: that line put the committee's first card 28px past
-          members.spec's bound at 390px. Short on screen, "Modifier" beside
-          the chips it edits; its accessible name says which. */}
-      <div className="mt-tight flex items-center gap-related">
-        <div className="min-w-0 flex-1">
-          <TagFilter tags={tagList} value={tag} onChange={setChosenTag} />
-        </div>
-        {mayManage ? (
-          <Link
-            to="/event-tags"
-            aria-label={t("eventTags.manageLink")}
-            className="inline-flex min-h-touch shrink-0 items-center text-sm text-violet underline underline-offset-2"
-          >
-            {t("common.edit")}
-          </Link>
-        ) : null}
+      <div className="mt-tight">
+        <TagFilter tags={tagList} value={tag} onChange={setChosenTag} />
       </div>
 
       {calendarEnabled && showingCalendar ? (

@@ -1,4 +1,13 @@
-import { Calendar, Drum, Images, Inbox, type LucideIcon, ShieldCheck, Users } from "lucide-react";
+import {
+  Calendar,
+  Drum,
+  Images,
+  Inbox,
+  type LucideIcon,
+  ShieldCheck,
+  Tags,
+  Users,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
@@ -67,6 +76,8 @@ const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
  */
 const TOOLS: Array<{ to: string; labelKey: TranslationKey; permission: string; icon: LucideIcon }> =
   [
+    // First, beside Événements: the tags label the planning.
+    { to: "/event-tags", labelKey: "nav.eventTags", permission: "events.manage", icon: Tags },
     { to: "/members", labelKey: "nav.members", permission: "members.manage", icon: Users },
     { to: "/inbox", labelKey: "nav.inbox", permission: "messages.view", icon: Inbox },
     { to: "/media", labelKey: "nav.media", permission: "images.manage", icon: Images },

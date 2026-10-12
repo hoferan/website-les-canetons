@@ -95,7 +95,13 @@ test("a tag at the forty-character cap stays on a small phone's screen", async (
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/events");
 
-  await page.getByRole("link", { name: "Modifier les catégories" }).click();
+  // Through the phone menu, as a committee member on a phone reaches it
+  // (#281), and without a reload, which would reset the mocked backend.
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page
+    .getByRole("dialog", { name: "Menu" })
+    .getByRole("link", { name: "Catégories" })
+    .click();
   await page.getByRole("button", { name: "Modifier « Sortie »" }).click();
   // Scoped to the rows: the new-tag form below has a field of the same name.
   const rows = page.getByTestId("event-tag-row");

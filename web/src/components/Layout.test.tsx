@@ -148,6 +148,7 @@ test("the desktop menu names who is logged in, then the account, the committee's
   const items = screen.getAllByRole("menuitem");
   expect(items.map((item) => item.textContent)).toEqual([
     "Mon compte",
+    "Catégories",
     "Membres",
     "Boîte de réception2",
     "Médias",
@@ -157,7 +158,8 @@ test("the desktop menu names who is logged in, then the account, the committee's
   ]);
   // Not back at the login form: the member's own account.
   expect(items[0]).toHaveAttribute("href", "/account");
-  expect(items[1]).toHaveAttribute("href", "/members");
+  expect(items[1]).toHaveAttribute("href", "/event-tags");
+  expect(items[2]).toHaveAttribute("href", "/members");
 });
 
 /**
@@ -204,7 +206,7 @@ test("the phone layer puts the member's screens first and the account last", asy
     within(mine)
       .getAllByRole("link")
       .map((link) => link.getAttribute("href")),
-  ).toEqual(["/events", "/members", "/inbox", "/media", "/registers", "/roles"]);
+  ).toEqual(["/events", "/event-tags", "/members", "/inbox", "/media", "/registers", "/roles"]);
   const band = within(layer).getByRole("list", { name: "Le groupe" });
   expect(within(band).getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
 
