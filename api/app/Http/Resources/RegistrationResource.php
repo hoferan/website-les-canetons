@@ -32,7 +32,10 @@ class RegistrationResource extends JsonResource
             'firstName' => $this->first_name,
             'lastName' => $this->last_name,
             'email' => $this->email,
+            /** The number as the guest typed it. This is what to show. */
             'phone' => $this->phone,
+            /** The same number in E.164, to dial, or null when it could not be read as one: show and dial `phone` then. Read as Swiss unless it starts with `+` or `00`. */
+            'phoneE164' => $this->phone_e164,
             'address' => $this->address,
             /** Seating preference the guest gave, or null. */
             'tableName' => $this->table_name,

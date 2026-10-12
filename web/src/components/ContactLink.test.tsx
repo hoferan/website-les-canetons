@@ -25,6 +25,16 @@ test("a phone shows what was stored and dials what was sanitised", () => {
   );
 });
 
+test("a phone the API read in E.164 dials that, and still shows what the guest typed", () => {
+  // The case telHref() gets wrong on its own: the (0) trunk prefix.
+  render(<ContactLink kind="phone" value="+41 (0)79 123 45 67" e164="+41791234567" />);
+
+  expect(screen.getByRole("link", { name: "+41 (0)79 123 45 67" })).toHaveAttribute(
+    "href",
+    "tel:+41791234567",
+  );
+});
+
 test("a value that cannot be linked is still shown, as text", () => {
   render(<ContactLink kind="phone" value="à demander" />);
 

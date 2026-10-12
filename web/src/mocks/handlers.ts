@@ -970,6 +970,24 @@ export function setMemberRoles(id: number, roleIds: number[]): void {
   }
 }
 
+/**
+ * A rough stand-in for the API's E.164 reading (#129), which uses
+ * libphonenumber: a ten-digit Swiss national number or an explicit `+`
+ * number, without letters, and null for anything else. Close enough for a
+ * screen to show both cases; the API's own tests pin the real rules.
+ */
+function mockE164(phone: string): string | null {
+  const trimmed = phone.trim();
+  if (/\p{L}/u.test(trimmed) || trimmed.slice(1).includes("+")) {
+    return null;
+  }
+  const digits = trimmed.replace(/[^0-9]/g, "");
+  if (trimmed.startsWith("+")) {
+    return digits.length >= 8 && digits.length <= 15 ? `+${digits}` : null;
+  }
+  return /^0[1-9]\d{8}$/.test(digits) ? `+41${digits.slice(1)}` : null;
+}
+
 function resetRoster(): void {
   members = initialMembers();
   nextMemberId = 6;
@@ -1894,6 +1912,7 @@ function initialRegistrations(): MockRegistration[] {
       lastName: "Aebischer",
       email: "jeanne.aebischer@example.ch",
       phone: "079 123 45 67",
+      phoneE164: "+41791234567",
       address: "Route des Alpes 12, 1700 Fribourg",
       tableName: "Avec la famille Python",
       choices: [
@@ -1912,6 +1931,7 @@ function initialRegistrations(): MockRegistration[] {
       lastName: "Python",
       email: "marc.python@example.ch",
       phone: "026 322 10 10",
+      phoneE164: "+41263221010",
       address: null,
       tableName: null,
       choices: [{ optionId: 3, label: "Sans repas", quantity: 1, priceCents: null }],
@@ -4168,6 +4188,7 @@ const overrides = [
       lastName: String(body.lastName),
       email: String(body.email),
       phone: String(body.phone),
+      phoneE164: mockE164(String(body.phone)),
       address: body.address?.trim() ? body.address : null,
       tableName: body.tableName?.trim() ? body.tableName : null,
       choices,
@@ -4321,6 +4342,7 @@ const overrides = [
       lastName: patch.lastName ?? existing.lastName,
       email: patch.email ?? existing.email,
       phone: patch.phone ?? existing.phone,
+      phoneE164: patch.phone === undefined ? existing.phoneE164 : mockE164(patch.phone),
       // array_key_exists, not `??`: both an omitted field and an explicit
       // null are nullish, so `??` would make clearing an address silently do
       // nothing — the exact trap the server's own comment names.
