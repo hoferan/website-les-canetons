@@ -88,7 +88,14 @@ class DevSeeder extends Seeder
         // the band tracks for events, and all of them are answerable. People
         // the band merely displays — instructors, honorary members — are
         // content and are not members at all.
-        $this->member('demo.young', 'Nadia', 'Sansconnexion', $sections['Batteurs']->id);
+        //
+        // The account is used, so it has a last login (#148). The column is not
+        // fillable, because only logging in writes it, so it is forced here, and
+        // on creation only like every other attribute this seeder sets.
+        $young = $this->member('demo.young', 'Nadia', 'Sansconnexion', $sections['Batteurs']->id);
+        if ($young->wasRecentlyCreated) {
+            $young->forceFill(['last_login_at' => '2026-09-12 18:05:00'])->save();
+        }
     }
 
     /**

@@ -79,6 +79,14 @@ class DevSeederTest extends TestCase
         $this->assertFalse($has('demo.direction', Permission::AttendanceRespond));
     }
 
+    public function test_the_young_member_has_logged_in_because_a_parent_uses_the_account(): void
+    {
+        // Null here makes the roster pill the card "Jamais utilisé", which
+        // says the opposite of who this persona is (#148).
+        $this->assertNotNull(Member::where('username', 'demo.young')->value('last_login_at'));
+        $this->assertNull(Member::where('username', 'demo.player')->value('last_login_at'));
+    }
+
     public function test_seeding_twice_does_not_duplicate_anyone(): void
     {
         $this->seed(DevSeeder::class);

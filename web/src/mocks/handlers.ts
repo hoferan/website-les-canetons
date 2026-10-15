@@ -855,8 +855,8 @@ function initialMembers(): MemberResource[] {
       lastName: "Direction",
       username: "demo.direction",
       mustChangePassword: false,
-      // The one non-null lastLoginAt, so the roster renders BOTH branches —
-      // "last seen" and "never". DevSeeder leaves the column null, but the
+      // A non-null lastLoginAt, so the roster renders BOTH branches — "last
+      // seen" and "never". DevSeeder leaves this member's column null, but the
       // column is written by logging in and no endpoint can set it, so a mock
       // that mirrored the seeder byte-for-byte would leave the populated branch
       // unrenderable. A fixed instant, for the same reason the password is
@@ -936,13 +936,14 @@ function initialMembers(): MemberResource[] {
     },
     {
       // Their parent uses the login on their behalf, so the account is used —
-      // just not by the member.
+      // just not by the member. Hence a lastLoginAt: without one the roster
+      // pills this card "Jamais utilisé", the opposite of this comment (#148).
       id: 5,
       firstName: "Nadia",
       lastName: "Sansconnexion",
       username: "demo.young",
       mustChangePassword: false,
-      lastLoginAt: null,
+      lastLoginAt: "2026-09-12T18:05:00+02:00",
       sectionId: 1,
       sectionName: "Batteurs",
       committeeFunctionId: null,
