@@ -40,9 +40,10 @@ return [
     // failure the middleware exists to prevent, and it fails as a broken API
     // rather than as a missing setting.
     //
-    // Set AUTO_MIGRATE=false only to pin a server's schema deliberately (a
-    // rollback being investigated, a migration you intend to run by hand). It
-    // is pinned false in phpunit.xml so the suite never migrates implicitly.
+    // Set AUTO_MIGRATE=false only to stop a migration that fails on every
+    // request. The server then serves against the schema it has rather than
+    // answering 503 (docs/adr/0030). It is pinned false in phpunit.xml so the
+    // suite never migrates implicitly.
     'auto_migrate' => (bool) env('AUTO_MIGRATE', true),
 
     /*
