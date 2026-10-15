@@ -718,9 +718,10 @@ test("the reset dialog and the one-time password reveal are German", async () =>
 test("the login pills render on the card in German", async () => {
   await renderRoster("de-CH");
 
-  // Nadia's fixture has never logged in, which is the state the pills exist
-  // to make the committee look at (#94).
-  const card = rowFor("Sansconnexion");
+  // Perrine's fixture has never logged in, which is the state the pills exist
+  // to make the committee look at (#94). Not Nadia: a parent uses her login
+  // (#148).
+  const card = rowFor("Player");
   expect(within(card).getByTestId("member-login-pill-never-used")).toHaveTextContent("Nie benutzt");
   expect(within(card).getByTestId("member-login-pill-never-used")).toHaveAccessibleName(
     "Konto nie benutzt",
