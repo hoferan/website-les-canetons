@@ -205,9 +205,10 @@ class AutoMigrateTest extends TestCase
     // ---------------------------------------------------------------- the toggle
 
     /**
-     * AUTO_MIGRATE=false is a deliberate maintenance stance, so it must be
-     * total: the request is served, and the pending migration is left exactly
-     * where it was.
+     * AUTO_MIGRATE=false is the switch that ends an outage caused by a failing
+     * migration, so it must be total: the request is served, and the pending
+     * migration is left exactly where it was. Answering 503 here would leave
+     * no way to bring the site back without a shell (docs/adr/0030).
      */
     public function test_the_toggle_off_leaves_a_pending_migration_alone(): void
     {

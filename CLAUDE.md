@@ -269,17 +269,13 @@ middleware refuses to serve against a schema it cannot vouch for, so every
 migration retries on every request. This is why migrations must stay idempotent
 *and* backward-compatible.
 
-**`AUTO_MIGRATE=false` does not fail closed, whatever this file used to say.**
+**`AUTO_MIGRATE=false` does not fail closed, on purpose.**
 `RunPendingMigrations::handle()` skips `maybeMigrate()` entirely when the flag
-is off and calls `$next($request)`, so a server with it false serves normally
-against whatever schema it has — it does not answer 503 on pending work. The
-503 comes only from the flag being **on** and the advisory lock being
-unobtainable, or from a migration throwing. So the switch stops the retry loop
-rather than pinning the schema behind a refusal, and a server left on false
-will happily answer requests against a schema the code has outgrown. The same
-claim is repeated in `api/.env.example`; both were wrong until 2026-09-14, and
-whether the code or the documentation should move is
-[#112](https://github.com/hoferan/website-les-canetons/issues/112).
+is off, so the server serves against whatever schema it has. That is the
+outage switch: with no shell on the host, it is how a migration failing on
+every request gets stopped and the site brought back while the fix is written.
+Set it back to `true` afterwards, because a server left on `false` answers
+against a schema the code may have outgrown. ADR 0030 has the reasoning.
 
 ## Traps
 

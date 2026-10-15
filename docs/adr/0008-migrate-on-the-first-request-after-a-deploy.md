@@ -59,8 +59,8 @@ implicitly, so a failed migration cannot be rolled back.
   goes through `npm run dbmigrate:<env>` first.
 - Bad, because the first visitor after a deploy pays for the migration.
 - Bad, because `AUTO_MIGRATE=false` does not fail closed: the server serves against
-  whatever schema it has. Whether the code or the documentation should change is issue
-  #112.
+  whatever schema it has. That is deliberate, because the flag is the switch that ends
+  an outage ([ADR-0030](0030-auto-migrate-off-keeps-serving.md)).
 
 ## Pros and Cons of the Options
 

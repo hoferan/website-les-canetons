@@ -53,3 +53,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0027](0027-draft-events.md)                                        | Write events as drafts and publish them as a separate act                     |
 | [0028](0028-photos-live-in-the-database-in-sizes-made-by-the-browser.md) | Keep photos in the database, in three sizes the browser makes |
 | [0029](0029-the-carnival-look.md) | Give the public pages a carnival look: poster heroes, scalloped edges and raised cards |
+| [0030](0030-auto-migrate-off-keeps-serving.md) | Keep serving when AUTO_MIGRATE is off, because it is the outage switch |

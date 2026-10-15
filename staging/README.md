@@ -477,6 +477,7 @@ Recovering, in order:
 2. If you need the API back **before** you have a fix, set `AUTO_MIGRATE=false`
    in that server's `_api/.env`. That is the emergency switch: requests
    are served again, against the half-applied schema, until you set it back.
+   It serves rather than refusing on purpose; `docs/adr/0030` says why.
 3. Fix the migration, deploy, re-run `dbmigrate:<env>`, then set `AUTO_MIGRATE`
    back to `true`.
 
