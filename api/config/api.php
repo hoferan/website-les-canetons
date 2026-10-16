@@ -109,4 +109,11 @@ return [
 
     ],
 
+    /*
+     * The file each deploy writes into the document root, one level above
+     * `_api/`, saying which commit it uploaded. GET /api/health reads it. A
+     * test points this at a file of its own.
+     */
+    'deployment_marker' => base_path('../deployment.json'),
+
 ];

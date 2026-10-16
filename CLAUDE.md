@@ -220,7 +220,10 @@ reports the same drift without refusing; a server with no `.env` yet only warns.
 
 **Deployment marker:** each deploy writes `deployment.json` to the site root
 (commit, ref, time, run URL). Note it is **not** web-readable: the fallback
-catch-all serves the shell for it, like every other root file.
+catch-all serves the shell for it, like every other root file. Read it through
+`GET /api/health` instead, which also reports whether the database answers and
+which migrations are pending. It is public and any status but 200 means
+unhealthy; `HealthController` says why.
 
 ### Automated DB migrations
 
@@ -490,7 +493,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
 npm run dev         # generate the docker .htaccess overlay, then bring the stack up
 npm run dev:web     # Vite dev server on :5173 — where you actually work
 npm run build       # refresh the artifact the :8090 stack serves
-npm run smoke       # HTTP smoke checks against the built artifact (10 checks)
+npm run smoke       # HTTP smoke checks against the built artifact (11 checks)
 npm run dev:down    # stop
 ```
 
