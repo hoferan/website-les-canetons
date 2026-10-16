@@ -33,7 +33,12 @@ export default defineConfig({
       // handlers in front of them for the four endpoints where the content, not
       // just the shape, has to be plausible.
       // orval 8.23 takes a `generators` array here, not a bare `type`.
-      mock: { generators: [{ type: "msw" }] },
+      //
+      // baseUrl, so each handler matches the API and nothing else. Without it
+      // orval writes `*/images/:image`, which also matches Vite's
+      // /src/images/*.tsx: a module imported lazily after the worker started
+      // (#294) came back as a mocked image and the page failed to load.
+      mock: { generators: [{ type: "msw", baseUrl: "/api/v1" }] },
       override: {
         mutator: {
           path: "web/src/api/http.ts",

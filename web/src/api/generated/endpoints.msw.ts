@@ -2247,7 +2247,7 @@ export const getAuthLoginMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/login",
+    "/api/v1/login",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2271,7 +2271,7 @@ export const getAuthLogoutMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/logout",
+    "/api/v1/logout",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2293,7 +2293,7 @@ export const getAuthMeMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/me",
+    "/api/v1/me",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2317,7 +2317,7 @@ export const getAccountPasswordMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/me/password",
+    "/api/v1/me/password",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2341,7 +2341,7 @@ export const getEventIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/events",
+    "/api/v1/events",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2365,7 +2365,7 @@ export const getEventStoreMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/events",
+    "/api/v1/events",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2389,7 +2389,7 @@ export const getEventShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/events/:event",
+    "/api/v1/events/:event",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2413,7 +2413,7 @@ export const getEventUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.patch(
-    "*/events/:event",
+    "/api/v1/events/:event",
     async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2437,7 +2437,7 @@ export const getEventDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/events/:event",
+    "/api/v1/events/:event",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2461,7 +2461,7 @@ export const getEventSeriesMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/events/series",
+    "/api/v1/events/series",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2485,7 +2485,7 @@ export const getEventPublishMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/events/:event/publish",
+    "/api/v1/events/:event/publish",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2509,7 +2509,7 @@ export const getEventUnpublishMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/events/:event/publish",
+    "/api/v1/events/:event/publish",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2533,7 +2533,7 @@ export const getAttendanceUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/events/:event/attendance",
+    "/api/v1/events/:event/attendance",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2557,7 +2557,7 @@ export const getAttendanceDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/events/:event/attendance",
+    "/api/v1/events/:event/attendance",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2581,7 +2581,7 @@ export const getAttendanceIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/events/:event/attendance",
+    "/api/v1/events/:event/attendance",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2605,7 +2605,7 @@ export const getMemberAttendanceUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/events/:event/attendance/:member",
+    "/api/v1/events/:event/attendance/:member",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2629,7 +2629,7 @@ export const getMemberAttendanceDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/events/:event/attendance/:member",
+    "/api/v1/events/:event/attendance/:member",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2653,7 +2653,7 @@ export const getRegistrationStoreMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/events/:event/registrations",
+    "/api/v1/events/:event/registrations",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2677,7 +2677,7 @@ export const getRegistrationIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/events/:event/registrations",
+    "/api/v1/events/:event/registrations",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2701,7 +2701,7 @@ export const getRegistrationFormMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/events/:event/registration",
+    "/api/v1/events/:event/registration",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2731,7 +2731,7 @@ export const getRegistrationExportMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/events/:event/registrations.:format",
+    "/api/v1/events/:event/registrations.:format",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       const binaryBody =
         overrideResponse !== undefined
@@ -2757,7 +2757,7 @@ export const getRegistrationShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/registrations/:registration",
+    "/api/v1/registrations/:registration",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2781,7 +2781,7 @@ export const getRegistrationUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.patch(
-    "*/registrations/:registration",
+    "/api/v1/registrations/:registration",
     async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2805,7 +2805,7 @@ export const getRegistrationDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/registrations/:registration",
+    "/api/v1/registrations/:registration",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2829,7 +2829,7 @@ export const getRegistrationOptionIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/events/:event/registration-options",
+    "/api/v1/events/:event/registration-options",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2853,7 +2853,7 @@ export const getRegistrationOptionReplaceMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/events/:event/registration-options",
+    "/api/v1/events/:event/registration-options",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2877,7 +2877,7 @@ export const getEventTagIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/event-tags",
+    "/api/v1/event-tags",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2901,7 +2901,7 @@ export const getEventTagStoreMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/event-tags",
+    "/api/v1/event-tags",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2925,7 +2925,7 @@ export const getEventTagShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/event-tags/:eventTag",
+    "/api/v1/event-tags/:eventTag",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2949,7 +2949,7 @@ export const getEventTagUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/event-tags/:eventTag",
+    "/api/v1/event-tags/:eventTag",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2973,7 +2973,7 @@ export const getEventTagDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/event-tags/:eventTag",
+    "/api/v1/event-tags/:eventTag",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -2997,7 +2997,7 @@ export const getInboxSummaryMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/inbox/summary",
+    "/api/v1/inbox/summary",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3021,7 +3021,7 @@ export const getInboxIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/inbox",
+    "/api/v1/inbox",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3045,7 +3045,7 @@ export const getContactMessageIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/contact-messages",
+    "/api/v1/contact-messages",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3069,7 +3069,7 @@ export const getContactMessageShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/contact-messages/:contactMessage",
+    "/api/v1/contact-messages/:contactMessage",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3093,7 +3093,7 @@ export const getContactMessageHandleMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.patch(
-    "*/contact-messages/:contactMessage",
+    "/api/v1/contact-messages/:contactMessage",
     async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3114,7 +3114,7 @@ export const getContactMessageDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/contact-messages/:contactMessage",
+    "/api/v1/contact-messages/:contactMessage",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       if (typeof overrideResponse === "function") {
         await overrideResponse(info);
@@ -3135,7 +3135,7 @@ export const getRoleIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/roles",
+    "/api/v1/roles",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3159,7 +3159,7 @@ export const getRoleStoreMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/roles",
+    "/api/v1/roles",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3181,7 +3181,7 @@ export const getRoleShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/roles/:role",
+    "/api/v1/roles/:role",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3205,7 +3205,7 @@ export const getRoleUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.patch(
-    "*/roles/:role",
+    "/api/v1/roles/:role",
     async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3229,7 +3229,7 @@ export const getRoleDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/roles/:role",
+    "/api/v1/roles/:role",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3253,7 +3253,7 @@ export const getRolePermissionReplaceMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/roles/:role/permissions",
+    "/api/v1/roles/:role/permissions",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3277,7 +3277,7 @@ export const getSectionIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/sections",
+    "/api/v1/sections",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3301,7 +3301,7 @@ export const getSectionStoreMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/sections",
+    "/api/v1/sections",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3325,7 +3325,7 @@ export const getSectionReorderMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/sections/order",
+    "/api/v1/sections/order",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3349,7 +3349,7 @@ export const getSectionShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/sections/:section",
+    "/api/v1/sections/:section",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3373,7 +3373,7 @@ export const getSectionUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.patch(
-    "*/sections/:section",
+    "/api/v1/sections/:section",
     async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3397,7 +3397,7 @@ export const getSectionDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/sections/:section",
+    "/api/v1/sections/:section",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3421,7 +3421,7 @@ export const getCommitteeFunctionIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/committee-functions",
+    "/api/v1/committee-functions",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3445,7 +3445,7 @@ export const getMemberIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/members",
+    "/api/v1/members",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3469,7 +3469,7 @@ export const getMemberStoreMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/members",
+    "/api/v1/members",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3493,7 +3493,7 @@ export const getMemberShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/members/:member",
+    "/api/v1/members/:member",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3517,7 +3517,7 @@ export const getMemberUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.patch(
-    "*/members/:member",
+    "/api/v1/members/:member",
     async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3541,7 +3541,7 @@ export const getMemberDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/members/:member",
+    "/api/v1/members/:member",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3565,7 +3565,7 @@ export const getMemberRoleReplaceMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/members/:member/roles",
+    "/api/v1/members/:member/roles",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3589,7 +3589,7 @@ export const getMemberPasswordResetMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/members/:member/password",
+    "/api/v1/members/:member/password",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3613,7 +3613,7 @@ export const getAgendaIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/agenda",
+    "/api/v1/agenda",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3637,7 +3637,7 @@ export const getBandIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/band",
+    "/api/v1/band",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3661,7 +3661,7 @@ export const getCommitteeIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/committee",
+    "/api/v1/committee",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3685,7 +3685,7 @@ export const getHistoryEntryIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/history",
+    "/api/v1/history",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3709,7 +3709,7 @@ export const getHistoryEntryStoreMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/history",
+    "/api/v1/history",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3733,7 +3733,7 @@ export const getHistoryEntryShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/history/:historyEntry",
+    "/api/v1/history/:historyEntry",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3757,7 +3757,7 @@ export const getHistoryEntryUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/history/:historyEntry",
+    "/api/v1/history/:historyEntry",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3781,7 +3781,7 @@ export const getHistoryEntryDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/history/:historyEntry",
+    "/api/v1/history/:historyEntry",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3805,7 +3805,7 @@ export const getFormTokenShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/form-token",
+    "/api/v1/form-token",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3829,7 +3829,7 @@ export const getContactStoreMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/contact",
+    "/api/v1/contact",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3851,7 +3851,7 @@ export const getImageFileMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/images/:sha256.jpg",
+    "/api/v1/images/:sha256.jpg",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       const binaryBody =
         overrideResponse !== undefined
@@ -3877,7 +3877,7 @@ export const getImageIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/images",
+    "/api/v1/images",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3901,7 +3901,7 @@ export const getImageStoreMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/images",
+    "/api/v1/images",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3925,7 +3925,7 @@ export const getImageSummaryMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/images/summary",
+    "/api/v1/images/summary",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3949,7 +3949,7 @@ export const getImageShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/images/:image",
+    "/api/v1/images/:image",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3973,7 +3973,7 @@ export const getImageUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.patch(
-    "*/images/:image",
+    "/api/v1/images/:image",
     async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -3997,7 +3997,7 @@ export const getImageDestroyMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.delete(
-    "*/images/:image",
+    "/api/v1/images/:image",
     async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -4021,7 +4021,7 @@ export const getImageReplaceMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
-    "*/images/:image/file",
+    "/api/v1/images/:image/file",
     async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -4045,7 +4045,7 @@ export const getConfigShowMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/config",
+    "/api/v1/config",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -4069,7 +4069,7 @@ export const getPhotoSlotIndexMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
-    "*/photo-slots",
+    "/api/v1/photo-slots",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
@@ -4093,7 +4093,7 @@ export const getPhotoSlotUpdateMockHandler = (
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/photo-slots/:slot",
+    "/api/v1/photo-slots/:slot",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
