@@ -32,8 +32,7 @@ cron and no long-lived process to do that work.
 - Housekeeping runs by lottery on a write. `IdempotentWrite` sweeps expired rows on a
   small fraction of requests, configured in `api/config/api.php`.
 - There are no automatic reminders. The direction gets a chase list of members who
-  have not answered, with a button that copies a message for WhatsApp, which is where
-  the band already talks. Nobody is emailed or pushed.
+  have not answered and follows up with them itself. Nobody is emailed or pushed.
 
 ### Consequences
 
