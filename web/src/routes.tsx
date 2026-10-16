@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
@@ -26,12 +27,19 @@ import { Home } from "./pages/Home";
 import { Inbox } from "./pages/Inbox";
 import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
-import { Media } from "./pages/Media";
 import { Registers } from "./pages/Registers";
 import { Roles } from "./pages/Roles";
-import { MediaDetail } from "./pages/MediaDetail";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
+
+// The library's two pages are a chunk of their own (#294): only `images.manage`
+// opens them, and they bring the upload queue and the shrink step with them.
+// A navigation here is a transition, so the previous page stays up while the
+// chunk loads; only a fresh load of the URL shows the empty fallback.
+const Media = lazy(() => import("./pages/Media").then((module) => ({ default: module.Media })));
+const MediaDetail = lazy(() =>
+  import("./pages/MediaDetail").then((module) => ({ default: module.MediaDetail })),
+);
 
 /**
  * The route table.
@@ -194,8 +202,22 @@ export function AppRoutes() {
               history, even though the history form offers the same picker to
               whoever also holds this one. */}
           <Route element={<RequirePermission permission="images.manage" />}>
-            <Route path="/media" element={<Media />} />
-            <Route path="/media/:id" element={<MediaDetail />} />
+            <Route
+              path="/media"
+              element={
+                <Suspense fallback={null}>
+                  <Media />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/media/:id"
+              element={
+                <Suspense fallback={null}>
+                  <MediaDetail />
+                </Suspense>
+              }
+            />
           </Route>
 
           <Route path="*" element={<NotFound />} />

@@ -1,10 +1,17 @@
+import { lazy, Suspense } from "react";
+
 import { PhotoPending, PhotoReserved } from "@/components/PhotoPending";
 
 import { useSession } from "../session/SessionProvider";
 import { Photo, PHOTO_SIZES } from "./Photo";
 import { usePhotoSlots } from "./photoSlots";
-import { SlotPhotoControl } from "./SlotPhotoControl";
 import type { ShrinkFn, UploadFn } from "./uploadQueue";
+
+// A chunk of its own, with the drop zone, the picker and the upload queue it
+// pulls in (#294). Only an editor renders it, so no visitor downloads them.
+const SlotPhotoControl = lazy(() =>
+  import("./SlotPhotoControl").then((module) => ({ default: module.SlotPhotoControl })),
+);
 
 type Props = {
   /**
@@ -32,6 +39,9 @@ type Props = {
  *
  * While the slots are on their way the frame is reserved without a caption, so
  * the placeholder does not flash and nothing below moves when a photo arrives.
+ * The same goes while an editor's control is loading: the fallback is the box
+ * the control draws, the photo in its wrapper or the empty 3:2 frame, and the
+ * pencil or the add button then appears inside it.
  *
  * A placed photo fills the column at its own aspect ratio. `Photo` sends width
  * and height, so the box is reserved before the bytes arrive, and `h-auto` lets
@@ -48,14 +58,31 @@ export function SlotPhoto({ slot, label, alt, upload, shrinker }: Props) {
 
   if (can("images.manage")) {
     return (
-      <SlotPhotoControl
-        slot={slot}
-        label={label}
-        photo={photo}
-        alt={alt}
-        upload={upload}
-        shrinker={shrinker}
-      />
+      <Suspense
+        fallback={
+          photo ? (
+            <div className="mt-related">
+              <Photo
+                photo={photo}
+                alt={alt}
+                sizes={PHOTO_SIZES.textColumn}
+                className="block h-auto w-full rounded-lg"
+              />
+            </div>
+          ) : (
+            <PhotoReserved />
+          )
+        }
+      >
+        <SlotPhotoControl
+          slot={slot}
+          label={label}
+          photo={photo}
+          alt={alt}
+          upload={upload}
+          shrinker={shrinker}
+        />
+      </Suspense>
     );
   }
   if (!photo) {
