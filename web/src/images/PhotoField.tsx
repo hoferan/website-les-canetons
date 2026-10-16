@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import type { ImageResource } from "../api/generated/model";
 import { Button } from "@/components/ui/button";
 import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 import { Photo, PHOTO_SIZES, type PhotoData } from "./Photo";
-import { PhotoPicker } from "./PhotoPicker";
+
+// Loaded only for whoever may pick (#294): the picker brings the upload queue
+// and the shrink step. It is a closed dialog until Choisir, so nothing waits.
+const PhotoPicker = lazy(() =>
+  import("./PhotoPicker").then((module) => ({ default: module.PhotoPicker })),
+);
 
 type Props = {
   label: string;
@@ -58,11 +63,13 @@ export function PhotoField({ label, value, onChange }: Props) {
               {t("photos.remove")}
             </Button>
           ) : null}
-          <PhotoPicker
-            open={picking}
-            onOpenChange={setPicking}
-            onPick={(image) => onChange(image.id, photoOf(image))}
-          />
+          <Suspense fallback={null}>
+            <PhotoPicker
+              open={picking}
+              onOpenChange={setPicking}
+              onPick={(image) => onChange(image.id, photoOf(image))}
+            />
+          </Suspense>
         </div>
       ) : null}
     </div>

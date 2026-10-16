@@ -1,13 +1,17 @@
 /**
- * The upload queue's scheduler, free of React and the DOM so it is tested
- * directly (#105).
+ * The upload queue, free of React and the DOM so it is tested directly (#105).
  *
  * Up to a hundred photos can be dropped at once, on a phone. Shrinking is the
  * memory-hungry step, so one runs at a time; uploads are the slow step, so two
  * overlap. A card that has been shrunk keeps the shrink slot until an upload slot
  * frees, which stops decoded work piling up behind a slow connection. One
  * failure settles that card and nothing else.
+ *
+ * p-queue does the scheduling, one queue per step. What a card is, how it
+ * moves between states and why it failed are ours.
  */
+
+import PQueue from "p-queue";
 
 import { ApiError } from "../api/http";
 import { nameFromFile } from "./photoName";
@@ -63,12 +67,13 @@ const SETTLED: CardState[] = ["done", "duplicate", "failed"];
 
 export class UploadQueue {
   private cards: Card[] = [];
-  private readonly sizes = new Map<string, Sizes>();
   private readonly listeners = new Set<() => void>();
   private nextId = 1;
   private disposed = false;
   private doneSinceIdle = false;
-  /** Set while the server has told us to back off; no upload starts until it settles. */
+  private readonly shrinks = new PQueue({ concurrency: MAX_SHRINKING });
+  private readonly uploads = new PQueue({ concurrency: MAX_UPLOADING });
+  /** Set while the server has told us to back off; the uploads stay paused until it settles. */
   private pause: Promise<void> | null = null;
 
   constructor(private readonly options: Options) {}
@@ -87,13 +92,17 @@ export class UploadQueue {
    */
   dispose(): void {
     this.disposed = true;
+    this.shrinks.pause();
+    this.uploads.pause();
   }
 
   /** Undoes dispose(). StrictMode runs an effect's cleanup and then its setup again. */
   activate(): void {
     if (!this.disposed) return;
     this.disposed = false;
-    this.pump();
+    this.shrinks.start();
+    if (!this.pause) this.uploads.start();
+    this.reportIfSettled();
   }
 
   isBusy(cards: Card[] = this.cards): boolean {
@@ -110,7 +119,7 @@ export class UploadQueue {
     if (added.length === 0) return [];
     this.cards = [...this.cards, ...added];
     this.emit();
-    this.pump();
+    added.forEach((card) => this.enqueue(card));
     return added.map((card) => card.id);
   }
 
@@ -137,7 +146,7 @@ export class UploadQueue {
     const card = this.cards.find((c) => c.id === id);
     if (!card || card.state !== "failed") return;
     this.update(id, { state: "waiting", reason: undefined });
-    this.pump();
+    this.enqueue(card);
   }
 
   retryAllFailed(): void {
@@ -147,7 +156,7 @@ export class UploadQueue {
       c.state === "failed" ? { ...c, state: "waiting", reason: undefined } : c,
     );
     this.emit();
-    this.pump();
+    failed.forEach((card) => this.enqueue(card));
   }
 
   private emit(): void {
@@ -159,68 +168,63 @@ export class UploadQueue {
     this.emit();
   }
 
-  private count(state: CardState): number {
-    return this.cards.filter((c) => c.state === state).length;
+  /** Settles a card, then reports if that was the last one of the burst. */
+  private land(id: string, patch: Partial<Card>): void {
+    this.update(id, patch);
+    this.reportIfSettled();
   }
 
-  private pump(): void {
-    if (this.disposed) return;
-
-    // A shrunk card moves on first: it is already holding the shrink slot.
-    for (const card of this.cards) {
-      if (this.pause) break;
-      if (this.count("uploading") >= MAX_UPLOADING) break;
-      if (card.state === "shrinking" && this.sizes.has(card.id)) {
-        this.update(card.id, { state: "uploading" });
-        void this.runUpload(card.id);
-      }
-    }
-
-    if (this.count("shrinking") < MAX_SHRINKING) {
-      const next = this.cards.find((c) => c.state === "waiting");
-      if (next) {
-        this.update(next.id, { state: "shrinking" });
-        void this.runShrink(next);
-      }
-    }
-
-    if (this.doneSinceIdle && !this.isBusy()) {
-      this.doneSinceIdle = false;
-      // A failing invalidation must not reach back into the cards it reports on.
-      try {
-        this.options.onSettled?.();
-      } catch {
-        // Nothing to recover: the cards are already settled.
-      }
-    }
-  }
-
-  private async runShrink(card: Card): Promise<void> {
+  private reportIfSettled(): void {
+    if (this.disposed || !this.doneSinceIdle || this.isBusy()) return;
+    this.doneSinceIdle = false;
+    // A failing invalidation must not reach back into the cards it reports on.
     try {
-      this.sizes.set(card.id, await this.options.shrinker(card.file));
-    } catch (error) {
-      this.update(card.id, { state: "failed", reason: shrinkReason(error) });
+      this.options.onSettled?.();
+    } catch {
+      // Nothing to recover: the cards are already settled.
     }
-    this.pump();
   }
 
-  private async runUpload(id: string): Promise<void> {
-    const sizes = this.sizes.get(id);
-    const card = this.cards.find((c) => c.id === id);
-    if (!sizes || !card) return;
+  /**
+   * Cards are shrunk in the order they appear, so a retried card goes ahead of
+   * the ones queued after it, as it would in a list read from the top.
+   */
+  private enqueue(card: Card): void {
+    const position = this.cards.findIndex((c) => c.id === card.id);
+    void this.shrinks.add(() => this.run(card), { priority: -position });
+  }
+
+  /** One card's whole way through: shrink, then hand the sizes to an upload slot. */
+  private async run(card: Card): Promise<void> {
+    this.update(card.id, { state: "shrinking" });
+    let sizes: Sizes;
+    try {
+      sizes = await this.options.shrinker(card.file);
+    } catch (error) {
+      this.land(card.id, { state: "failed", reason: shrinkReason(error) });
+      return;
+    }
+    // Waits until an upload slot takes the sizes. The card keeps the shrink slot until then.
+    await new Promise<void>((started) => {
+      void this.uploads.add(() => {
+        started();
+        return this.runUpload(card, sizes);
+      });
+    });
+  }
+
+  private async runUpload(card: Card, sizes: Sizes): Promise<void> {
+    this.update(card.id, { state: "uploading" });
     try {
       const result = await this.uploadWithOneRetry(sizes, nameFromFile(card.file.name));
-      this.update(id, {
+      if (result.status === 201) this.doneSinceIdle = true;
+      this.land(card.id, {
         state: result.status === 201 ? "done" : "duplicate",
         imageId: result.id,
       });
-      if (result.status === 201) this.doneSinceIdle = true;
     } catch (error) {
-      this.update(id, { state: "failed", reason: uploadReason(error) });
-    } finally {
-      this.sizes.delete(id);
+      this.land(card.id, { state: "failed", reason: uploadReason(error) });
     }
-    this.pump();
   }
 
   /**
@@ -235,9 +239,10 @@ export class UploadQueue {
       );
       const sleep =
         this.options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+      this.uploads.pause();
       this.pause = sleep(seconds * 1000).then(() => {
         this.pause = null;
-        this.pump();
+        if (!this.disposed) this.uploads.start();
       });
     }
     return this.pause;

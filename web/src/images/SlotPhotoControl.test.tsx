@@ -382,7 +382,7 @@ test("dragging a file over the slot says where it goes, and leaving clears it", 
 
   expect(screen.queryByText("Déposer pour ajouter")).toBeNull();
   fireEvent.dragEnter(add, dropEvent([jpeg()]));
-  expect(screen.getByText("Déposer pour ajouter")).toBeInTheDocument();
+  expect(await screen.findByText("Déposer pour ajouter")).toBeInTheDocument();
   fireEvent.dragLeave(add, dropEvent([jpeg()]));
   expect(screen.queryByText("Déposer pour ajouter")).toBeNull();
 });
@@ -420,6 +420,20 @@ test("two files, or a file that is not a photo, are refused with a message", asy
 
   expect(shrinker).not.toHaveBeenCalled();
   expect(upload).not.toHaveBeenCalled();
+});
+
+/**
+ * MUTATION TEST: react-dropzone ignores a drop that carries no file. Remove
+ * the frame's own onDrop and the alert stays empty.
+ */
+test("a dragged link or text alone is refused with a message", async () => {
+  setMockUser("demo.direction");
+  const { shrinker, upload } = injected();
+  const add = await renderCloches({ upload, shrinker });
+
+  expect(fireEvent.drop(add, dropEvent([]))).toBe(false);
+  expect(screen.getByRole("alert")).toHaveTextContent("Seule une photo peut être déposée ici.");
+  expect(shrinker).not.toHaveBeenCalled();
 });
 
 test("an upload the server refuses says why and places nothing", async () => {
