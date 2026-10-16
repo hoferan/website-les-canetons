@@ -16,6 +16,7 @@ import { ApiError } from "../api/http";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormField } from "../components/FormField";
+import { useLeaveGuard } from "../components/LeaveGuard";
 import { PageSection } from "../components/PageSection";
 import {
   AlertDialog,
@@ -104,6 +105,12 @@ export function MediaDetail({
   // An open rename form holds the tag it was opened with, so nothing else
   // may change the photo underneath it until it is saved or cancelled.
   const busy = work !== null || savingName || renaming !== null;
+
+  // A name typed and not yet saved would be dropped by leaving the page.
+  useLeaveGuard(
+    renaming !== null && image !== null && renaming.value !== image.name,
+    t("photos.detail.leaveRename"),
+  );
 
   /**
    * The write's answer becomes the read, and everything else that names the

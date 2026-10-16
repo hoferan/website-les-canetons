@@ -1,8 +1,8 @@
 /**
  * Which locale a URL is in, and where the router should be mounted for it.
  *
- * NO REACT AND NO ROUTER IN THIS FILE, deliberately. Unit tests mount
- * MemoryRouter rather than BrowserRouter, so `basename` is never exercised
+ * NO REACT AND NO ROUTER IN THIS FILE, deliberately. Unit tests mount a
+ * memory router rather than the browser one, so `basename` is never exercised
  * there — locale resolution has to be testable, and every component has to be
  * renderable in a chosen locale, without a router in the way.
  *

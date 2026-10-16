@@ -187,6 +187,32 @@ test("while the rename form is open, nothing else can change the photo", async (
   expect(actions().getByRole("button", { name: "Tourner à gauche" })).toBeEnabled();
 });
 
+test("leaving with a name typed and not saved asks first, and an untouched form does not", async () => {
+  const user = userEvent.setup();
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  await renderDetail(1);
+  const back = () => screen.getByRole("link", { name: /Retour aux médias/ });
+
+  await user.click(actions().getByRole("button", { name: "Renommer" }));
+  await user.type(screen.getByLabelText(/^Nom/), " bis");
+  await user.click(back());
+
+  expect(confirm).toHaveBeenCalledWith(
+    "Le nouveau nom n’est pas encore enregistré. Si vous quittez la page, il sera perdu.",
+  );
+  expect(screen.getByLabelText(/^Nom/)).toBeInTheDocument();
+
+  // Opened and left as it was, the form holds nothing to lose.
+  confirm.mockClear();
+  await user.click(screen.getByRole("button", { name: "Annuler" }));
+  await user.click(actions().getByRole("button", { name: "Renommer" }));
+  await user.click(back());
+
+  expect(await screen.findByRole("heading", { level: 1, name: "Médiathèque" })).toBeInTheDocument();
+  expect(confirm).not.toHaveBeenCalled();
+  confirm.mockRestore();
+});
+
 test("a write reads again what shows the photo, and nothing else", async () => {
   const user = userEvent.setup();
   await renderDetail(1, { rotator: async () => [new Blob(["x"])], replacer: fakeReplacer([]) });

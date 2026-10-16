@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import App from "./App";
+import App, { createAppRouter } from "./App";
 import { applyDocumentMeta } from "./i18n/documentMeta";
 import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
@@ -68,11 +68,13 @@ if (redirecting) {
     },
   });
 
+  const router = createAppRouter(basename);
+
   createRoot(root).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
-          <App basename={basename} />
+          <App router={router} />
         </SessionProvider>
       </QueryClientProvider>
     </StrictMode>,
