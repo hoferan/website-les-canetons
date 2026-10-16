@@ -185,14 +185,19 @@ export function EventAttendance() {
             {silent.map((entry) => (
               <li
                 key={entry.memberId}
-                className={`${OUTLINED_CARD} flex flex-wrap items-center justify-between gap-tight p-3`}
+                className={`${OUTLINED_CARD} flex items-center justify-between gap-tight p-3`}
               >
-                <span>
-                  {nameOf(entry)}
+                {/* THE BUTTONS STAY IN ONE COLUMN (#212). The name takes the
+                    spare width and wraps inside its own column, with the register
+                    on a muted line under it, and the buttons never shrink or
+                    wrap. A row that let them wrap put Oui / Non on a line of
+                    their own only under a long name, so at 390px a thumb working
+                    down the list had to find them again on every row. */}
+                <span className="min-w-0 flex-1">
+                  <span className="block">{nameOf(entry)}</span>
                   {entry.sectionName ? (
-                    <span className="text-ink-muted">
-                      {" "}
-                      — {registerName(entry.sectionName, entry.sectionNameDe)}
+                    <span className="block text-sm text-ink-muted">
+                      {registerName(entry.sectionName, entry.sectionNameDe)}
                     </span>
                   ) : null}
                 </span>
@@ -203,13 +208,13 @@ export function EventAttendance() {
                     answer belongs on the planning, which is also where the
                     reason rule he would otherwise walk around lives. */}
                 {mayRecord && entry.memberId === user?.id ? (
-                  <span className="text-sm text-ink-muted">
+                  <span className="max-w-[50%] text-right text-sm text-ink-muted">
                     {t("attendance.answerFromPlanning")}
                   </span>
                 ) : null}
 
                 {mayRecord && entry.memberId !== user?.id ? (
-                  <span className="flex gap-tight">
+                  <span className="flex shrink-0 gap-tight">
                     <Button
                       type="button"
                       variant="raised-light"
