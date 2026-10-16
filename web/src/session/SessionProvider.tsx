@@ -1,6 +1,12 @@
-import { createContext, use, type ReactNode } from "react";
+import { matchMutation, useQueryClient } from "@tanstack/react-query";
+import { createContext, use, useEffect, type ReactNode } from "react";
 
-import { useAuthMe, useConfigShow } from "../api/generated/endpoints";
+import {
+  getAuthLogoutMutationKey,
+  getAuthMeQueryKey,
+  useAuthMe,
+  useConfigShow,
+} from "../api/generated/endpoints";
 import type { AuthMe200, ConfigShow200 } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { t } from "../i18n";
@@ -47,13 +53,15 @@ export function useSession(): Session {
  * i.e. almost all of them.
  *
  * Both queries are staleTime: Infinity. Neither changes without a navigation
- * that reloads the app (login and logout both invalidate explicitly), and
+ * that reloads the app (login and logout both invalidate explicitly, and so
+ * does a session expiring under an open page; see useForgetExpiredSession), and
  * refetching config on every window focus would put a request behind every
  * tab switch for no benefit.
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const config = useConfigShow({ query: { retry: false, staleTime: Infinity } });
   const user = useAuthMe({ query: { retry: false, staleTime: Infinity } });
+  useForgetExpiredSession();
 
   if (config.isPending || user.isPending) {
     return null;
@@ -96,4 +104,67 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   return <SessionContext value={value}>{children}</SessionContext>;
+}
+
+/**
+ * A session that expires while a page is open (#296).
+ *
+ * `/me` is cached forever, so without this the SPA goes on believing in a
+ * session the server has dropped: the guards keep the member on the page, and
+ * every write fails with a "Non authentifié" toast and no way to the login
+ * form. Whichever call is first to answer 401 makes `/me` ask again. That
+ * answers 401 too, the user above becomes null, and RequirePermission redirects
+ * to the login form with `from` set, which is what brings the member back.
+ *
+ * Invalidated rather than cleared, so the server decides: the refetch keeps the
+ * old answer until the new one arrives, and a removed query would leave the
+ * mounted observer holding it anyway (see logout.ts).
+ *
+ * Two kinds of 401 are left alone:
+ *
+ *  - any while `/me` does not hold a user. A visitor who was never logged in
+ *    gets 401s as a matter of course, and so does the member once the refetch
+ *    has answered, so a burst of failing calls asks `/me` once. This is also
+ *    what stops `/me` reacting to its own 401, the normal anonymous answer,
+ *    and refetching forever: the cache records the error before it tells
+ *    anybody, so by the time this hears of it `/me` holds no user. A separate
+ *    check for the `/me` key would never decide anything.
+ *  - logout's. logout.ts expects it and answers with a full page load, and a
+ *    redirect to the login form here would race that load.
+ */
+function useForgetExpiredSession(): void {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const meKey = getAuthMeQueryKey();
+    const logoutKey = getAuthLogoutMutationKey();
+
+    const forget = (error: unknown) => {
+      if (!(error instanceof ApiError) || error.status !== 401) return;
+      if (queryClient.getQueryState(meKey)?.status !== "success") return;
+
+      // cancelRefetch off, so a burst of 401s joins the refetch already
+      // running instead of restarting it once for each.
+      void queryClient.invalidateQueries(
+        { queryKey: meKey, exact: true },
+        { cancelRefetch: false },
+      );
+    };
+
+    const queries = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== "updated" || event.action.type !== "error") return;
+      forget(event.action.error);
+    });
+
+    const mutations = queryClient.getMutationCache().subscribe((event) => {
+      if (event.type !== "updated" || event.action.type !== "error") return;
+      if (matchMutation({ mutationKey: logoutKey }, event.mutation)) return;
+      forget(event.action.error);
+    });
+
+    return () => {
+      queries();
+      mutations();
+    };
+  }, [queryClient]);
 }

@@ -309,6 +309,28 @@ function setCurrentUser(user: MockUser | null): void {
 }
 
 /**
+ * Drops the session when the tab no longer has it, checked on every request.
+ *
+ * A real session lives in a cookie, so it can expire while a page is open,
+ * and the next request is the first to hear of it. Module state cannot: it
+ * only reads the stored session at load. Checking on each request is what lets
+ * an e2e spec expire the session mid-page by removing the key, the same way
+ * login.spec.ts does before a full load.
+ *
+ * Only the removal is read back. A login in some other way than the handlers
+ * would be a different seam, and nothing needs one.
+ */
+function forgetLostSession(): void {
+  try {
+    if (currentUser && globalThis.sessionStorage?.getItem(SESSION_KEY) === null) {
+      currentUser = null;
+    }
+  } catch {
+    // Storage is blocked, so module state is the only session there is.
+  }
+}
+
+/**
  * Test seam: who the mocked backend currently believes is logged in.
  *
  * The read half of setMockUser, and it exists for logout: the button hands the
@@ -2580,6 +2602,12 @@ function placeholderSvg(image: MockImage, size: MockSize): string {
 const MOCK_FORM_TOKEN = "mock-form-token";
 
 const overrides = [
+  // First, and answering nothing: a resolver that returns undefined passes the
+  // request on to the handler that owns it.
+  http.all("/api/*", () => {
+    forgetLostSession();
+  }),
+
   // NOT in the OpenAPI document — it is Sanctum's own route, outside /api — so
   // orval generates no handler for it. But http.ts primes it before every
   // mutating request, so without this every write in the mocked app fails on an
