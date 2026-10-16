@@ -27,8 +27,10 @@ export default defineConfig({
   // of a run under three) on one worker, which then set the wall time for the
   // whole suite (#198).
   fullyParallel: true,
-  // Playwright's default is half the cores, so 2 on a 4-vCPU runner. 4
-  // measured faster there; locally the default stays.
+  // Playwright's default is half the cores, so 2 on a 4-vCPU runner. With 4
+  // and fullyParallel the suite took 119 s there, against 168 s for 2 workers
+  // spread by file. It gains less than the doubling suggests because the
+  // runner is CPU-bound with Vite and four browsers. Locally the default stays.
   workers: process.env.CI ? 4 : undefined,
 
   use: {
