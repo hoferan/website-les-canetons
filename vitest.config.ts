@@ -15,6 +15,19 @@ import { defineConfig } from "vitest/config";
 // tsconfig.json. Vitest does not read vite.config.ts when this file is present,
 // so omitting the alias here fails every test that imports a vendored shadcn
 // component while `npm run build` stays perfectly green.
+
+// The zone the suite runs in; `env` below says why it is deliberately wrong.
+const TEST_TIME_ZONE = "America/New_York";
+
+// Set on this process too, before any worker exists, because `pool: "threads"`
+// below needs it. Worker threads share their process's time zone: the
+// `test.env` entry alone changes `process.env.TZ` inside a thread and leaves
+// the zone where it was, so every formatter would quietly read Europe/Zurich
+// again. Child processes (the `forks` pool) read TZ at start, and would
+// manage with `env` alone. web/src/lib/timeZone.test.ts fails if the zone is
+// ever not the one named here.
+process.env.TZ = TEST_TIME_ZONE;
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -25,6 +38,11 @@ export default defineConfig({
     include: ["web/src/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     setupFiles: ["web/src/setupTests.ts"],
+
+    // Worker threads instead of the default child processes. Each test file
+    // still gets a fresh module graph and its own jsdom, so isolation is
+    // unchanged; a thread is just cheaper to start and feed than a process.
+    pool: "threads",
 
     // A DELIBERATELY WRONG TIMEZONE, and the wrongness is the point (#177).
     //
@@ -46,6 +64,6 @@ export default defineConfig({
     //
     // Set here rather than in the npm script because `TZ=... vitest` is not a
     // thing on Windows, and this repo is developed from PowerShell.
-    env: { TZ: "America/New_York" },
+    env: { TZ: TEST_TIME_ZONE },
   },
 });
