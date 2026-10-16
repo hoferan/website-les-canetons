@@ -282,6 +282,13 @@ test("Back asks before dropping a name typed and not saved", async ({ page }) =>
 
   await page.getByRole("button", { name: "Renommer" }).click();
   await page.getByLabel("Nom").fill("Pas encore enregistré");
+  // Let the page settle before pressing Back, as a person would. Typing arms
+  // the guard over a few render tasks, because LeaveGuardProvider mounts its
+  // blocker only once a guard is active (its docblock says why), and a
+  // goBack() straight after fill() can land before the router has a blocker
+  // to ask. Under CPU load it did, in 5 runs of 40 (#299). An idle callback
+  // runs only once those tasks have drained.
+  await page.evaluate(() => new Promise<void>((settle) => requestIdleCallback(() => settle())));
 
   const asked: string[] = [];
   page.once("dialog", (dialog) => {

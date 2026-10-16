@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, LoaderCircle, Pencil } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useDropzone, type DropEvent } from "react-dropzone";
 import { useLocation } from "react-router-dom";
 
 import {
@@ -25,6 +26,18 @@ import { useUploadQueue } from "./useUploadQueue";
 function looksLikePhoto(file: File): boolean {
   return file.type === "" || file.type.startsWith("image/");
 }
+
+/**
+ * The files as the browser lists them on the drop. react-dropzone's own reader
+ * walks into a dropped folder, which a slot holding one photo has no use for.
+ */
+async function droppedFiles(event: DropEvent | FileSystemFileHandle[]): Promise<File[]> {
+  if (Array.isArray(event) || !("dataTransfer" in event)) return [];
+  return Array.from(event.dataTransfer?.files ?? []);
+}
+
+const carriesFiles = (event: DragEvent) =>
+  Array.from(event.dataTransfer?.types ?? []).includes("Files");
 
 type Props = {
   /** The slot's name, unique across the site. */
@@ -78,11 +91,7 @@ export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: 
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [dropped, setDropped] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
   const [outcome, setOutcome] = useState<string | null>(null);
-  // dragenter and dragleave fire for every child the pointer crosses, so the
-  // frame counts them rather than trusting the last one.
-  const depth = useRef(0);
   const control = useRef<HTMLButtonElement>(null);
   const refocus = useRef(false);
   const manages = can("images.manage");
@@ -123,10 +132,6 @@ export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: 
     };
   }, [manages]);
 
-  if (!manages) {
-    return null;
-  }
-
   const droppedCard = queue.cards.find((card) => card.id === dropped);
   const progress = saving
     ? t("common.busy")
@@ -134,6 +139,41 @@ export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: 
       ? t(`photos.state.${droppedCard.state}`)
       : null;
   const busy = progress !== null;
+
+  // react-dropzone follows the drag across the frame's children and collects
+  // the files. The frame's button opens the library picker, so the zone opens
+  // no file dialog of its own, on a click, a key or a paste.
+  const { getRootProps, isDragActive } = useDropzone({
+    noClick: true,
+    noKeyboard: true,
+    noPaste: true,
+    // Its document guard refuses every drop beside the zone, text and links
+    // included, and leaves the cursor saying a file can land there. The guard
+    // above is narrower.
+    preventDropOnDocument: false,
+    getFilesFromEvent: droppedFiles,
+    onDragOver(event) {
+      if (busy) event.dataTransfer.dropEffect = "none";
+    },
+    onDrop(files) {
+      if (busy) return;
+      const [file] = files;
+      if (files.length > 1) {
+        reset();
+        setNotice(t("photos.dropOnlyOne"));
+      } else if (!file || !looksLikePhoto(file)) {
+        reset();
+        setNotice(t("photos.dropNotPhoto"));
+      } else {
+        void place(file);
+      }
+    },
+  });
+  const dragging = isDragActive && !busy;
+
+  if (!manages) {
+    return null;
+  }
 
   function reset() {
     form.clear();
@@ -183,44 +223,6 @@ export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: 
     setPicking(true);
   }
 
-  const carriesFiles = (event: DragEvent) =>
-    Array.from(event.dataTransfer?.types ?? []).includes("Files");
-
-  // Every drag is accepted, so a link or a second file dropped here gets a
-  // message instead of the browser opening it in place of the page.
-  const dropTarget = {
-    onDragEnter(event: DragEvent) {
-      event.preventDefault();
-      depth.current += 1;
-      if (!busy && carriesFiles(event)) setDragging(true);
-    },
-    onDragOver(event: DragEvent) {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = busy ? "none" : "copy";
-    },
-    onDragLeave() {
-      depth.current = Math.max(0, depth.current - 1);
-      if (depth.current === 0) setDragging(false);
-    },
-    onDrop(event: DragEvent) {
-      event.preventDefault();
-      depth.current = 0;
-      setDragging(false);
-      if (busy) return;
-      const files = Array.from(event.dataTransfer?.files ?? []);
-      const [file] = files;
-      if (files.length > 1) {
-        reset();
-        setNotice(t("photos.dropOnlyOne"));
-      } else if (!file || !looksLikePhoto(file)) {
-        reset();
-        setNotice(t("photos.dropNotPhoto"));
-      } else {
-        void place(file);
-      }
-    },
-  };
-
   const name = t(photo === null ? "photos.addSlot" : "photos.changeSlot", { label });
 
   return (
@@ -228,7 +230,17 @@ export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: 
       <div
         className="group/frame relative"
         {...(photo ? { "data-photo-frame": "" } : { "data-photo-pending": slot })}
-        {...dropTarget}
+        {...getRootProps({
+          // Every drag is accepted, so a link or text dropped here gets a
+          // message instead of the browser opening it in place of the page.
+          // react-dropzone passes over a drop without files; this catches it.
+          onDrop(event) {
+            if (!busy && !carriesFiles(event)) {
+              reset();
+              setNotice(t("photos.dropNotPhoto"));
+            }
+          },
+        })}
       >
         {photo ? (
           <>
