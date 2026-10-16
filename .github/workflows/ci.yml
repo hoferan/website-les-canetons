@@ -19,6 +19,11 @@ concurrency:
 permissions:
   contents: read
 
+# Every action is pinned to a commit SHA, with its tag in the comment beside it:
+# a tag can be moved to other code, a SHA cannot. Dependabot moves the pins
+# (.github/dependabot.yml). Every job also has a timeout-minutes, because the
+# default is six hours and a hung FTP session or browser would use all of it.
+
 jobs:
   # Is there anything outside docs/ in this change?
   #
@@ -43,10 +48,11 @@ jobs:
   # deploy.
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           # The default shallow clone has no base commit to diff against.
           fetch-depth: 0
@@ -98,11 +104,12 @@ jobs:
   # with the old front end and its root Composer project.
   lint-api:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:
-      - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: "8.4"
           tools: composer
@@ -122,6 +129,15 @@ jobs:
           # regardless, because a job that collects no coverage has nothing to
           # lose and the next one added inherits the right default.
           coverage: none
+      # One cache for all three Composer installs of api/ (here, tests-api,
+      # openapi-drift): they resolve the same lockfile, so they download the
+      # same packages.
+      - name: Cache Composer downloads (api/)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/composer
+          key: composer-api-${{ hashFiles('api/composer.lock') }}
+          restore-keys: composer-api-
       # Pint and Larastan are pinned by api/composer.lock and live in
       # api/vendor/. Scripts ARE run here, unlike the Pint-only install this
       # used to be: Larastan boots Laravel to understand models and facades, so
@@ -179,6 +195,7 @@ jobs:
   # for no gain.
   tests-api:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: changes
     if: needs.changes.outputs.code == 'true'
     # The reporting steps at the end of this job publish a check and a PR
@@ -211,8 +228,8 @@ jobs:
           --health-timeout=5s
           --health-retries=20
     steps:
-      - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: "8.4"
           # Laravel talks to MariaDB over PDO, and pdo_mysql is not in
@@ -223,18 +240,15 @@ jobs:
           # No coverage anywhere in this repo; see the lint-api job above for
           # why this is set even so.
           coverage: none
-      # The api install is the slow part of this job and now happens in two
-      # jobs (here and `php`). Cache Composer's download cache, keyed by the
-      # lockfile; a miss just falls back to a full install. The root installs in
-      # `php`/`tests` are still uncached — worth doing, but that means editing
-      # existing jobs, so it is left as a separate change.
+      # Shared with lint-api and openapi-drift; see lint-api. A miss just falls
+      # back to a full install.
       - name: Cache Composer downloads (api/)
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/composer
           key: composer-api-${{ hashFiles('api/composer.lock') }}
           restore-keys: composer-api-
-      # Same install as the `php` job's Pint step. --no-scripts skips Laravel's
+      # Same install as lint-api's, without scripts. --no-scripts skips Laravel's
       # `artisan package:discover`; PackageManifest rebuilds
       # bootstrap/cache/packages.php lazily on first boot, so the suite is
       # unaffected (verified locally by deleting the manifest and re-running).
@@ -261,7 +275,7 @@ jobs:
           # nothing that outlives the job, and must never be used on a server.
           APP_KEY: base64:oxt8P89lrI3WQgV89r3v9/9NNrgLipYqKNezzVvHmyk=
         run: vendor/bin/phpunit --log-junit=junit.xml
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         if: always()
         with:
           node-version: "22"
@@ -271,14 +285,14 @@ jobs:
       - name: Comment test summary on PR
         if: always() && github.event_name == 'pull_request'
         continue-on-error: true
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         with:
           header: phpunit
           path: test-summary.md
       - name: Publish PHPUnit check
         if: always()
         continue-on-error: true
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@3585e9575db828022551b4231f165eb59a0e74e3 # v5.6.2
         with:
           report_paths: api/junit.xml
           check_name: PHPUnit (api/)
@@ -287,13 +301,18 @@ jobs:
 
   assets:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: "22"
+          # Caches npm's download cache (~/.npm) keyed on package-lock.json,
+          # not node_modules: `npm ci` still installs from scratch, it just
+          # stops fetching. Same in every job below that runs `npm ci`.
+          cache: npm
       - name: Install Node dev tools
         run: npm ci
       - name: JS unit tests
@@ -336,20 +355,39 @@ jobs:
   # web/e2e/ — the two suites are separate runners over separate directories.
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: "22"
+          cache: npm
       - name: Install Node dev tools
         run: npm ci
       # Chromium only. playwright.config.ts is deliberately a smoke harness with
       # one browser and one project, so the other engines would be a pure
-      # download cost. --with-deps pulls the OS libraries the browser needs.
+      # download cost.
+      #
+      # The browser is cached, keyed on the installed Playwright version, since
+      # each version expects one exact browser build. The OS libraries it needs
+      # are apt packages outside the cache, so a hit still runs install-deps.
+      - name: Read the Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ steps.playwright.outputs.version }}
       - name: Install the Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+      - name: Install the Playwright browser's OS libraries
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       # The config's webServer starts Vite on :5174 and tears it down after.
       # Its reuseExistingServer is `!process.env.CI`, and Actions sets CI=true,
       # so this always gets a server of its own rather than adopting a stray.
@@ -358,9 +396,10 @@ jobs:
 
   guard:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: "22"
       - name: Secret / prod-data guard
@@ -368,15 +407,26 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: "22"
+          cache: npm
       - name: Install Node dev tools
         run: npm ci
+      # tools/build.mjs runs Composer in the composer:2 image with its cache at
+      # .composer-cache/, so that directory is what gets cached. It holds only
+      # the --no-dev subset, hence a key of its own.
+      - name: Cache Composer downloads (artifact)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .composer-cache
+          key: composer-build-${{ hashFiles('api/composer.lock') }}
+          restore-keys: composer-build-
       - name: Build deploy artifact
         run: npm run build
       # The deployed document root is exactly the SPA shell plus _api/.
@@ -385,6 +435,31 @@ jobs:
       # _api/ would be missing here.
       - name: Verify dist/build/ was produced
         run: test -f dist/build/index.html && test -d dist/build/_api/vendor
+      # deploy-test ships this tree and builds none of its own, so what was
+      # built and checked here is what reaches TEST. The checksum list goes
+      # with it and deploy-test verifies every file against it before any
+      # upload: the mirror deletes on the server whatever the tree lacks, so a
+      # file lost in transit would be taken off TEST too.
+      - name: List the artifact's checksums
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: dist
+        run: find build -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > build.sha256
+      - name: Hand the artifact to deploy-test
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dist-build
+          path: |
+            dist/build
+            dist/build.sha256
+          # Off by default since upload-artifact 4.4, and _api/.htaccess and
+          # _api/public/.htaccess are the authorization boundary around the
+          # Laravel tree. Without this they would be left behind, and the mirror
+          # would delete them from TEST.
+          include-hidden-files: true
+          if-no-files-found: error
+          # Long enough to re-run a failed deploy-test, which reads it again.
+          retention-days: 7
 
   # The generated client must never lag behind the API. Regenerating and diffing
   # is the only check that catches a changed response shape: types that describe
@@ -392,13 +467,19 @@ jobs:
   # sees a broken page. Kept separate from `tests-api` for the same reason that
   # job is separate from `php`: this needs its own Composer/Node install and a
   # SQLite export step (see tools/openapi.mjs) unrelated to what tests-api runs.
+  #
+  # It runs no type check and no unit tests of its own. Once the diff below is
+  # clean, the regenerated client IS the committed one, which `assets` already
+  # type-checks and tests on the same commit; running both again here cost
+  # about 80 seconds a run and could only fail where `assets` fails too.
   openapi-drift:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:
-      - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: "8.4"
           # tools/openapi.mjs exports with this native php: a runner has a
@@ -410,14 +491,22 @@ jobs:
           # No coverage anywhere in this repo; see the lint-api job above for
           # why this is set even so.
           coverage: none
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: "22"
+          cache: npm
       - name: Install Node dev tools
         run: npm ci
-      # Same install as the `php` job's Pint step and tests-api's PHPUnit step.
-      # Pre-installing here means the export below finds api/vendor already
-      # populated, and its own ensureApiVendor() has nothing to do.
+      # Shared with lint-api and tests-api; see lint-api.
+      - name: Cache Composer downloads (api/)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/composer
+          key: composer-api-${{ hashFiles('api/composer.lock') }}
+          restore-keys: composer-api-
+      # Same install as tests-api's PHPUnit step. Pre-installing here means the
+      # export below finds api/vendor already populated, and its own
+      # ensureApiVendor() has nothing to do.
       - name: Install Laravel API dependencies
         run: composer install --no-interaction --no-progress --no-scripts --working-dir=api
       - name: Regenerate the OpenAPI document
@@ -441,20 +530,17 @@ jobs:
       # the two `recommended` rules that are off, and why.
       - name: Lint the OpenAPI document
         run: npm run lint:openapi
-      - name: Type-check
-        run: npm run typecheck
-      - name: Frontend unit tests
-        run: npm run test:web
 
   # Conventional Commits titles, which squash merges turn into commit subjects.
   # Here rather than in a workflow of its own so that all-green covers it.
   pr-title:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       pull-requests: read
     steps:
-      - uses: amannn/action-semantic-pull-request@v5
+      - uses: amannn/action-semantic-pull-request@e32d7e603df1aa1ba07e981f2a23455dee596825 # v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -483,8 +569,9 @@ jobs:
     if: always()
     needs: [changes, lint-api, tests-api, assets, e2e, guard, build, openapi-drift, pr-title]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Fail unless every job passed
         env:
           NEEDS: ${{ toJSON(needs) }}
@@ -512,26 +599,46 @@ jobs:
       && github.event_name == 'push'
       && needs.changes.outputs.code == 'true'
     environment: test
+    # A normal deploy takes under a minute. A bootstrap or --relist deploy
+    # lists the whole remote tree over a flaky host and takes far longer, so
+    # this is generous; it only has to stop a hung FTP session.
+    timeout-minutes: 30
     concurrency:
       group: deploy-test
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      # Still needed: the deploy CLI is in the checkout, and the deployment
+      # marker reads the commit from git.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: "22"
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.4"
-          # No coverage anywhere in this repo; see the lint-api job above for
-          # why this is set even so.
-          coverage: none
+          cache: npm
       - name: Install Node dev tools
         run: npm ci
+      - name: Take the artifact from the build job
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist-build
+          path: dist
+      # Every file the build job listed must be here with the same content, and
+      # nothing else may be. See the build job for why a missing file matters.
+      - name: Verify the artifact against the build job's checksums
+        working-directory: dist
+        run: |
+          sha256sum --quiet --strict -c build.sha256
+          listed=$(wc -l < build.sha256)
+          present=$(find build -type f | wc -l)
+          if [ "$listed" != "$present" ]; then
+            echo "::error::dist/build/ has $present files, the build job listed $listed."
+            exit 1
+          fi
+      # --prebuilt deploys dist/build/ as it is, with no build of its own. It
+      # also refuses a tree missing the files tools/deploy/cli.mjs names.
       - name: Deploy to TEST over FTP
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
           FTP_DIR: ${{ secrets.FTP_DIR }}
-        run: npm run deploy:test
+        run: npm run deploy:test -- --prebuilt

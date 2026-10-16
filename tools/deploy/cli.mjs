@@ -7,11 +7,16 @@
 //   npm run deploy:test|qa|prod             full sync (upload + delete + verify)
 //   npm run status:test|qa|prod             build-free: what's deployed?
 //   flags (append after --): --dry-run --force --force-delete --relist
-//                            --no-delete --verbose
+//                            --no-delete --verbose --prebuilt
+//
+// --prebuilt skips the build and deploys the dist/build/ already on disk. CI's
+// deploy-test uses it to ship the tree its `build` job made, carried over as a
+// workflow artifact, instead of building a second one.
 //
 // Exit codes: 0 ok, 1 failure, 2 refused by a guard or the safety brake.
 import ftp from 'basic-ftp';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { loadDotEnv } from '../dotenv.mjs';
@@ -33,6 +38,24 @@ class Refusal extends Error {
   }
 }
 
+// What a prebuilt tree must hold before --prebuilt will mirror it. The mirror
+// deletes whatever the tree lacks, so a tree that lost files on the way here
+// would take them off the server too. The two .htaccess files are named
+// because they are the ones that go missing: actions/upload-artifact drops
+// dotfiles by default, and they are the authorization boundary around the
+// Laravel tree.
+export const PREBUILT_REQUIRED = [
+  'index.html',
+  '_api/.htaccess',
+  '_api/public/.htaccess',
+  '_api/public/index.php',
+  '_api/vendor',
+];
+
+export function missingFromPrebuilt(root) {
+  return PREBUILT_REQUIRED.filter((rel) => !existsSync(path.join(root, rel)));
+}
+
 export function parseArgs(argv) {
   const known = {
     '--dry-run': 'dryRun',
@@ -42,8 +65,18 @@ export function parseArgs(argv) {
     '--no-delete': 'noDelete',
     '--verbose': 'verbose',
     '--status': 'status',
+    '--prebuilt': 'prebuilt',
   };
-  const flags = { dryRun: false, force: false, forceDelete: false, relist: false, noDelete: false, verbose: false, status: false };
+  const flags = {
+    dryRun: false,
+    force: false,
+    forceDelete: false,
+    relist: false,
+    noDelete: false,
+    verbose: false,
+    status: false,
+    prebuilt: false,
+  };
   let target = null;
   for (const a of argv) {
     if (a in known) {
@@ -58,7 +91,7 @@ export function parseArgs(argv) {
   }
   if (!target || !TARGETS.includes(target)) {
     return {
-      error: `Usage: npm run deploy:<${TARGETS.join('|')}> [-- --dry-run --force --force-delete --relist --no-delete --verbose]`,
+      error: `Usage: npm run deploy:<${TARGETS.join('|')}> [-- --dry-run --force --force-delete --relist --no-delete --verbose --prebuilt]`,
     };
   }
   return { target, ...flags };
@@ -113,7 +146,7 @@ async function main() {
     console.error(parsed.error);
     process.exit(1);
   }
-  const { target, dryRun, force, forceDelete, relist, noDelete, verbose, status } = parsed;
+  const { target, dryRun, force, forceDelete, relist, noDelete, verbose, status, prebuilt } = parsed;
   const label = target.toUpperCase();
 
   // Env-specific values first (.env.<target>), shared rest from .env —
@@ -167,12 +200,22 @@ async function main() {
   try {
     // --- Build ------------------------------------------------------------
     ui.start('build');
-    await runBuild((text) => {
-      ui.progress('build', { note: 'building' }); // heartbeat for CI's quiet stretches
-      text.split(/\r?\n/).filter(Boolean).forEach((l) => ui.detail(l));
-    });
-    if (!existsSync(LOCAL_ROOT)) {
-      throw new Error(`build produced no ${LOCAL_ROOT}/`);
+    if (prebuilt) {
+      const missing = missingFromPrebuilt(LOCAL_ROOT);
+      if (missing.length) {
+        throw new Refusal(
+          `--prebuilt: ${LOCAL_ROOT}/ is incomplete, missing ${missing.join(', ')}`,
+          'Mirroring it would delete those from the server. Rebuild, or drop --prebuilt.'
+        );
+      }
+    } else {
+      await runBuild((text) => {
+        ui.progress('build', { note: 'building' }); // heartbeat for CI's quiet stretches
+        text.split(/\r?\n/).filter(Boolean).forEach((l) => ui.detail(l));
+      });
+      if (!existsSync(LOCAL_ROOT)) {
+        throw new Error(`build produced no ${LOCAL_ROOT}/`);
+      }
     }
     const marker = writeDeploymentMarker(target, LOCAL_ROOT);
     ui.done('build', `${LOCAL_ROOT}/ @ ${marker.shortCommit}`);
