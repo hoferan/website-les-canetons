@@ -6,8 +6,8 @@ import { expect, type Page, test } from "@playwright/test";
  * Against the MOCKED backend on its own port; see playwright.config.ts. The
  * mocked session lives in sessionStorage under "msw:user" (handlers.ts), which
  * is what lets a test take it away the way an expired Sanctum cookie would:
- * remove the key, then load a page, and the backend boots believing nobody is
- * logged in.
+ * remove the key, and the backend's next request finds nobody logged in,
+ * whether that request comes from a fresh load or from a page left open.
  */
 async function fillLogin(page: Page, username: string, password: string) {
   await page.getByLabel("Identifiant").fill(username);
@@ -68,4 +68,42 @@ test("an expired session sends the member to log in, then back to the page they 
 
   await expect(page).toHaveURL(/\/account$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mon compte");
+});
+
+/**
+ * THE SESSION THAT DIES WHILE THE PAGE IS OPEN (#296). Nothing reloads, so
+ * nothing re-reads the session at boot: the first the SPA hears of it is a
+ * write answering 401. That has to take the member to the login form and,
+ * once they are back in, to the page they were on.
+ */
+test("a session that expires under an open page sends the member to log in, then back", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await fillLogin(page, "demo.player", "demo");
+  await expect(page.getByRole("button", { name: "Compte de demo.player" })).toBeVisible();
+
+  // Through the nav, not page.goto: a full load would re-read the session and
+  // test the case above instead.
+  await page.getByRole("link", { name: "Événements" }).locator("visible=true").first().click();
+  await expect(page).toHaveURL(/\/events$/);
+  const card = page.getByTestId("event-card").filter({ hasText: "Weekend musical" });
+  const coming = card.getByRole("button", { name: "Je viens à Weekend musical" });
+  await expect(coming).toBeVisible();
+
+  // The session expires with the page open. The mocked backend checks the key
+  // on every request, as a server checks its cookie.
+  await page.evaluate(() => sessionStorage.removeItem("msw:user"));
+  await coming.click();
+
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Connexion");
+
+  await fillLogin(page, "demo.player", "demo");
+
+  await expect(page).toHaveURL(/\/events$/);
+  // The refused answer was rolled back, so it can be given again.
+  await expect(coming).toHaveAttribute("aria-pressed", "false");
+  await coming.click();
+  await expect(coming).toHaveAttribute("aria-pressed", "true");
 });
