@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { RouterProvider, createMemoryRouter } from "react-router-dom";
 
+import { LeaveGuardProvider } from "../components/LeaveGuard";
 import { setLocale } from "../i18n";
 import { type Locale } from "../i18n/locale";
 import { SessionProvider } from "../session/SessionProvider";
@@ -41,15 +42,27 @@ export async function renderWithSession(
   const [pathname = "/", query] = route.split("?");
   const entry = { pathname, search: query ? `?${query}` : "", state };
 
-  const result = render(
-    <MemoryRouter initialEntries={[entry]}>
-      <QueryClientProvider client={queryClient}>
-        <SessionProvider>
-          <div data-testid="booted">{ui}</div>
-        </SessionProvider>
-      </QueryClientProvider>
-    </MemoryRouter>,
+  // A data router, like the app's, because `useBlocker` works under nothing
+  // else. The splat route hands every path to whatever <Routes> `ui` holds.
+  const router = createMemoryRouter(
+    [
+      {
+        path: "*",
+        element: (
+          <QueryClientProvider client={queryClient}>
+            <SessionProvider>
+              <LeaveGuardProvider>
+                <div data-testid="booted">{ui}</div>
+              </LeaveGuardProvider>
+            </SessionProvider>
+          </QueryClientProvider>
+        ),
+      },
+    ],
+    { initialEntries: [entry] },
   );
+
+  const result = render(<RouterProvider router={router} />);
 
   await screen.findByTestId("booted");
   return result;

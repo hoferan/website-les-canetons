@@ -271,3 +271,34 @@ test("a slot's controls are 44px targets and an empty frame is 3:2 on a phone", 
   expect(Math.abs((quiet?.height ?? 0) - ((quiet?.width ?? 0) * 2) / 3)).toBeLessThanOrEqual(2);
   expect(quiet?.width).toBe(frame?.width);
 });
+
+// #232: Back is a navigation the router sees only under a data router, so
+// before it a name typed into the rename form was dropped without a word.
+test("Back asks before dropping a name typed and not saved", async ({ page }) => {
+  await logIn(page, "demo.direction");
+  await page.goto("/media");
+  await page.getByTestId("library-card-1").getByRole("link").first().click();
+  await expect(page).toHaveURL(/\/media\/1$/);
+
+  await page.getByRole("button", { name: "Renommer" }).click();
+  await page.getByLabel("Nom").fill("Pas encore enregistré");
+
+  const asked: string[] = [];
+  page.once("dialog", (dialog) => {
+    asked.push(dialog.message());
+    void dialog.dismiss();
+  });
+  await page.goBack({ waitUntil: "commit" }).catch(() => null);
+
+  await expect
+    .poll(() => asked)
+    .toEqual([
+      "Le nouveau nom n’est pas encore enregistré. Si vous quittez la page, il sera perdu.",
+    ]);
+  await expect(page).toHaveURL(/\/media\/1$/);
+  await expect(page.getByLabel("Nom")).toHaveValue("Pas encore enregistré");
+
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.goBack({ waitUntil: "commit" }).catch(() => null);
+  await expect(page).toHaveURL(/\/media$/);
+});

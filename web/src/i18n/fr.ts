@@ -1475,6 +1475,8 @@ export const fr = {
       nameLabel: "Nom",
       renamed: "Nom enregistré.",
       renameFailed: "Le nom n’a pas pu être enregistré.",
+      leaveRename:
+        "Le nouveau nom n’est pas encore enregistré. Si vous quittez la page, il sera perdu.",
       rotateLeft: "Tourner à gauche",
       rotateRight: "Tourner à droite",
       replace: "Remplacer",

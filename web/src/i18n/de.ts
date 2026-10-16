@@ -1004,6 +1004,8 @@ export const de: typeof fr = {
       nameLabel: "Name",
       renamed: "Name gespeichert.",
       renameFailed: "Der Name konnte nicht gespeichert werden.",
+      leaveRename:
+        "Der neue Name ist noch nicht gespeichert. Wenn Sie die Seite verlassen, geht er verloren.",
       rotateLeft: "Nach links drehen",
       rotateRight: "Nach rechts drehen",
       replace: "Ersetzen",

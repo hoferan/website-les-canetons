@@ -14,7 +14,7 @@ import { customFetch } from "../api/http";
 import { t } from "../i18n";
 import { shrink } from "./shrink";
 import { type Card, type ShrinkFn, type UploadFn, UploadQueue } from "./uploadQueue";
-import { useLeaveGuard } from "./useLeaveGuard";
+import { useLeaveGuard } from "../components/LeaveGuard";
 
 export type { Card, CardState, FailureReason } from "./uploadQueue";
 
@@ -108,8 +108,8 @@ export function useUploadQueue({ upload = uploadViaApi, shrinker = shrink }: Opt
   );
 
   // Unmounting stops new work from starting: photos still waiting are not
-  // sent, and the ones in flight finish. The leave guard below asks before a
-  // link click gets this far. Back and a call to navigate() come straight here.
+  // sent, and the ones in flight finish. The leave guard below asks before any
+  // navigation gets this far.
   useEffect(() => {
     queue.activate();
     return () => queue.dispose();
