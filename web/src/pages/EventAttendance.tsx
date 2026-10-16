@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Copy } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -28,8 +27,7 @@ import { OUTLINED_CARD } from "../carnival/raised";
  * Who still has to be chased about an event.
  *
  * IT IS NOT A REPORT OF WHO SAID YES, and the layout is the argument. The
- * people who have not replied come first, with their names and one button that
- * copies them for WhatsApp; the answers sit below. The old site had this the
+ * people who have not replied come first; the answers sit below. The old site had this the
  * other way round — a table of everybody, scrolling sideways at 390px,
  * answering "who is coming?" when the question the committee actually has on a
  * Thursday evening is "who must I still chase?".
@@ -119,19 +117,6 @@ export function EventAttendance() {
     }
   }
 
-  async function copySilent() {
-    const text = silent.map(nameOf).join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(t("attendance.copied"));
-    } catch {
-      // Refused rather than broken: the clipboard needs a secure context and
-      // the browser's permission, and neither is this app's to grant. Saying
-      // so beats a button that looks like it worked.
-      toast.error(t("attendance.copyRefused"));
-    }
-  }
-
   const title = event.data?.status === 200 ? event.data.data : null;
 
   return (
@@ -171,15 +156,9 @@ export function EventAttendance() {
 
       {silent.length > 0 ? (
         <section className="mt-block" aria-labelledby="silent-heading">
-          <div className="flex flex-wrap items-center justify-between gap-related">
-            <h2 id="silent-heading" className="font-display text-xl">
-              {t("attendance.silentHeading")}
-            </h2>
-            <Button type="button" variant="raised-light" onClick={() => void copySilent()}>
-              <Copy aria-hidden="true" />
-              {t("attendance.copyForWhatsApp")}
-            </Button>
-          </div>
+          <h2 id="silent-heading" className="font-display text-xl">
+            {t("attendance.silentHeading")}
+          </h2>
 
           <ul data-testid="chase-silent" className="mt-related grid gap-tight">
             {silent.map((entry) => (

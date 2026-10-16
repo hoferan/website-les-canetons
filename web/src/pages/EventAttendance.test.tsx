@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 
 import { memberAttendanceUpdate } from "../api/generated/endpoints";
 import { type Locale } from "../i18n/locale";
@@ -134,19 +134,6 @@ test("the on-behalf controls are absent from the caller's own row", async () => 
   expect(within(row).getByText("Répondez depuis le planning.")).toBeInTheDocument();
 });
 
-test("the silent names are copied for WhatsApp, one per line", async () => {
-  const writeText = vi.fn().mockResolvedValue(undefined);
-  vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
-
-  await renderChaseList();
-  await userEvent.click(screen.getByRole("button", { name: "Copier pour WhatsApp" }));
-
-  await expect.poll(() => writeText.mock.calls.length).toBe(1);
-  expect(writeText).toHaveBeenCalledWith("Bastien Both");
-
-  vi.unstubAllGlobals();
-});
-
 test("an answer already recorded can be changed", async () => {
   // The case the screen exists for and did not handle: "non, malade", then a
   // phone call to say they can come after all.
@@ -239,7 +226,6 @@ test("the whole chase list reads in German, punctuation included", async () => {
   );
   expect(screen.getByRole("region", { name: "Ohne Rückmeldung" })).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Rückmeldungen" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Für WhatsApp kopieren" })).toBeInTheDocument();
 
   const card = cardFor("Camille Committee");
 
