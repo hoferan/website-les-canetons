@@ -397,9 +397,11 @@ deploy workflow:
 - Each run's summary shows which flags were used, the deploy CLI's final
   summary line (`... deploy done in ... — N uploaded, D deleted, ...`), and the
   full deploy log in a collapsible section.
-- A `deployment.json` at each site root (web-readable, e.g.
-  `https://<prod-host>/deployment.json`) records the deployed commit, ref (the
-  tag name, for TEST/QA/PROD manual deploys), time, and CI run URL.
+- A `deployment.json` at each site root records the deployed commit, ref (the
+  tag name, for TEST/QA/PROD manual deploys), time, and CI run URL. The SPA
+  fallback serves the shell at that path, so read it through
+  `https://<host>/api/health`, which answers with the commit, ref and time,
+  whether the database answers, and any pending migrations.
 
 ## Database migrations & recovery
 

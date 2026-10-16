@@ -8,9 +8,10 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
-// The deployment marker, written into the build root on every deploy and
-// web-readable at /deployment.json. Its deployedAt changes every run, so its
-// hash always differs and it re-uploads naturally.
+// The deployment marker, written into the build root on every deploy. The SPA
+// fallback serves the shell at /deployment.json, so GET /api/health is how to
+// read it over the web. Its deployedAt changes every run, so its hash always
+// differs and it re-uploads naturally.
 export const MARKER = 'deployment.json';
 
 // Walk the build tree: [{rel, size}] with posix rel paths, sorted, excluding

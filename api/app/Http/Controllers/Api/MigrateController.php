@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PendingMigrations;
 use Dedoc\Scramble\Attributes\ExcludeRouteFromDocs;
-use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -143,29 +143,11 @@ class MigrateController extends Controller
     }
 
     /**
-     * The migrations that exist as files but are absent from the migrations
-     * table, by name, in the order `migrate` would run them.
-     *
-     * The paths are assembled the way BaseCommand::getMigrationPaths() does, so
-     * this list cannot disagree with what `artisan migrate` would pick up —
-     * including any path a service provider registered.
-     *
      * @return list<string>
      */
     private function pendingMigrations(): array
     {
-        /** @var Migrator $migrator */
-        $migrator = app('migrator');
-
-        $files = $migrator->getMigrationFiles(
-            array_merge($migrator->paths(), [database_path('migrations')])
-        );
-
-        // On a database that has never been migrated the ledger does not exist
-        // yet, so every migration is pending — asking the repository would throw.
-        $ran = $migrator->repositoryExists() ? $migrator->getRepository()->getRan() : [];
-
-        return array_values(array_diff(array_keys($files), $ran));
+        return PendingMigrations::names();
     }
 
     /**

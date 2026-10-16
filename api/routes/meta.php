@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\MigrateController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,10 @@ Route::middleware('docs')->group(function () {
     Route::get('/docs', DocsController::class);
     Route::get('/docs.json', DocsDocumentController::class);
 });
+
+// Public, for a monitor that holds no session: the server, its database and
+// which deploy it runs. See HealthController for why nothing in it is hidden.
+Route::get('/health', HealthController::class);
 
 // Token-gated (not session-gated): the deploy tooling calls this server-side
 // with the shared MIGRATE_TOKEN. Excluded from the OpenAPI document — nothing

@@ -215,6 +215,18 @@ check('the token-gated migrate route works end to end', async () => {
     : `answered, but not by Laravel's MigrateController: ${JSON.stringify(json)}`;
 });
 
+check('GET /api/health answers without a session, database included', async () => {
+  // The route a monitor polls, so it must survive the .htaccess dispatch with
+  // no cookie and no token. `checks.database` pins HealthController as the
+  // one answering: the SPA fallback's shell has no such key.
+  const res = await request('/api/health', { headers: { Accept: 'application/json' } });
+  if (res.status !== 200) return `expected 200, got ${await detail(res)}`;
+  const json = await res.json().catch(() => ({}));
+  return json.status === 'ok' && json.checks?.database === 'ok'
+    ? null
+    : `expected status and checks.database "ok", got ${JSON.stringify(json)}`;
+});
+
 check('POST /api/contact is Laravel, answering in the problem-document contract', async () => {
   // This replaced a check that asserted "the old app's /api/* endpoints are
   // shadowed by Laravel", discriminating the two apps by STATUS: the old app
