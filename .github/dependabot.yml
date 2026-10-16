@@ -1,0 +1,15 @@
+# Version updates for the workflows' actions only. Each action is pinned to a
+# commit SHA (see the top of .github/workflows/ci.yml), and nothing else would
+# ever move those pins. npm and Composer get security updates only, which
+# Dependabot opens without any entry here.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

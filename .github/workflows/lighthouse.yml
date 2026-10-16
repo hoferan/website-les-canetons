@@ -30,11 +30,13 @@ permissions:
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: "22"
+          cache: npm
       - name: Install Node dev tools
         run: npm ci
       # The runner image ships Google Chrome, which chrome-launcher finds on its
@@ -45,7 +47,7 @@ jobs:
       # read. Kept as a workflow artifact, never sent to a public report host.
       - name: Keep the reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: lighthouse-reports
           path: dist/lighthouse-reports/

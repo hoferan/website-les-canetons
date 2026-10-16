@@ -20,6 +20,17 @@ const PORT = 5174;
 
 export default defineConfig({
   testDir: "web/e2e",
+
+  // Spread tests, not files, across the workers. Each test opens its own
+  // context, and the mocked backend keeps its state per page, so no test can
+  // see another's. Spreading by file put all six axe walks (about two minutes
+  // of a run under three) on one worker, which then set the wall time for the
+  // whole suite (#198).
+  fullyParallel: true,
+  // Playwright's default is half the cores, so 2 on a 4-vCPU runner. 4
+  // measured faster there; locally the default stays.
+  workers: process.env.CI ? 4 : undefined,
+
   use: {
     baseURL: `http://localhost:${PORT}`,
 
