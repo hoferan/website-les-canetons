@@ -185,8 +185,9 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   The PWA manifest link keeps `crossorigin="use-credentials"`, or the fetch
   fails behind TEST/QA Basic Auth.
 - **Images in `web/public/assets/img/` have a budget**: longest edge 1920px,
-  JPEG quality 82, progressive, no EXIF, at most 600 KB, enforced by
-  `tools/image-budget.mjs`. Band photographs belong in the image library.
+  JPEG quality 82, progressive, no EXIF, at most 600 KB.
+  `tools/image-budget.mjs` enforces only the edge and the size; the rest is on
+  you. Band photographs belong in the image library.
   Never re-optimise already-optimised files.
 - **`web/src/api/generated/` is generated; never hand-edit it.** Change the
   controller, run `npm run openapi && npm run generate:api`, commit the result.
@@ -326,7 +327,7 @@ one**: a prose tracker goes stale silently; a merged PR closes its issue.
 ## Pull Requests
 
 - **Title format:** Conventional Commits — `type(scope): description` (scope optional).
-  Enforced by CI (`.github/workflows/pr-title.yml`).
+  Enforced by the `pr-title` job in `.github/workflows/ci.yml`.
   Types: `feat`, `fix`, `chore`, `docs`, `build`, `ci`, `test`, `refactor`, `style`, `perf`.
 - **Body:** use `.github/PULL_REQUEST_TEMPLATE.md` — fill in every section.
 

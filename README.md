@@ -87,7 +87,7 @@ dist/build/     Generated FTP deploy payload (npm run build). Git-ignored; never
 config/htaccess/ The site .htaccess template, merged per environment by tools/build-overlays.mjs
 docker/         Local dev stack (web Dockerfile + Apache config, env.docker, empty-DB init)
 tools/          Cross-platform dev scripts (build, deploy, secret guard)
-docs/           Architecture decision records (docs/adr/), traps, web-session notes
+docs/           How-to guides (docs/how-to/), decision records (docs/adr/), traps, web-session notes
 .github/        CI workflows, PR & issue templates
 ```
 
@@ -119,8 +119,10 @@ PHP commands run in the compose `php` service when the stack is up:
 `npm run artisan -- <command>`, `npm run composer -- <command>`,
 `npm run php -- <args>`.
 
-A Husky pre-commit hook lints staged files automatically. See **[CLAUDE.md](CLAUDE.md)**
-for architecture details and conventions.
+A Husky pre-commit hook lints staged files automatically. **[docs/how-to/](docs/how-to/README.md)**
+explains the routine work step by step: a new endpoint, a migration, a deploy,
+and what each guard in the build protects. See **[CLAUDE.md](CLAUDE.md)** for
+architecture details and conventions.
 
 ## Configuration
 
