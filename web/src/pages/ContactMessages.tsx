@@ -109,7 +109,7 @@ export function ContactMessages() {
 
   const list = useContactMessageIndex();
 
-  const action = useApiFormError("L’action n’a pas pu être effectuée.");
+  const action = useApiFormError(t("contactMessages.actionFailed"));
 
   // Conditional writes, built by hand over the generated FUNCTIONS: orval's
   // mutation hooks fix their request options once, when the hook is created,

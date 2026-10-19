@@ -538,6 +538,8 @@ export const fr = {
     emptyFiltered: "Aucun message ne correspond à ce filtre.",
     loadError: "La liste des messages n’a pas pu être chargée.",
     readError: "Ce message n’a pas pu être chargé. Rechargez la page.",
+    // When a handle or delete fails without an API answer, e.g. a dropped connection.
+    actionFailed: "L’action n’a pas pu être effectuée.",
   },
 
   /**
@@ -1118,7 +1120,7 @@ export const fr = {
     nothingOffered: "Rien n’est encore proposé pour cette soirée. Revenez d’ici quelques jours.",
 
     chooseSomeone: "Choisissez au moins une personne.",
-    // The running total, when any chosen option carries a price. {{guests}} is
+    // The running total and the confirmation, when an option carries a price. {{guests}} is
     // common.guests already counted; {{total}} is formatCents.
     guestsWithTotal: "{{guests}} — {{total}}",
     submit: "M’inscrire",
@@ -1214,6 +1216,7 @@ export const fr = {
     optionNumber: "Option {{n}}",
     addOption: "Ajouter une option",
     price: "Prix en francs",
+    priceInvalid: "Indiquez un montant, par exemple 45 ou 45.50.",
 
     // The ONLY names these three controls have: they are icon-only, so this is
     // what a screen reader reads. {{option}} is what the committee typed, or
@@ -1323,6 +1326,7 @@ export const fr = {
     heroSub:
       "De 7 à 18 ans — et pas besoin de connaître la musique : les moniteurs apprennent les morceaux registre par registre, aux répétitions du samedi matin.",
     discover: "Découvrir les Canetons",
+    brandLogoAlt: "Le logo des Canetons de Fribourg",
     destinations: {
       join: {
         title: "Nous rejoindre",

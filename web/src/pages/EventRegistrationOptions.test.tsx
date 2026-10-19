@@ -210,6 +210,28 @@ test("reports a price that is not a price against its own row", async () => {
   expect(row(1).queryByText(/Indiquez un montant/)).not.toBeInTheDocument();
 });
 
+test("reports a price that is not a price in German", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(
+    <Routes>
+      <Route path="/events/:id/registration-options" element={<EventRegistrationOptions />} />
+    </Routes>,
+    { route: `/events/${SOUPER}/registration-options`, locale: "de-CH" },
+  );
+  const price = await screen.findAllByLabelText("Preis in Franken");
+
+  await user.clear(price[1] as HTMLElement);
+  await user.type(price[1] as HTMLElement, "zwanzig Franken");
+  await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+  // The message was a French literal in the component.
+  expect(
+    await screen.findByText("Geben Sie einen Betrag ein, zum Beispiel 45 oder 45.50."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Indiquez un montant/)).toBeNull();
+});
+
 test("an event with nothing bookable says so and still offers the editor", async () => {
   // Event 1 is a rehearsal, which offers nothing.
   await renderEditor(1);

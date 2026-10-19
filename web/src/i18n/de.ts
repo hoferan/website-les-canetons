@@ -378,6 +378,7 @@ export const de: typeof fr = {
     emptyFiltered: "Keine Nachricht entspricht diesem Filter.",
     loadError: "Die Nachrichtenliste konnte nicht geladen werden.",
     readError: "Diese Nachricht konnte nicht geladen werden. Laden Sie die Seite neu.",
+    actionFailed: "Die Aktion konnte nicht ausgeführt werden.",
   },
 
   inbox: {
@@ -814,6 +815,7 @@ export const de: typeof fr = {
     optionNumber: "Option {{n}}",
     addOption: "Option hinzufügen",
     price: "Preis in Franken",
+    priceInvalid: "Geben Sie einen Betrag ein, zum Beispiel 45 oder 45.50.",
 
     moveUp: "{{option}} nach oben",
     moveDown: "{{option}} nach unten",
@@ -870,6 +872,7 @@ export const de: typeof fr = {
     heroSub:
       "Von 7 bis 18 Jahren — und ganz ohne Musikkenntnisse: Die Leiter bringen die Stücke Register für Register bei, an den Proben am Samstagvormittag.",
     discover: "Die Canetons entdecken",
+    brandLogoAlt: "Das Logo der Canetons de Fribourg",
     destinations: {
       join: {
         title: "Mitmachen",

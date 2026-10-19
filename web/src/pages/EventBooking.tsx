@@ -259,12 +259,16 @@ export function EventBooking() {
                 </li>
               ))}
             </ul>
-            <p className="mt-tight">
-              {booked.guestCount} personne{booked.guestCount > 1 ? "s" : ""}
+            <p className="mt-tight" data-testid="booked-guests">
               {/* Null is not zero: a booking of unpriced options owes an unknown
                 amount, and "CHF 0.00" would assert the first about the
                 second. */}
-              {booked.totalCents === null ? null : <> — {formatCents(booked.totalCents)}</>}
+              {booked.totalCents === null
+                ? t("common.guests", { count: booked.guestCount })
+                : t("booking.guestsWithTotal", {
+                    guests: t("common.guests", { count: booked.guestCount }),
+                    total: formatCents(booked.totalCents),
+                  })}
             </p>
           </Card>
         </PageSection>

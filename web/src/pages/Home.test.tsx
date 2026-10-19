@@ -131,6 +131,15 @@ test("points every destination card at a public page, in German", async () => {
   ]);
 });
 
+test("describes the band's badge in German", async () => {
+  await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
+
+  // The badge's alt text was a French literal in Logo.tsx.
+  expect(
+    screen.getByRole("img", { name: "Das Logo der Canetons de Fribourg" }),
+  ).toBeInTheDocument();
+});
+
 test("shows the concert photo placeholder in German", async () => {
   await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
 

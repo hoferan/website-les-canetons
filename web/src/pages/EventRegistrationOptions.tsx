@@ -178,7 +178,7 @@ export function EventRegistrationOptions() {
       const price = parseFrancs(row.price);
 
       if (price === "invalid") {
-        problems[row.key] = "Indiquez un montant, par exemple 45 ou 45.50.";
+        problems[row.key] = t("registrationOptions.priceInvalid");
         return;
       }
 
