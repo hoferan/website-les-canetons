@@ -43,12 +43,6 @@ class PermissionMiddlewareTest extends TestCase
 
     public function test_a_member_without_the_permission_gets_403(): void
     {
-        // App\Http\Middleware\EnforceAbsoluteSessionLifetime (appended to the
-        // `api` group) reads auth.started_at off the request's session, so
-        // every actingAs() call needs both the Origin header (which makes
-        // Sanctum treat this as a stateful frontend request and actually
-        // attach a session store to the request) and the stamp itself — see
-        // MeTest for the full explanation.
         $this->actingAsMember($this->memberWith(null))
             ->getJson('/api/v1/_test/guarded')
             ->assertStatus(403)
@@ -92,9 +86,8 @@ class PermissionMiddlewareTest extends TestCase
 
     public function test_an_unknown_name_in_a_list_is_a_loud_failure_too(): void
     {
-        // Not skipped because another name in the list matched: a typo that
-        // only fails when nobody holds the first permission is a typo found
-        // in production.
+        // It fails even when another name in the list matched, or a typo would
+        // surface only for somebody who lacks the first permission.
         Route::middleware(['api', 'auth:sanctum', 'permission:events.manage,roles.mangle'])
             ->get('/api/v1/_test/typo-list', fn () => response()->json(['ok' => true]));
 

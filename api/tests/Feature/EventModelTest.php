@@ -20,19 +20,16 @@ class EventModelTest extends TestCase
             'ends_at' => '2026-10-04 14:00:00',
         ]);
 
-        // The two-day case, which the old date + weekend boolean could not
-        // express: "Weekend musical, 3-4 October" is one event whose start and
-        // end fall on different days.
+        // The two-day case: "Weekend musical, 3-4 October" is one event whose
+        // start and end fall on different days.
         $this->assertSame('2026-10-03', $event->starts_at->format('Y-m-d'));
         $this->assertSame('2026-10-04', $event->ends_at->format('Y-m-d'));
     }
 
     public function test_a_draft_may_have_no_dates_or_location(): void
     {
-        // Replaces the old "cannot exist without an end". The guarantee that a
-        // multi-day event is one whose start and end differ, with no `weekend`
-        // flag, now lives on the publish path (EventPublishTest), because a
-        // draft is allowed to be written before anybody knows the date.
+        // A draft may be written before anybody knows the date. The publish
+        // path requires the dates (EventPublishTest).
         $draft = Event::factory()->draft()->create([
             'starts_at' => null,
             'ends_at' => null,
@@ -105,18 +102,13 @@ class EventModelTest extends TestCase
 
     public function test_an_event_is_private_unless_somebody_says_otherwise(): void
     {
-        // The live defect this default exists to prevent: /planning_repet
-        // showed rehearsals to strangers. The accident can now only fall the
-        // safe way.
+        // A forgotten flag must fall the safe way, so rehearsals never reach
+        // strangers by accident.
         //
-        // DELIBERATELY BYPASSES EventFactory here: EventFactory::definition()
-        // hard-codes is_public => false as one of its own defaults, so a row
-        // built through Event::factory()->create() would keep passing even if
-        // the model/column default were deleted outright — the factory would
-        // only be asserting on itself. Building the row by hand through
-        // Event::query()->create() is what makes this test able to catch a
-        // regression in that default. See MemberModelTest's docblock for the
-        // same reasoning applied to a whole file of these.
+        // Bypasses EventFactory on purpose: its definition() sets
+        // is_public => false itself, so a factory-built row would pass even
+        // with the model and column default deleted. MemberModelTest's
+        // docblock applies the same reasoning to a whole file.
         $event = Event::query()->create([
             'title' => 'Répétition',
             'starts_at' => '2026-09-05 08:00:00',
@@ -130,10 +122,8 @@ class EventModelTest extends TestCase
     public function test_the_public_flag_is_a_boolean_not_an_integer(): void
     {
         // Without the cast this arrives in JSON as 1/0 and the generated
-        // TypeScript types it as number, which every consumer then has to
-        // defend against. The @property docblock tells PHPStan this is
-        // already bool, which is exactly the claim this test verifies at
-        // runtime — the cast, not the annotation, is the subject.
+        // TypeScript types it as number. The @property docblock already
+        // claims bool for PHPStan; this checks the runtime cast.
         // @phpstan-ignore method.alreadyNarrowedType (the runtime cast is the subject)
         $this->assertIsBool(Event::factory()->create(['is_public' => true])->is_public);
     }

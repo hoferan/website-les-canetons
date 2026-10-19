@@ -114,12 +114,13 @@
  * group permissions; which role granted one is not a question the API answers.
  * `GET /api/v1/me` returns the caller's effective permissions.
  *
- * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
- * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`, `images.manage`.
+ * `events.view`, `events.manage`, `attendance.respond`, `attendance.view_all`,
+ * `attendance.record_for_others`, `members.manage`, `roles.manage`,
+ * `registrations.view`, `registrations.manage`, `messages.view`,
+ * `messages.manage`, `history.manage`, `images.manage`, `account.manage`.
  *
- * Answering an event deliberately needs **no** permission: anyone in a register
- * answers for themselves.
+ * Every account holds `events.view` and `account.manage`. Answering an event for
+ * yourself needs `attendance.respond`.
  *
  * ## Conventions
  *
@@ -311,17 +312,15 @@
 
 /**
  * A new entry on the planning: a rehearsal, a gig or a concert, created as a
- * DRAFT. Only the title is required, because "I do not know the venue yet" is
- * the reason a draft gets written. The full rules run when it is published.
+ * draft. Only the title is required, so a draft can be written before the
+ * venue is known. The full rules run when it is published.
  *
  * When both dates are sent the end must come strictly after the start. The end
  * may fall on a later day; a two-day event such as a carnival weekend is an
- * ordinary row here, not a special case.
+ * ordinary row.
  *
- * `isPublic` defaults to false, the safe direction: it only matters once the
- * event is published, and it is still a per-event choice somebody makes.
- * `attire` and `notes` are optional and stay empty for the many rows that need
- * neither.
+ * `isPublic` defaults to false; it only matters once the event is published.
+ * `attire` and `notes` are optional.
  *
  * The three `registration*` fields open the event to public bookings. Setting
  * `registrationClosesAt` is what switches registration on at all; leave it

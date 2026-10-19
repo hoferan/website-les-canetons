@@ -29,25 +29,21 @@ class RecordOwnAttendanceRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // WITHDRAWING A YES COSTS A REASON (ADR 0018). A blank note comes
-        // back as an ordinary validation failure against that field — no new
-        // error vocabulary invented, and it lands in the dialog beside the box
-        // the member has to fill in.
+        // Withdrawing a yes costs a reason (ADR 0018). A blank note is an
+        // ordinary validation failure against `note`, so it needs no new error
+        // vocabulary and shows beside the field the member has to fill in.
         //
-        // The rule is asymmetric on purpose. Saying yes late costs nothing;
-        // taking a yes back is what leaves the cook with a headcount that is
-        // wrong and the committee with a gap in a Guggenmusik's front row.
-        // Recording on somebody's behalf is exempt and uses
-        // RecordMemberAttendanceRequest instead — which is also why the
-        // on-behalf route refuses its own caller, because otherwise this
-        // rule would be one request away from evadable.
+        // Asymmetric on purpose: a late yes costs nothing, a withdrawn yes
+        // leaves a wrong headcount. Recording on somebody's behalf uses
+        // RecordMemberAttendanceRequest, which is why that route refuses its
+        // own caller: otherwise this rule could be evaded.
+        //
+        // `note` leads with `required` on a withdrawal because ApiError
+        // reports the first failed rule per field.
         return [
             /** Whether the member is coming. One of `yes` or `no`. */
             'status' => ['required', 'string', AttendanceStatus::rule()],
 
-            // `required` rather than `nullable` only on the withdrawal, and
-            // `required` leads the list because ApiError reports the FIRST
-            // failed rule per field.
             /** Free text. Required when this request changes the member's own stored `yes` into a `no`; optional otherwise. */
             'note' => [$this->withdrawingAYes() ? 'required' : 'nullable', 'string', 'max:255'],
         ];
@@ -56,11 +52,9 @@ class RecordOwnAttendanceRequest extends FormRequest
     /**
      * Is this request taking back a `yes` the member themselves gave?
      *
-     * Null-safe throughout, the same call UpdateEventRequest makes:
-     * ApiErrorVocabularyTest instantiates every FormRequest outside a request
-     * to read its rules() keys, so there is no bound route model and no
-     * authenticated user then. At runtime the route and the session guarantee
-     * both.
+     * Null-safe, like UpdateEventRequest: ApiErrorVocabularyTest instantiates
+     * every FormRequest outside a request to read its rules() keys, with no
+     * bound route model and no user.
      */
     private function withdrawingAYes(): bool
     {

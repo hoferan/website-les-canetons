@@ -11,14 +11,13 @@ use Illuminate\Support\Str;
 /**
  * A person on the roster.
  *
- * EVERY MEMBER HAS AN ACCOUNT (2026_09_08_000001), so the defaults include
+ * Every member has an account (ADR 0015), so the defaults include
  * credentials. A test that wants a member without them is testing that the
- * schema refuses it, and should build the row by hand — see
- * MemberModelTest::test_a_member_cannot_exist_without_an_account.
+ * schema refuses it, and builds the row by hand (see
+ * MemberModelTest::test_a_member_cannot_exist_without_an_account).
  *
- * Usernames are unique by construction. Two tests were written before this
- * factory existed and collided on a hard-coded username, both times in a
- * helper that looked obviously correct; `unique()` removes the whole class.
+ * Usernames are unique by construction, so tests cannot collide on a
+ * hard-coded one.
  *
  * @extends Factory<Member>
  */
@@ -29,10 +28,8 @@ class MemberFactory extends Factory
     /**
      * The password every factory-built member has, unless overridden.
      *
-     * A constant rather than a literal repeated across the suite: tests log in
-     * as these members, and a test that types the password by hand is one
-     * rename away from failing for a reason that has nothing to do with what it
-     * asserts.
+     * A constant rather than a literal repeated across the suite, so a test
+     * that logs in cannot fail over a renamed password.
      */
     public const PASSWORD = 'secret123';
 
@@ -45,14 +42,12 @@ class MemberFactory extends Factory
         return [
             'first_name' => $first,
             'last_name' => $last,
-            // Shaped like a real one: lower case, dots, no accents. That is what
-            // StoreMemberRequest's regex allows, so a factory member is a member
-            // the API would have accepted.
+            // Lower case, dots, no accents: what StoreMemberRequest's regex
+            // allows, so the API would accept a factory member.
             'username' => Str::slug(Str::ascii("{$first}.{$last}"), '.').'.'.fake()->unique()->numberBetween(1, 99999),
             'password' => self::PASSWORD,
             'must_change_password' => false,
-            // Publication of a minor's name is opt-in, and the column defaults
-            // false. The factory agrees rather than quietly differing.
+            // Publishing a minor's name is opt-in; matches the column default.
             'public_visible' => false,
             'section_id' => null,
             'committee_function_id' => null,
@@ -61,14 +56,13 @@ class MemberFactory extends Factory
     }
 
     /**
-     * EVERY FACTORY MEMBER HOLDS THE BASELINE ROLE, as every real account does:
-     * POST /members attaches it and nothing else, and the 2026_09_29 migration
-     * gave it to everybody already there. A member without it cannot read the
-     * planning or change their own password, which is a state the API never
-     * produces, so a test has to ask for it by name with withoutBaseline().
+     * Every factory member holds the baseline role, as every real account
+     * does. A member without it cannot read the planning or change their own
+     * password, a state the API never produces, so a test asks for it by name
+     * with withoutBaseline().
      *
      * Skipped when no baseline role exists, which only happens in a test that
-     * has deliberately put the database back to before that migration.
+     * rolls the database back to before the migration that creates it.
      */
     public function configure(): static
     {
@@ -95,7 +89,7 @@ class MemberFactory extends Factory
      * Holds the seeded `direction` role, and therefore members.manage.
      *
      * Reads the role rather than creating one: `direction` is reference data
-     * seeded by 2026_09_07_000001, which RefreshDatabase runs, and creating a
+     * from migration 2026_09_07_000001, which RefreshDatabase runs, so a
      * second row with the same key is a duplicate-key error.
      */
     public function administrator(): static
@@ -111,9 +105,9 @@ class MemberFactory extends Factory
 
     /**
      * Without the baseline role, and so without events.view and
-     * account.manage: for the tests proving those routes check a permission
-     * rather than a session. Runs after configure()'s callback, so it removes
-     * what that one attached.
+     * account.manage: for tests proving those routes check a permission, not
+     * just a session. Runs after configure()'s callback and removes what it
+     * attached.
      */
     public function withoutBaseline(): static
     {

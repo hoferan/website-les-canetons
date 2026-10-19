@@ -9,8 +9,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * login.
  *
  * `username` is therefore required, must be unique, and may hold only lower
- * case letters, digits, dot, hyphen and underscore. It gets dictated over the
- * phone, so it is deliberately narrow.
+ * case letters, digits, dot, hyphen and underscore, because it gets dictated
+ * over the phone.
  *
  * There is no `password` field. The API generates one and returns it in the
  * response exactly once, for an administrator to pass on; it is never
@@ -29,42 +29,36 @@ class StoreMemberRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // `username` is REQUIRED because every member has an account
-        // (2026_09_08_000001). It used to be optional, back when a row could
-        // be a person without a login; that model is what let somebody hold
-        // members.manage while being unable to authenticate, and deleting the
-        // only real administrator then locked the band out.
+        // `username` is required because every member has an account: a
+        // member without a login could hold members.manage and be unable to
+        // authenticate. It allows only lower case, digits, dot, hyphen and
+        // underscore because it is dictated over the phone, and the column
+        // collates case-insensitively, so `Lea` and `lea` would be one account.
         //
-        // There is deliberately no `roleIds` field: granting a permission is
-        // exactly one operation, PUT /members/{member}/roles, which checks the
-        // lockout invariants and ends the member's sessions. Accepting roles
-        // here would let a stolen session create a working administrator in
-        // one call.
+        // No `roleIds`: granting a permission is one operation,
+        // PUT /members/{member}/roles, which checks the lockout invariants and
+        // ends the member's sessions. Accepting roles here would let a stolen
+        // session create an administrator in one call.
         //
-        // There is deliberately no `password` field. The password is GENERATED
-        // by the controller and returned once — an administrator reads it down
-        // the phone (ADR 0016) — so nobody types a credential into this form
-        // and no weak one can be chosen.
+        // No `password`: the controller generates one and returns it once for
+        // an administrator to read out (ADR 0016), so no weak one can be
+        // chosen.
         //
-        // Field names are camelCase, matching what the SPA sends and what
-        // App\Exceptions\ApiError echoes into errors[].field, where
-        // web/src/i18n/fr.ts looks them up. Renaming one silently breaks its
-        // French error message.
+        // App\Exceptions\ApiError echoes these field names into errors[].field,
+        // where web/src/i18n/fr.ts looks them up, so renaming one breaks its
+        // translated error message.
         //
-        // RULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed
-        // rule per field, so `required` comes first (an empty field reports
-        // `required`, not `invalid_format`) and `max` precedes `unique` (an
-        // over-long username reports `too_long` rather than costing a database
-        // round-trip).
+        // Rule order matters: ApiError reports only the first failed rule per
+        // field, so `required` comes first (an empty field reports `required`,
+        // not `invalid_format`) and `max` precedes `unique` (an over-long
+        // username reports `too_long` without a database round trip).
+        //
+        // `publicVisible` is required, not defaulted, because publishing a
+        // minor's name is a decision somebody has to state.
         return [
             'firstName' => ['required', 'string', 'max:255'],
             'lastName' => ['required', 'string', 'max:255'],
 
-            // Lower case, digits, dot, hyphen, underscore. The seeded logins
-            // look like `demo.direction`, and a username that has to be
-            // dictated should not depend on capitalisation. The column collates
-            // case-insensitively anyway, so `Lea` and `lea` would be the same
-            // account — the rule makes that visible rather than surprising.
             /** The login, unique across the roster. Lower case letters, digits, dot, hyphen and underscore only, for example `marie.dupont`. */
             'username' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9._-]+$/', 'unique:members,username'],
 
@@ -75,9 +69,6 @@ class StoreMemberRequest extends FormRequest
             /** The register this member instructs, if any. Separate from `sectionId`: an instructor need not play in the register they teach. */
             'instructorOfSectionId' => ['nullable', 'integer', 'exists:sections,id'],
 
-            // Required, not defaulted: publication of a minor's name is a
-            // decision somebody makes, so the form has to state it rather than
-            // inherit it.
             /** Whether the member's name may appear on the public site. Required rather than defaulted, because many members are minors and this is decided per person. */
             'publicVisible' => ['required', 'boolean'],
         ];

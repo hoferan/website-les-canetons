@@ -8,9 +8,8 @@ use App\Models\CommitteeFunction;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-// NO DESCRIPTION ON THIS ONE. Scramble takes a group's description from the
-// attribute and only one controller per group may carry one; MemberController
-// holds the "Members" group's.
+// No group description here: only one controller per group may carry it, and
+// MemberController holds the "Members" one.
 #[Group('Members', weight: 50)]
 class CommitteeFunctionController extends Controller
 {
@@ -26,14 +25,12 @@ class CommitteeFunctionController extends Controller
      */
     public function index(): AnonymousResourceCollection
     {
-        // `index()` rather than `__invoke()`, and the return type is the
-        // resource collection rather than a JsonResponse, for the two reasons
-        // SectionController sets out at length: the method name is what gives
-        // the generated hook a plural name, and wrapping this in
-        // response()->json() erases the type Scramble needs to emit a $ref.
+        // `index()` gives the generated hook a plural name, and returning the
+        // resource collection (not response()->json()) keeps the type Scramble
+        // needs to emit a $ref. See SectionController.
         //
-        // The assignment is load-bearing too — Scramble serves the comment
-        // preceding a return as the 200 response description.
+        // Assigned first so Scramble does not publish this comment as the 200
+        // description.
         $seats = CommitteeFunction::orderBy('sort_order')->get();
 
         return CommitteeFunctionResource::collection($seats);

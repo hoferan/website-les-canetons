@@ -3,34 +3,26 @@
 return [
 
     /*
-     * NONE OF THESE KEYS BELONG IN api/.env.example.
-     *
-     * The deploy CLI's config-shape pre-flight compares a server's _api/.env
-     * key SET against that file and refuses on EXTRA keys as well as missing
-     * ones. Adding an optional key there would refuse every server's next
-     * deploy until somebody hand-edited three .env files. Each of these has a
-     * working null default, so a server that has never heard of them is
-     * correct — which is the point.
+     * None of these keys belong in api/.env.example. The deploy pre-flight
+     * compares a server's _api/.env key set against that file and refuses on
+     * extra keys as well as missing ones, so an optional key there would
+     * refuse every server's next deploy. Each key here has a working default,
+     * so a server that has never heard of it is correct.
      *
      * The contract version lives in config/scramble.php (its only reader), and
      * the route prefix on App\Http\Middleware\ApiVersion::PREFIX, because
-     * bootstrap/app.php needs it while building the application, before any
-     * config is loaded.
+     * bootstrap/app.php needs it before any config is loaded.
      */
 
     /*
-     * Retiring a version. All three are null for v1 and App\Http\Middleware\
-     * ApiVersion emits no header for a null — so a server that has never heard
-     * of these keys behaves exactly as it does today.
+     * Retiring a version. All three are null for v1, and
+     * App\Http\Middleware\ApiVersion emits no header for a null.
      *
-     * The three take three different formats on the wire (RFC 9745 wants a
-     * structured-field Date, RFC 8594 an HTTP-date, RFC 8288 a URL in angle
-     * brackets), but all three are written HERE as anything strtotime()
-     * understands, or a plain URL. The middleware does the converting.
-     *
-     * A value it cannot parse emits nothing rather than something wrong: a
-     * malformed Sunset is worse than an absent one, because a client that
-     * believes it stops calling on the wrong day.
+     * The wire formats differ (RFC 9745 a structured-field Date, RFC 8594 an
+     * HTTP-date, RFC 8288 a URL in angle brackets), but here each is written
+     * as anything strtotime() understands, or a plain URL; the middleware
+     * converts. A value it cannot parse emits nothing, since a malformed
+     * Sunset would make a client stop calling on the wrong day.
      */
     'deprecation' => [
 
@@ -47,40 +39,33 @@ return [
     ],
 
     /*
-     * Replayed public submissions. App\Http\Middleware\IdempotentWrite.
-     *
-     * NOT env()-DRIVEN, unlike the block above, and for the same reason it
-     * must not be: the deploy pre-flight refuses on extra keys as well as
-     * missing ones, so an optional key in api/.env.example would refuse every
-     * server's next deploy. Neither of these is a per-server decision anyway.
+     * Replayed public submissions (App\Http\Middleware\IdempotentWrite).
+     * Constants rather than env() reads: neither is a per-server decision.
      */
     'idempotency' => [
 
         // How long a stored answer can be replayed. The draft
-        // (draft-ietf-httpapi-idempotency-key-header) suggests a server state
-        // its retention; ours is a day, which covers a guest who closed the
-        // page on a stalled request and came back to it.
+        // (draft-ietf-httpapi-idempotency-key-header) asks a server to state
+        // its retention. A day covers a guest who closed the page on a stalled
+        // request and came back to it.
         'retention_hours' => 24,
 
-        // [chances, out of] that a write also deletes what has expired. This
-        // host has no scheduler, so the sweep rides on traffic the way
-        // Laravel's session garbage collection does. A test sets [100, 100] to
-        // make it certain.
+        // [chances, out of] that a write also deletes what has expired. The
+        // host has no scheduler, so the sweep rides on traffic like Laravel's
+        // session garbage collection. A test sets [100, 100] to make it certain.
         'lottery' => [2, 100],
 
     ],
 
     /*
-     * The image library. Same limits, in two places: tools/image-budget.mjs
-     * holds them for the photographs committed to the repository, and these
-     * hold them for what a member uploads. The browser shrinks a photo to up
-     * to three sizes before sending it, so the server only checks the result
-     * (JpegInspector, ImageSet). No image extension is used for that: the
-     * host has neither gd nor imagick, fileinfo is unverified, and decoding a
-     * camera photo would blow its memory_limit anyway (ADR 0028).
+     * The image library. tools/image-budget.mjs holds the same limits for the
+     * photographs committed to the repository. The browser shrinks a photo to
+     * up to three sizes before sending it, and the server only checks the
+     * result (JpegInspector, ImageSet). No image extension is used: the host
+     * has neither gd nor imagick, fileinfo is unverified, and decoding a
+     * camera photo would exceed its memory_limit (ADR 0028).
      *
-     * Constants, all of them. Nothing here may reach api/.env.example, for
-     * the reason at the top.
+     * Constants, like the block above.
      */
     'images' => [
 

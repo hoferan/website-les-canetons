@@ -20,10 +20,9 @@ class AttendanceFactory extends Factory
     {
         return [
             'event_id' => Event::factory(),
-            // A player by default: only a holder of attendance.respond is
-            // answerable, so an attendance row for a member without it is a
-            // state the application never creates. The register is there only
-            // because a real player has one.
+            // A player by default: only a holder of attendance.respond can
+            // answer, so the application never creates a row for anybody else.
+            // The register is there only because a real player has one.
             'member_id' => Member::factory()->inSection('Cloches')->musician(),
             'status' => AttendanceStatus::Yes,
             'note' => null,

@@ -82,8 +82,8 @@ class GuestListTest extends TestCase
 
     public function test_registrations_view_alone_is_enough_to_read_it(): void
     {
-        // PINS THE PERMISSION STRING. demo.committee holds exactly this and
-        // nothing else — the role exists so somebody can look at the list.
+        // Pins the permission string. demo.committee holds exactly this: the
+        // role exists so somebody can look at the list.
         $this->actingAsMember(Member::factory()->committee()->create())
             ->getJson("/api/v1/events/{$this->event->id}/registrations")
             ->assertOk();
@@ -110,10 +110,9 @@ class GuestListTest extends TestCase
 
     public function test_reading_the_list_does_not_let_you_edit_it(): void
     {
-        // THE WHOLE REASON registrations.manage IS A SEPARATE PERMISSION.
-        // Widening registrations.view would have handed demo.committee —
-        // which holds it as its only permission — the power to delete
-        // strangers' bookings.
+        // Why registrations.manage is a separate permission: widening
+        // registrations.view would hand demo.committee, whose only permission
+        // it is, the power to delete strangers' bookings.
         $booking = $this->book();
 
         $this->actingAsMember(Member::factory()->committee()->create())
@@ -126,10 +125,9 @@ class GuestListTest extends TestCase
 
     public function test_reading_the_list_does_not_let_you_cancel_one(): void
     {
-        // The other half of the same argument, in its own test: two
-        // actingAsMember calls around two requests in ONE test silently
-        // lose the session on the second and answer 401, which reads as a
-        // permission pass when it is nothing of the kind.
+        // The other half, in its own test: two actingAsMember calls around
+        // two requests in one test lose the session on the second, and the
+        // resulting 401 reads as a permission pass.
         $booking = $this->book();
 
         $this->actingAsMember(Member::factory()->committee()->create())
@@ -166,9 +164,7 @@ class GuestListTest extends TestCase
         $fresh = $booking->fresh();
         $this->assertSame('Maillard-Rossier', $fresh->last_name);
         $this->assertSame($booking->email, $fresh->email);
-        // (int) because MySQL returns SUM() as a string, and assertSame
-        // is strict — a bare 2 vs '2' fails for a reason that has nothing
-        // to do with what this test is about.
+        // (int) because MySQL returns SUM() as a string.
         $this->assertSame(2, (int) $fresh->choices()->sum('quantity'));
     }
 
@@ -228,7 +224,7 @@ class GuestListTest extends TestCase
 
     public function test_marking_it_paid_again_keeps_the_first_stamp(): void
     {
-        // The stamp is WHEN THE MONEY CAME IN. A second press, or a PATCH
+        // The stamp is when the money came in. A second press, or a PATCH
         // that re-sends the whole form, must not move it to now.
         $booking = $this->book();
         $booking->forceFill(['paid_at' => '2027-01-10 18:00:00'])->save();
@@ -347,7 +343,7 @@ class GuestListTest extends TestCase
                 ],
             ])
             ->assertOk()
-            // Scoped to `data`: a bare assertJsonCount(2) now counts the
+            // Scoped to `data`: a bare assertJsonCount(2) counts the
             // envelope's own two keys and passes whatever the list holds.
             ->assertJsonCount(2, 'data');
 
@@ -358,9 +354,8 @@ class GuestListTest extends TestCase
 
     public function test_an_option_somebody_booked_cannot_be_removed(): void
     {
-        // RESTRICT would make the database refuse anyway — but with a 500
-        // halfway through the transaction, after the committee's other
-        // edits were already applied. This refuses first, and names it.
+        // RESTRICT would make the database refuse anyway, but with a 500
+        // halfway through the transaction. This refuses first, and names it.
         $this->book('Maillard', 2, 0);
 
         $this->actingAsMember($this->organiser)
@@ -389,9 +384,9 @@ class GuestListTest extends TestCase
 
     public function test_every_format_agrees_on_the_rows(): void
     {
-        // ONE ROW-BUILDER, FOUR FORMATTERS. Four exporters each walking the
-        // models would drift the first time somebody added a column, and
-        // every file would still open — only the numbers would differ.
+        // One row builder, four formatters. Four exporters each walking the
+        // models would drift when a column is added, and every file would
+        // still open with different numbers.
         $this->book('Maillard', 3, 1);
         $this->book('Rossier', 1, 0);
 
@@ -453,10 +448,8 @@ class GuestListTest extends TestCase
     public function test_the_csv_carries_a_bom_and_semicolons(): void
     {
         // Excel on Windows reads a BOM-less UTF-8 CSV as the system
-        // codepage and turns "Répétition" into "RÃ©pÃ©tition" — for a French
-        // guest list full of names that is the difference between a usable
-        // file and a useless one. Semicolons because Swiss Excel expects
-        // them; a comma file opens as one column.
+        // codepage and turns "Répétition" into "RÃ©pÃ©tition". Semicolons
+        // because Swiss Excel expects them; a comma file opens as one column.
         $this->book();
 
         $csv = $this->actingAsMember($this->organiser)
@@ -481,8 +474,8 @@ class GuestListTest extends TestCase
             $response->headers->get('Content-Type')
         );
 
-        // A xlsx is a zip: "PK" is its magic number. Cheap, and it proves
-        // openspout actually wrote a container rather than an error page.
+        // A xlsx is a zip, and "PK" is its magic number: openspout wrote a
+        // container rather than an error page.
         $this->assertStringStartsWith('PK', $response->streamedContent());
     }
 
@@ -518,13 +511,9 @@ class GuestListTest extends TestCase
 
     public function test_the_export_rows_are_positional_and_carry_the_right_values(): void
     {
-        // THE CONTRACT GuestList EXISTS FOR. Its docblock says the four
-        // formats must not disagree and that rows() is "positional against
-        // headers()", and until 2026-09-10 nothing checked either: swapping
-        // Nom and Prénom, hard-coding the guest total to 0, and a 100x
-        // money error (round($cents, 2) instead of $cents / 100) all left
-        // this file green, because the assertions only looked for strings
-        // somewhere in the output.
+        // GuestList's contract: rows() is positional against headers(). Each
+        // value is checked in its column, so swapping Nom and Prénom,
+        // hard-coding the guest total, or a 100x money error fails here.
         $this->book('Maillard', 3, 1);
 
         $json = $this->actingAsMember($this->organiser)
@@ -545,7 +534,7 @@ class GuestListTest extends TestCase
         $this->assertSame(3, $row[$at('Menu viande')]);
         $this->assertSame(1, $row[$at('Menu enfant')]);
 
-        // Four people, and 3 x 45.- plus 1 x 20.- in FRANCS, not centimes.
+        // Four people, and 3 x 45.- plus 1 x 20.- in francs, not centimes.
         $this->assertSame(4, $row[$at('Personnes')]);
         // (float) because JSON has no int/float distinction: a whole
         // 155.0 decodes as int(155), which assertSame rejects on type.
@@ -594,10 +583,9 @@ class GuestListTest extends TestCase
 
     public function test_the_csv_and_markdown_carry_the_same_values_in_the_same_order(): void
     {
-        // Presence is not agreement: the formats could each contain every
-        // header and still put them in a different order, or read a
-        // different column. This compares the rendered first data row
-        // against the JSON row, cell for cell.
+        // Each format could contain every header and still order them
+        // differently, so the first data row is compared with the JSON row
+        // cell for cell.
         $this->book('Maillard', 3, 1);
 
         $json = $this->actingAsMember($this->organiser)
@@ -627,10 +615,10 @@ class GuestListTest extends TestCase
 
     public function test_replacing_the_options_twice_converges(): void
     {
-        // PUT MEANS IDEMPOTENT, and the first save is where that is hard:
-        // no entry carries an id yet. A naive delete-then-create renumbers
-        // every option on a retry, and if a booking landed in between the
-        // retry answers option_has_registrations and loses the whole edit.
+        // PUT is idempotent, and the first save is the hard case: no entry
+        // carries an id yet. A delete-then-create renumbers every option on a
+        // retry, and if a booking landed in between, the retry answers
+        // option_has_registrations and loses the whole edit.
         $body = ['options' => [
             ['label' => 'Menu carnivore', 'priceCents' => 4800],
             ['label' => 'Menu végétarien', 'priceCents' => 4200],
@@ -646,9 +634,8 @@ class GuestListTest extends TestCase
             ->assertOk()
             ->json('data');
 
-        // Same rows, same ids, same count. A retry changes nothing.
-        // Read through `data`, not off the envelope: array_column() over
-        // {data, meta} finds no `id` at all and this passes on two empty lists.
+        // Same rows, same ids, same count. Read through `data`: array_column()
+        // over {data, meta} finds no `id` and passes on two empty lists.
         $this->assertSame(array_column($first, 'id'), array_column($second, 'id'));
         $this->assertCount(2, $first);
         $this->assertSame(2, RegistrationOption::query()->count());
@@ -678,9 +665,9 @@ class GuestListTest extends TestCase
 
     public function test_a_formula_in_a_guest_name_is_defused_in_the_csv(): void
     {
-        // Every identity column comes from the PUBLIC form and is validated
-        // only as a string, so a booking under this name is a live formula
-        // the moment a committee member opens the file.
+        // Every identity column comes from the public form and is validated
+        // only as a string, so this name would be a live formula when a
+        // committee member opens the file.
         Registration::factory()->create([
             'event_id' => $this->event->id,
             'last_name' => '=HYPERLINK("https://evil.example","cliquez")',
@@ -697,9 +684,8 @@ class GuestListTest extends TestCase
 
     public function test_the_exports_need_registrations_view_specifically(): void
     {
-        // PINS THE PERMISSION STRING. The old test only proved a member
-        // with NO permissions is refused, which cannot tell one string
-        // from another.
+        // Pins the permission string: a member with no permissions at all
+        // cannot tell one string from another.
         $organiser = Member::factory()
             ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
             ->create();

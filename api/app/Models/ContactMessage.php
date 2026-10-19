@@ -14,16 +14,9 @@ use Illuminate\Support\Carbon;
  * Stored raw and escaped at output time. `handled_at` is what the committee
  * inbox reads: null means the item is still open.
  *
- * The @property tags say what casts() already does at runtime, plus what
- * Eloquent's own timestamp handling does for `created_at`/`updated_at`.
- * Static analysis cannot read either, so without them these read as their raw
- * column types and every caller has to defend against a type that never
- * occurs. Attendance.php and Member.php carry the same block for the same
- * reason.
- *
- * `created_at` is `useCurrent()` in the migration, so it is never null on a
- * persisted row. `updated_at`, `handled_at`, `handled_by_member_id` and
- * `subject` are all nullable columns.
+ * The @property tags repeat what casts() and Eloquent's timestamps do at
+ * runtime, which static analysis cannot read. `created_at` is `useCurrent()`
+ * in the migration, so it is never null on a persisted row.
  *
  * @property int $id
  * @property string $first_name
@@ -58,7 +51,7 @@ class ContactMessage extends Model
     }
 
     /**
-     * Who marked this handled, or null while it is open — or after they left
+     * Who marked this handled, or null while it is open or after they left
      * the band.
      *
      * @return BelongsTo<Member, $this>

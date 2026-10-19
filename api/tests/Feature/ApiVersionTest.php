@@ -7,19 +7,16 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The contract is mounted at /api/v1, and carries the machinery that will one
- * day retire it.
+ * The contract is mounted at /api/v1 and carries the headers that will retire
+ * it.
  *
- * Two things are pinned here. First, that the prefix is real — a route answers
- * under it and does not answer without it — because a prefix that silently
- * failed to apply would leave every URL working exactly as before and nothing
- * would notice until a v2 needed to exist.
+ * The prefix is checked both ways (a route answers under it and not without
+ * it), because a prefix that failed to apply would leave every URL working and
+ * nothing would notice until a v2 existed.
  *
- * Second, that the retirement headers are absent by default and correct when
- * configured. They are three headers in three different wire formats (RFC 9745
- * wants a structured-field Date, RFC 8594 an HTTP-date, RFC 8288 a bracketed
- * URL), and the whole point of building them before they are needed is that
- * nobody has to get all three right during the week they matter.
+ * The retirement headers are absent by default and correct when configured.
+ * They use three wire formats: RFC 9745 a structured-field Date, RFC 8594 an
+ * HTTP-date, RFC 8288 a bracketed URL.
  */
 class ApiVersionTest extends TestCase
 {
@@ -31,10 +28,8 @@ class ApiVersionTest extends TestCase
     }
 
     /**
-     * The negative half, and it is the one that can actually fail. Without it,
-     * a withRouting() call that ignored apiPrefix entirely would still pass the
-     * test above — because /api/v1/config would simply not exist and the SPA
-     * fallback is not in play here.
+     * The negative half: a route that answered both with and without the
+     * prefix would pass the test above.
      */
     public function test_the_old_unversioned_path_is_gone(): void
     {
@@ -42,10 +37,9 @@ class ApiVersionTest extends TestCase
     }
 
     /**
-     * routes/meta.php is deliberately NOT versioned: it describes and operates
+     * routes/meta.php is deliberately unversioned: it describes and operates
      * the API rather than being part of it, and the deploy tooling posts to
-     * /api/migrate from a script nobody wants to re-release in lockstep with a
-     * contract version.
+     * /api/migrate from a script that should not move with a contract version.
      */
     public function test_the_meta_routes_stay_unversioned(): void
     {
@@ -86,9 +80,8 @@ class ApiVersionTest extends TestCase
     }
 
     /**
-     * A malformed date emits NOTHING rather than something wrong. A client that
-     * parses a garbage Sunset and believes this API stops answering on the
-     * wrong day is worse off than one that never saw the header.
+     * A malformed date emits no header. A client that believes a garbage
+     * Sunset is worse off than one that never saw the header.
      */
     public function test_an_unparseable_date_announces_nothing(): void
     {
@@ -106,8 +99,6 @@ class ApiVersionTest extends TestCase
     /**
      * The meta routes share the `api` middleware group, so the only thing
      * keeping the retirement headers off them is ApiVersion's own prefix check.
-     * Configure a deprecation and the unversioned reference must stay silent —
-     * it is not the thing being retired.
      */
     public function test_the_unversioned_meta_routes_are_never_announced(): void
     {

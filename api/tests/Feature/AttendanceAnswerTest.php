@@ -56,9 +56,8 @@ class AttendanceAnswerTest extends TestCase
 
     public function test_answering_twice_updates_rather_than_duplicating(): void
     {
-        // PUT is an idempotent upsert: tapping Oui then Non must not race
-        // itself into two rows, and the client needs no create-vs-update
-        // branch.
+        // PUT is an idempotent upsert: tapping Oui then Non cannot make two
+        // rows, and the client needs no create-or-update branch.
         $this->actingAsMember($this->player)->putJson($this->url(), ['status' => 'yes']);
         $this->actingAsMember($this->player)
             ->putJson($this->url(), ['status' => 'no', 'note' => 'Je suis malade.'])
@@ -73,9 +72,8 @@ class AttendanceAnswerTest extends TestCase
 
     public function test_a_player_who_also_manages_may_still_answer(): void
     {
-        // demo.both: holds musician AND runs the planning. The case the old
-        // either/or role matrix could not express: an admin who could not
-        // say whether they were coming.
+        // demo.both holds musician and runs the planning, the case an
+        // either/or role model cannot express.
         $both = Member::factory()->inSection('Trompettes')->musician()->administrator()->create();
 
         $this->actingAsMember($both)
@@ -87,8 +85,8 @@ class AttendanceAnswerTest extends TestCase
 
     public function test_an_unknown_status_is_refused_with_the_accepted_set(): void
     {
-        // The `in` rule, so ApiError supplies params.allowed — without it
-        // i18next prints the literal "{{allowed}}" on screen.
+        // The `in` rule makes ApiError supply params.allowed; without it the
+        // UI would print the literal "{{allowed}}".
         $this->actingAsMember($this->player)
             ->putJson($this->url(), ['status' => 'peut-être'])
             ->assertStatus(400)
@@ -134,9 +132,8 @@ class AttendanceAnswerTest extends TestCase
 
     public function test_a_first_answer_of_no_costs_nothing(): void
     {
-        // The rule is asymmetric on purpose: saying no from the start is not
-        // taking anything back, and demanding a reason for it would train
-        // people to type a full stop.
+        // Asymmetric on purpose: a first no takes nothing back, and demanding
+        // a reason would train people to type a full stop.
         $this->actingAsMember($this->player)
             ->putJson($this->url(), ['status' => 'no'])
             ->assertOk();
@@ -168,7 +165,7 @@ class AttendanceAnswerTest extends TestCase
 
     public function test_the_reason_rule_reads_this_events_answer_not_another(): void
     {
-        // A yes for a DIFFERENT event must not make this one a withdrawal.
+        // A yes for a different event must not make this one a withdrawal.
         Attendance::factory()->create(['member_id' => $this->player->id]);
 
         $this->actingAsMember($this->player)
@@ -178,8 +175,8 @@ class AttendanceAnswerTest extends TestCase
 
     public function test_a_self_answer_clears_a_direction_stamp(): void
     {
-        // The member correcting it themselves is exactly the case where
-        // "saisie par la direction" stops being true.
+        // Once the member corrects it, "saisie par la direction" stops being
+        // true.
         $recorder = Member::factory()->administrator()->create();
         Attendance::factory()->no()->recordedBy($recorder)->create([
             'event_id' => $this->event->id,
@@ -198,9 +195,8 @@ class AttendanceAnswerTest extends TestCase
 
     public function test_undo_removes_the_answer_entirely(): void
     {
-        // Not "sets it to no": undoing a FIRST answer must return the event
-        // to unanswered, which a second PUT cannot express. That is the
-        // whole reason this endpoint exists.
+        // Not "sets it to no": undoing a first answer returns the event to
+        // unanswered, which a second PUT cannot express.
         $this->actingAsMember($this->player)->putJson($this->url(), ['status' => 'yes']);
 
         $this->actingAsMember($this->player)
@@ -233,8 +229,8 @@ class AttendanceAnswerTest extends TestCase
 
     public function test_undo_is_still_open_just_inside_the_window(): void
     {
-        // The boundary from the other side: 6 minutes being refused says
-        // nothing about whether 4 is allowed.
+        // The boundary from the other side: refusing 6 minutes says nothing
+        // about allowing 4.
         $answer = Attendance::factory()->create([
             'event_id' => $this->event->id,
             'member_id' => $this->player->id,

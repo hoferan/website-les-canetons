@@ -8,9 +8,9 @@ use Illuminate\Support\Collection;
 /**
  * Something that can put work in the committee's inbox.
  *
- * ADDING A SOURCE IS A CLASS AND A REGISTRY LINE, deliberately — see
- * ADR 0021 for why the inbox is computed rather than materialised. A source
- * owns its own definition of "open"; nothing here stores state.
+ * Adding a source is a class and a registry line. The inbox is computed
+ * rather than materialised (ADR 0021): a source owns its own definition of
+ * "open", and nothing here stores state.
  */
 interface InboxSource
 {

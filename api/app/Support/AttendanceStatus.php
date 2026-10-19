@@ -7,21 +7,16 @@ namespace App\Support;
  */
 enum AttendanceStatus: string
 {
-    // THE DOCBLOCK ABOVE IS PUBLISHED. Scramble renders an enum's class docblock as
-    // the schema description in api/openapi.json, so everything a reader of the
-    // contract has no use for lives down here as a comment instead — measured
-    // 2026-09-11, when the paragraphs below shipped to /api/docs verbatim,
-    // migration references and all.
+    // Only the docblock above is published: Scramble renders an enum's class
+    // docblock as the schema description in api/openapi.json, so notes a
+    // reader of the contract has no use for live here.
     //
-    // TWO ANSWERS, NOT THREE. There is deliberately no "maybe" — see the
-    // attendance migration for why a third option makes a chase list
+    // Two answers, not three. There is deliberately no "maybe" (ADR 0018);
+    // the attendance migration says why a third option makes a chase list
     // unanswerable.
     //
-    // Stored and transmitted in ENGLISH, like every other machine value in this
-    // API; web/src/i18n/ is the only place Oui and Non exist. The old
-    // `responses.answer` column already followed this rule with
-    // `participate`/`notparticipate`, and these are the same values said
-    // shorter.
+    // Stored and transmitted in English, like every other machine value in
+    // this API; web/src/i18n/ is the only place Oui and Non exist.
     case Yes = 'yes';
     case No = 'no';
 
@@ -30,11 +25,11 @@ enum AttendanceStatus: string
      * enum rather than retyped in every Form Request.
      *
      * A string rule rather than Rule::enum(): App\Exceptions\ApiError maps the
-     * `in` rule to `invalid_value` AND supplies its `allowed` parameter, while
+     * `in` rule to `invalid_value` and supplies its `allowed` parameter, while
      * an object rule arrives in failedRules keyed by class name and lands on
-     * the paramless fallback — so Rule::enum() would tell a French reader
-     * their answer "n'est pas dans un format valide" instead of listing what
-     * is accepted.
+     * the paramless fallback. Rule::enum() would tell a French reader their
+     * answer "n'est pas dans un format valide" instead of listing what is
+     * accepted.
      *
      * @return list<string>
      */

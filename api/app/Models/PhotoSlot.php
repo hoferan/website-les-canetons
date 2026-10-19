@@ -21,9 +21,9 @@ class PhotoSlot extends Model
 {
     /**
      * What a slot name may be: letters, digits, `.`, `_` and `-`, starting
-     * with a letter or digit, at most 64 characters. A GUID fits, and so does
-     * a readable name. Used as the route's constraint, so anything else is a
-     * 404 that never reaches the database.
+     * with a letter or digit, at most 64 characters, so a GUID or a readable
+     * name fits. Used as the route's constraint, so anything else is a 404
+     * that never reaches the database.
      */
     public const KEY = '[A-Za-z0-9][A-Za-z0-9._-]{0,63}';
 

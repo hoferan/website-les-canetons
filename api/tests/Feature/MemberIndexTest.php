@@ -15,11 +15,10 @@ use Tests\TestCase;
 /**
  * The roster: everyone the band tracks for events.
  *
- * EVERY MEMBER HAS AN ACCOUNT (2026_09_08_000001). A young member's parent uses
- * their login on their behalf, so there is no such thing as an unused one.
- * People the band merely DISPLAYS — instructors, honorary members, sponsors —
- * are content, hold no permissions, appear in no attendance list, and are not
- * rows in this table.
+ * Every member has an account. A young member's parent uses their login on
+ * their behalf. People the band only displays (instructors, honorary members,
+ * sponsors) are content, hold no permissions, appear in no attendance list and
+ * are not rows in this table.
  */
 class MemberIndexTest extends TestCase
 {
@@ -39,12 +38,10 @@ class MemberIndexTest extends TestCase
 
     public function test_every_member_has_an_account(): void
     {
-        // THE SCHEMA IS THE GUARD, and it replaces five AccessIntegrity tests.
-        // Nullable credentials let somebody hold members.manage while being
-        // unable to log in, so "two administrators, delete one, blank the
-        // other's username" locked the band out with no shell to repair it.
-        // NOT NULL dissolves that rather than guarding against it; this is what
-        // keeps it dissolved.
+        // The schema is the guard. Nullable credentials would let somebody
+        // hold members.manage while unable to log in, so blanking the last
+        // administrator's username would lock the band out with no shell to
+        // repair it. NOT NULL makes that impossible.
         $columns = collect(Schema::getColumns('members'))->keyBy('name');
 
         $this->assertFalse($columns['username']['nullable'], 'members.username must be NOT NULL');
@@ -56,7 +53,7 @@ class MemberIndexTest extends TestCase
             $this->assertNotNull($row['username'], 'every member on the roster has a username');
         }
 
-        // There is no "does this person have an account?" question left to ask.
+        // Every member has an account, so no row says whether it has one.
         $this->assertArrayNotHasKey('hasAccount', $body[0]);
     }
 
@@ -92,13 +89,11 @@ class MemberIndexTest extends TestCase
         $this->assertSame('camille.committee', $camille['username']);
         $this->assertSame($section->id, $camille['sectionId']);
         $this->assertSame('Cloches', $camille['sectionName']);
-        // THE ID, NOT THE NAME. The roster form renders a select over
-        // GET /api/v1/committee-functions, so it resolves the name itself; a
-        // `committeeFunctionName` here would be a second copy of the same fact
-        // that nothing reads, and App\Support\EntityTag hashes this rendered
-        // resource — so it would also move every committee member's tag
-        // whenever somebody fixed a typo in a seat name, refusing roster edits
-        // that were open at the time.
+        // The id, without the name. The roster form resolves the name from
+        // GET /api/v1/committee-functions. App\Support\EntityTag hashes this
+        // rendered resource, so a name here would move every committee
+        // member's tag when a seat name is corrected and refuse roster edits
+        // open at the time.
         $this->assertSame(
             CommitteeFunction::where('name', 'Présidente')->sole()->id,
             $camille['committeeFunctionId'],
@@ -114,9 +109,8 @@ class MemberIndexTest extends TestCase
 
     public function test_it_never_exposes_a_password_hash(): void
     {
-        // $hidden on the model covers a model serialised directly; a Resource
-        // that reads $this->password would sail straight past it. This is the
-        // assertion that catches that.
+        // $hidden on the model covers a model serialised directly, and a
+        // Resource that reads $this->password would bypass it.
         $raw = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('password', $raw);
@@ -128,7 +122,7 @@ class MemberIndexTest extends TestCase
     {
         // Whether somebody answers for events is what their roles grant, and
         // the roster already sends roleIds beside GET /api/v1/roles. A second
-        // field saying the same thing can only disagree with it one day.
+        // field saying the same thing could disagree with it.
         $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data');
 
         $this->assertNotEmpty($body);
@@ -150,9 +144,8 @@ class MemberIndexTest extends TestCase
 
     public function test_listing_the_roster_costs_a_fixed_number_of_queries(): void
     {
-        // ~45 members is the real roster. Without eager loading this is three
-        // queries per person on a shared host, and the screen that administers
-        // the band is the one that feels it.
+        // The real roster is about 45 members. Without eager loading this is
+        // three queries per person on a shared host.
         $this->administrator();
 
         Member::factory()
@@ -169,26 +162,18 @@ class MemberIndexTest extends TestCase
         $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk();
 
         // Session, permission lookup, the members query and one per eager-loaded
-        // relation — a small constant. What must NOT happen is growth with the
-        // roster: 21 members here, and an N+1 would be far past this ceiling.
+        // relation: a small constant. With 21 members an N+1 would be far past
+        // this ceiling.
         $this->assertLessThan(15, $queries, "listing 21 members took {$queries} queries");
     }
 
     /**
-     * PINS THE PERMISSION STRING on the whole member-administration group.
+     * Pins the permission string on the whole member-administration group.
      *
-     * Found by mutation on 2026-09-10: swapping this group's
-     * `permission:members.manage` for `permission:events.manage` left 47
-     * tests green. Every positive test in the roster suites acts as
-     * `administrator()`, which holds the seeded `direction` role and
-     * therefore Permission::cases() — every permission there is — while
-     * every negative test uses a member with no role at all. Between those
-     * two actors, any string in that middleware separates them, so none of
-     * them could see the swap.
-     *
-     * The events, attendance and registration groups all got a
-     * single-permission fixture when the same bug was found there. The
-     * roster is the group that was missed.
+     * Every other positive test in the roster suites acts as `administrator()`,
+     * which holds every permission, and every negative test uses a member with
+     * no role. Any permission string in the middleware separates those two, so
+     * only a single-permission fixture catches a swapped one.
      */
     public function test_members_manage_alone_admits_and_nothing_else_does(): void
     {
@@ -201,8 +186,7 @@ class MemberIndexTest extends TestCase
 
     public function test_a_different_permission_does_not_admit(): void
     {
-        // The other half, and the half that actually kills the mutation: a
-        // member who holds a real permission, just not this one.
+        // The other half: a member who holds a real permission, just not this one.
         $organiser = Member::factory()
             ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
             ->create();
@@ -215,8 +199,7 @@ class MemberIndexTest extends TestCase
 
     public function test_the_reference_data_needs_the_same_permission(): void
     {
-        // /sections and /roles ride in the same group and were equally
-        // unpinned.
+        // /sections and /roles sit in the same route group.
         $organiser = Member::factory()
             ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
             ->create();

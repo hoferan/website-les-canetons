@@ -18,16 +18,15 @@ class EventIndexTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // An ordinary player. Reading the planning needs no permission —
+        // An ordinary player. Reading the planning needs no permission:
         // everybody in the band needs to know when the next rehearsal is.
         $this->member = Member::factory()->inSection('Cloches')->create();
     }
 
     public function test_an_anonymous_caller_is_refused(): void
     {
-        // 401, not 403: the planning is members-only, and an
-        // anonymous caller has not failed a permission check — they have not
-        // authenticated at all.
+        // 401, not 403: an anonymous caller has not failed a permission
+        // check, they have not authenticated at all.
         $this->getJson('/api/v1/events')->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
     }
 
@@ -43,8 +42,8 @@ class EventIndexTest extends TestCase
 
     public function test_past_events_are_absent_by_default(): void
     {
-        // "The planning" means what is ahead. By next carnival the full
-        // list is a hundred rehearsals to scroll past on a phone.
+        // "The planning" means what is ahead. The full list would be a hundred
+        // rehearsals to scroll past on a phone.
         Event::factory()->past()->create(['title' => 'Déjà joué']);
         Event::factory()->create(['title' => 'À venir']);
 
@@ -55,7 +54,7 @@ class EventIndexTest extends TestCase
 
     public function test_past_returns_only_the_history_newest_first(): void
     {
-        // ?past=1 is the OTHER HALF of the list, not a superset of it, and it
+        // ?past=1 is the other half of the list, not a superset of it, and it
         // reverses the order because history is read backwards from now.
         Event::factory()->past()->create(['title' => 'Il y a longtemps', 'starts_at' => now()->subDays(30)]);
         Event::factory()->past()->create(['title' => 'La semaine dernière', 'starts_at' => now()->subDays(7)]);
@@ -71,17 +70,12 @@ class EventIndexTest extends TestCase
 
     public function test_an_event_happening_today_stays_in_the_planning_all_day(): void
     {
-        // Time frozen to mid-morning Fribourg. Without this the test builds
-        // an event at now()->subHour() and asserts it is still upcoming —
-        // true except between 00:00 and 01:00 local, when the hour before
-        // now genuinely belongs to yesterday and BandTime::startOfToday()
-        // is right to exclude it. A once-a-day red bar for a reason that
-        // has nothing to do with what this asserts.
-        // Mid-morning TODAY, not a fixed calendar date: travelling to a
-        // literal date invalidates the session actingAsMember() just
-        // created and every request answers 401.
+        // Frozen to mid-morning in Fribourg: between 00:00 and 01:00 local,
+        // now()->subHour() belongs to yesterday and the test would fail once
+        // a day. Today rather than a fixed date, because travelling to a
+        // literal date invalidates the session and every request answers 401.
         $this->travelTo(CarbonImmutable::now(BandTime::ZONE)->setTime(10, 0));
-        // "Past" is measured from the START OF TODAY in Fribourg, not from
+        // "Past" is measured from the start of today in Fribourg, not from
         // now(). A rehearsal that began an hour ago must not vanish from the
         // planning of somebody running late.
         Event::factory()->create([
@@ -111,9 +105,8 @@ class EventIndexTest extends TestCase
 
         $row = $response->json('data')[0];
 
-        // assertJsonStructure above pins the KEY SET; it would pass just as
-        // well with location and attire swapped, or isPublic hardcoded true.
-        // These pin the VALUES, which is what the test's name promises.
+        // assertJsonStructure pins the key set only; it would pass with
+        // location and attire swapped. These pin the values.
         $this->assertSame($event->id, $row['id']);
         $this->assertSame('Répétition', $row['title']);
         $this->assertSame($event->starts_at->toIso8601String(), $row['startsAt']);
@@ -136,9 +129,8 @@ class EventIndexTest extends TestCase
 
     public function test_it_shows_one_event(): void
     {
-        // The edit form loads through this rather than hunting the list: a
-        // past event is not in the default list at all, so finding it there
-        // would work until somebody edited last month's rehearsal.
+        // The edit form loads through this rather than the list, which does
+        // not contain past events by default.
         $event = Event::factory()->create(['title' => 'Vendanges Cheyres']);
 
         $this->actingAsMember($this->member)->getJson("/api/v1/events/{$event->id}")
@@ -156,23 +148,11 @@ class EventIndexTest extends TestCase
     public function test_an_unknown_event_is_a_404(): void
     {
         // assertStatus(404) alone cannot tell "route-model binding refused an
-        // unknown id" from "there is no such route at all" — both answer 404,
-        // and once that bare assertion passed with the route deleted
-        // outright.
-        //
-        // This used to tell them apart by matching Laravel's internal "No query
-        // results for model [...]" message, which was only ever visible because
-        // 404 ESCAPED this API's error contract and fell through to the
-        // framework's default body. Problem documents (ADR 0012) closed that
-        // escape, so the string is gone and both cases now answer the same
-        // problem document — which is
-        // correct: telling a caller which of the two happened is exactly the
-        // enumeration a 404 exists to prevent.
-        //
-        // The route is proved to exist by driving it, in the same test, with an
-        // id that does resolve. Delete the route and the first half fails;
-        // break the binding and the second does. That is strictly stronger than
-        // the message match, and it depends on nothing internal to Laravel.
+        // unknown id" from "there is no such route": both answer the same
+        // problem document (ADR 0012), on purpose, since telling them apart is
+        // the enumeration a 404 prevents. So the route is proved to exist by
+        // driving it with an id that resolves. Delete the route and the first
+        // half fails; break the binding and the second does.
         $event = Event::factory()->create(['starts_at' => now()->addDays(3)]);
 
         $this->actingAsMember($this->member)
@@ -187,8 +167,8 @@ class EventIndexTest extends TestCase
 
     public function test_listing_the_planning_costs_a_fixed_number_of_queries(): void
     {
-        // A season is ~40 events. Without this the screen that the whole band
-        // opens is the one that feels a shared host.
+        // A season is about 40 events, and this is the screen the whole band
+        // opens on a shared host.
         Event::factory()->count(20)->create();
 
         $queries = 0;
@@ -198,8 +178,8 @@ class EventIndexTest extends TestCase
 
         $this->actingAsMember($this->member)->getJson('/api/v1/events')->assertOk();
 
-        // 4 since #107: the event tags are one eager load for the whole list.
-        // 5 since #228: so are the posters, one query while no event has one.
+        // The event tags (#107) and the posters (#228) are each one eager load
+        // for the whole list.
         $this->assertLessThanOrEqual(5, $queries, 'GET /api/v1/events should not scale queries with events');
     }
 }

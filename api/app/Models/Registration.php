@@ -14,16 +14,13 @@ use Illuminate\Support\Carbon;
 /**
  * One booking, made by a stranger from the public form.
  *
- * WRITE-ONCE FROM THE PUBLIC SIDE (ADR 0020). There is no cancel token and
- * no self-service: the committee corrects and cancels, on the guest-list
- * screen they need anyway. Every additional anonymous endpoint is another
- * thing to rate-limit, and a token that reads back an address and a phone
- * number is a credential over personal data.
+ * Write-once from the public side (ADR 0020): no cancel token and no
+ * self-service. The committee corrects and cancels on the guest list. Each
+ * anonymous endpoint is another thing to rate-limit, and a token that reads
+ * back an address and a phone number is a credential over personal data.
  *
- * The @property-read tags below are for the two Attribute accessors. Larastan
- * runs at level 5 and cannot see through Attribute::get(), so without them
- * every caller of $registration->guest_count reads as an undefined property.
- * Event.php and Member.php carry equivalent blocks for their casts.
+ * The @property-read tags cover the two Attribute accessors, which Larastan
+ * cannot see through.
  *
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -49,8 +46,7 @@ class Registration extends Model
     ];
 
     /**
-     * The dial string follows the number as typed, on every write: the public
-     * form, the committee's correction, and anything that comes later. See
+     * The dial string follows the number as typed, on every write. See
      * App\Support\PhoneNumber for why it is a companion and never a
      * replacement.
      */
@@ -89,10 +85,9 @@ class Registration extends Model
     /**
      * How many people this booking is for.
      *
-     * The sum of the quantities, because "3 x meat, 1 x child" is four
-     * people. This is what `registration_max_guests` caps, and it reads the
-     * LOADED choices rather than querying, so the guest list does not become
-     * an N+1 the first time somebody totals a column.
+     * The sum of the quantities, so "3 x meat, 1 x child" is four people.
+     * `registration_max_guests` caps this. It reads the loaded choices rather
+     * than querying, so the guest list does not become an N+1.
      */
     protected function guestCount(): Attribute
     {
@@ -103,10 +98,8 @@ class Registration extends Model
      * What this booking comes to, in centimes, or null when nothing it
      * contains has a price.
      *
-     * Null rather than zero, and the difference is the whole reason
-     * price_cents is nullable: a free event owes nothing, and an event whose
-     * prices are written in the descriptions owes an unknown amount. A total
-     * of "CHF 0.-" would assert the first about the second.
+     * Null rather than zero, which is why price_cents is nullable: prices
+     * written in the descriptions are an unknown amount, not CHF 0.
      */
     protected function totalCents(): Attribute
     {

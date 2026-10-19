@@ -8,30 +8,26 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Meta routes — UNVERSIONED, and deliberately outside the contract
+| Meta routes: unversioned, outside the API contract
 |--------------------------------------------------------------------------
 |
 | These sit at /api/*, not /api/v1/*, because they describe or operate the
-| API rather than being part of it. A v2 would not get a second copy of the
-| reference or a second migration trigger.
+| API rather than being part of it. A v2 would not get a second reference or
+| a second migration trigger.
 |
-| Registered from bootstrap/app.php's withRouting(then:) hook, with the same
-| `api` middleware group routes/api.php gets — so RunPendingMigrations still
-| sits in front of them, exactly as it did when they lived in that file.
+| Registered from bootstrap/app.php's withRouting(then:) hook with the same
+| `api` middleware group as routes/api.php, so RunPendingMigrations sits in
+| front of them too.
 |
-| Both are still under /api/v1/ so the site .htaccess dispatches them to Laravel
-| before its SPA fallback. Scramble's own /docs/api is outside that prefix and
-| has been swallowed by the fallback since the day it was installed.
+| They stay under /api/ so the site .htaccess dispatches them to Laravel
+| before its SPA fallback. Scramble's own /docs/api is outside that prefix,
+| and the fallback swallows it.
 */
 
-// The API reference, for developers. PUBLIC BUT GATED: no session is required
-// — you should be able to read the login endpoint's documentation before
-// logging in — and the `docs` middleware answers 404 when API_DOCS_ENABLED is
-// off, which as of 2026-09-11 it is not by default: the reference is public
-// everywhere, because hiding it was security through obscurity while the SPA
-// bundle ships the whole surface anyway. What IS off on production is the
-// try-it console, gated separately by `docs.interactive` — see config/docs.php
-// for the argument.
+// Public: the API reference. No session is required, so the login endpoint's
+// documentation is readable before logging in. The `docs` middleware answers
+// 404 when API_DOCS_ENABLED is off (on by default); the try-it console is gated
+// separately by `docs.interactive`. config/docs.php has the reasoning.
 Route::middleware('docs')->group(function () {
     Route::get('/docs', DocsController::class);
     Route::get('/docs.json', DocsDocumentController::class);
@@ -41,7 +37,7 @@ Route::middleware('docs')->group(function () {
 // which deploy it runs. See HealthController for why nothing in it is hidden.
 Route::get('/health', HealthController::class);
 
-// Token-gated (not session-gated): the deploy tooling calls this server-side
-// with the shared MIGRATE_TOKEN. Excluded from the OpenAPI document — nothing
-// in the browser may trigger a migration.
+// Token-gated, no session: the deploy tooling calls this server-side with the
+// shared MIGRATE_TOKEN. Excluded from the OpenAPI document, since nothing in
+// the browser may trigger a migration.
 Route::post('/migrate', MigrateController::class);

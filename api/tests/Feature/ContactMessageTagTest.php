@@ -26,11 +26,10 @@ class ContactMessageTagTest extends TestCase
 
     public function test_two_messages_have_different_tags(): void
     {
-        // The hazard this pins: every message stored before this release has
-        // `updated_at IS NULL`, so a tag computed over timestamps alone would
-        // be identical across all of them, and If-Match would let a write
-        // aimed at one succeed against any other. Rendering the resource
-        // carries the id, so it cannot.
+        // Older messages have `updated_at IS NULL`, so a tag computed over
+        // timestamps alone would be the same for all of them, and If-Match
+        // would let a write aimed at one succeed against another. The rendered
+        // resource carries the id, which keeps the tags apart.
         $first = ContactMessage::factory()->create();
         $second = ContactMessage::factory()->create();
 

@@ -323,3 +323,30 @@ the suite cannot see it.
 
 Wrap the badge in a `flex` container and leave the class off, as the draft badge
 in `EventCard.tsx` and the roster pill in `Members.tsx` do.
+
+## `Log::warning` never reaches a server's log
+
+`api/.env.example` sets `LOG_LEVEL=error`, and the Docker stack runs at
+`debug`. A warning shows up locally and is dropped on every server. Log a
+failure somebody must act on, such as a mail that did not go out, at `error`,
+as `ContactController` and `RegistrationController` do.
+
+## `app()->environment()` in a config file takes down every route
+
+Config files load before the container binds `env`, so the call throws
+`Target class [env] does not exist` at boot and every request fails. Read
+`env('APP_ENV')` instead, as `config/docs.php` does.
+
+## Compare stamps on Carbon's clock, never `time()`
+
+`$this->travel()` and `travelTo()` move Carbon's clock only. Code that compares
+a stored stamp against `time()` keeps the real clock, so a test that travels
+sees the wrong answer, and one that does not can fail only at certain hours of
+the day. Use `now()->timestamp`.
+
+## Travelling to a fixed date logs the test out
+
+A test that `travelTo()`s a literal calendar date loses the session
+`actingAsMember()` gave it, and every request answers 401. A test asserting a
+refusal reads that as a pass. Travel relative to today instead, as
+`EventIndexTest` does with `CarbonImmutable::now(BandTime::ZONE)->setTime(10, 0)`.

@@ -14,9 +14,8 @@ class ContactMessageManageTest extends TestCase
 
     public function test_the_committee_may_read_but_not_clear(): void
     {
-        // The whole point of the split: `committee` sees the enquiry and
-        // cannot bin it. If this passes, the two tokens have collapsed into
-        // one somewhere.
+        // `committee` sees the enquiry and cannot bin it. A failure here means
+        // the read and manage permissions have collapsed into one.
         $message = ContactMessage::factory()->create();
 
         $this->actingAsMember($this->committeeMember())

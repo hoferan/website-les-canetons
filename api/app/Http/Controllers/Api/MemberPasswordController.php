@@ -41,20 +41,14 @@ class MemberPasswordController extends Controller
     #[Endpoint(operationId: 'memberPassword.reset')]
     public function __invoke(Request $request, Member $member): JsonResponse
     {
-        // There is ONE mechanism for a password coming into being (ADR 0016)
-        // — open a member, hit "Réinitialiser le mot de passe", read out what
-        // appears — so there is one endpoint for it. Since 2026_09_08_000001
-        // every member already has a password, so this is always a reset; the
-        // "give this person an account" case is POST /api/v1/members, which
-        // mints one at creation using the same generator and the same
-        // forced-change semantics.
+        // The committee issues every password (ADR 0016), and every member
+        // already has one, so this is always a reset. A new account gets its
+        // password from POST /api/v1/members, with the same generator and the
+        // same forced change.
         //
-        // NOT make(): a reissue must not land on the password already stored
-        // (#92). See GeneratedPassword::makeDifferentFrom for why a guard
-        // against a one-in-10^17 event is worth one hash verification here.
-        // No null guard on the hash: 2026_09_08_000001_require_member_credentials
-        // made a password mandatory, so the column is non-nullable and Larastan
-        // rejects the check as dead code.
+        // makeDifferentFrom(), not make(): a reissue must not land on the
+        // password already stored (#92). No null guard on the hash: the column
+        // is non-nullable, and Larastan rejects the check as dead code.
         $password = GeneratedPassword::makeDifferentFrom(
             fn (string $candidate): bool => Hash::check($candidate, $member->password),
         );
@@ -67,17 +61,14 @@ class MemberPasswordController extends Controller
             $member->must_change_password = true;
             $member->save();
 
-            // Resetting your OWN password here would otherwise log you out with
-            // a generated password you then have to use. The UI sends
-            // administrators to /account instead, so this branch is for the
-            // unusual path only — the forced change above still applies either
-            // way.
+            // Resetting your own password here would otherwise log you out. The
+            // UI sends administrators to /account instead, so this branch is
+            // for the unusual path; the forced change applies either way.
             //
-            // NOT DISTINGUISHED BY ANY TEST HERE, measured 2026-09-08: under
-            // SESSION_DRIVER=array the acting request owns no `sessions` row,
-            // so forMember() would delete the same set. SessionRevocationTest
-            // covers what forMemberExcept() itself does. Kept because it is the
-            // correct call and makes sessionsEnded mean "other sessions".
+            // No test here tells the branches apart: under SESSION_DRIVER=array
+            // the acting request owns no `sessions` row, so forMember() deletes
+            // the same set. SessionRevocationTest covers forMemberExcept(). It
+            // is kept so sessionsEnded means "other sessions".
             $ended = $request->user()->is($member)
                 ? SessionRevoker::forMemberExcept($member->id, $request->session()->getId())
                 : SessionRevoker::forMember($member->id);
@@ -85,7 +76,7 @@ class MemberPasswordController extends Controller
             return $ended;
         });
 
-        // No password in the audit log, ever — pinned by
+        // No password in the audit log, pinned by
         // MemberPasswordTest::test_the_generated_password_never_appears_in_the_audit_log.
         Audit::record($request->user(), 'member.password_reset', 'member', $member->id, $member->fullName());
 

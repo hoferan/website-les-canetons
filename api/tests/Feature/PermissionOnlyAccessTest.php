@@ -11,11 +11,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * DONE WHEN, from #191: every route that needed only a session, or a
- * register, answers 403 access_denied to an account whose roles lack its
- * permission, and does so WITH THE SAME REGISTER AS BEFORE. Each refused
- * account below has a register, which is what proves the register no longer
- * decides anything.
+ * A register grants nothing (#191, ADR 0014): these routes answer 403
+ * access_denied to an account whose roles lack the permission. Each refused
+ * account below has a register, which shows the register does not decide.
  */
 class PermissionOnlyAccessTest extends TestCase
 {
@@ -101,8 +99,7 @@ class PermissionOnlyAccessTest extends TestCase
     public function test_an_organiser_who_does_not_play_is_still_refused(): void
     {
         // demo.direction: direction and the baseline, no register, no
-        // musician. Before #191 the register refused her with not_answerable;
-        // now the missing permission does, at the door.
+        // musician. The missing permission refuses her at the door.
         $organiser = Member::factory()->administrator()->create();
 
         $this->actingAsMember($organiser)
@@ -113,7 +110,7 @@ class PermissionOnlyAccessTest extends TestCase
 
     public function test_an_organiser_who_plays_still_answers_and_manages(): void
     {
-        // demo.both. The pair the old either/or could not express.
+        // demo.both: the case an either/or role model breaks.
         $both = Member::factory()->inSection('Trompettes')->musician()->administrator()->create();
 
         $this->actingAsMember($both)

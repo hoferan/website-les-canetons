@@ -28,12 +28,10 @@ class ImageFileController extends Controller
     {
         $tag = '"'.$sha256.'"';
 
-        // No query at all. The tag is the digest of the bytes this path
-        // serves, computed from those bytes when they were stored, so whoever
-        // holds it holds exactly these bytes. A size deleted in the meantime
-        // still answers 304, which tells the browser nothing it did not
-        // already have. The connection this saves counts against the host's
-        // ten.
+        // No query: the tag is the digest of the bytes this path serves, so
+        // whoever holds it holds exactly these bytes. A size deleted since
+        // still answers 304, which tells the browser nothing new. The
+        // connection this saves counts against the host's ten.
         if ($this->matches($request->header('If-None-Match'), $tag)) {
             return response('', 304, $this->headers($tag));
         }
@@ -60,8 +58,8 @@ class ImageFileController extends Controller
         return response($data, 200, [
             ...$this->headers($tag),
             'Content-Type' => 'image/jpeg',
-            // From the bytes sent, so a `bytes` column that ever drifted could
-            // not cut a response short or leave the browser waiting.
+            // From the bytes sent, so a drifted `bytes` column cannot cut a
+            // response short or leave the browser waiting.
             'Content-Length' => (string) ($head ? $row->bytes : strlen($data)),
             'Content-Disposition' => 'inline',
         ]);

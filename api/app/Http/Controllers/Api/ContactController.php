@@ -37,13 +37,12 @@ class ContactController extends Controller
     #[Endpoint(operationId: 'contact.store')]
     public function __invoke(ContactRequest $request): JsonResponse
     {
-        // Store raw input; escape at output time (not at storage time).
+        // Stores raw input; escaping happens at output time.
         //
-        // The two anti-abuse halves both live outside this method, in the
-        // route's middleware: PublicWriteGuard (honeypot + signed stamp) and
-        // the `public-write` throttle. See routes/api.php for why the
-        // throttle is the half that matters — the stamp is not bound to a
-        // caller and stays replayable for two hours.
+        // The anti-abuse checks live in the route's middleware: PublicWriteGuard
+        // (honeypot and signed stamp) and the `public-write` throttle. The
+        // throttle is the half that matters, because the stamp is not bound to
+        // a caller and stays replayable for two hours (routes/api.php).
         $message = ContactMessage::create([
             'last_name' => trim($request->input('lastName')),
             'first_name' => trim($request->input('firstName')),
@@ -60,20 +59,17 @@ class ContactController extends Controller
     /**
      * Tells the committee, and never lets that fail the submission.
      *
-     * BEST-EFFORT ON PURPOSE, as the booking confirmation is (ADR 0009).
-     * The row is committed and readable in the inbox either way, this host has
-     * no queue to retry from, and the visitor did nothing wrong — so an SMTP
-     * blip must not answer them with an error for a message that was stored.
+     * Best-effort, like the booking confirmation (ADR 0009). The row is
+     * already in the inbox, the host has no queue to retry from, and an SMTP
+     * failure must not answer the visitor with an error for a stored message.
      *
-     * The recipient is MAIL_COMMITTEE_ADDRESS, which every server sets by
-     * hand. An unset or placeholder value throws here and is logged rather
-     * than falling back to the sending mailbox: a fallback would deliver the
-     * notification to a noreply@ and look like success.
+     * The recipient is MAIL_COMMITTEE_ADDRESS, set by hand on every server.
+     * An unset or placeholder value throws here and is logged, with no
+     * fallback to the sending mailbox: that would deliver to a noreply@ and
+     * look like success.
      *
-     * error, not warning: .env.example sets LOG_LEVEL=error and warning sits
-     * below it in Monolog, so a warning here would never be written on any
-     * server. That exact bug hid broken registration mail once already; see
-     * RegistrationController::confirm().
+     * Logged at error, since .env.example sets LOG_LEVEL=error and a warning
+     * would never be written. See RegistrationController::confirm().
      */
     private static function notify(ContactMessage $message): void
     {

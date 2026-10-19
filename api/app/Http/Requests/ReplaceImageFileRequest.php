@@ -24,7 +24,7 @@ class ReplaceImageFileRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // The same two rules as StoreImageRequest, and the same after(): see
+        // The same rules and after() as StoreImageRequest; see
         // ReceivesImageSizes.
         return [
             /** The new sizes of the photo, in any order: one to three JPEGs, each at most 1920 pixels on its longest edge and 600 KB, with no Exif or XMP metadata. Send each as a part named `files[]`, since PHP keeps only the last of several parts sharing a bare name. */

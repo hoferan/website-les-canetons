@@ -13,18 +13,16 @@ use Throwable;
 /**
  * The token-gated post-deploy migration endpoint.
  *
- * ITS CONTRACT IS NOT ITS OWN. tools/dbmigrate.mjs is the sole caller,
- * `npm run dbmigrate:<env>` wraps it, CI runs it as a step after every deploy,
- * and the operator checklist in staging/README.md documents it. All of that was
- * written against the old app/api/migrate.php, so this controller conforms to
- * that endpoint rather than the reverse. Concretely, the caller:
+ * The contract belongs to the caller. tools/dbmigrate.mjs is the only one
+ * (`npm run dbmigrate:<env>` wraps it, and staging/README.md documents it), and
+ * this controller conforms to it. The caller:
  *
- *  - sends the secret in the X-Migrate-Token HEADER (see __invoke),
+ *  - sends the secret in the X-Migrate-Token header (see __invoke),
  *  - appends `?mode=dry-run` or `?mode=apply`,
- *  - treats a non-2xx response OR a `status` other than 'ok' as failure and
- *    exits non-zero (which is what gates the CI step),
+ *  - treats a non-2xx response or a `status` other than 'ok' as failure and
+ *    exits non-zero,
  *  - prints `pending[]` after a dry run and `applied[]` after an apply, both as
- *    arrays of migration NAMES,
+ *    arrays of migration names,
  *  - and ignores every other key.
  *
  * `ok` is a boolean mirror of `status` kept for tools/smoke-docker.mjs, which
@@ -34,23 +32,18 @@ use Throwable;
 class MigrateController extends Controller
 {
     /**
-     * The shared secret arrives in the X-Migrate-Token HEADER, not as a request
-     * parameter. Two reasons, either sufficient:
+     * The shared secret arrives in the X-Migrate-Token header, never as a
+     * request parameter:
      *
-     *  - It is the contract everything outside this app already speaks.
-     *    tools/dbmigrate.mjs sends that header (as the old app's
-     *    app/api/migrate.php read it), and every environment's CI secrets feed
-     *    it. Reading a parameter here would 403 every `npm run dbmigrate:<env>`
-     *    the moment /api/migrate starts reaching Laravel.
-     *  - $request->input() also accepts the token from the QUERY STRING, and
-     *    Apache writes the query string into its access log on every
-     *    environment — so ?token=… would persist the secret to disk in
-     *    plain text. A header cannot leak that way.
+     *  - tools/dbmigrate.mjs sends that header, so reading a parameter would
+     *    403 every `npm run dbmigrate:<env>`.
+     *  - $request->input() also reads the query string, which Apache writes
+     *    to its access log, so ?token=... would put the secret on disk in
+     *    plain text.
      */
-    // Excluded from the OpenAPI document: this is deploy tooling called server-side
-    // by tools/dbmigrate.mjs with a shared secret. The generated TypeScript client
-    // is for the browser, and nothing in the browser may trigger a migration.
-    // Do not re-add this to the documentation — it is intentionally hidden.
+    // Excluded from the OpenAPI document on purpose: this is deploy tooling
+    // called with a shared secret, and nothing in the browser may trigger a
+    // migration.
     #[ExcludeRouteFromDocs]
     public function __invoke(Request $request): JsonResponse
     {
@@ -61,17 +54,16 @@ class MigrateController extends Controller
             return response()->json(['error' => 'Invalid or missing token'], 403);
         }
 
-        // Anything that is not exactly 'apply' means dry-run — the same
-        // fail-safe direction app/api/migrate.php chose. A missing, misspelled or
-        // truncated mode must never be the one that writes to the database.
+        // Anything but exactly 'apply' means dry-run, so a missing, misspelled
+        // or truncated mode never writes to the database.
         $mode = $request->query('mode') === 'apply' ? 'apply' : 'dry-run';
 
         try {
             return $mode === 'apply' ? $this->apply() : $this->dryRun();
         } catch (Throwable $e) {
-            // Non-2xx AND status 'error': the caller accepts either as failure,
-            // and a migration that fails while reporting success would let a
-            // broken deploy through the CI gate.
+            // Non-2xx and status 'error', since the caller treats either as
+            // failure, and a failed migration reported as success would hide a
+            // broken deploy.
             $body = [
                 'status' => 'error',
                 'ok' => false,
@@ -86,15 +78,12 @@ class MigrateController extends Controller
     }
 
     /**
-     * Report what WOULD run, touching neither the schema nor the migrations
+     * Report what would run, touching neither the schema nor the migrations
      * table.
      *
-     * This reads the pending list rather than shelling out to `migrate
-     * --pretend`: the caller wants migration NAMES, which is exactly what the
-     * pending list is, whereas --pretend emits the SQL it would have issued and
-     * would still boot every pending migration class to get there. Not running
-     * the migrations at all is a stronger guarantee than running them in a mode
-     * that promises not to write.
+     * Reads the pending list instead of calling `migrate --pretend`, which
+     * emits SQL rather than the names the caller wants, and still boots every
+     * pending migration class to get there.
      */
     private function dryRun(): JsonResponse
     {
@@ -157,9 +146,8 @@ class MigrateController extends Controller
     {
         return response()->json([
             'mode' => $mode,
-            // Informational, as in the old endpoint (which reported App\Env);
-            // the caller logs the body verbatim, so this tells an operator which
-            // server answered.
+            // Informational: the caller logs the body verbatim, so this tells
+            // an operator which server answered.
             'environment' => app()->environment(),
             ...$payload,
         ], $status);

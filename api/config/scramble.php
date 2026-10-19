@@ -24,17 +24,15 @@ return [
      * Override with `servers`, or use Scramble::registerApi() for separate bases.
      */
     /*
-     * Only the versioned contract is documented. routes/meta.php — /api/docs,
-     * /api/docs.json and /api/migrate — sits at /api/* and is therefore outside
-     * this include entirely, which is why there is no longer an `exclude` list:
-     * the reference cannot document itself, and orval cannot generate TanStack
-     * Query hooks for a documentation page or a migration trigger.
+     * Only the versioned contract is documented. routes/meta.php (/api/docs,
+     * /api/docs.json, /api/migrate, /api/health) sits at /api/* and so falls
+     * outside this include, with no `exclude` list needed: orval cannot
+     * generate TanStack Query hooks for a documentation page or a migration
+     * trigger.
      *
-     * The array form is used with a SINGLE static include, which keeps
-     * Scramble's path-stripping behaviour: documented paths stay /me and
-     * /config rather than becoming /api/v1/me, and the server becomes
-     * /api/v1. Verified 2026-09-07 by exporting both ways and diffing — the
-     * document is byte-identical apart from that server URL.
+     * A single static include keeps Scramble's path stripping: documented
+     * paths stay /me and /config rather than /api/v1/me, and the server
+     * becomes /api/v1.
      */
     'api_path' => [
         'include' => 'api/v1',
@@ -47,13 +45,11 @@ return [
     'api_domain' => null,
 
     /*
-     * Where scramble:export writes the document. Resolved against the WORKING
-     * DIRECTORY of the process running artisan (File::put is a bare
-     * file_put_contents), not against any project-root concept — so this lands
-     * at api/openapi.json because the exporter always runs from api/. See
-     * tools/openapi.mjs, which cd's there for exactly this reason.
-     *
-     * That file is committed and consumed by orval.
+     * Where scramble:export writes the document, resolved against the working
+     * directory of the process running artisan (File::put is a bare
+     * file_put_contents). It lands at api/openapi.json because
+     * tools/openapi.mjs runs the export from api/. The file is committed and
+     * consumed by orval.
      */
     'export_path' => 'openapi.json',
 
@@ -74,19 +70,13 @@ return [
         'version' => env('API_VERSION', '1.0.0'),
 
         /*
-         * Rendered at the top of the reference at GET /api/docs. This is the
-         * first and often only thing a developer reads, so it carries what
-         * cannot be discovered from an endpoint list: how to authenticate,
-         * what an error looks like, and the conventions every response
-         * follows.
-         */
-        /*
-         * NO PROBLEM-TYPE CATALOGUE HERE, deliberately. This description once
-         * ended with twenty-one generated sections, one per error code — which
-         * dominated the reference's sidebar to document something nobody reads
-         * until they hit it. Every error now carries its own `detail`, so the
-         * explanation arrives with the failure instead. See
-         * App\Support\ErrorVocabulary.
+         * Rendered at the top of GET /api/docs. It carries what an endpoint
+         * list cannot show: how to authenticate, what an error looks like, and
+         * the conventions every response follows.
+         *
+         * No catalogue of error codes: every error carries its own `detail`
+         * (App\Support\ErrorVocabulary), and a section per code would swamp
+         * the reference's sidebar.
          */
         'description' => <<<'MARKDOWN'
 The API behind the members' area and the public forms of the Guggenmusik
@@ -201,12 +191,13 @@ Authorisation is by permission, never by role. Roles are editable data that
 group permissions; which role granted one is not a question the API answers.
 `GET /api/v1/me` returns the caller's effective permissions.
 
-`events.manage`, `attendance.view_all`, `attendance.record_for_others`,
-`members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
-`messages.manage`, `history.manage`, `images.manage`.
+`events.view`, `events.manage`, `attendance.respond`, `attendance.view_all`,
+`attendance.record_for_others`, `members.manage`, `roles.manage`,
+`registrations.view`, `registrations.manage`, `messages.view`,
+`messages.manage`, `history.manage`, `images.manage`, `account.manage`.
 
-Answering an event deliberately needs **no** permission: anyone in a register
-answers for themselves.
+Every account holds `events.view` and `account.manage`. Answering an event for
+yourself needs `attendance.respond`.
 
 ## Conventions
 
@@ -422,11 +413,10 @@ MARKDOWN,
          */
         'scalar' => [
             'view' => 'scramble::scalar',
-            // Pinned, and matching resources/views/docs.blade.php exactly —
-            // DocsTest asserts the two agree. The bare package path resolves to
-            // whatever Scalar publishes as `latest`, which is how a toolbar full
-            // of features nobody chose appeared on this page. See that view for
-            // the full argument and for how to upgrade.
+            // Pinned, and matching resources/views/docs.blade.php exactly
+            // (DocsTest asserts the two agree). The bare package path resolves
+            // to whatever Scalar publishes as `latest`. That view explains how
+            // to upgrade.
             'cdn' => 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.68.0/dist/browser/standalone.min.js',
             'theme' => 'laravel',
             'proxyUrl' => 'https://proxy.scalar.com',
@@ -438,15 +428,13 @@ MARKDOWN,
     ],
 
     /*
-     * Pinned to an ABSOLUTE production URL on purpose. Left at null, Scramble
-     * derives the server from APP_URL, so the same code exports a different
-     * document on every machine (http://localhost:8090/api locally, something
-     * else in CI) and the drift check in CI could never pass. Laravel's url()
-     * helper returns absolute URLs unchanged, so this value survives verbatim
-     * and the exported document is byte-identical everywhere.
+     * An absolute production URL, so the exported document is byte-identical
+     * on every machine. Left at null, Scramble derives the server from
+     * APP_URL, and CI's drift check could never pass. Laravel's url() helper
+     * returns absolute URLs unchanged.
      *
-     * The client does not read this: web/src/api/http.ts prepends /api/v1 itself,
-     * because the SPA is served from the same origin as the API.
+     * The client ignores it: web/src/api/http.ts prepends /api/v1 itself,
+     * since the SPA shares the API's origin.
      */
     'servers' => [
         'Production' => 'https://lescanetons.org/api/v1',
@@ -497,19 +485,18 @@ MARKDOWN,
      * Type and response extensions.
      *
      * Scramble's built-in exception documentation describes Laravel's default
-     * error shapes; this API replaces those with App\Exceptions\ApiError's
-     * contract, so the built-ins would document responses that never occur.
+     * error shapes, which App\Exceptions\ApiError replaces, so these document
+     * the responses that actually occur.
      */
     'extensions' => [
         ValidationExceptionResponse::class,
         AuthenticationExceptionResponse::class,
         NotFoundExceptionResponse::class,
-        // A type-to-schema extension. This array takes every kind, operation
-        // extensions included (this project registers those in
-        // AppServiceProvider to keep their order in one list). An entry that
-        // names no existing class is dropped without a word, and this file has
-        // no namespace, so each one needs its `use` line above. See
-        // docs/traps.md.
+        // A type-to-schema extension. Operation extensions could go here too,
+        // but AppServiceProvider registers them to keep their order in one
+        // list. An entry naming no existing class is dropped silently, and
+        // this file has no namespace, so each needs its `use` line above
+        // (docs/traps.md).
         Iso8601ToSchema::class,
     ],
 
@@ -517,11 +504,10 @@ MARKDOWN,
      * How this API is authenticated, in the document.
      *
      * App\Support\Scramble\DocumentsTheSessionCookie is Scramble's own
-     * MiddlewareAuthSecurityStrategy with the scheme replaced: it reads `auth:*`
-     * off each route, applies the scheme at the root, and marks every anonymous
-     * operation `security: []`. The default scheme is a bearer token, which this
-     * API does not have; see that class for the cookie and for why the CSRF
-     * header is not a second scheme.
+     * MiddlewareAuthSecurityStrategy with the default bearer scheme replaced
+     * by the session cookie: it reads `auth:*` off each route, applies the
+     * scheme at the root, and marks every anonymous operation `security: []`.
+     * That class explains why the CSRF header is not a second scheme.
      */
     'security_strategy' => DocumentsTheSessionCookie::class,
 ];

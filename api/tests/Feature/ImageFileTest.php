@@ -247,7 +247,7 @@ class ImageFileTest extends TestCase
             "/api/v1/images/{$digest}0.jpg",
             "/api/v1/images/{$digest}.jpeg",
             "/api/v1/images/{$digest}",
-            // The earlier shape, photo digest and width, is no path at all.
+            // Photo digest and width is not a path.
             "/api/v1/images/{$image->sha256}/800.jpg",
         ] as $uri) {
             $this->fetch($uri, ['Accept' => 'application/json'])

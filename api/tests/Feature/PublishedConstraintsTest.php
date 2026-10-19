@@ -5,24 +5,20 @@ namespace Tests\Feature;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The two constraints the document used to state on the way in and not on the
- * way out.
+ * Two constraints the document states for what comes in and what goes out:
+ * a returned timestamp carries `format: date-time`, and a number carries the
+ * minimum its rules impose, not only the maximum.
  *
- * A timestamp arrived as `format: date-time` and left as a bare `string`, and a
- * number carried the `maximum` its rules imposed but not the minimum — the
- * accepted and the returned spellings of one value, documented differently. Both
- * are now produced by a mechanism rather than by an annotation per field
- * (App\Support\Iso8601 with its schema extension, and
- * App\Support\Scramble\DocumentsNumericFloors), so what these tests guard is
- * that the mechanism still runs. A Scramble extension that stops being called
- * changes nothing and says nothing.
+ * Both come from a mechanism, not an annotation per field (App\Support\Iso8601
+ * with its schema extension, and App\Support\Scramble\DocumentsNumericFloors),
+ * so these tests guard that the mechanism still runs. A Scramble extension that
+ * stops being called fails silently.
  *
- * Both derivations read the document or the source rather than a list written
- * out here, so a tenth timestamp or a seventh bound is covered without an edit.
- * Each carries a floor for the same reason ApiErrorVocabularyTest's do: a
- * derivation that silently matches nothing would otherwise pass.
+ * Both derivations read the document or the source, so a new timestamp or
+ * bound is covered without an edit. Each carries a floor, as
+ * ApiErrorVocabularyTest's do, so a derivation that matches nothing fails.
  *
- * A plain PHPUnit TestCase — it reads two files and needs no booted framework.
+ * A plain PHPUnit TestCase: it reads files and needs no booted framework.
  */
 class PublishedConstraintsTest extends TestCase
 {
@@ -89,12 +85,11 @@ class PublishedConstraintsTest extends TestCase
     }
 
     /**
-     * A nullable timestamp must stay nullable, which is the half a format is
-     * most likely to cost.
+     * A nullable timestamp must stay nullable.
      *
-     * Scramble reads the EXPRESSION rather than the declared return type, so a
-     * `?Iso8601` helper publishes a required `string` and every generated client
-     * stops expecting the null. It has happened once, to `registrationOpensAt`.
+     * Scramble reads the expression, not the declared return type, so a
+     * `?Iso8601` helper publishes a required `string` and every generated
+     * client stops expecting the null.
      */
     public function test_a_timestamp_that_can_be_absent_is_still_nullable(): void
     {
@@ -178,9 +173,8 @@ class PublishedConstraintsTest extends TestCase
      * Every place a request schema declares a property of this name, keyed by
      * where it is so a failure names it.
      *
-     * Request schemas only: a response can carry the same field with no bound,
-     * legitimately — `EventResource.registrationMaxGuests` reports what was
-     * stored rather than constraining what may be sent.
+     * Request schemas only: a response may carry the same field with no bound,
+     * as `EventResource.registrationMaxGuests` reports what was stored.
      *
      * @return array<string, array<string, mixed>>
      */
@@ -205,7 +199,7 @@ class PublishedConstraintsTest extends TestCase
 
     /**
      * Every property of a schema, including the ones inside a nested object or
-     * an array's items — `options.*.priceCents` lives two levels down.
+     * an array's items (`options.*.priceCents` lives two levels down).
      *
      * @param  array<string, mixed>  $schema
      * @return array<string, array<string, mixed>>

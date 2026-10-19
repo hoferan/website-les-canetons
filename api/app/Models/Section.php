@@ -32,14 +32,12 @@ class Section extends Model
     }
 
     /**
-     * The people who PLAY in this register and have consented to be named on
+     * The people who play in this register and have consented to be named on
      * the public site.
      *
-     * A SEPARATE RELATION RATHER THAN A SCOPE ON members(), so the public band
-     * page can eager-load it by name and cannot forget the filter. Consent
-     * defaults to false and most of these people are children: a public
-     * endpoint that filtered in the controller would be one refactor away from
-     * publishing a name nobody agreed to publish.
+     * A separate relation rather than a scope on members(), so the public band
+     * page eager-loads it by name and cannot forget the filter. Consent
+     * defaults to false and most of these people are children.
      *
      * @return HasMany<Member, $this>
      */
@@ -49,11 +47,10 @@ class Section extends Model
     }
 
     /**
-     * The people who TEACH this register and have consented to be named.
+     * The people who teach this register and have consented to be named.
      *
-     * A different column from members(): an instructor teaches one register and
-     * may play in another, so the same person can appear under two headings on
-     * the band page without either being wrong.
+     * A different column from members(): an instructor teaches one register
+     * and may play in another, so a person can appear under two headings.
      *
      * @return HasMany<Member, $this>
      */

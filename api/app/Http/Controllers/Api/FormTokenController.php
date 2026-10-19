@@ -33,18 +33,16 @@ class FormTokenController extends Controller
     #[Endpoint(operationId: 'formToken.show')]
     public function __invoke(): JsonResponse
     {
-        // PUBLIC AND UNGATED, necessarily: it is fetched by an anonymous
-        // visitor before they have submitted anything. It reveals nothing —
-        // the token is an HMAC of the current time — and it grants nothing on
-        // its own, because the submission still has to pass the honeypot.
+        // Public and ungated, since an anonymous visitor fetches it before
+        // submitting anything. The token is an HMAC of the current time, so it
+        // reveals nothing, and the submission still has to pass the honeypot.
         //
-        // Throttled all the same (see routes/api.php): minting a stamp is
-        // cheap, but it is the first step of the loop the write limiter
-        // exists to stop, and leaving it open lets a caller bank tokens.
+        // Throttled anyway (routes/api.php): it is the first step of the loop
+        // the write limiter exists to stop, and an open endpoint lets a caller
+        // bank tokens.
         //
-        // See App\Support\FormToken for why it is stateless, why it is
-        // deliberately not single-use, and why it fails closed on a blank
-        // APP_KEY.
+        // App\Support\FormToken explains why it is stateless, not single-use,
+        // and fails closed on a blank APP_KEY.
         $body = ['token' => FormToken::issue()];
 
         return response()->json($body);

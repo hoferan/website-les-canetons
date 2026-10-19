@@ -13,10 +13,9 @@ use Tests\TestCase;
  * Re-proving who you are, immediately before something irreversible. Its one
  * caller is POST /me/password (ADR 0017).
  *
- * The threat this defends against is not an outsider — it is an authenticated
- * one. Without a limit, an attacker holding a stolen session cookie has a
- * password oracle: a clean yes/no answer about the account's real password,
- * guessable as fast as the host will serve it.
+ * The threat is an authenticated caller. Without a limit, an attacker holding a
+ * stolen session cookie has a password oracle: a yes/no answer about the
+ * account's real password, as fast as the host will serve it.
  */
 class ReauthenticationTest extends TestCase
 {
@@ -43,8 +42,8 @@ class ReauthenticationTest extends TestCase
             Reauthentication::assert($this->actor(), 'wrong');
             $this->fail('Expected ReauthenticationFailed');
         } catch (ReauthenticationFailed $e) {
-            // 403, not 401: the session is perfectly valid and the caller holds
-            // the permission. What failed is the re-proof, not the login.
+            // 403, not 401: the session is valid and the caller holds the
+            // permission. Only the re-proof failed.
             $this->assertSame(403, $e->status);
             $this->assertSame('reauth_failed', $e->errorCode);
         }
@@ -52,16 +51,12 @@ class ReauthenticationTest extends TestCase
 
     public function test_a_credential_less_member_cannot_reauthenticate(): void
     {
-        // FAILING CLOSED. 2026_09_08_000001 made both credentials NOT NULL, so a
-        // PERSISTED member always has a password; this constructs an unsaved
-        // model to reach the branch at all.
+        // Fails closed. Both credentials are NOT NULL, so a persisted member
+        // always has a password; an unsaved model reaches the branch.
         //
-        // What this pins is the OUTCOME, not the mechanism. Laravel's hasher
-        // already returns false for a null hash, so the explicit guard in
-        // Reauthentication and its absence are indistinguishable from here —
-        // measured 2026-09-08. The assertion is still worth having: it says
-        // that whatever the mechanism, a member with no password never
-        // re-authenticates.
+        // This pins the outcome only. Laravel's hasher already returns false
+        // for a null hash, so the explicit guard in Reauthentication is not
+        // observable from here.
         $actor = new Member(['first_name' => 'Ghost', 'last_name' => 'Actor']);
         $actor->id = 9999;
 
@@ -83,9 +78,9 @@ class ReauthenticationTest extends TestCase
         }
 
         try {
-            // Note the CORRECT password: a throttled actor is refused anyway,
-            // or the limit is decorative — the same argument as the login
-            // throttle in AuthController.
+            // The correct password: a throttled actor is refused anyway, or the
+            // limit does nothing. The login throttle in AuthController does the
+            // same.
             Reauthentication::assert($actor, 'correct-horse');
             $this->fail('Expected ReauthenticationFailed');
         } catch (ReauthenticationFailed $e) {
@@ -96,15 +91,11 @@ class ReauthenticationTest extends TestCase
 
     public function test_a_wrong_password_while_throttled_is_429_and_does_not_extend_the_lock(): void
     {
-        // This is what pins the ORDER: the throttle is checked before the hash
-        // comparison, so once locked, every answer is "stop asking" rather than
-        // "that is not your password" — and hit() is never reached, so hammering
-        // a locked account cannot push the lock further out.
-        //
-        // Written after mutation testing: moving the throttle check to AFTER the
-        // comparison left the rest of this file green, because the only
-        // throttled case it exercised used the CORRECT password, which both
-        // orders refuse. Only a wrong password while throttled tells them apart.
+        // Pins the order: the throttle is checked before the hash comparison,
+        // so once locked every answer is "stop asking", and hit() is never
+        // reached, so hammering a locked account cannot push the lock further
+        // out. The test above uses the correct password, which both orders
+        // refuse; only a wrong password while throttled tells them apart.
         $actor = $this->actor();
         $key = 'reauth:'.$actor->getKey();
 
@@ -147,8 +138,8 @@ class ReauthenticationTest extends TestCase
 
         Reauthentication::assert($actor, 'correct-horse');
 
-        // Four more must still be allowed: a fumbled password followed by a
-        // correct one must not leave the actor one keystroke from a lockout.
+        // Four more are still allowed, so a fumbled password followed by a
+        // correct one does not leave the actor one attempt from a lockout.
         for ($i = 0; $i < 4; $i++) {
             try {
                 Reauthentication::assert($actor, 'wrong');

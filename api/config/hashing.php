@@ -3,29 +3,21 @@
 return [
 
     /*
-     * argon2id, not bcrypt. There is no legacy hash to migrate — the rebuild
-     * issues every member a fresh credential (ADR 0015) — so nothing forces
-     * the older algorithm.
+     * argon2id, not bcrypt. Every member has a fresh credential (ADR 0015),
+     * so there is no legacy hash forcing the older algorithm.
      *
-     * NOTE FOR DEPLOYS: argon2id needs a PHP built with argon2 support.
-     * HashingTest asserts it loudly rather than letting a server fall back
-     * silently. If a host lacks it, set HASH_DRIVER=bcrypt in that server's
-     * .env and record why — do not change this default.
+     * argon2id needs a PHP built with argon2 support, and HashingTest fails
+     * rather than letting a server fall back silently. If a host lacks it, set
+     * HASH_DRIVER=bcrypt in that server's .env and record why; do not change
+     * this default.
      */
     'driver' => env('HASH_DRIVER', 'argon2id'),
 
     /*
-     * INERT while the driver above is argon2id, which is every environment
-     * today. Nothing in this block is reached, so a BCRYPT_ROUNDS set for
-     * strength or for speed does exactly nothing — the knob that bites is in
-     * the argon block below.
-     *
-     * Not hypothetical. api/phpunit.xml pinned BCRYPT_ROUNDS=4 to keep the
-     * suite quick and it had no effect whatsoever: every Hash::make ran at the
-     * argon2id production factor, 177 ms a hash, which was roughly 120 of the
-     * suite's 147 seconds. Found 2026-09-18 by profiling, not by reading —
-     * the pin looks like it works, and the suite passes either way. That file
-     * now pins ARGON_MEMORY and ARGON_TIME instead and carries the numbers.
+     * Inert while the driver is argon2id, as it is everywhere. BCRYPT_ROUNDS
+     * changes nothing, for strength or for speed; the work factor that matters
+     * is in the argon block below. This is why api/phpunit.xml pins
+     * ARGON_MEMORY and ARGON_TIME, not BCRYPT_ROUNDS, to keep the suite fast.
      */
     'bcrypt' => [
         'rounds' => env('BCRYPT_ROUNDS', 12),

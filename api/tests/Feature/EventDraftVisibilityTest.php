@@ -46,7 +46,7 @@ class EventDraftVisibilityTest extends TestCase
         $draftDated = Event::factory()->draft()->create(['starts_at' => now()->addDays(2), 'ends_at' => now()->addDays(2)->addHours(2)]);
         $draftUndated = Event::factory()->draft()->create(['starts_at' => null, 'ends_at' => null, 'location' => null]);
 
-        // The undated draft falls out of BOTH halves of the starts_at split
+        // The undated draft falls out of both halves of the starts_at split
         // (NULL >= anything is false), so it is only here because drafts have
         // a query of their own.
         $this->assertSame(
@@ -123,8 +123,8 @@ class EventDraftVisibilityTest extends TestCase
 
     public function test_a_manager_who_plays_cannot_answer_a_draft_either(): void
     {
-        // Being able to SEE a draft is not being able to answer it: the answer
-        // would sit on an event the rest of the band cannot see.
+        // Seeing a draft does not allow answering it: the answer would sit on
+        // an event the rest of the band cannot see.
         $both = Member::factory()->administrator()->inSection('Trompettes')->musician()->create();
         $draft = Event::factory()->draft()->create();
 
@@ -173,7 +173,7 @@ class EventDraftVisibilityTest extends TestCase
         $this->getJson("/api/v1/events/{$draft->id}/registration")->assertStatus(404);
         $this->actingAsMember($this->organiser)->getJson("/api/v1/events/{$draft->id}/registration")->assertStatus(404);
 
-        // 404 BEFORE validation: an empty body would otherwise answer 400 and
+        // 404 before validation: an empty body would otherwise answer 400 and
         // tell a stranger the draft exists.
         $this->postJson(
             "/api/v1/events/{$draft->id}/registrations",
@@ -199,7 +199,7 @@ class EventDraftVisibilityTest extends TestCase
     }
 
     /**
-     * A caller who holds NONE of a route's permissions must get the same answer
+     * A caller who holds none of a route's permissions must get the same answer
      * for a draft as for an id nothing matches. Otherwise the permission check
      * answers 403 for a draft that exists and 404 for one that does not, and a
      * member can count the drafts by walking an id range.

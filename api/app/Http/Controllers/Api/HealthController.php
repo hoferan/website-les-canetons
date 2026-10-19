@@ -18,17 +18,16 @@ use Throwable;
  * fallback serves the shell in its place, so this is the only way to ask a
  * server what it runs without an FTP client.
  *
- * PUBLIC, and with every detail. The repository is public, so the commit and
- * the migration names tell nobody anything GitHub does not, and the
- * environment is already in GET /api/v1/config. TEST and QA sit behind the
- * site's Basic Auth anyway.
+ * Public, with every detail. The repository is public, so the commit and the
+ * migration names reveal nothing GitHub does not, and the environment is
+ * already in GET /api/v1/config. TEST and QA sit behind Basic Auth anyway.
  *
- * BEHIND RunPendingMigrations, like every other /api/* route. A monitor
- * therefore sees what a visitor sees: a migration that fails answers the same
- * 503 `service_unavailable` here as everywhere, and a monitor's poll after a
- * deploy applies the new migrations like any first request would. Any status
- * but 200 means unhealthy. With AUTO_MIGRATE=false the middleware stands
- * aside, and `pendingMigrations` is how to see what the server is behind on.
+ * Behind RunPendingMigrations like every other /api/* route, so a monitor sees
+ * what a visitor sees: a failing migration answers the same 503
+ * `service_unavailable` here, and a poll after a deploy applies new migrations
+ * like any first request. Any status but 200 means unhealthy. With
+ * AUTO_MIGRATE=false the middleware stands aside, and `pendingMigrations`
+ * shows what the server is behind on.
  *
  * Kept out of the OpenAPI document, like /api/migrate: it is for operators
  * and monitors, and the generated client has no use for it.

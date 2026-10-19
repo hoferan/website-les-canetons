@@ -9,16 +9,13 @@ use Illuminate\Support\Carbon;
 /**
  * A row on the planning.
  *
- * `starts_at` DEFAULTS TO THE FUTURE, deliberately, and by more than a day.
- * Most event tests are about upcoming events,
- * and a default of now() (or "today") would put every factory-built row
- * exactly on the boundary the upcoming/past split turns on. That produces
- * tests that fail once a day, at midnight, for reasons nobody can reproduce:
- * a wide margin (weeks out) keeps every row unambiguously on one side.
+ * `starts_at` defaults to weeks in the future. Most event tests are about
+ * upcoming events, and a default of now() would put every row on the
+ * boundary the upcoming/past split turns on, making tests fail around
+ * midnight. The wide margin keeps every row clearly on one side.
  *
- * `ends_at` defaults two hours after `starts_at` — a rehearsal's actual
- * length — rather than to Faker noise, since `ends_at` is NOT NULL and
- * every row needs one that makes sense next to its start.
+ * `ends_at` defaults to two hours after `starts_at`, a rehearsal's length:
+ * the column is NOT NULL and must make sense next to the start.
  *
  * @extends Factory<Event>
  */
@@ -40,8 +37,8 @@ class EventFactory extends Factory
             'attire' => null,
             'is_public' => false,
             'notes' => null,
-            // PUBLISHED BY DEFAULT, so every test written before drafts existed
-            // still builds an event the band can see. A draft is the opt-in.
+            // Published by default, so a test builds an event the band can
+            // see. A draft is the opt-in.
             'published_at' => Carbon::now(),
         ];
     }
@@ -53,9 +50,8 @@ class EventFactory extends Factory
     }
 
     /**
-     * A row unambiguously in the past, for the tests that exercise the
-     * upcoming/past split. Weeks back, for the same reason the
-     * default is weeks out: no ambiguity at the boundary.
+     * A row clearly in the past, for tests of the upcoming/past split. Weeks
+     * back, for the same reason the default is weeks out.
      */
     public function past(): static
     {
@@ -70,19 +66,18 @@ class EventFactory extends Factory
         });
     }
 
-    /** An event the public page (a later release) is allowed to show. */
+    /** An event the public agenda may show. */
     public function public(): static
     {
         return $this->state(fn (): array => ['is_public' => true]);
     }
 
     /**
-     * An event whose registration form is OPEN.
+     * An event whose registration form is open.
      *
      * Registration is enabled iff `registration_closes_at` is set (ADR 0020), so
-     * setting the close date is the whole switch. `opens_at` is left null,
-     * which means open immediately — the common case, and the one a test
-     * that says nothing about dates wants.
+     * the close date is the whole switch. `opens_at` stays null, meaning open
+     * immediately, which is what a test that says nothing about dates wants.
      */
     public function takingRegistrations(?int $maxGuests = null): static
     {

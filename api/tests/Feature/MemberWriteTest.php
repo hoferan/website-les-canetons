@@ -14,16 +14,13 @@ use Tests\TestCase;
 /**
  * Creating and editing a person on the roster.
  *
- * EVERY MEMBER HAS AN ACCOUNT (2026_09_08_000001), so creating a person and
- * giving them a login are one operation. Create mints a generated password and
- * returns it exactly once, the same way a reset does — there is no
- * "person without an account yet" state to fall into.
+ * Every member has an account, so creating a person and giving them a login
+ * are one operation. Create mints a generated password and returns it once,
+ * the same way a reset does.
  *
- * That matters for more than tidiness: a member created with an unusable
- * placeholder password could be given members.manage and then be the only
- * administrator left after a deletion, unable to log in. That is the ghost
- * administrator the credentials migration dissolved, and it must not come back
- * through the create path.
+ * A member created with an unusable placeholder password could be given
+ * members.manage and then be the only administrator left after a deletion,
+ * unable to log in.
  */
 class MemberWriteTest extends TestCase
 {
@@ -49,10 +46,9 @@ class MemberWriteTest extends TestCase
     }
 
     /**
-     * A committee seat BY NAME. Every one of the eight is already in a fresh
-     * test database — 2026_09_14_000001 seeds them as reference data and
-     * RefreshDatabase runs it — so a test that created its own would be
-     * asserting against a ninth seat nobody has.
+     * A committee seat by name. A migration seeds all eight as reference data
+     * and RefreshDatabase runs it, so a test that created its own would assert
+     * against a ninth seat nobody has.
      */
     private function seat(string $name): CommitteeFunction
     {
@@ -92,11 +88,10 @@ class MemberWriteTest extends TestCase
 
     public function test_creating_a_person_cannot_grant_a_role_even_if_asked(): void
     {
-        // THE HOLE THIS CLOSES. PUT /members/{id}/roles re-authenticates; this
-        // endpoint does not. Accepting roleIds here would have made the
-        // unguarded path strictly easier than the guarded one — a stolen
-        // session could mint a member holding `direction` and read its password
-        // straight out of the 201 response, a backdoor needing no password.
+        // Roles are granted only through PUT /members/{id}/roles, which checks
+        // the lockout invariants. Accepting roleIds here would let a stolen
+        // session mint a member holding `direction` and read its password
+        // straight out of the 201 response.
         $role = Role::where('key', 'direction')->sole();
 
         $this->acting()->postJson('/api/v1/members', $this->payload([
@@ -113,9 +108,8 @@ class MemberWriteTest extends TestCase
 
     public function test_a_created_person_can_log_in_with_the_password_it_returns(): void
     {
-        // The whole reason create mints a credential rather than leaving the
-        // person account-less: a member who cannot log in but can hold
-        // members.manage is the ghost administrator that locked the band out.
+        // A member who cannot log in but can hold members.manage could be the
+        // last administrator and lock the band out.
         $body = $this->acting()->postJson('/api/v1/members', $this->payload())
             ->assertCreated()->json();
 
@@ -159,9 +153,8 @@ class MemberWriteTest extends TestCase
 
     public function test_a_duplicate_username_is_reported_against_its_own_field(): void
     {
-        // The most likely error on this whole screen, so its copy matters. An
-        // unmapped `unique` rule would render "Identifiant n'est pas dans un
-        // format valide", which is both wrong and unhelpful.
+        // The most likely error on this screen. An unmapped `unique` rule would
+        // render "Identifiant n'est pas dans un format valide".
         $this->acting()->postJson('/api/v1/members', $this->payload())->assertCreated();
 
         $this->acting()->postJson('/api/v1/members', $this->payload(['firstName' => 'Autre']))
@@ -173,17 +166,12 @@ class MemberWriteTest extends TestCase
 
     public function test_a_seat_that_does_not_exist_is_refused(): void
     {
-        // A GUARD THE FREE-TEXT COLUMN COULD NOT HAVE. Anything at all was a
-        // valid committee title, so a typo was published and nothing anywhere
-        // could tell. Now the field names a row, and a seat that does not exist
-        // is a refusal rather than a card on the public page reading
-        // "Prsidente".
+        // The field names a row, so a seat that does not exist is refused
+        // instead of published with a typo.
         //
-        // `invalid_format` rather than a token of its own, and that is
-        // ApiError's standing decision about `exists` rather than a choice made
-        // here: the only way to reach it is a stale form holding a seat
-        // somebody has since deleted, which the user fixes by reloading.
-        // `sectionId` answers the same way.
+        // `invalid_format` is ApiError's general answer for `exists`: the only
+        // way to reach it is a stale form holding a deleted seat, which a
+        // reload fixes. `sectionId` answers the same way.
         $this->acting()->postJson('/api/v1/members', $this->payload(['committeeFunctionId' => 9999]))
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
@@ -213,8 +201,7 @@ class MemberWriteTest extends TestCase
 
     public function test_it_updates_only_the_fields_that_were_sent(): void
     {
-        // Untouched, because PATCH means PATCH. A form that posts only the
-        // changed field must not silently blank the rest.
+        // PATCH: a form that posts only the changed field must not blank the rest.
         $member = Member::factory()
             ->named('Perrine', 'Player')
             ->inSection($this->section())
@@ -270,9 +257,7 @@ class MemberWriteTest extends TestCase
 
     public function test_a_username_cannot_be_cleared_because_it_is_the_login(): void
     {
-        // Under the old model this cleared the password and ended the sessions,
-        // and had to be refused for the last administrator. The column is NOT
-        // NULL now, so the whole branch is gone and the rule rejects it.
+        // The column is NOT NULL, so the validation rule rejects a null.
         $member = Member::factory()->named('Perrine', 'Player')->create();
 
         $this->acting()->withHeaders($this->ifMatch('member', $member))->patchJson("/api/v1/members/{$member->id}", ['username' => null])
@@ -285,10 +270,9 @@ class MemberWriteTest extends TestCase
 
     public function test_neither_write_requires_re_authentication(): void
     {
-        // Deliberate. Creating and editing a person are not destructive, and a
-        // password prompt on every corrected typo is a prompt people learn to
-        // type through without reading — which is worse than not having one,
-        // because it trains the reflex the destructive dialogs rely on.
+        // Creating and editing a person are not destructive. A password prompt
+        // on every corrected typo teaches people to type through prompts
+        // without reading, which undermines the destructive dialogs.
         $this->acting()->postJson('/api/v1/members', $this->payload())->assertCreated();
 
         $member = Member::where('username', 'perrine.player')->sole();

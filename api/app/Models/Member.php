@@ -14,17 +14,16 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * A person the band tracks for events. Every member has an account —
- * `username` and `password` are NOT NULL since 2026_09_08_000001; people the
- * band merely displays are content, not rows here. See the members migration
- * for that reasoning, and for why there is no email and no role column.
+ * A person the band tracks for events. Every member has an account
+ * (`username` and `password` are NOT NULL); people the band only displays are
+ * content, not rows here. The members migration explains why there is no
+ * email and no role column.
  *
  * Notifiable and MustVerifyEmail are deliberately absent: nothing here sends a
  * notification, and there is no address to verify.
  *
- * The @property tags below say what casts() already does at runtime. Static
- * analysis cannot read casts(), so without them these read as their raw column
- * types and every caller has to defend against a type that never occurs.
+ * The @property tags repeat what casts() does at runtime, which static
+ * analysis cannot read.
  *
  * @property Carbon|null $last_login_at
  * @property bool $must_change_password
@@ -68,9 +67,8 @@ class Member extends Authenticatable
     /**
      * The seat this person holds on the committee, if any.
      *
-     * Null is the ordinary answer — most of the band sit on no committee — and
-     * it is also what puts somebody on the public /committee page or keeps
-     * them off it.
+     * Usually null. Whether it is set decides who appears on the public
+     * /committee page.
      *
      * @return BelongsTo<CommitteeFunction, $this>
      */
@@ -87,12 +85,9 @@ class Member extends Authenticatable
     /**
      * This member's answers, across every event.
      *
-     * The chase list does NOT load it through this relation — it fetches one
-     * event's answers in a single query and setRelation()s them onto the
-     * roster, because a hasMany per row is the N+1 that screen would
-     * otherwise grow. The relation exists so that assignment has somewhere to
-     * land, and for the `attendance` singular accessor a chase-list row
-     * reads.
+     * The chase list does not load answers through this relation: it fetches
+     * one event's answers in a single query and setRelation()s them onto the
+     * roster as `attendance`, to avoid an N+1.
      *
      * @return HasMany<Attendance, $this>
      */

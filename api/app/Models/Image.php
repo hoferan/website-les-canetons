@@ -31,8 +31,7 @@ class Image extends Model
 
     /**
      * Every resource that shows a photo lists its sizes, so they come with
-     * every read. Loading them here rather than at each call site keeps a list
-     * of photos at one extra query, however long it is.
+     * every read, at one extra query per list.
      *
      * @var list<string>
      */
@@ -42,12 +41,11 @@ class Image extends Model
     public const SIZE_COLUMNS = ['image_id', 'width', 'height', 'bytes', 'sha256'];
 
     /**
-     * The photo's sizes, smallest first, WITHOUT their bytes.
+     * The photo's sizes, smallest first, without their bytes.
      *
-     * The select is load-bearing: `data` is up to 600 KB a row, and only
-     * ImageFileController may read it, one row at a time. A test listens to
-     * every query of the library and the public pages and fails if one names
-     * that column.
+     * The select matters: `data` is up to 600 KB a row, and only
+     * ImageFileController reads it, one row at a time. A test fails if any
+     * query of the library or the public pages names that column.
      *
      * @return HasMany<ImageFile, $this>
      */
@@ -87,9 +85,7 @@ class Image extends Model
     }
 
     /**
-     * Reads the usages of every image in the collection at once, so that
-     * rendering a page of the library costs one query rather than one per
-     * image.
+     * Reads the usages of every image in the collection in one query.
      *
      * @param  iterable<Image>  $images
      */

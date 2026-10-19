@@ -14,26 +14,21 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
-// ONE description per group, on the controller that owns it. Scramble keeps
-// whichever #[Group] carries one, and the other controllers in a group repeat
-// only the name and the weight — a description written out at each of the five
-// Members controllers would be four copies waiting to disagree.
+// One description per group, on the controller that owns it. Scramble keeps
+// whichever #[Group] carries one, so the other controllers in a group repeat
+// only the name and the weight.
 #[Group('Session', 'Logging in, reading who you are, and changing your own password.', weight: 10)]
 class AuthController extends Controller
 {
     /**
-     * Five failures per username+IP, then a flat lock of DECAY_SECONDS measured
-     * from the FIRST failure — it does not grow. RateLimiter::hit() calls
-     * cache->add() for both the attempt counter and its `:timer`, which is a
-     * no-op once either key already exists, so the TTL is set once, on the
-     * first hit, and never extended by subsequent ones. Attempts made WHILE
-     * throttled are not counted either: login() returns 429 before ever
-     * calling hit(), so hammering a locked account does not push the lock out
-     * further.
+     * Five failures per username and IP, then a flat lock of DECAY_SECONDS
+     * from the first failure. RateLimiter::hit() sets the counter and its
+     * `:timer` with cache->add(), a no-op once the key exists, so later hits
+     * never extend the TTL. Attempts while throttled are not counted either:
+     * login() answers 429 before calling hit().
      *
-     * Keyed on BOTH so that neither dimension alone defeats it: per-IP only
-     * lets a botnet spread attempts across addresses, per-username only lets
-     * one attacker lock a member out of their own account by hammering it.
+     * Keyed on both: per IP alone lets a botnet spread attempts across
+     * addresses, and per username alone lets one attacker lock a member out.
      */
     private const MAX_ATTEMPTS = 5;
 
@@ -67,40 +62,32 @@ class AuthController extends Controller
 
         $key = $this->throttleKey($credentials['username'], $request->ip());
 
-        // Checked BEFORE the password is verified, so a throttled attacker who
-        // finally guesses correctly is still refused. Verifying first and
-        // throttling after would make the limit decorative.
+        // Checked before the password is verified, so a throttled attacker who
+        // finally guesses correctly is still refused.
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
             return ApiError::json(429, 'too_many_attempts', 'Too many attempts');
         }
 
-        // One generic code, never per-field: saying which of username or
-        // password was wrong enables enumeration. A member with no username
-        // never reaches here — the `required` rule above rejects an empty
-        // one, and a NULL username matches nothing.
+        // One generic code, never per field, so the answer cannot be used to
+        // enumerate usernames. An empty username fails `required` above, and
+        // a NULL one matches nothing.
         if (! Auth::attempt($credentials)) {
             RateLimiter::hit($key, self::DECAY_SECONDS);
 
             return ApiError::json(401, 'invalid_credentials', 'Incorrect username or password');
         }
 
-        // THE CREDENTIALS WERE RIGHT, and everything below needs a session. A
-        // request Sanctum did not treat as stateful has none, and calling
-        // session() on it throws — which used to surface as a 500 carrying a
-        // stack trace, to an anonymous caller, on the very first request any
-        // integrator makes. Found by a black-box review on 2026-09-11; no test
-        // caught it because the SPA and the test client are both stateful, so
-        // the failing path is the one nothing internal exercises.
+        // Everything below needs a session. A request Sanctum did not treat as
+        // stateful has none, and session() on it throws a 500. The SPA and the
+        // test client are both stateful, so only an outside caller hits this.
         //
-        // Refused cleanly instead, and deliberately AFTER the attempt, so this
-        // cannot be used to probe credentials without a session: a wrong
-        // password still answers invalid_credentials either way.
+        // Checked after the attempt, so it cannot probe credentials: a wrong
+        // password answers invalid_credentials either way.
         //
-        // Not 419 invalid_session, which means "prime the cookie and retry" —
-        // advice that would loop forever here, because the request will never
-        // become stateful by retrying. Session auth needs a browser on a
-        // configured origin; a server-to-server caller would need a token
-        // credential, which this API deliberately does not offer (ADR 0010).
+        // Not 419 invalid_session, which means "prime the cookie and retry"
+        // and would loop forever here. Session auth needs a browser on a
+        // configured origin, and this API offers no token credential
+        // (ADR 0010).
         if (! $request->hasSession()) {
             return ApiError::json(400, 'stateful_request_required', 'This endpoint requires a session');
         }
@@ -111,22 +98,18 @@ class AuthController extends Controller
         // privilege change.
         $request->session()->regenerate();
 
-        // The absolute-lifetime clock. Written after regenerate(), because
-        // regenerating migrates the session data and writing before it would
-        // work but reads as though the order did not matter — it does the day
-        // someone switches to a driver that does not migrate.
-        // now()->timestamp, so the stamp and the check in
-        // EnforceAbsoluteSessionLifetime read the same clock — the one a test
-        // can move.
+        // The absolute-lifetime clock, written after regenerate() so it does
+        // not depend on the session driver migrating data. now()->timestamp,
+        // so the stamp and EnforceAbsoluteSessionLifetime read the clock a
+        // test can move.
         $request->session()->put('auth.started_at', now()->timestamp);
 
         /** @var Member $member */
         $member = Auth::user();
         $member->forceFill(['last_login_at' => now()])->save();
 
-        // Deliberately no role or permissions in this body. The client asks
-        // GET /api/v1/me for identity, so there is exactly one shape describing
-        // who you are and one place to change it.
+        // No role or permissions here: GET /api/v1/me is the one shape that
+        // describes who you are.
         $body = ['ok' => true];
 
         return response()->json($body);
@@ -144,16 +127,13 @@ class AuthController extends Controller
     #[Response(200, 'Logged out. The session is destroyed server-side.')]
     public function logout(Request $request): JsonResponse
     {
-        // Three steps, each doing a different half of the job. logout() forgets
-        // the member on this request; invalidate() destroys the session data
-        // and its id, so a copy of the cookie taken beforehand is worth nothing
-        // afterwards; regenerateToken() replaces the CSRF token, because the
-        // SPA stays on the same page and would otherwise send the dead one with
-        // its next mutating request.
+        // logout() forgets the member on this request; invalidate() destroys
+        // the session data and id, so a copied cookie is worthless;
+        // regenerateToken() replaces the CSRF token, since the SPA stays on
+        // the page and would otherwise send the dead one next.
         //
-        // The `web` guard by name, not the default: Sanctum's stateful SPA mode
-        // authenticates these routes through the session, and that is the guard
-        // holding the login.
+        // The `web` guard by name: Sanctum's stateful SPA mode authenticates
+        // through the session, and that guard holds the login.
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -202,18 +182,15 @@ class AuthController extends Controller
             'committeeFunctionName' => $member->committeeFunction?->name,
             /** The roles they hold, by key, with the names the committee typed (null for a seeded role nobody renamed: translate the key). For display only: authorise on `permissions`. */
             'roles' => $this->roles($member),
-            // Redundant with the `no-store` middleware the whole authenticated
-            // group carries, and kept: this body IS an identity, so it should
-            // not depend on a route registration elsewhere to stay out of a
-            // shared proxy.
+            // Repeats the authenticated group's `no-store` middleware, so an
+            // identity stays out of a shared proxy whatever the routes say.
         ])->header('Cache-Control', 'no-store, private');
     }
 
     /**
-     * A typed method rather than an inline map, for the reason
-     * MemberResource::roleIds() gives: the docblock is what makes Scramble
-     * publish a typed list instead of an untyped object. Ordered by key, so
-     * the account page lists them the same way every time.
+     * A typed method rather than an inline map, because the docblock makes
+     * Scramble publish a typed list (see MemberResource::roleIds()). Ordered
+     * by key, so the account page lists them the same way every time.
      *
      * @return list<array{key: string, labelFr: string|null, labelDe: string|null}>
      */
@@ -231,12 +208,10 @@ class AuthController extends Controller
     }
 
     /**
-     * Normalises the username before keying, exactly as Laravel's own
-     * LoginRequest::throttleKey() does: members.username collates
-     * utf8mb4_unicode_ci (case-insensitive, PAD SPACE), so the database
-     * authenticates spellings that a raw concatenation would count as
-     * separate accounts — letting an attacker exhaust the limit as
-     * "lea.keller" and then walk straight past it as "LEA.Keller".
+     * Normalises the username as Laravel's LoginRequest::throttleKey() does.
+     * members.username collates utf8mb4_unicode_ci (case-insensitive, PAD
+     * SPACE), so without it an attacker could exhaust the limit as
+     * "lea.keller" and carry on as "LEA.Keller".
      */
     private function throttleKey(string $username, ?string $ip): string
     {

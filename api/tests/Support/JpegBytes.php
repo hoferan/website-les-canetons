@@ -68,7 +68,7 @@ final class JpegBytes
     /**
      * Pads the scan to exactly $size bytes, just before EOI. Entropy-coded
      * data is the one place a canvas JPEG grows, and the inspector's
-     * allow-list refuses the comment segments that padding used to be.
+     * allow-list refuses comment segments.
      */
     private static function pad(string $bytes, int $size): string
     {

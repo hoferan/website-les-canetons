@@ -11,8 +11,8 @@ use Tests\TestCase;
  * history.manage exists as data on a database that already had the roles.
  *
  * The third test is the one that fails without the grant migration: a fresh
- * database gets the token from Permission::cases() for free, and TEST is not a
- * fresh database.
+ * database gets the token from Permission::cases() for free, and the server
+ * databases are not fresh.
  */
 class GrantHistoryManageTest extends TestCase
 {

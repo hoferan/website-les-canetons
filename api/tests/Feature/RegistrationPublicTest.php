@@ -14,7 +14,7 @@ use Tests\TestCase;
 
 /**
  * The public half of registration: the form's data, and booking a place.
- * Anonymous throughout — the people booking are not band members.
+ * Anonymous throughout: the people booking are not band members.
  */
 class RegistrationPublicTest extends TestCase
 {
@@ -35,13 +35,7 @@ class RegistrationPublicTest extends TestCase
             ->create(['event_id' => $this->event->id, 'sort_order' => 1]);
     }
 
-    /**
-     * A token old enough to pass the timing check without the test sleeping.
-     *
-     * Built by signing a past timestamp rather than by waiting: the guard's
-     * whole point is that a real form takes seconds to fill in, and a suite
-     * that actually waited two seconds per booking test would add a minute.
-     */
+    /** Headers whose token is old enough to pass the timing check; see TestCase. */
     private function headers(): array
     {
         return $this->publicWriteHeaders();
@@ -88,9 +82,8 @@ class RegistrationPublicTest extends TestCase
 
     public function test_the_form_never_leaks_the_bands_internal_notes(): void
     {
-        // This endpoint is reachable without a session, so it carries the
-        // four facts a stranger needs to recognise the event — not the
-        // event.
+        // Reachable without a session, so it carries only the facts a
+        // stranger needs to recognise the event.
         $this->event->update(['notes' => 'Rappeler à Marc d’apporter la caisse.']);
 
         $body = $this->getJson("/api/v1/events/{$this->event->id}/registration")->assertOk()->json();
@@ -102,8 +95,8 @@ class RegistrationPublicTest extends TestCase
 
     public function test_an_event_taking_no_registrations_is_a_404_not_a_403(): void
     {
-        // A stranger must not be able to learn that an event exists but is
-        // not taking bookings — that is the band's private planning.
+        // A stranger must not learn that an event exists but is not taking
+        // bookings: that is the band's private planning.
         $private = Event::factory()->create();
 
         $this->getJson("/api/v1/events/{$private->id}/registration")->assertStatus(404);
@@ -165,15 +158,12 @@ class RegistrationPublicTest extends TestCase
 
     public function test_the_confirmation_puts_each_detail_on_its_own_line(): void
     {
-        // RENDERED FOR REAL, because Mail::fake() never renders the view: every
-        // other mail test here passes over a template a mail client displays
-        // wrong, and this one would have too.
+        // Rendered for real, because Mail::fake() never renders the view.
         //
         // Markdown reads a bare newline as a space. Written as consecutive
-        // lines, the bold labels come out as a single wrapped paragraph in the
-        // HTML part, which is the part a mail client shows. The plain-text part
-        // keeps the break, so reading the source or the text alternative hides
-        // the problem entirely.
+        // lines, the bold labels come out as one wrapped paragraph in the HTML
+        // part, which is what a mail client shows. The plain-text part keeps
+        // the break, so reading the source or the text alternative hides it.
         $option = RegistrationOption::factory()->create(['event_id' => $this->event->id]);
         $registration = Registration::factory()
             ->withChoice($option)
@@ -200,11 +190,9 @@ class RegistrationPublicTest extends TestCase
     /**
      * The rendered HTML as the blocks a reader sees, one per entry.
      *
-     * A NEWLINE IN THE SOURCE IS NOT A BREAK ON SCREEN. HTML collapses it to a
-     * space, so it has to be flattened BEFORE the block tags become breaks.
-     * Splitting on it instead is how the first version of this helper reported
-     * the run-on below as two tidy blocks and passed over the one defect it
-     * was written to catch.
+     * A newline in the source is not a break on screen. HTML collapses it to a
+     * space, so it is flattened before the block tags become breaks. Splitting
+     * on it would report a run-on paragraph as two tidy blocks.
      *
      * @return list<string>
      */
@@ -224,9 +212,9 @@ class RegistrationPublicTest extends TestCase
 
     public function test_a_failing_mail_server_does_not_lose_the_booking(): void
     {
-        // BEST-EFFORT ON PURPOSE (ADR 0009). The row is already committed and
-        // this host has no queue to retry from; an SMTP blip must not throw away
-        // a real registration.
+        // Best-effort on purpose (ADR 0009). The row is already committed and
+        // this host has no queue to retry from; an SMTP blip must not lose a
+        // registration.
         Mail::shouldReceive('to')->andThrow(new \RuntimeException('smtp is down'));
 
         $this->postJson($this->url(), $this->payload(), $this->headers())->assertStatus(201);
@@ -272,8 +260,8 @@ class RegistrationPublicTest extends TestCase
 
     public function test_an_option_from_another_event_is_refused(): void
     {
-        // The foreign key alone would happily accept it — the `exists` rule
-        // is scoped to THIS event's options, and this is what pins that.
+        // The foreign key alone would accept it; the `exists` rule is scoped
+        // to this event's options.
         $other = RegistrationOption::factory()->create();
 
         $this->postJson($this->url(), $this->payload([
@@ -392,11 +380,9 @@ class RegistrationPublicTest extends TestCase
 
     public function test_the_timing_window_is_two_seconds_to_two_hours(): void
     {
-        // PINNED TO THE LITERALS. The other tests here derive their
-        // fixtures from these constants, so they pin the comparison and not
-        // the policy: found by mutation on 2026-09-10, shrinking the window
-        // to 25s-45s left 30 tests green. Both ends matter — the lower one
-        // must never refuse a real person, and the upper one is what lets
+        // Pinned to the literals. The other tests derive their fixtures from
+        // these constants, so they pin the comparison and not the policy. The
+        // lower end must never refuse a real person, and the upper end lets
         // somebody fill a form at their own pace.
         $this->assertSame(2, FormToken::MIN_AGE_SECONDS);
         $this->assertSame(7200, FormToken::MAX_AGE_SECONDS);
@@ -407,16 +393,14 @@ class RegistrationPublicTest extends TestCase
         $token = $this->getJson('/api/v1/form-token')->assertOk()->json('token');
 
         $this->assertIsString($token);
-        // Not yet valid — it is brand new, which is exactly the point.
+        // Not yet valid: it is brand new.
         $this->assertFalse(FormToken::isValid($token));
     }
 
     public function test_the_contact_form_is_guarded_too(): void
     {
-        // The orphan this middleware finally adopts: POST /api/v1/contact
-        // shipped with no protection of any kind and still had none when
-        // public registration was designed. No token AND no decoy field: both
-        // must refuse.
+        // POST /api/v1/contact goes through the same guard. No token and no
+        // decoy field: both refuse.
         $this->postJson('/api/v1/contact', [
             'firstName' => 'A',
             'lastName' => 'B',
@@ -441,11 +425,10 @@ class RegistrationPublicTest extends TestCase
 
     public function test_omitting_the_decoy_field_is_refused(): void
     {
-        // MEASURED 2026-09-10: filled(null) is false, so a guard that only
-        // checked whether the decoy had a VALUE let a caller through by not
-        // sending it at all — which is what a script posting a hand-written
-        // body does, and precisely the case a honeypot exists to catch. The
-        // payload below is otherwise perfectly valid.
+        // filled(null) is false, so a guard that only checked whether the
+        // decoy had a value would let through a caller that does not send it,
+        // which is what a script posting a hand-written body does. The payload
+        // is otherwise valid.
         $payload = $this->payload();
         unset($payload[PublicWriteGuard::HONEYPOT_FIELD]);
 
@@ -458,7 +441,7 @@ class RegistrationPublicTest extends TestCase
 
     public function test_a_blank_app_key_refuses_every_submission(): void
     {
-        // FAILS CLOSED. PHP hash_hmac accepts an empty key and returns a
+        // Fails closed. PHP hash_hmac accepts an empty key and returns a
         // digest anybody can recompute offline, and api/.env.example ships
         // APP_KEY empty for the operator to fill. Nothing else on this path
         // catches it: an anonymous request carries no Origin, so Sanctum

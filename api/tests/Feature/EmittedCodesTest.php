@@ -10,15 +10,13 @@ use Tests\TestCase;
 /**
  * What an action says it can refuse with, and what the document says about it.
  *
- * The companion to Tests\Feature\DeclaredCodesTest, which asks only whether a
- * code reaches the contract SOMEWHERE. This one asks whether it reaches the
- * operation that raises it, which is the half a generated client narrows on.
+ * Tests\Feature\DeclaredCodesTest asks whether a code reaches the contract
+ * somewhere. This one asks whether it reaches the operation that raises it,
+ * which is what a generated client narrows on.
  *
- * DERIVED FROM THE ROUTES, not from a list written out here, so an eleventh
- * annotated action is covered without an edit — and an extension that quietly
- * stops running fails here rather than going green on a document it no longer
- * touches. That failure is the one the whole family of contract tests exists for: a
- * Scramble transformer that is never called changes nothing and says nothing.
+ * The actions come from the route table, so a new annotated action is covered
+ * without an edit, and a Scramble extension that silently stops running fails
+ * here instead of passing on a document it never touched.
  */
 class EmittedCodesTest extends TestCase
 {
@@ -102,9 +100,8 @@ class EmittedCodesTest extends TestCase
 
     public function test_no_code_is_declared_under_a_status_it_is_never_emitted_with(): void
     {
-        // The other direction, and the one that catches a code filed under the
-        // wrong number: a `409` enum naming `not_answerable` would look
-        // plausible in a diff and be wrong in every client.
+        // The other direction: catches a code filed under the wrong status, such
+        // as a `409` enum naming `not_answerable`, which looks plausible in a diff.
         $checked = 0;
         $wrong = [];
 
@@ -156,8 +153,8 @@ class EmittedCodesTest extends TestCase
     /**
      * "VERB /path" => the codes that action's #[Emits] declares.
      *
-     * Read from the ROUTE TABLE through reflection, so this sees what the
-     * document generator sees rather than a copy of it.
+     * Read from the route table through reflection, so this sees what the
+     * document generator sees.
      *
      * @return array<string, list<string>>
      */
@@ -168,10 +165,8 @@ class EmittedCodesTest extends TestCase
         foreach (Route::getRoutes()->getRoutes() as $route) {
             $action = $route->getActionName();
 
-            // An INVOKABLE controller reports its class with no `@method`, and
-            // six of this API's actions are invokable — including two that
-            // carry #[Emits]. Skipping them would have quietly dropped a third
-            // of what this test checks, which is what the floor below caught.
+            // An invokable controller reports its class with no `@method`. Some
+            // of them carry #[Emits], so they must not be skipped.
             [$class, $method] = str_contains($action, '@')
                 ? explode('@', $action, 2)
                 : [$action, '__invoke'];

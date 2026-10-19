@@ -54,8 +54,8 @@ class MyAttendanceTest extends TestCase
 
     public function test_it_never_shows_somebody_elses_answer(): void
     {
-        // THE LEAK THIS GUARDS. The relation is constrained to the caller in
-        // the QUERY, so another member's answer is never even loaded.
+        // The relation is constrained to the caller in the query, so another
+        // member's answer is never loaded.
         $event = Event::factory()->create(['starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHours(2)]);
         $other = Member::factory()->inSection('Cloches')->musician()->create();
         Attendance::factory()->no()->create([
@@ -86,7 +86,7 @@ class MyAttendanceTest extends TestCase
 
     public function test_editing_an_event_still_reports_my_own_answer(): void
     {
-        // An organiser who ALSO plays. Without the explicit load in update()
+        // An organiser who also plays. Without the explicit load in update()
         // this answers null and resets the buttons on their own screen.
         $both = Member::factory()->inSection('Trompettes')->musician()->administrator()->create();
         $event = Event::factory()->create();
@@ -101,9 +101,7 @@ class MyAttendanceTest extends TestCase
 
     public function test_the_planning_still_costs_a_fixed_number_of_queries(): void
     {
-        // The eager load is ONE query for the whole list, not one per row.
-        // EventIndexTest's budget of 3 was set as a floor with exactly this
-        // release's join in mind.
+        // The eager load is one query for the whole list.
         Event::factory()->count(10)->create([
             'starts_at' => now()->addWeek(),
             'ends_at' => now()->addWeek()->addHours(2),
@@ -119,15 +117,15 @@ class MyAttendanceTest extends TestCase
 
         $this->actingAsMember($this->player)->getJson('/api/v1/events')->assertOk();
 
-        // 4 since #107 added the event tags' eager load, also one query.
-        // 5 since #228 added the posters', one query while no event has one.
+        // Includes one query each for the event tags (#107) and the posters
+        // (#228), the latter while no event has one.
         $this->assertLessThanOrEqual(5, $queries, 'myAttendance must not query per event');
     }
 
     public function test_deleting_an_event_reports_how_many_answers_went_with_it(): void
     {
-        // The confirmation dialog needs to name the damage, not just ask
-        // again. registrationsDeleted is reported beside it.
+        // The confirmation dialog names what was lost. registrationsDeleted
+        // is reported beside it.
         $organiser = Member::factory()->administrator()->create();
         $event = Event::factory()->create();
 

@@ -9,18 +9,17 @@ use Tests\TestCase;
 /**
  * The identifier that turns "it said something went wrong" into a log line.
  *
- * It has to hold on three axes, and each is its own test below: it is on EVERY
- * response and not only on failures; it is the SAME value in the header and in
- * the problem document, or quoting one to search the other is useless; and an
- * inbound one is honoured only when it is a well-formed ULID, so a caller
- * cannot write arbitrary text into our logs.
+ * It is on every response, not only on failures; it is the same value in the
+ * header and in the problem document, so one can be used to find the other;
+ * and an inbound one is honoured only when it is a well-formed ULID, so a
+ * caller cannot write arbitrary text into the logs.
  */
 class RequestIdTest extends TestCase
 {
     public function test_every_response_carries_one(): void
     {
-        // A SUCCESS, deliberately. The identifier exists for support, and the
-        // request somebody needs to find is often the one that worked.
+        // A success on purpose: the request somebody needs to find is often
+        // one that worked.
         $response = $this->getJson('/api/v1/config')->assertOk();
 
         $this->assertTrue(
@@ -50,9 +49,9 @@ class RequestIdTest extends TestCase
     }
 
     /**
-     * The half that matters for safety. Without the ULID check, a caller could
-     * put anything — a newline, a log-forging payload, a megabyte — into a value
-     * that is written to the log and echoed back.
+     * Without the ULID check, a caller could put anything (a newline, a
+     * log-forging payload, a megabyte) into a value that is written to the log
+     * and echoed back.
      */
     public function test_a_malformed_inbound_id_is_replaced_rather_than_echoed(): void
     {
@@ -67,10 +66,9 @@ class RequestIdTest extends TestCase
     }
 
     /**
-     * Two requests, two identifiers. Obvious, and worth pinning: caching the
-     * ULID anywhere static — which RequestId::current() deliberately does NOT do
-     * beyond the current request's Context — would give every request in a
-     * worker's lifetime the same id and quietly make the whole feature useless.
+     * Two requests, two identifiers. RequestId::current() keeps the ULID only
+     * in the current request's Context; caching it anywhere static would give
+     * every request in a worker's lifetime the same id.
      */
     public function test_two_requests_get_different_identifiers(): void
     {

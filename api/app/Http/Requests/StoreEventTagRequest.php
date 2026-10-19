@@ -26,10 +26,11 @@ class StoreEventTagRequest extends FormRequest
     {
         $tag = $this->route('eventTag');
 
+        // `labelFr` is unique under the column's case-insensitive collation, so
+        // "concert" beside "Concert" is refused as a taken name instead of
+        // reaching the unique index as a 500.
         return [
-            // Unique under the column's case-insensitive collation, so
-            // "concert" is refused beside "Concert" as a taken name rather
-            // than reaching the unique index as a 500.
+            /** Unique among the tags, ignoring case: "concert" is refused beside "Concert". */
             'labelFr' => ['required', 'string', 'max:40', Rule::unique('event_tags', 'label_fr')
                 ->ignore($tag instanceof EventTag ? $tag->id : null)],
             'labelDe' => ['nullable', 'string', 'max:40'],

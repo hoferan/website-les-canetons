@@ -9,22 +9,14 @@ use Tests\TestCase;
 /**
  * A rate-limited request answers in the contract, like every other failure.
  *
- * FOUND BY A BLACK-BOX REVIEW on 2026-09-11, and it is the same hole as the 404
- * that problem documents (ADR 0012) closed — closed only for 404.
- * ThrottleRequestsException IS an HttpException, ApiError::invalidSession()
- * returns null for every status but 419, so the middleware's 429 fell
- * through to Laravel's default renderer:
+ * ThrottleRequestsException is an HttpException, and ApiError::invalidSession()
+ * returns null for every status but 419, so without explicit handling the
+ * middleware's 429 falls through to Laravel's default renderer: no `code` for a
+ * client to branch on, and a stack trace wherever APP_DEBUG is on. That would
+ * hit GET /api/v1/form-token and the two public writes, all anonymous.
  *
- *     {"message":"Too Many Attempts.","exception":"…","file":"…","trace":[45 frames]}
- *
- * On GET /api/v1/form-token and the two public writes — anonymous,
- * internet-facing endpoints. Two defects in one: no `code` for a client to
- * branch on, and a stack trace to an unauthenticated caller wherever APP_DEBUG
- * is on.
- *
- * The login lockout's 429 was always correct, because our own code raises that
- * one through ApiError. Only the middleware's escaped — which is precisely why
- * a suite full of 429 assertions stayed green.
+ * The login lockout's 429 is raised through ApiError by our own code, so login
+ * tests do not cover the middleware's 429.
  */
 class RateLimitContractTest extends TestCase
 {
@@ -55,15 +47,13 @@ class RateLimitContractTest extends TestCase
         $response->assertJsonPath('code', 'rate_limited');
         $response->assertJsonPath('status', 429);
 
-        // `detail` is what tells the caller to read Retry-After, so its absence
-        // would leave them guessing at a backoff.
+        // `detail` tells the caller to read Retry-After.
         $this->assertStringContainsString('Retry-After', (string) $response->json('detail'));
     }
 
     /**
-     * The failure mode this replaced, asserted directly. A body carrying
-     * `exception` or `trace` means the contract was escaped again — and on an
-     * anonymous endpoint that is an information leak, not just an inconsistency.
+     * A body carrying `exception` or `trace` escaped the contract, and on an
+     * anonymous endpoint that leaks internals.
      */
     public function test_a_throttled_request_leaks_no_framework_internals(): void
     {
@@ -79,9 +69,8 @@ class RateLimitContractTest extends TestCase
      * Retry-After survives the rewrite.
      *
      * ThrottleRequests puts it on the exception, and rendering through ApiError
-     * builds a fresh response — so the headers have to be carried across
-     * deliberately. Without this, a client is told to back off and not told for
-     * how long, which is the one thing a 429 exists to say.
+     * builds a fresh response, so the headers are carried across explicitly.
+     * Without them a client is told to back off but not for how long.
      */
     public function test_the_backoff_headers_survive(): void
     {

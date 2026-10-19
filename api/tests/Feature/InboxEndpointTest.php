@@ -74,10 +74,8 @@ class InboxEndpointTest extends TestCase
             ->assertOk()
             ->assertJsonPath('total', 0);
 
-        // An empty counts map must serialize as `{}`, never `[]` — a client
-        // reading `counts.contactMessage` against an array is a different
-        // bug. json_decode() (object mode) only ever produces a stdClass for
-        // `{}`; an empty JSON array decodes to a plain PHP array instead.
+        // An empty counts map must serialize as `{}`, never `[]`. In object
+        // mode json_decode() gives a stdClass only for `{}`.
         $this->assertInstanceOf(\stdClass::class, json_decode($response->getContent())->counts);
     }
 

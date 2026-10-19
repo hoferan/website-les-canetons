@@ -20,10 +20,10 @@ return [
     | Migrate Endpoint Token
     |--------------------------------------------------------------------------
     |
-    | Shared secret gating the token-protected POST /api/migrate endpoint used
-    | by the deploy tooling (tools/dbmigrate.mjs) to run migrations server-side
-    | — remote DB login is blocked and there is no SSH. Server-owned, set once
-    | per server in .env; blank here means the endpoint refuses every request.
+    | Shared secret gating POST /api/migrate, which the deploy tooling
+    | (tools/dbmigrate.mjs) calls to run migrations server-side, since remote
+    | DB login is blocked and there is no SSH. Set once per server in .env;
+    | blank means the endpoint refuses every request.
     |
     */
 
@@ -32,18 +32,15 @@ return [
     // Whether App\Http\Middleware\RunPendingMigrations applies pending
     // migrations on the first /api/* request after a deploy.
     //
-    // ON by default, deliberately. The deploy host firewalls the GitHub
-    // runner's IP, so CI cannot reach the site to call POST /api/migrate; the
-    // request path is the only trigger a deployed server has. A server whose
-    // .env simply omits this key
-    // must therefore still self-heal — a silently-disabled one is exactly the
-    // failure the middleware exists to prevent, and it fails as a broken API
-    // rather than as a missing setting.
+    // On by default. The deploy host firewalls the GitHub runners, so CI
+    // cannot call POST /api/migrate and the request path is the only trigger a
+    // deployed server has. A server whose .env omits this key must still
+    // migrate; a disabled one fails as a broken API, not a missing setting.
     //
     // Set AUTO_MIGRATE=false only to stop a migration that fails on every
-    // request. The server then serves against the schema it has rather than
-    // answering 503 (docs/adr/0030). It is pinned false in phpunit.xml so the
-    // suite never migrates implicitly.
+    // request: the server then serves against the schema it has instead of
+    // answering 503 (ADR 0030). phpunit.xml pins it false so the suite never
+    // migrates implicitly.
     'auto_migrate' => (bool) env('AUTO_MIGRATE', true),
 
     /*

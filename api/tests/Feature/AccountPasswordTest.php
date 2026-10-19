@@ -12,16 +12,13 @@ use Tests\TestCase;
 /**
  * A member changes their own password.
  *
- * No permission is required, and that is the point: this is the screen every
- * member needs and nobody administers. It is also where every first login
- * lands, because a committee-issued password arrives with
- * must_change_password set.
+ * No permission is required: every member needs this screen and nobody
+ * administers it. Every first login lands here, because a committee-issued
+ * password arrives with must_change_password set.
  *
- * setUp() creates the member but deliberately does NOT call actingAs() — every
- * authenticated test opens with actingAsMember($this->member) instead, using
- * the base TestCase helper. That is what lets the last test be genuinely
- * anonymous; un-acting after the fact works until it quietly does not, and an
- * auth test that is accidentally authenticated passes for the wrong reason.
+ * setUp() deliberately does not call actingAs(); each authenticated test calls
+ * actingAsMember() itself, so the last test is genuinely anonymous. An auth
+ * test that is accidentally authenticated passes for the wrong reason.
  */
 class AccountPasswordTest extends TestCase
 {
@@ -76,8 +73,8 @@ class AccountPasswordTest extends TestCase
 
     public function test_the_wrong_current_password_changes_nothing(): void
     {
-        // Knowing the current password is the only thing standing between a
-        // borrowed, unlocked phone and a permanently stolen account.
+        // The current password is what stands between a borrowed, unlocked
+        // phone and a stolen account.
         $before = $this->member->password;
 
         $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
@@ -91,9 +88,8 @@ class AccountPasswordTest extends TestCase
 
     public function test_a_short_password_is_refused_with_a_message_about_length(): void
     {
-        // `min` used to map to 'invalid_number' — "n'est pas un nombre valide"
-        // for a short password. ApiError's own docblock predicted this and
-        // asked for a too_short token; this is it.
+        // A short password answers too_short, not invalid_number ("n'est pas
+        // un nombre valide").
         $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'short',
@@ -106,10 +102,10 @@ class AccountPasswordTest extends TestCase
 
     public function test_it_ends_the_members_other_sessions_but_not_this_one(): void
     {
-        // A stolen session stops working the moment the password changes
-        // — but not the session standing on the screen. Every first login lands
-        // on the forced-change form, so logging the actor out here would bounce
-        // every new account straight back to the login page.
+        // A stolen session stops working when the password changes, but the
+        // current one stays. Every first login lands on the forced-change
+        // form, so logging the actor out would bounce every new account back
+        // to the login page.
         $this->sessionFor('their-phone', $this->member->id);
         $this->sessionFor('their-laptop', $this->member->id);
 
@@ -149,13 +145,10 @@ class AccountPasswordTest extends TestCase
     }
 
     /**
-     * #92. The forced-change gate is the reason this matters rather than tidiness.
-     *
-     * A committee-issued password is read out down a phone, so somebody else has
-     * heard it; must_change_password exists to make sure that credential does not
-     * outlive its first use. Letting it be "changed" to itself leaves the account
-     * on the password a third party knows while clearing the flag that was
-     * protecting it — the gate reports success and defeats itself.
+     * #92. A committee-issued password is read out over the phone, so somebody
+     * else has heard it, and must_change_password keeps it from outliving its
+     * first use. "Changing" it to itself would keep the password a third party
+     * knows and clear the flag that protects it.
      */
     public function test_a_new_password_identical_to_the_current_one_is_refused(): void
     {
@@ -172,23 +165,18 @@ class AccountPasswordTest extends TestCase
             'newPassword' => self::CURRENT,
         ])->assertStatus(409);
 
-        // The whole point: refusing is worth nothing if the flag clears anyway,
-        // because the next login would then sail past the gate on the password
-        // that was dictated over the phone.
+        // If the flag cleared anyway, the next login would pass the gate on the
+        // password that was dictated over the phone.
         $fresh = $this->member->fresh();
         $this->assertTrue($fresh->must_change_password);
         $this->assertTrue(Hash::check(self::CURRENT, $fresh->password));
     }
 
     /**
-     * ORDER, and it is the one thing this check could plausibly get wrong.
-     *
-     * Re-authentication runs first, so a caller who gets the current password
-     * wrong is told THAT, even when the two fields they sent happen to match
-     * each other. The alternative — checking equality before knowing the current
-     * password — would answer `password_unchanged` to somebody who does not know
-     * the password at all, which both misleads them and confirms, for free, that
-     * their guess was wrong in a different way than they think.
+     * Order matters. Re-authentication runs first, so a caller with the wrong
+     * current password is told so even when the two fields match each other.
+     * Checking equality first would answer `password_unchanged` to somebody
+     * who does not know the password at all, which misleads them.
      */
     public function test_a_wrong_current_password_still_answers_reauth_failed(): void
     {

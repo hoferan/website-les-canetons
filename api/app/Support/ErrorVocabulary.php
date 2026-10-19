@@ -8,32 +8,18 @@ namespace App\Support;
  * These are RFC 9457 `detail` strings: §3.1.1 defines that member as a
  * human-readable explanation that "SHOULD focus on helping the client correct
  * the problem". App\Exceptions\ApiError puts the matching one into every error
- * response, so the explanation arrives WITH the failure rather than at some
- * other URL.
+ * response, so the explanation arrives with the failure instead of at another
+ * URL. A description is one or two sentences, wanted only by somebody who has
+ * that problem at that moment, so there is no per-code page to fetch. ADR 0012.
  *
- * THAT IS THE WHOLE DESIGN, and it replaced a considerably larger one. There
- * was a `type` member, an endpoint serving a document per problem type, a
- * `documentation` link to a per-code anchor, and twenty-one sections in the API
- * reference. André's argument ended all of it: a problem description is only
- * wanted by somebody who has that problem, at the moment they have it, and it
- * is one or two sentences — so making them open a page or issue a second
- * request to read it is pure friction. Inlining is also the more conformant
- * answer, since `detail` is the member the RFC provides for exactly this.
+ * Each string is written for a response: what happened and what to do about
+ * it. Why a refusal is designed the way it is stays in the comments here,
+ * because some of it must not reach the caller. `spam_suspected` is
+ * deliberately vague about which check failed, and the account-enumeration
+ * defences are not explained to the caller they defend against.
  *
- * WRITTEN FOR A RESPONSE, NOT FOR DOCUMENTATION, which is a real distinction
- * and the reason these were rewritten rather than moved. Documentation explains
- * WHY a thing is designed as it is; a response says what happened and what to do
- * about it. The earlier prose did both, and some of it had no business
- * travelling in a body — `spam_suspected` enumerated all three anti-abuse checks
- * in the very response that is deliberately vague about which one failed, and
- * others explained our account-enumeration defences to the caller being defended
- * against. That rationale now lives in comments here, where it belongs and where
- * it costs nobody any bytes.
- *
- * CHECKED AGAINST THE SOURCE, not trusted. Tests\Feature\ApiErrorVocabularyTest
- * scans app/ for every code the API can emit and asserts this list matches
- * exactly, in both directions — so a code emitted without an entry fails, and an
- * entry for a code nobody emits fails too.
+ * Tests\Feature\ApiErrorVocabularyTest scans app/ for every code the API can
+ * emit and asserts this list matches exactly, in both directions.
  *
  * English, like every machine-facing string in this API. `detail` is for the
  * developer reading a response, never for a member reading a screen; the French
@@ -44,20 +30,16 @@ final class ErrorVocabulary
     /**
      * code => [the HTTP status it is emitted with, the detail]
      *
-     * THE STATUS IS HERE SO THE DOCUMENT CAN GROUP BY IT. Each operation
-     * declares one response per status carrying the codes IT can answer with,
-     * and that set is assembled from codes — the middleware's and the action's
-     * — which have to be sorted into statuses somehow. Storing it beside the
-     * detail keeps the two from drifting: there is one entry per code and it
-     * carries everything known about that code.
+     * The status is here so the API document can group by it: each operation
+     * declares one response per status, carrying the codes (the middleware's
+     * and the action's) it can answer with. One entry per code keeps the status
+     * and the detail from drifting.
      *
-     * ONE STATUS EACH, and that is a property of the vocabulary rather than a
-     * simplification. Where a refusal has two statuses it has two codes —
-     * App\Support\Reauthentication raises `reauth_failed` at 403 and
-     * `too_many_attempts` at 429 rather than one code at either — because a
-     * caller branching on `code` must not have to read `status` as well to know
-     * what happened. Tests\Feature\ApiErrorVocabularyTest checks the status
-     * against the source.
+     * Each code has exactly one status. Where a refusal has two statuses it has
+     * two codes (App\Support\Reauthentication raises `reauth_failed` at 403 and
+     * `too_many_attempts` at 429), so a caller branching on `code` never has to
+     * read `status` to know what happened. Tests\Feature\ApiErrorVocabularyTest
+     * checks the status against the source.
      *
      * @var array<string, array{0: int, 1: string}>
      */
@@ -72,25 +54,22 @@ final class ErrorVocabulary
 
         // ------------------------------------------------------- who you are
 
-        // The 401/419 confusion is the most useful thing this vocabulary says,
-        // and it is pure "what to do": the two look alike and the correct
-        // responses are opposites. Sending a member back to the login screen on
-        // a 419 is a bug that has shipped in many an API client.
+        // 401 and 419 look alike and the correct responses are opposites.
+        // Sending a member back to the login screen on a 419 is a client bug.
         'not_authenticated' => [401, 'No session cookie was sent, or it has expired. Call '
             .'POST /api/v1/login. Not to be confused with 419 invalid_session, where you are still '
             .'logged in and only the CSRF token needs re-priming.'],
 
-        // DELIBERATELY SAYS NOTHING about which half was wrong. One answer for
-        // an unknown username and for a bad password is what stops this endpoint
-        // being used to discover which accounts exist — and explaining that
-        // defence in the response body, as this entry once did, tells the person
-        // probing it exactly what they are up against.
+        // Deliberately says nothing about which half was wrong. One answer for
+        // an unknown username and a bad password stops this endpoint from
+        // revealing which accounts exist; explaining that in the body would
+        // tell a prober what they are up against.
         'invalid_credentials' => [401, 'The username or the password is wrong.'],
 
         // A request Sanctum did not treat as stateful reached an endpoint that
-        // needs a session. Distinct from invalid_session on purpose: that one
-        // means "prime the cookie and retry", which here would loop forever —
-        // the request will not become stateful by being repeated.
+        // needs a session. Distinct from invalid_session, which means "prime the
+        // cookie and retry": here that would loop forever, because the request
+        // will not become stateful by being repeated.
         'stateful_request_required' => [400, 'This endpoint authenticates by session cookie, and this '
             .'request could not establish one — its Origin or Referer is not a configured stateful '
             .'domain. Browser clients on the same origin do this automatically; a server-to-server '
@@ -105,9 +84,9 @@ final class ErrorVocabulary
         'too_many_attempts' => [429, 'Too many failed attempts. Wait and try again later; further '
             .'attempts before then do not shorten the wait.'],
 
-        // Distinct from too_many_attempts, which counts FAILED attempts at one
+        // Distinct from too_many_attempts, which counts failed attempts at one
         // account. This is the per-IP request rate on the public endpoints:
-        // nothing failed, you are simply going too fast.
+        // nothing failed, the caller is going too fast.
         'rate_limited' => [429, 'Too many requests. The Retry-After header says how long to wait; the '
             .'RateLimit-* headers describe the allowance.'],
 
@@ -119,10 +98,9 @@ final class ErrorVocabulary
         'access_denied' => [403, 'Your account holds no role granting the permission this route requires. '
             .'GET /api/v1/me lists the permissions you do have.'],
 
-        // Worth spelling out WHOSE permission is missing. The natural reading
-        // of a 403 is "ask somebody for access", but the caller already holds
-        // what the on-behalf route requires; it is the member they answer for
-        // who is not asked to answer at all.
+        // Spells out whose permission is missing. A 403 normally reads as "ask
+        // for access", but the caller already holds what the on-behalf route
+        // requires; it is the member they answer for who is not asked to answer.
         'not_answerable' => [403, 'The member this answer is for holds no role granting attendance.respond, '
             .'so no answer is expected from them and none can be recorded on their behalf.'],
 
@@ -130,7 +108,6 @@ final class ErrorVocabulary
 
         // One answer for a missing route and a missing record, on purpose: a
         // caller able to tell them apart could enumerate which records exist.
-        // That reasoning belongs here, not in the body.
         'not_found' => [404, 'No such route, or no such record.'],
 
         'method_not_allowed' => [405, 'The route exists, but not for this HTTP method. Check whether it '
@@ -146,28 +123,25 @@ final class ErrorVocabulary
             .'characters. A UUID is the expected shape. These endpoints are anonymous, so a short '
             .'key collides with other callers\' keys.'],
 
-        // ONE CODE FOR TWO CASES — a key reused for a different body, and a key
-        // whose first request is still running. They are the same answer from
-        // the caller's side: this key is not yours to use for this. Splitting
-        // them would say which other request exists, on an anonymous endpoint.
+        // One code for two cases: a key reused for a different body, and a key
+        // whose first request is still running. For the caller both mean the
+        // key is not theirs to use, and splitting them would reveal another
+        // request on an anonymous endpoint.
         'idempotency_key_reuse' => [409, 'This `Idempotency-Key` belongs to a different submission, or to '
             .'one still being processed. Use a fresh key for a new submission, and wait before '
             .'retrying an attempt that has not answered yet.'],
 
         // ------------------------------------------ working from current state
 
-        // Names the header AND the read that produces one, because "send
-        // If-Match" without saying where a tag comes from is the kind of
-        // instruction that sends somebody to the source code.
+        // Names the header and the read that produces one, so the caller knows
+        // where a tag comes from.
         'if_match_required' => [428, 'This request replaces or removes something, so it must prove it is '
             .'working from the current state. Read the thing first and send the `ETag` it returns '
             .'back as `If-Match`. Attendance answers are exempt.'],
 
-        // DOES NOT CARRY THE CURRENT TAG, and neither does the response — see
-        // App\Http\Middleware\ConditionalWrite. Handing it over would let a
-        // client retry blindly and land exactly the overwrite it was just
-        // stopped from making, which is the whole failure this refusal exists
-        // to prevent.
+        // Neither the detail nor the response carries the current tag (see
+        // App\Http\Middleware\ConditionalWrite). Handing it over would let a
+        // client retry blindly and make the overwrite this refusal prevents.
         'if_match_failed' => [412, 'Somebody else changed this since you read it, so the write was '
             .'refused rather than silently discarding their change. Read it again, decide what you '
             .'still want to write, and retry with the new `ETag`.'],
@@ -177,10 +151,9 @@ final class ErrorVocabulary
         'cannot_delete_self' => [409, 'An account cannot delete itself. Ask another member who holds '
             .'members.manage to do it.'],
 
-        // Why this is refused at all: taking members.manage from yourself is the
-        // fastest way to lock the band out of its own roster, and this host has
-        // no shell to repair it with. The caller does not need to know that;
-        // they need to know who to ask.
+        // Refused because taking members.manage from yourself can lock the band
+        // out of its own roster, and this host has no shell to repair it. The
+        // caller only needs to know who to ask.
         'cannot_demote_self' => [409, 'An account cannot remove its own members.manage or roles.manage '
             .'permission. Ask another administrator.'],
 
@@ -199,18 +172,16 @@ final class ErrorVocabulary
             .'every account and grants a fixed set of permissions. Keep it in every `roleIds`; it '
             .'cannot be edited or deleted.'],
 
-        // Says what to do and nothing about why the rule exists. The reason is
-        // mustChangePassword: a committee-issued password has been read out
-        // loud, so an account allowed to "change" it to itself keeps a
-        // credential somebody else has heard while the forced-change flag
-        // clears. The caller only needs to know to pick a different one.
+        // The reason, kept out of the body, is mustChangePassword: a
+        // committee-issued password has been read out loud, so "changing" it to
+        // itself would clear the forced-change flag on a credential somebody
+        // else has heard.
         'password_unchanged' => [409, 'The new password is the one the account is already using. Choose a '
             .'different one; nothing was changed.'],
 
-        // The rule being protected: a member answering for THEMSELVES owes a
-        // reason when withdrawing a yes, and the on-behalf route is exempt — so
-        // aiming it at yourself would be a way around that. Saying so in the
-        // response would describe the bypass to the person attempting it.
+        // A member answering for themselves owes a reason when withdrawing a
+        // yes, and the on-behalf route is exempt, so aiming it at yourself would
+        // get around that. The body does not describe the bypass.
         'cannot_record_for_self' => [409, 'This endpoint records an answer on another member\'s behalf and '
             .'was aimed at you. Use PUT /api/v1/events/{event}/attendance for your own answer.'],
 
@@ -253,12 +224,10 @@ final class ErrorVocabulary
 
         // ----------------------------------------------- the submission itself
 
-        // THE ONE THAT MUST STAY VAGUE. An earlier version of this string listed
-        // all three checks the public-write guard applies — the form token, the
-        // empty `website` field, and the minimum age — inside the very response
-        // that exists to avoid telling a script which one it failed. A
-        // legitimate integrator needs the same information and gets it from the
-        // reference's "Public forms" section; a script gets nothing.
+        // Must stay vague: it must not tell a script which of the public-write
+        // guard's three checks (the form token, the empty `website` field, the
+        // minimum age) it failed. A legitimate integrator finds them in the
+        // reference's "Public forms" section.
         'spam_suspected' => [422, 'The submission was refused. Reload the form and send it again. Public '
             .'forms require a form token — see Public forms in the API reference.'],
         'history_entry_empty' => [422, 'A history entry needs at least one of `titleFr`, `bodyFr`, '
@@ -282,9 +251,8 @@ final class ErrorVocabulary
     /**
      * The `reason` tokens an `errors[]` entry can carry.
      *
-     * Separate from the codes above because they answer a different question: a
-     * code says what went wrong with the REQUEST, a reason what went wrong with
-     * one FIELD. Both must have French in web/src/i18n/fr.ts, and
+     * A code says what went wrong with the request, a reason what went wrong
+     * with one field. Both need French in web/src/i18n/fr.ts, and
      * ApiErrorVocabularyTest checks both.
      *
      * @var list<string>
@@ -324,12 +292,10 @@ final class ErrorVocabulary
     /**
      * The `detail` for a code, or null for one this list does not describe.
      *
-     * Null is unreachable in practice — ApiErrorVocabularyTest asserts this list
-     * and the codes app/ emits match exactly — and it is modelled anyway,
-     * because the alternative when somebody adds a code mid-change is a 500
-     * while rendering an error, which is the worst possible moment to fail.
-     * ApiError omits the member rather than sending an empty one; RFC 9457 makes
-     * `detail` optional.
+     * Null is unreachable in practice, since ApiErrorVocabularyTest asserts this
+     * list and the codes app/ emits match exactly. It is modelled anyway so a
+     * code added mid-change cannot cause a 500 while rendering an error.
+     * ApiError then omits the member; RFC 9457 makes `detail` optional.
      */
     public static function detailFor(string $code): ?string
     {
@@ -340,9 +306,8 @@ final class ErrorVocabulary
      * The HTTP status a code is emitted with, or null for one this list does
      * not describe.
      *
-     * Null is unreachable for the same reason detailFor()'s is, and modelled
-     * for the same reason: a code added mid-change must not turn the document
-     * export into a fatal.
+     * Null is unreachable for the same reason as in detailFor(), and modelled
+     * so a code added mid-change cannot make the document export fatal.
      */
     public static function statusFor(string $code): ?int
     {

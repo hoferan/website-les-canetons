@@ -5,15 +5,15 @@ namespace App\Support;
 /**
  * The complete set of permissions the API knows.
  *
- * THIS IS CODE, NOT DATA, and that is the whole point. A permission is real
- * only if some middleware checks it, so the set cannot be invented in an admin
- * UI — roles (which are data) merely group these.
+ * This is code, not data. A permission is real only if some middleware checks
+ * it, so the set cannot be invented in an admin UI; roles (which are data)
+ * group these.
  *
- * Answering an event IS a permission (`attendance.respond`), held through the
+ * Answering an event is a permission (`attendance.respond`), held through the
  * `musician` role rather than derived from a register. A register only groups
  * and displays; it never grants anything (ADR 0014). An organiser who does not
- * play simply does not hold `musician`, and one who does (`demo.both`) holds
- * both roles: that pair is what breaks if anyone brings an either/or back.
+ * play does not hold `musician`, and one who does (`demo.both`) holds both
+ * roles, the case an either/or role model breaks.
  */
 enum Permission: string
 {
@@ -27,11 +27,10 @@ enum Permission: string
      * Editing or cancelling somebody's booking, as opposed to reading the
      * guest list.
      *
-     * A separate case from RegistrationsView on purpose: guests get no
-     * self-service (ADR 0020), so the committee corrects mistakes — but
-     * `committee` holds RegistrationsView as its only permission, and widening
-     * that token would hand the role that merely looks at the list the power to
-     * delete from it.
+     * Separate from RegistrationsView: guests get no self-service (ADR 0020),
+     * so the committee corrects mistakes, but `committee` holds
+     * RegistrationsView, and widening that token would give the role that only
+     * reads the list the power to delete from it.
      */
     case RegistrationsManage = 'registrations.manage';
 
@@ -46,10 +45,10 @@ enum Permission: string
     /**
      * Marking a message handled, reopening it, and deleting it.
      *
-     * SEPARATE FROM MessagesView for the same reason RegistrationsManage is
-     * separate from RegistrationsView: the token that merely looks must not
-     * carry the power to destroy. Binning a stranger's message is direction's
-     * call, and `committee` deliberately does not hold this.
+     * Separate from MessagesView for the same reason RegistrationsManage is
+     * separate from RegistrationsView: the token that only reads must not carry
+     * the power to destroy. Binning a stranger's message is direction's call,
+     * and `committee` does not hold this.
      */
     case MessagesManage = 'messages.manage';
 
@@ -95,7 +94,7 @@ enum Permission: string
      *
      * Held by `musician`. Holding it is also what makes somebody answerable,
      * so it decides who the chase list and the planning's counts include, and
-     * whom the on-behalf route accepts. Recording an answer FOR SOMEBODY ELSE
+     * whom the on-behalf route accepts. Recording an answer for somebody else
      * is AttendanceRecordForOthers and is unrelated.
      */
     case AttendanceRespond = 'attendance.respond';

@@ -13,24 +13,22 @@ use App\Models\Member;
  *
  * They are about the state of the system rather than the caller's
  * permissions, which the route middleware has already checked by the time any
- * of these runs. assertAnswerable() looks at the member an answer is FOR.
+ * of these runs. assertAnswerable() looks at the member an answer is for.
  */
 final class AttendanceIntegrity
 {
     /**
      * How long an answer stays undoable.
      *
-     * An answer has to be immediately undoable, and undoing a FIRST answer
-     * must return the event to unanswered rather than to Non — which a
-     * second PUT cannot express. But an unlimited undo would make the reason
-     * a withdrawn yes costs decorative: a member could erase a yes and
-     * re-answer no for free, with no reason. Five minutes is the compromise
-     * (ADR 0018).
+     * An answer has to be immediately undoable, and undoing a first answer
+     * must return the event to unanswered rather than to Non, which a second
+     * PUT cannot express. An unlimited undo would make the reason a withdrawn
+     * yes costs decorative: a member could erase a yes and re-answer no with
+     * no reason. Five minutes is the compromise (ADR 0018).
      *
-     * Five rather than the toast's few seconds: the toast is the only route
-     * to undo, so the window merely has to outlast it comfortably, and a
-     * member whose phone dropped mid-tap should not be punished for the
-     * reconnect.
+     * Five minutes rather than the toast's few seconds: the toast is the only
+     * route to undo, so the window has to outlast it comfortably, and a member
+     * whose phone dropped mid-tap should not be punished for the reconnect.
      */
     public const UNDO_WINDOW_MINUTES = 5;
 
@@ -55,7 +53,7 @@ final class AttendanceIntegrity
 
     /**
      * Only a holder of `attendance.respond` is answerable, and this checks
-     * the member an answer is FOR, on the on-behalf route.
+     * the member an answer is for, on the on-behalf route.
      *
      * Answering for yourself never reaches it: that route carries
      * `permission:attendance.respond`, so a caller without it is refused
@@ -84,7 +82,7 @@ final class AttendanceIntegrity
     /**
      * The on-behalf route refuses its own caller (ADR 0018).
      *
-     * It closes a real bypass. demo.both plays AND holds
+     * It closes a real bypass. demo.both plays and holds
      * attendance.record_for_others; without this he could withdraw his own
      * yes through the on-behalf endpoint, which is exempt from the reason
      * rule, and never supply the sentence the rule exists to collect.

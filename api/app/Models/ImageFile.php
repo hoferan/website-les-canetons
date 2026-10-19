@@ -9,11 +9,10 @@ use Illuminate\Database\Eloquent\Model;
  * SHA-256 of its bytes, which names its URL.
  *
  * Read-only through Eloquent, and only through Image::sizes(), which never
- * selects `data`. ImageController writes the bytes (an upload and a
- * replacement both, through insertSizes()) and ImageFileController alone reads
- * them, both with the query builder. The table's primary
- * key is (image_id, width), which Eloquent cannot address, so `image_id`
- * stands in for it here and nothing saves or deletes a row through this model.
+ * selects `data`. ImageController writes the bytes (insertSizes()) and
+ * ImageFileController alone reads them, both with the query builder. The
+ * primary key is (image_id, width), which Eloquent cannot address, so
+ * `image_id` stands in for it and nothing saves or deletes through this model.
  *
  * @property int $image_id
  * @property int $width

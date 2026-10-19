@@ -30,9 +30,9 @@ class RegistrationFactory extends Factory
     /**
      * Attaches a booked option after creation.
      *
-     * A choice needs both parents to exist, so this cannot be a state — and
-     * a bare RegistrationChoiceFactory would let a test build one that
-     * belongs to nothing, which the schema forbids anyway.
+     * A choice needs both parents to exist, so this cannot be a state. There
+     * is no RegistrationChoiceFactory, since an orphan choice is something the
+     * schema forbids.
      */
     public function withChoice(RegistrationOption $option, int $quantity = 1): static
     {

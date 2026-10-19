@@ -10,35 +10,27 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Turns off two of PHP's json_encode defaults for every JSON response.
  *
- * Both are valid JSON either way — RFC 8259 permits `\/` and `\uXXXX`, and every
- * parser in existence decodes them back to the same string, so nothing a client
- * receives changes. What changes is what a human sees, and what goes over the
- * wire:
+ * RFC 8259 permits `\/` and `\uXXXX` and every parser decodes them to the same
+ * string, so clients receive the same data. What changes is legibility and size:
  *
  *   JSON_UNESCAPED_SLASHES
  *       "\/api\/v1\/events\/42" becomes "/api/v1/events/42". PHP escapes
- *       slashes so that a `</script>` inside a string cannot terminate a script
- *       tag when JSON is inlined into HTML. This API never inlines its bodies
- *       into HTML — it is the SPA's data source, not a page renderer — so the
- *       protection buys nothing and costs legibility in exactly the places
- *       meant to be read by a person: a problem document's `instance` and
- *       `type`, pasted into a chat message with a requestId.
+ *       slashes so a `</script>` in a string cannot end a script tag when JSON
+ *       is inlined into HTML. This API never inlines its bodies into HTML, and
+ *       the escaping hurts legibility where a person reads it: a problem
+ *       document's `instance` and `type`, pasted into a chat with a requestId.
  *
  *   JSON_UNESCAPED_UNICODE
- *       "Répétition" becomes "Répétition". This is the one with a
- *       measurable cost rather than an aesthetic one. Every event title,
- *       location, attire note and guest name in this API is French, and
- *       escaping turns each accented character from two bytes into six. A
- *       representative title plus a path measured 78 bytes escaped against 62
- *       unescaped — about a fifth of the payload, on a site whose image budget
- *       exists because people open it on a phone at a rehearsal.
+ *       "R\u00e9p\u00e9tition" becomes "Répétition". Event titles, locations,
+ *       attire notes and guest names are French, and escaping turns each
+ *       accented character from two bytes into six: a representative title
+ *       plus a path is 78 bytes escaped against 62 unescaped.
  *
- * UTF-8 is safe to emit raw here: JSON is defined as UTF-8 (RFC 8259 §8.1), and
+ * UTF-8 is safe to emit raw: JSON is defined as UTF-8 (RFC 8259 §8.1), and
  * `application/json` needs no charset parameter to say so.
  *
- * setEncodingOptions() re-encodes from the response's own data, so this is a
- * re-serialisation rather than a string rewrite — it cannot corrupt a string by
- * unescaping something that was meant to stay escaped.
+ * setEncodingOptions() re-encodes from the response's own data, so no string is
+ * rewritten.
  */
 class ReadableJson
 {

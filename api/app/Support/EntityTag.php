@@ -20,47 +20,35 @@ use InvalidArgumentException;
 /**
  * The entity tag a conditional write is checked against.
  *
- * RFC 9110 §8.8.3. A strong validator over one thing's STATE, handed out by
+ * RFC 9110 §8.8.3: a strong validator over one thing's state, handed out by
  * the read that renders it and quoted back by the write that changes it, so a
  * write can be refused when the state moved underneath the client. See
  * App\Http\Middleware\ConditionalWrite.
  *
- * DERIVED FROM THE RESOURCE, NOT FROM THE COLUMNS, and that is the whole point
- * of the design. A hand-written list of the fields that count is a list
- * somebody forgets to extend, and a forgotten field is a change the tag does
- * not move for — which is exactly the lost update this machinery exists to
- * catch. Rendering the same Resource the API renders means a new field is
- * covered the moment it is added, with nothing to remember.
+ * Derived from the Resource, not from the columns. A hand-written list of the
+ * fields that count is a list somebody forgets to extend, and a forgotten
+ * field is a change the tag does not move for: the lost update this exists to
+ * catch. Rendering the Resource covers a new field as soon as it is added. It
+ * also covers the roster's tag: a member's roles live in a pivot table, so
+ * `members.updated_at` does not move when they change, but MemberResource
+ * carries `roleIds`.
  *
- * It is what the ROSTER's tag needs, too: a member's roles live in a pivot
- * table, so `members.updated_at` does not move when they change. A timestamp
- * validator would let one administrator's role change silently discard
- * another's. MemberResource carries `roleIds`, so this one does not.
+ * Rendered without a caller. EventResource's `myAttendance` is the caller's own
+ * answer, so a tag over a rendered response body would differ between two
+ * committee members looking at the same event, and a member answering an event
+ * would invalidate their own pending edit of it. See state().
  *
- * RENDERED WITHOUT A CALLER, deliberately. EventResource's `myAttendance` is
- * the caller's own answer and nobody else's, so a tag computed from a rendered
- * response body would differ between two committee members looking at the same
- * event — and a member answering an event would invalidate their own pending
- * edit of it. state() below is handed a freshly-read model with no relations on
- * it and loads only the ones that are part of the ENTITY, so `myAttendance`
- * reports the null of an unloaded relation. Pinned by
- * test_an_events_tag_does_not_depend_on_who_is_asking.
+ * Strong, not weak (`W/`): RFC 9110 §13.1.1 compares If-Match with the strong
+ * comparison function. The bytes a GET sends do carry `myAttendance`, which
+ * makes the tag formally a weak validator of them. That is accepted because
+ * every route that hands one out also sends `Cache-Control: no-store`, and this
+ * API implements no conditional GET (`If-None-Match`).
  *
- * STRONG, not weak (`W/`). RFC 9110 §13.1.1 compares If-Match with the strong
- * comparison function, so a weak tag is unusable for the single job this has.
- * The representation a GET actually sends does carry `myAttendance`, which
- * makes the tag formally a weak validator of THOSE BYTES — accepted, because
- * every route that hands one out also sends `Cache-Control: no-store`, so no
- * cache exists that could act on it, and this API implements no conditional
- * GET (`If-None-Match`) at all.
- *
- * ALWAYS RE-READ FROM THE DATABASE, because the question is what is STORED and
- * a model in hand may answer something else. Inside the middleware the bound
- * instance happens to agree, which is exactly why the re-read has its own test
- * rather than resting on that: compute() is called from elsewhere too — the
- * test helper, and whatever calls it next — with a model somebody has already
- * touched. Pinned by test_the_tag_describes_what_is_stored_not_what_is_in_hand,
- * which fails within a second of the re-read being removed.
+ * Always re-read from the database, because the question is what is stored
+ * and a model in hand may say something else. Inside the middleware the bound
+ * instance happens to agree, but compute() is also called from the test helper
+ * and elsewhere with a model somebody has already touched. Pinned by
+ * test_the_tag_describes_what_is_stored_not_what_is_in_hand.
  */
 final class EntityTag
 {
@@ -74,8 +62,8 @@ final class EntityTag
      * They get their own facet over the same bound model instead.
      *
      * Every name here needs an arm in state() below. There is no default arm,
-     * so a facet added to one and not the other throws rather than tagging the
-     * wrong thing — and test_every_facet_can_be_computed walks this list.
+     * so a facet added to one and not the other throws instead of tagging the
+     * wrong thing, and test_every_facet_can_be_computed walks this list.
      *
      * @var array<string, string>
      */
@@ -110,8 +98,8 @@ final class EntityTag
 
     /**
      * The tag for one facet of whatever this request has bound, or null when
-     * the thing is gone — a DELETE's own response, or a row another request
-     * removed between the read and the write.
+     * the thing is gone (a DELETE's own response, or a row another request
+     * removed between the read and the write).
      */
     public static function of(string $facet, Request $request): ?string
     {
@@ -124,10 +112,9 @@ final class EntityTag
      * The tag for one facet of a model in hand, or null when the row is gone.
      *
      * Separate from of() so a test can ask for the header a conditional write
-     * owes without an HTTP round trip first — see Tests\TestCase::ifMatch().
-     * The middleware and the tests then read the tag through the same code,
-     * which is the point: a helper that computed it its own way would pass
-     * while the API refused.
+     * owes without an HTTP round trip first (see Tests\TestCase::ifMatch()).
+     * The middleware and the tests read the tag through the same code, so a
+     * test helper cannot pass while the API refuses.
      */
     public static function compute(string $facet, Model $model): ?string
     {
@@ -145,9 +132,8 @@ final class EntityTag
      * A quoted, strong entity tag.
      *
      * sha256 rather than a shorter digest: this is computed at most twice per
-     * request over a few hundred bytes, so the cost is unmeasurable, and a
-     * truncation would need an argument about collisions that nobody should
-     * have to make about an optimistic-concurrency token.
+     * request over a few hundred bytes, so the cost is negligible, and a
+     * truncated digest would need an argument about collisions.
      *
      * @param  array<mixed>  $state
      */
@@ -167,24 +153,19 @@ final class EntityTag
 
     /**
      * What one facet's tag is computed over, rendered through the same Resource
-     * the API renders — see the note on the class for why it is not a list of
-     * columns.
+     * the API renders (see the class note).
      *
-     * THE DEFAULT ARM THROWS. A facet named in FACETS with nothing here is a
-     * mistake that must be loud: falling back to some other facet's state would
-     * make every write on that route pass a check it never performed, and
-     * report success while enforcing nothing.
+     * The default arm throws. Falling back to another facet's state would make
+     * every write on that route pass a check it never performed.
      *
-     * NOTHING IS LOADED FOR THE EVENT, and that is what keeps `myAttendance` —
-     * the caller's own answer — out of its tag. compute() hands this a freshly
-     * read model with no relations on it, and EventResource reports null for an
-     * unloaded one, so an event's tag is the same for a member who has answered
-     * and one who has not. Pinned by
-     * test_an_events_tag_does_not_depend_on_who_is_asking; a `load` added here
-     * for convenience would break it. The other three load exactly what their
-     * Resource publishes and no more: a member's roles because a role change
-     * must move the tag, their section because the Resource names it, and a
-     * booking's line items because they are what it is.
+     * Nothing is loaded for the event, which keeps `myAttendance` (the caller's
+     * own answer) out of its tag: compute() hands this a freshly read model with
+     * no relations, and EventResource reports null for an unloaded one. Pinned
+     * by test_an_events_tag_does_not_depend_on_who_is_asking; a `load` added
+     * here would break it. The others load exactly what their Resource
+     * publishes: a member's roles because a role change must move the tag,
+     * their section because the Resource names it, and a booking's line items
+     * because they are what it is.
      *
      * @return array<mixed>
      */
@@ -216,7 +197,7 @@ final class EntityTag
                 (new EventTagResource($model))->toArray(self::bare()),
                 ['eventCount' => true],
             ),
-            // WITH the holders, unlike a tag's count. A delete takes the role
+            // With the holders, unlike a tag's count. A delete takes the role
             // from everybody its confirmation named, so somebody given the
             // role since the read must refuse it; a rename refused for the
             // same reason is the cheaper mistake.

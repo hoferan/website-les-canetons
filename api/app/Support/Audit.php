@@ -8,7 +8,7 @@ use App\Models\Member;
 /**
  * Records a privileged mutation.
  *
- * $targetLabel is captured by the CALLER, before the mutation, because the
+ * $targetLabel is captured by the caller, before the mutation, because the
  * target is usually gone by the time anyone reads this back. Passing
  * $target->fullName() after a delete would record an empty string.
  */

@@ -44,10 +44,8 @@ class RegistrationController extends Controller
      */
     public function form(Event $event): RegistrationFormResource
     {
-        // 404 rather than 403, deliberately: a stranger must not be able to
-        // learn that an event exists but is not taking bookings. That is a
-        // fact about the band's private planning and this endpoint needs no
-        // session.
+        // 404 rather than 403: whether an event exists without taking
+        // bookings is private planning, and this endpoint needs no session.
         if (! $event->takesRegistrations()) {
             abort(404);
         }
@@ -73,27 +71,22 @@ class RegistrationController extends Controller
      * with `too_many_guests`. Options must belong to this event, and each
      * may appear at most once.
      */
-    // Scramble cannot see through `response()->json(new Resource(...), 201)`:
-    // it reads the JsonResponse and nothing else, so this operation documented
-    // `200` with an empty `{"type":"object"}` and the generated client typed a
-    // booking as `{ [key: string]: unknown }` — the one endpoint a stranger
-    // calls, and the only one whose success body said nothing at all.
-    // The inferred 200 goes with it. #[Response] ADDS a status; it does not
-    // replace the guess, so without this the operation declares both and a
-    // client narrows a branch that cannot happen.
+    // Scramble cannot see through `response()->json(new Resource(...), 201)`
+    // and would infer an untyped 200, so #[Response] names the 201 body.
+    // #[Response] adds a status rather than replacing the inferred one, so
+    // #[IgnoreResponse(200)] drops the 200 the client would otherwise expect.
     #[IgnoreResponse(200)]
     #[Response(201, 'The booking, as it was recorded.', type: RegistrationResource::class)]
     #[Emits('registration_not_open', 'registration_closed')]
     public function store(StoreRegistrationRequest $request, Event $event): JsonResponse
     {
         // The takesRegistrations() 404 lives in the Form Request's
-        // prepareForValidation(), not here: it has to run BEFORE validation
-        // or the caller gets a 400 about option ids instead. See there.
+        // prepareForValidation(): it has to run before validation, or the
+        // caller gets a 400 about option ids instead.
         //
-        // NO CAPACITY CHECK (ADR 0020), and that absence is what keeps
-        // this lock-free: a count-then-insert would need a locking read on
-        // the one endpoint strangers can hammer. The committee watches the
-        // guest list and closes the date early instead.
+        // No capacity check (ADR 0020), which keeps this lock-free: a
+        // count-then-insert would need a locking read on the one endpoint
+        // strangers can hammer. The committee closes the date early instead.
         $refusal = self::refuseUnlessOpen($event);
         if ($refusal !== null) {
             return $refusal;
@@ -158,7 +151,7 @@ class RegistrationController extends Controller
      *
      * Read this before amending or cancelling one, and quote the `ETag` it
      * returns in the `If-Match` header of the write. The guest list hands out
-     * no tag — one tag cannot validate a hundred bookings.
+     * no tag, since one tag cannot validate a hundred bookings.
      */
     public function show(Registration $registration): RegistrationResource
     {
@@ -183,13 +176,11 @@ class RegistrationController extends Controller
      */
     public function update(UpdateRegistrationRequest $request, Registration $registration): RegistrationResource
     {
-        // The choices are deliberately not editable: changing an order
-        // would need the per-booking cap re-checked and arguably the
-        // confirmation re-sent, and nobody has asked for it.
+        // The choices are not editable: changing an order would need the
+        // per-booking cap re-checked and arguably the confirmation re-sent.
         //
-        // array_key_exists, not isset: both are false for an
-        // explicitly-sent null, so clearing an address would silently do
-        // nothing.
+        // array_key_exists, not isset, which is false for an explicit null,
+        // so clearing an address would silently do nothing.
         $data = $request->validated();
 
         $columns = [
@@ -240,16 +231,14 @@ class RegistrationController extends Controller
     #[Response(200, 'Cancelled. The booking and its line items are gone.')]
     public function destroy(Request $request, Registration $registration): JsonResponse
     {
-        // Captured BEFORE the delete: the row is gone by the time anybody
+        // Captured before the delete: the row is gone by the time anybody
         // reads the audit back. See App\Support\Audit.
         $label = $registration->fullName();
         $id = $registration->id;
 
         DB::transaction(function () use ($registration): void {
-            // Explicit, not left to the cascade: registration_choices
-            // cascades from registrations, but doing it inside the same
-            // transaction keeps the two tables consistent even if a future
-            // migration relaxes that.
+            // Explicit even though registration_choices cascades, so the two
+            // tables stay consistent if a migration ever relaxes that.
             $registration->choices()->delete();
             $registration->delete();
         });
@@ -266,9 +255,8 @@ class RegistrationController extends Controller
             return null;
         }
 
-        // Two codes rather than one, because the two are different news:
-        // "come back on the 3rd" and "you have missed it" send the reader
-        // to different places.
+        // Two codes: "come back on the 3rd" and "you have missed it" send the
+        // reader to different places.
         if ($event->registration_opens_at !== null && $event->registration_opens_at->isFuture()) {
             return ApiError::json(409, 'registration_not_open', 'Registration has not opened yet');
         }
@@ -279,12 +267,9 @@ class RegistrationController extends Controller
     /**
      * Sends the confirmation, and never lets it fail the booking.
      *
-     * BEST-EFFORT ON PURPOSE (ADR 0009). The row is already committed:
-     * this host has no queue worker and no way to run one — no shell, no
-     * supervisor, and a cron job would have to be configured by hand on
-     * each server, whose failure mode is mail that silently never sends. So
-     * the mail goes inline, and an SMTP blip must not throw away a real
-     * registration that is already stored.
+     * Best-effort (ADR 0009). The host can run no queue worker, so the mail
+     * goes inline, and an SMTP failure must not throw away a booking that is
+     * already stored.
      *
      * Logged rather than swallowed, so a server whose mail is broken says
      * so somewhere.
@@ -294,12 +279,8 @@ class RegistrationController extends Controller
         try {
             Mail::to($registration->email)->send(new RegistrationConfirmation($registration, $event));
         } catch (\Throwable $e) {
-            // error, not warning. MEASURED 2026-09-10: .env.example sets
-            // LOG_LEVEL=error, and warning sits below it in Monolog, so
-            // this line was never written on any server — the docblock's
-            // claim that a broken mail server 'says so somewhere' was
-            // false. Guests would book, get no confirmation, and nobody
-            // would find out.
+            // Error, not warning: .env.example sets LOG_LEVEL=error, so a
+            // warning would never be written on any server.
             Log::error('Registration confirmation mail failed', [
                 'registration_id' => $registration->id,
                 'error' => $e->getMessage(),

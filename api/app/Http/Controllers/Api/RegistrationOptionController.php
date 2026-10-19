@@ -25,10 +25,9 @@ class RegistrationOptionController extends Controller
      * Requires `events.manage`. Returns the options in sort order.
      *
      * Read this before replacing them, and quote the `ETag` it returns in the
-     * `If-Match` header of the PUT. The tag is over the OPTION LIST, not over
-     * the event: correcting the event's dress code does not invalidate a
-     * pending options edit, and adding an option does — which is the way round
-     * that catches a lost update.
+     * `If-Match` header of the PUT. The tag covers the option list, not the
+     * event: correcting the event's dress code does not invalidate a pending
+     * options edit, and adding an option does, which catches a lost update.
      *
      * The public booking form reads the same options from
      * `GET /api/v1/events/{event}/registration`, which needs no session but
@@ -71,15 +70,12 @@ class RegistrationOptionController extends Controller
     #[Emits('option_has_registrations')]
     public function replace(ReplaceRegistrationOptionsRequest $request, Event $event): JsonResponse
     {
-        // SINGLE-ACTION AND PUT, matching MemberRoleController: the committee
-        // fills in one form listing every option, and an "add one" API cannot
-        // express removal.
+        // A whole-list PUT: the committee fills in one form listing every
+        // option, and an "add one" API cannot express removal.
         //
-        // GATED ON `events.manage`, NOT on a registration permission.
-        // Configuring what an event offers is configuring the event — the
-        // same act as setting its date and its dress code.
-        // `registrations.view` and `registrations.manage` are about the
-        // people who booked.
+        // Gated on `events.manage`, since configuring what an event offers is
+        // configuring the event. `registrations.view` and
+        // `registrations.manage` are about the people who booked.
 
         /** @var list<array<string, mixed>> $incoming */
         $incoming = $request->validated()['options'];
@@ -90,15 +86,13 @@ class RegistrationOptionController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        // CHECKED BEFORE ANYTHING IS WRITTEN. The foreign key is RESTRICT so
-        // the database would refuse the delete anyway, but it would do so
-        // with a 500 halfway through the transaction. Refusing here is what
-        // lets the committee be told WHICH option is in use, before their
-        // other edits are lost.
-        // An option survives if the request names its id, OR if an entry
-        // with no id carries its label — the same adoption the write below
-        // performs. Checking only the ids would refuse a plain retry of the
-        // first save, which is exactly the request the adoption exists for.
+        // Checked before anything is written. The RESTRICT foreign key would
+        // refuse the delete anyway, but with a 500 halfway through the
+        // transaction; refusing here can name the option in use.
+        //
+        // An option survives if the request names its id, or if an id-less
+        // entry carries its label (the adoption the write below performs).
+        // Checking only ids would refuse a plain retry of the first save.
         $incomingLabels = array_column($incoming, 'label');
 
         $booked = $event->registrationOptions()
@@ -117,21 +111,13 @@ class RegistrationOptionController extends Controller
         }
 
         DB::transaction(function () use ($event, $incoming, $keptIds): void {
-            // IDEMPOTENT, and getting there takes the label match below.
-            //
-            // The obvious version — delete what is missing, update what has
-            // an id, create the rest — is NOT idempotent for the request
-            // that matters most: the committee's FIRST save, where no entry
-            // has an id yet. Replaying it (a retry after a timeout, on a
-            // host these deploy notes call flaky) deletes what the first
-            // call created and re-creates it under new ids. If a booking
-            // landed in between, the retry then answers
-            // option_has_registrations and the whole edit is lost.
-            //
-            // Matching an id-less entry against an existing option with the
-            // same label makes the operation converge: the second identical
-            // request updates the row the first one created, and PUT means
-            // what it says.
+            // The label match keeps this idempotent. Without it, replaying
+            // the committee's first save (no ids yet, e.g. a retry after a
+            // timeout) would delete what the first call created and re-create
+            // it under new ids, and a booking in between would make the retry
+            // answer option_has_registrations. Matching an id-less entry to an
+            // existing option with the same label lets the second identical
+            // request update the row the first one created.
             $existingByLabel = $event->registrationOptions()
                 ->whereNotIn('id', $keptIds)
                 ->get()
@@ -144,9 +130,8 @@ class RegistrationOptionController extends Controller
                     'label' => $option['label'],
                     'description' => $option['description'] ?? null,
                     'price_cents' => $option['priceCents'] ?? null,
-                    // Falls back to the position in the submitted array, so
-                    // a client that sends the list in order gets the order
-                    // it sent without having to number it.
+                    // Falls back to the position in the submitted array, so a
+                    // client need not number the list.
                     'sort_order' => $option['sortOrder'] ?? $index,
                 ];
 
@@ -168,9 +153,8 @@ class RegistrationOptionController extends Controller
                 $claimed[] = $event->registrationOptions()->create($attributes)->id;
             }
 
-            // Deleted LAST, and against what survived rather than against
-            // the ids the client sent, so a row adopted by label above is
-            // not then removed for having been absent from the request.
+            // Deleted last, against what survived rather than the ids sent,
+            // so a row adopted by label is not removed.
             $event->registrationOptions()->whereNotIn('id', $claimed)->delete();
         });
 

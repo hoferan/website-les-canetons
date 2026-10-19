@@ -8,13 +8,12 @@ use Illuminate\Contracts\View\View;
 /**
  * The API reference page.
  *
- * A static shell: it names the document's URL and lets the reader fetch it, so
- * the servers rewrite lives in exactly one place (DocsDocumentController) and
- * this response has nothing environment-specific in it at all.
+ * A static shell that names the document's URL and lets the reader fetch it,
+ * so the servers rewrite lives only in DocsDocumentController and this
+ * response is the same in every environment.
  *
- * Returning a View from a route in the `api` group is fine. bootstrap/app.php's
- * shouldRenderJsonWhen() governs only how EXCEPTIONS render, not successful
- * responses.
+ * Returning a View from the `api` group is fine: shouldRenderJsonWhen() in
+ * bootstrap/app.php governs only how exceptions render.
  */
 class DocsController extends Controller
 {

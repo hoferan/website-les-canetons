@@ -13,10 +13,9 @@ use Tests\TestCase;
 /**
  * The two anonymous POSTs, and the key that makes a retry safe.
  *
- * The failure is real and it is somebody else's money: a guest on a phone at
- * the hall taps Book, the connection stalls, they tap again, and the caterer
- * counts two meals for one person. The same guest sees one confirmation and
- * knows nothing about the second booking until the committee telephones.
+ * A guest on a phone taps Book, the connection stalls, they tap again, and the
+ * caterer counts two meals for one person, while the guest sees only one
+ * confirmation.
  */
 class IdempotentWriteTest extends TestCase
 {
@@ -45,10 +44,8 @@ class IdempotentWriteTest extends TestCase
 
     public function test_a_key_too_short_to_be_unique_is_refused(): void
     {
-        // A caller sending `1` would collide with every other caller sending
-        // `1`, and these endpoints are anonymous: the key space is shared by
-        // everyone on the internet. Refusing a short one is the only moment we
-        // can say so.
+        // These endpoints are anonymous, so the key space is shared by
+        // everyone: a caller sending `1` would collide with every other.
         $this->postJson(
             '/api/v1/contact',
             $this->publicWriteBody(self::CONTACT),
@@ -74,8 +71,8 @@ class IdempotentWriteTest extends TestCase
         $this->assertSame($first->getContent(), $second->getContent());
         $this->assertSame(1, ContactMessage::query()->count());
 
-        // The replay says so, so a client that retried can tell a fresh
-        // acceptance from an echo of one it already had.
+        // The replay is marked, so a client can tell a fresh acceptance from
+        // an echo.
         $this->assertNull($first->headers->get('Idempotency-Replayed'));
         $this->assertSame('true', $second->headers->get('Idempotency-Replayed'));
     }
@@ -106,8 +103,7 @@ class IdempotentWriteTest extends TestCase
         )->assertStatus(201);
 
         // The status travels with the stored response, so a replay of a 201 is
-        // a 201 — a client branching on the status sees what it saw the first
-        // time.
+        // a 201.
         $this->assertSame($first->json('id'), $second->json('id'));
         $this->assertSame(1, $option->event->registrations()->count());
     }
@@ -127,17 +123,16 @@ class IdempotentWriteTest extends TestCase
             ->assertStatus(409)
             ->assertJson(['code' => 'idempotency_key_reuse']);
 
-        // The refusal is a refusal to WRITE, and it does not overwrite the
-        // stored answer either: the first submission stands.
+        // Nothing is written and the stored answer is not overwritten: the
+        // first submission stands.
         $this->assertSame(1, ContactMessage::query()->count());
         $this->assertSame('Un message.', ContactMessage::query()->sole()->message);
     }
 
     public function test_one_key_does_not_cover_two_different_endpoints(): void
     {
-        // The key is scoped to the endpoint it was used against. A guest whose
-        // booking and whose message happen to carry the same key is making two
-        // submissions, and neither is a retry of the other.
+        // The key is scoped to its endpoint: a booking and a message carrying
+        // the same key are two submissions, not a retry.
         $option = $this->bookableOption();
         $key = (string) Str::uuid();
 
@@ -159,9 +154,8 @@ class IdempotentWriteTest extends TestCase
 
     public function test_a_key_whose_request_failed_can_be_used_again(): void
     {
-        // Nothing was written, so nothing is being retried — the key has to go
-        // back to the client. Holding it would mean a guest who mistyped their
-        // address had to reload the whole form to correct it.
+        // Nothing was written, so the key goes back to the client. Holding it
+        // would force a guest who mistyped their address to reload the form.
         $key = (string) Str::uuid();
 
         $this->postJson(
@@ -183,10 +177,8 @@ class IdempotentWriteTest extends TestCase
 
         $this->postJson('/api/v1/contact', $body, $this->publicWriteHeaders(key: $key))->assertOk();
 
-        // Put the stored row back the way it looked mid-request, keeping the
-        // fingerprint the first request computed — which is what makes this a
-        // test of the in-flight branch rather than of the collision branch
-        // beside it.
+        // Keeping the first request's fingerprint makes this test the
+        // in-flight branch rather than the collision branch beside it.
         $this->rewindToInFlight($key, startedSecondsAgo: 0);
 
         $this->postJson('/api/v1/contact', $body, $this->publicWriteHeaders(key: $key))
@@ -198,11 +190,10 @@ class IdempotentWriteTest extends TestCase
 
     public function test_a_key_stranded_by_a_crashed_request_is_taken_over(): void
     {
-        // A request that dies between claiming the key and answering — a PHP
-        // fatal, a worker this shared host killed — leaves a row nothing will
-        // ever complete. Without the takeover the guest's key is unusable
-        // until it expires a day later, and every retry answers 409 with
-        // nothing they can do about it.
+        // A request that dies between claiming the key and answering (a PHP
+        // fatal, a worker the host killed) leaves a row nothing will complete.
+        // Without the takeover every retry answers 409 until the key expires
+        // a day later.
         $key = (string) Str::uuid();
         $body = $this->publicWriteBody(self::CONTACT);
 
@@ -218,11 +209,9 @@ class IdempotentWriteTest extends TestCase
 
     public function test_expired_keys_are_swept_by_traffic(): void
     {
-        // There is no scheduler on this host and no shell to install one from,
-        // so the sweep rides on writes the way Laravel's session garbage
-        // collection does. The lottery is config so a test can make it
-        // certain; left to chance this would pass 98 runs in a hundred while
-        // proving nothing.
+        // The host has no scheduler (ADR 0009), so the sweep rides on writes
+        // the way Laravel's session garbage collection does. The lottery is
+        // config so a test can make it certain.
         config(['api.idempotency.lottery' => [100, 100]]);
 
         DB::table('idempotency_keys')->insert([
@@ -248,9 +237,7 @@ class IdempotentWriteTest extends TestCase
      * Puts a stored key back the way it looked mid-request.
      *
      * Through a real submission first, so the fingerprint is the one the
-     * middleware computed rather than one this test worked out for itself — a
-     * test that recomputed it would agree with itself and could pass against a
-     * fingerprint the API never produces.
+     * middleware computed. A test that recomputed it would agree with itself.
      */
     private function rewindToInFlight(string $key, int $startedSecondsAgo): void
     {

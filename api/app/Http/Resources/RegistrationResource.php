@@ -11,14 +11,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * One booking on the committee's guest list.
  *
- * Carries the totals the exports need — `guestCount` and `totalCents` —
- * rather than leaving the client to sum them, so the spreadsheet, the
- * screen and the confirmation mail cannot disagree about what a booking
- * comes to.
+ * Carries `guestCount` and `totalCents` rather than leaving the client to sum
+ * them, so the spreadsheet, the screen and the confirmation mail agree.
  *
- * `totalCents` is NULL, not zero, when nothing booked has a price. A free
- * event owes nothing; an event whose prices live in the descriptions owes an
- * unknown amount, and "CHF 0.-" would assert the first about the second.
+ * `totalCents` is null, not zero, when nothing booked has a price: prices
+ * written in the descriptions are an unknown amount, not CHF 0.
  *
  * @mixin Registration
  */
@@ -52,10 +49,9 @@ class RegistrationResource extends JsonResource
     }
 
     /**
-     * A typed private method, not an inline map: Scramble cannot see through
-     * `->map(closure)` and generates `string[]` for a list built that way,
-     * silently. Measured on this project, and the reason every non-scalar
-     * here goes through a docblocked method.
+     * A typed method, not an inline map: Scramble cannot see through
+     * `->map(closure)` and silently generates `string[]` for a list built
+     * that way.
      *
      * @return list<array<string, mixed>>
      */

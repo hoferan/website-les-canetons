@@ -67,27 +67,20 @@ class MemberController extends Controller
             'role' => ['nullable', 'integer'],
         ]);
 
-        // Ordered by name because this screen is scanned for a person, not
-        // browsed by register. Grouping by register is the UI's business, and
-        // it has sectionName to do it with.
+        // Ordered by name because this screen is scanned for a person.
+        // Grouping by register is the UI's business, using sectionName.
         //
-        // with() is not an optimisation to revisit later: ~45 members without
-        // it is three queries each on a shared host, and the screen that
-        // administers the band is the one that would feel it. Pinned by
+        // with() keeps the query count fixed; without it each member costs
+        // three queries. Pinned by
         // MemberIndexTest::test_listing_the_roster_costs_a_fixed_number_of_queries.
         //
-        // The assignment below is load-bearing, and a blank line is NOT
-        // enough. Scramble publishes the comment block preceding a return as
-        // that operation's 200 response description, and it walks back past
-        // blank lines to find it. Measured 2026-09-10: this paragraph, test
-        // name included, was being served at /api/docs. An intervening
-        // statement is what breaks the association.
+        // The filters are WHEREs on that one query (#97), so the budget holds
+        // with any of them set. PaginatesCollections slices what comes back,
+        // so a filter applied after the slice would search one page only.
+        // Accent and case folding come from the collation (App\Support\Search).
         //
-        // THE FILTERS ARE WHEREs ON THAT ONE QUERY (#97), so the budget above
-        // holds with any of them set, and they narrow the query rather than
-        // the rows: PaginatesCollections slices what comes back, and a filter
-        // applied after the slice would search one page of the roster. The
-        // accent and case folding is the collation's — see App\Support\Search.
+        // Assigned first so Scramble does not publish this comment as the 200
+        // description; a blank line alone does not break the association.
         $roster = Member::with(['section', 'roles'])
             // isset() rather than when()'s own truthiness, which would read a
             // search for "0" as no search at all.
@@ -97,8 +90,8 @@ class MemberController extends Controller
                     ->where('first_name', 'like', $pattern)
                     ->orWhere('last_name', 'like', $pattern)
                     ->orWhere('username', 'like', $pattern)
-                    // The whole name as somebody says it, and as the roster
-                    // sorts it: "perrine pl" and "player perr" both find her.
+                    // The whole name in either order: "perrine pl" and
+                    // "player perr" both find her.
                     ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$pattern])
                     ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", [$pattern]));
             })
@@ -121,21 +114,17 @@ class MemberController extends Controller
      * a single member.
      *
      * Read this before editing somebody, and quote the `ETag` it returns in
-     * the `If-Match` header of the write. The list hands out no tag — one tag
-     * cannot validate forty-five rows — so a form filled from the list and
+     * the `If-Match` header of the write. The list hands out no tag, since one
+     * tag cannot validate every row, so a form filled from the list and
      * submitted without a read is the lost update this API refuses.
      */
     public function show(Member $member): MemberResource
     {
-        // Loaded explicitly for the same reason index() eager-loads: the
-        // Resource publishes sectionName and roleIds, and an unloaded relation
-        // would cost two extra queries here.
+        // Loaded explicitly: the Resource publishes sectionName and roleIds,
+        // and unloaded relations would cost two extra queries.
         //
-        // THE ASSIGNMENT BELOW IS LOAD-BEARING, exactly as it is in index():
-        // Scramble publishes the comment block preceding a return as that
-        // operation's 200 response description, walking back past blank lines
-        // to find it. This paragraph shipped to /api/docs once already, and
-        // DocsTest caught it because it named a class.
+        // Assigned first so Scramble does not publish this comment as the 200
+        // description.
         $person = $member->load(['section', 'roles']);
 
         return new MemberResource($person);
@@ -168,33 +157,22 @@ class MemberController extends Controller
     #[Response(201, 'The new member, plus the generated password. It is shown once and never retrievable again.')]
     public function store(StoreMemberRequest $request): JsonResponse
     {
-        // THE PASSWORD IS MINTED HERE AND RETURNED ONCE. Creating a person
-        // with no credential, and leaving "give this person an account" as a
-        // separate operation, cannot survive the credentials model: a member
-        // created with an unusable placeholder could be granted
-        // members.manage and then be the only administrator left after a
-        // deletion — holding the permission and unable to log in. That is the
-        // ghost administrator 2026_09_08_000001 dissolved, and this is the door
-        // it would have come back through.
+        // The password is minted here and returned once (ADR 0015, ADR 0016).
+        // A member created without a usable credential could be granted
+        // members.manage and become the last administrator, holding the
+        // permission and unable to log in.
         //
-        // The value is the same readable, dictatable one a reset produces
-        // (GeneratedPassword), and must_change_password is set, because a
-        // password an administrator read down the phone is not a secret worth
-        // keeping.
+        // It is the same dictatable value a reset produces, and
+        // must_change_password is set, since a password read down the phone is
+        // not a secret worth keeping.
         //
-        // IT GRANTS THE BASELINE ROLE AND NOTHING ELSE, and that is a security
-        // property rather than a simplification. Every account holds the
-        // baseline (the planning, one's own password), attached here from the
-        // role's marker and never from the request. Any OTHER role is exactly
-        // one operation — PUT /members/{member}/roles — which checks the
-        // lockout invariants, ends the target's sessions and audits. Accepting
-        // roleIds here would have made the UNGUARDED path strictly easier than
-        // the guarded one: a stolen session could mint a member holding
-        // `direction` and read its password straight out of this response, a
-        // persistent backdoor. The baseline confers nothing that path guards.
-        //
-        // No AccessIntegrity check is needed for the same reason: the baseline
-        // cannot orphan administration or demote anybody.
+        // Only the baseline role is granted, from the role's marker and never
+        // from the request. Any other role goes through
+        // PUT /members/{member}/roles, which checks the lockout invariants,
+        // ends the target's sessions and audits. Accepting roleIds here would
+        // let a stolen session mint a `direction` member and read its password
+        // from this response. The baseline cannot orphan administration or
+        // demote anybody, so no AccessIntegrity check is needed.
         $data = $request->validated();
         $password = GeneratedPassword::make();
 
@@ -218,9 +196,8 @@ class MemberController extends Controller
 
         Audit::record($request->user(), 'member.created', 'member', $member->id, $member->fullName());
 
-        // A literal wrapping a Resource, deliberately: the credential is not
-        // part of a member and must never appear in MemberResource, where every
-        // later read of the roster would carry it.
+        // A literal wrapping a Resource: the credential must never appear in
+        // MemberResource, where every later roster read would carry it.
         $body = [
             'member' => new MemberResource($member->load(['section', 'roles'])),
             'generatedPassword' => $password,
@@ -247,11 +224,8 @@ class MemberController extends Controller
      */
     public function update(UpdateMemberRequest $request, Member $member): MemberResource
     {
-        // Not destructive, so it deliberately does not prompt for a password.
-        //
-        // The fields go through array_key_exists(), not isset() or has(): both
-        // are false for an explicitly-sent null, so clearing a register would
-        // silently do nothing.
+        // array_key_exists() on validated(), not isset(): isset() is false for
+        // an explicit null, so clearing a register would silently do nothing.
         $data = $request->validated();
 
         $columns = [
@@ -300,30 +274,25 @@ class MemberController extends Controller
         // Existence is the state (ADR 0015): there is no `active` flag and no
         // soft delete.
         //
-        // NO RE-AUTHENTICATION (ADR 0017, since 2026-09-08). The session
-        // cookie is trusted, as it already is for reading the whole roster and
-        // editing anyone. Protection against a mis-aimed tap is the
-        // type-the-name confirmation in the UI, which is where
-        // mistake-prevention belongs — a server cannot tell a typed
-        // confirmation from an automated one.
+        // No re-authentication (ADR 0017): the session is trusted, as for
+        // reading the roster and editing anyone. The UI's type-the-name
+        // confirmation guards against a mis-aimed tap; a server cannot tell a
+        // typed confirmation from an automated one.
         AccessIntegrity::assertMayDelete($request->user(), $member);
 
-        // Captured BEFORE the delete, because the row is gone by the time
+        // Captured before the delete, because the row is gone by the time
         // anyone reads the audit back.
         $label = $member->fullName();
         $id = $member->id;
 
         $sessionsEnded = DB::transaction(function () use ($member): int {
-            // `sessions` has NO foreign key to members, so nothing cascades
-            // into it — a deleted member stays logged in until their cookie
-            // expires unless this runs. Without it, hard-delete is theatre.
+            // `sessions` has no foreign key to members, so nothing cascades
+            // into it: without this, a deleted member stays logged in until
+            // the cookie expires.
             //
-            // BEFORE the delete, and MEASURED 2026-09-08: moving it after keeps
-            // every test green, because the delete cascades nothing into
-            // sessions either way. The ordering is about transaction safety
-            // rather than the row count — if the delete fails, nobody has been
-            // logged out of an account that still exists. Kept first
-            // deliberately, and recorded here because no test distinguishes it.
+            // Before the delete, so a failed delete logs nobody out of an
+            // account that still exists. No test pins this order; moving it
+            // keeps the suite green.
             $ended = SessionRevoker::forMember($member->id);
 
             $member->delete();

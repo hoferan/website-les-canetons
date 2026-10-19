@@ -33,18 +33,14 @@ class ConfigController extends Controller
     #[Endpoint(operationId: 'config.show')]
     public function __invoke(): JsonResponse
     {
-        // WHY THIS EXISTS. The front end is a static bundle promoted
-        // unchanged from TEST to QA to PROD, so nothing environment-specific
-        // may be compiled into it — baking values in at build time would mean
-        // one build per environment and would break tag-based promotion.
-        // Everything the old app rendered from config.php therefore arrives
-        // here at runtime.
+        // The front end is one static bundle promoted unchanged from TEST to
+        // QA to PROD, so anything environment-specific arrives here at
+        // runtime (ADR 0007).
         //
-        // PUBLIC AND UNAUTHENTICATED, so every value below is an explicit,
-        // reviewed choice. Never return config() wholesale: this response is
-        // world-readable and the same config carries database and mail
-        // secrets. App\Support\Features holds the same line for the flags —
-        // the key set is fixed in code, never read from the environment.
+        // Public and unauthenticated, so every value below is an explicit
+        // choice. Never return config() wholesale: it carries database and
+        // mail secrets. App\Support\Features does the same for the flags,
+        // whose key set is fixed in code and never read from the environment.
         $body = [
             'env' => $this->env(),
             'features' => Features::all(),
@@ -54,16 +50,14 @@ class ConfigController extends Controller
     }
 
     /**
-     * Delegated to App\Support\Environment, which owns the APP_ENV
-     * translation and its fail-safe (anything unrecognised collapses to
-     * 'prod', so a misspelled APP_ENV can never paint a staging ribbon on the
-     * live site). Shared with the API reference's server label so the two
-     * cannot disagree about which environment this is.
+     * App\Support\Environment owns the APP_ENV translation and its fail-safe:
+     * anything unrecognised collapses to 'prod', so a misspelled APP_ENV
+     * cannot paint a staging ribbon on the live site. The API reference's
+     * server label uses it too, so the two always agree.
      *
-     * Returns the ENUM, not its value. The JSON is identical — a backed enum
-     * encodes as its value — but the contract gains the closed set, and a
-     * generated client gains a union of four strings rather than `string` for
-     * the field the SPA switches its whole chrome on.
+     * Returns the enum rather than its value. The JSON is identical, but the
+     * contract gains the closed set and the generated client a union of four
+     * strings instead of `string`.
      */
     private function env(): Environment
     {

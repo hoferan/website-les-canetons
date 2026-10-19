@@ -114,12 +114,13 @@
  * group permissions; which role granted one is not a question the API answers.
  * `GET /api/v1/me` returns the caller's effective permissions.
  *
- * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
- * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`, `images.manage`.
+ * `events.view`, `events.manage`, `attendance.respond`, `attendance.view_all`,
+ * `attendance.record_for_others`, `members.manage`, `roles.manage`,
+ * `registrations.view`, `registrations.manage`, `messages.view`,
+ * `messages.manage`, `history.manage`, `images.manage`, `account.manage`.
  *
- * Answering an event deliberately needs **no** permission: anyone in a register
- * answers for themselves.
+ * Every account holds `events.view` and `account.manage`. Answering an event for
+ * yourself needs `attendance.respond`.
  *
  * ## Conventions
  *
@@ -4339,7 +4340,7 @@ export const getRegistrationShowUrl = (registration: number) => {
  *
  * Read this before amending or cancelling one, and quote the `ETag` it
  * returns in the `If-Match` header of the write. The guest list hands out
- * no tag — one tag cannot validate a hundred bookings.
+ * no tag, since one tag cannot validate a hundred bookings.
  * @summary Read one booking
  */
 export const registrationShow = async (
@@ -4907,10 +4908,9 @@ export const getRegistrationOptionIndexUrl = (
  * Requires `events.manage`. Returns the options in sort order.
  *
  * Read this before replacing them, and quote the `ETag` it returns in the
- * `If-Match` header of the PUT. The tag is over the OPTION LIST, not over
- * the event: correcting the event's dress code does not invalidate a
- * pending options edit, and adding an option does — which is the way round
- * that catches a lost update.
+ * `If-Match` header of the PUT. The tag covers the option list, not the
+ * event: correcting the event's dress code does not invalidate a pending
+ * options edit, and adding an option does, which catches a lost update.
  *
  * The public booking form reads the same options from
  * `GET /api/v1/events/{event}/registration`, which needs no session but
@@ -6491,8 +6491,8 @@ export const getContactMessageIndexUrl = (params?: ContactMessageIndexParams) =>
 };
 
 /**
- * Newest first. `?handled=0` returns only what is still open — the same
- * set the inbox shows — and `?handled=1` only what has been dealt with.
+ * Newest first. `?handled=0` returns only what is still open (the same
+ * set the inbox shows), and `?handled=1` only what has been dealt with.
  * Omit the parameter for everything.
  *
  * Paginated: read `data` for the rows and `meta.total` for the count.
@@ -6867,8 +6867,8 @@ export const getContactMessageHandleUrl = (contactMessage: number) => {
 
 /**
  * `{"handled": true}` stamps who did it and when; `{"handled": false}`
- * clears both. Reopening is not an error — a message marked handled by
- * mistake is a normal thing to correct.
+ * clears both. Reopening is allowed, so a message marked handled by
+ * mistake can be corrected.
  *
  * Requires `If-Match` with the tag from reading this message. Without one
  * the request answers `428`; with a stale one, `412`.
@@ -9946,8 +9946,8 @@ export const getMemberShowUrl = (member: number) => {
  * a single member.
  *
  * Read this before editing somebody, and quote the `ETag` it returns in
- * the `If-Match` header of the write. The list hands out no tag — one tag
- * cannot validate forty-five rows — so a form filled from the list and
+ * the `If-Match` header of the write. The list hands out no tag, since one
+ * tag cannot validate every row, so a form filled from the list and
  * submitted without a read is the lost update this API refuses.
  * @summary Read one person
  */
@@ -10892,12 +10892,11 @@ export const getAgendaIndexUrl = (params?: AgendaIndexParams) => {
 
 /**
  * Anonymous. Returns the upcoming events the committee has marked public,
- * soonest first — the appearances anybody may come and watch.
+ * soonest first: the appearances anybody may come and watch.
  *
  * **A rehearsal is not on this list.** `isPublic` is set per event and
  * defaults to off, so the planning stays private and a public appearance
- * is a decision somebody made about that event rather than the default for
- * everything in the diary.
+ * is a decision made about that event.
  *
  * Four fields per event, each one a fact already on a poster. Nothing here
  * says who is coming: attendance is the members' business.

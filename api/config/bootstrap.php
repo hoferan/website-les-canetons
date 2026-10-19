@@ -3,13 +3,12 @@
 /**
  * The first administrator, for a host with no shell.
  *
- * Read through config() rather than env() directly at the point of use, so the
- * migration is drivable from a test (see BootstrapAdministratorTest) and so
- * `config:cache` on a server cannot leave it reading a stale value.
+ * Read through config() rather than env() at the point of use, so a test can
+ * drive the migration (BootstrapAdministratorTest) and `config:cache` on a
+ * server cannot leave a stale value.
  *
- * These keys are set BY HAND in each server's _api/.env, exactly as APP_KEY and
- * the DB credentials already are. There is no default password and there must
- * never be one.
+ * Set by hand in each server's _api/.env, like APP_KEY and the DB credentials.
+ * There is no default password, and there must never be one.
  */
 return [
     'admin' => [

@@ -6,7 +6,7 @@ use App\Support\ErrorVocabulary;
 use Dedoc\Scramble\Support\Generator\Types as OpenApiTypes;
 
 /**
- * Builds the OpenAPI schema for App\Exceptions\ApiError's response body — an
+ * Builds the OpenAPI schema for App\Exceptions\ApiError's response body, an
  * RFC 9457 problem document:
  *
  *     {"title", "status", "code", "instance", "errors":[…], "requestId", "detail"}
@@ -15,13 +15,10 @@ use Dedoc\Scramble\Support\Generator\Types as OpenApiTypes;
  * statuses. ApiError is the authority on the shape; this only describes it, and
  * Tests\Feature\OpenApiDocumentTest pins the two together.
  *
- * EVERY MEMBER IS REQUIRED, `errors` included. That is a change from the
- * previous contract, where `fields` appeared only on a 400 and was absent
- * elsewhere — which made it optional in the document and cost every consumer a
- * null check for a case that carries no information. It is now always present
- * and empty when there is nothing field-level to say, so `$withErrors` below
- * governs only whether the entry SHAPE is worth documenting, never whether the
- * key exists.
+ * Every member is required, `errors` included: it is always present, and empty
+ * when there is nothing field-level to say, so a consumer needs no null check.
+ * `$withErrors` below governs only whether the entry shape is documented,
+ * never whether the key exists.
  */
 final class ErrorResponseSchema
 {
@@ -68,7 +65,7 @@ final class ErrorResponseSchema
      * One `errors` entry.
      *
      * `params` is absent unless the reason interpolates (today: too_long,
-     * invalid_value), so it is deliberately NOT required.
+     * invalid_value), so it is not required.
      */
     private static function entry(): OpenApiTypes\ObjectType
     {

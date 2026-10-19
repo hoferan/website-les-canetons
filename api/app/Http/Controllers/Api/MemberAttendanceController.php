@@ -41,27 +41,20 @@ class MemberAttendanceController extends Controller
     {
         AttendanceIntegrity::assertPublished($event);
 
-        // Answering on somebody else's behalf — the phone call to the
-        // committee. Two verbs, so this controller is not single-action: PUT
-        // records an answer and DELETE takes one back. The generated hooks
-        // are therefore useMemberAttendanceUpdate and
-        // useMemberAttendanceDestroy.
+        // Two verbs, so this controller is not single-action and the hooks
+        // are useMemberAttendanceUpdate and useMemberAttendanceDestroy.
         //
-        // Without this endpoint a mis-aimed on-behalf write is permanent from
-        // the committee's side, and worse from the member's: the undo window
-        // is measured from `updated_at`, so the five minutes start ticking
-        // when the DIRECTION wrote it, and once they lapse withdrawing the yes
-        // costs the member a written reason for a commitment they never made
-        // (ADR 0018).
+        // Without this, a mis-aimed on-behalf write would stick: the undo
+        // window runs from `updated_at`, so it starts when the direction wrote
+        // the row, and once it lapses withdrawing the yes costs the member a
+        // written reason for a commitment they never made (ADR 0018).
         //
-        // NOT subject to the undo window itself. The window exists to stop a
-        // member erasing their own yes and re-answering for free; a committee
-        // correcting its own typo an hour later is the case it was never
-        // aimed at, and they can overwrite the row at will anyway.
+        // Not subject to the undo window, which stops a member erasing their
+        // own yes for free; the committee can overwrite the row at will
+        // anyway.
         //
-        // Refuses its own caller, like the write does: undoing your own
-        // answer through the exempt route would sidestep the reason rule
-        // exactly as writing it would.
+        // Refuses its own caller, like the write: undoing your own answer
+        // through this exempt route would sidestep the reason rule.
         /** @var Member $actor */
         $actor = $request->user();
 
@@ -118,16 +111,12 @@ class MemberAttendanceController extends Controller
         Event $event,
         Member $member,
     ): AttendanceResource {
-        // REFUSES ITS OWN CALLER (ADR 0018). This route is exempt from the
-        // rule that withdrawing a yes costs a reason, because making the
-        // committee invent a reason on a member's behalf puts words in their
-        // mouth. That exemption is exactly why aiming it at yourself has to
-        // be refused: demo.both plays and holds
-        // attendance.record_for_others, and could otherwise take back his own
-        // yes for free.
+        // Refuses its own caller (ADR 0018). This route is exempt from the
+        // reason a withdrawn yes costs, so aimed at yourself it would let
+        // somebody like demo.both, who plays and holds
+        // attendance.record_for_others, take back his own yes for free.
         //
-        // The self-refusal is checked FIRST, so it outranks being
-        // unanswerable — pinned by
+        // The self-refusal is checked before answerability, pinned by
         // test_the_self_refusal_outranks_being_unanswerable.
         /** @var Member $actor */
         $actor = $request->user();
@@ -149,20 +138,15 @@ class MemberAttendanceController extends Controller
             ]
         );
 
-        // Audited, unlike a self-answer: this is one person acting for
-        // another, and the question it answers later is "who said I was not
-        // coming?". Both names go in the label for the reason Audit::record
-        // asks the CALLER for one — the rows it points at may be gone by the
-        // time anybody reads it back.
+        // Audited, unlike a self-answer, to answer "who said I was not
+        // coming?" later. Both names go in the label because the rows it
+        // points at may be gone by then.
         Audit::record(
             $actor,
             'attendance.recorded_for_member',
             'member',
             $member->id,
-            // The STATUS is in the label, not only the names. Audit has no
-            // payload column, and without it this entry cannot answer the
-            // one question its own reason for existing names: 'who said I
-            // was not coming?'
+            // Audit has no payload column, so the status goes in the label.
             $member->fullName().' / '.$event->title.' / '.$data['status'],
         );
 

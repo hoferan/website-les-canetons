@@ -17,26 +17,20 @@ class SessionLifetimeTest extends TestCase
 
     public function test_the_session_configuration_is_secure_http_only_and_strict(): void
     {
-        // This checks the CONFIGURATION FILE, not what a real response actually
-        // sends: Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful
-        // unconditionally overrides session.same_site to "lax" at runtime on
-        // every request through the `api` group, so config('session.same_site')
-        // read outside a request (as here) can pass while the real Set-Cookie
-        // header ships something else entirely. See
-        // test_the_session_cookie_carries_strict_secure_and_http_only below for
-        // the behavioural assertion, which reads the actual header off a real
-        // response.
+        // This checks the configuration file only. Sanctum's
+        // EnsureFrontendRequestsAreStateful overrides session.same_site to
+        // "lax" at runtime on every `api` request, so this can pass while the
+        // real Set-Cookie header says otherwise.
+        // test_the_session_cookie_carries_strict_secure_and_http_only reads
+        // the actual header.
         $this->assertTrue(config('session.http_only'));
         $this->assertSame('strict', config('session.same_site'));
 
-        // This one asserts THE SUITE'S OWN POSTURE, not the application
-        // default: api/phpunit.xml pins SESSION_SECURE_COOKIE=true so that
-        // every test here runs configured the way a deployed server is, and
-        // this line is what fails if that pin is ever dropped. It says nothing
-        // about config/session.php's fallback — with the pin in place it would
-        // pass against Laravel's stock, insecure default too. The fallback is
-        // the property that actually protects a real server, and it has its own
-        // test below.
+        // This asserts the suite's own posture: api/phpunit.xml pins
+        // SESSION_SECURE_COOKIE=true so every test runs configured like a
+        // deployed server, and this line fails if the pin is dropped. It says
+        // nothing about config/session.php's fallback, which has its own test
+        // below.
         $this->assertTrue(
             config('session.secure'),
             'api/phpunit.xml must pin SESSION_SECURE_COOKIE=true, or this suite '.
@@ -45,25 +39,20 @@ class SessionLifetimeTest extends TestCase
     }
 
     /**
-     * A DEPLOYED server's `.env` omits SESSION_SECURE_COOKIE entirely
-     * (api/.env.example says so in as many words), so the whole security of the
-     * session cookie rests on config/session.php's fallback being `true` rather
-     * than Laravel's stock `env('SESSION_SECURE_COOKIE')`, which resolves to
-     * false and ships the session cookie over plain http.
+     * A deployed server's `.env` omits SESSION_SECURE_COOKIE (see
+     * api/.env.example), so the cookie's security rests on config/session.php
+     * falling back to `true`. Laravel's stock fallback resolves to false and
+     * ships the session cookie over plain http.
      *
-     * That fallback cannot be read off config('session.secure') anywhere in
-     * this suite: something always sets the variable. api/phpunit.xml pins it
-     * true (deliberately — see the comment there), and underneath that
-     * docker/api/env.docker sets it false, because local dev is plain http and
-     * a Secure-only cookie is one a browser will not send back, which breaks
-     * login on :8090 outright. Both are legitimate; neither says anything about
-     * what a real server gets.
+     * config('session.secure') cannot show that fallback here, because
+     * something always sets the variable: api/phpunit.xml pins it true, and
+     * docker/api/env.docker sets it false because local dev is plain http and
+     * a browser does not send a Secure-only cookie back there.
      *
      * So this re-evaluates the config file with the variable absent from every
-     * adapter Illuminate\Support\Env consults — $_ENV, $_SERVER and putenv.
-     * Env::getOption() reads the repository live on every call and memoizes
-     * nothing, so a fresh `require` of the file sees the cleared state and
-     * yields the true default.
+     * adapter Illuminate\Support\Env consults ($_ENV, $_SERVER and putenv).
+     * Env::getOption() reads the repository live and memoizes nothing, so a
+     * fresh `require` sees the cleared state.
      */
     public function test_the_secure_cookie_default_is_true_when_a_server_sets_nothing(): void
     {
@@ -78,9 +67,8 @@ class SessionLifetimeTest extends TestCase
 
     /**
      * The session config as it evaluates on a server that sets $variable
-     * nowhere. Restores the environment afterwards whatever happens — leaking a
-     * cleared SESSION_SECURE_COOKIE into the rest of the suite would silently
-     * change what every later test measures.
+     * nowhere. Restores the environment afterwards whatever happens, or a
+     * cleared variable would change what every later test measures.
      *
      * @return array<string, mixed>
      */
@@ -109,15 +97,12 @@ class SessionLifetimeTest extends TestCase
     }
 
     /**
-     * Pins the REAL Set-Cookie header a login response sends, not the config
-     * file. Sanctum's EnsureFrontendRequestsAreStateful::
-     * configureSecureCookieSessions() unconditionally forces
-     * session.same_site to "lax" on every /api request — see
-     * App\Http\Middleware\EnforceAbsoluteSessionLifetime for the fix that
-     * restores the configured value before
-     * Illuminate\Session\Middleware\StartSession builds this header on the way
-     * out. Without that fix, this test fails with SameSite=Lax even though
-     * config/session.php says "strict".
+     * Pins the real Set-Cookie header a login response sends. Sanctum's
+     * EnsureFrontendRequestsAreStateful::configureSecureCookieSessions() forces
+     * session.same_site to "lax" on every /api request;
+     * App\Http\Middleware\EnforceAbsoluteSessionLifetime restores the
+     * configured value before StartSession builds this header. Without it the
+     * cookie says SameSite=Lax although config/session.php says "strict".
      */
     public function test_the_session_cookie_carries_strict_secure_and_http_only(): void
     {
@@ -151,15 +136,6 @@ class SessionLifetimeTest extends TestCase
     {
         $member = $this->member();
 
-        // The Origin header is what makes Sanctum's EnsureFrontendRequestsAreStateful
-        // treat this as a stateful frontend request and actually run StartSession
-        // for it (Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::
-        // fromFrontend()) — without it the request never gets a session attached
-        // at all and $request->session() in the new middleware throws a bare
-        // RuntimeException instead of exercising the 401 path under test. A real
-        // browser always sends one on a same-origin request; withSession() alone
-        // only seeds the container's session singleton, not this simulated
-        // request's own session store. Mirrors LoginTest::spaPostJson().
         $this->actingAsMember($member)
             ->getJson('/api/v1/me')
             ->assertOk();
@@ -182,18 +158,14 @@ class SessionLifetimeTest extends TestCase
      * The absolute lifetime is measured on the clock the application uses, not
      * on the wall clock.
      *
-     * WHY THIS IS WORTH A TEST. The check read `time()` until 2026-09-11, which
-     * Carbon's test clock cannot move, so the two assertions below could not
-     * both hold: travelling past the lifetime left the session valid, and
-     * travelling backwards expired one that had only just started. The second
-     * is how it surfaced — EventIndexTest travels to 10:00 today for an
-     * unrelated rule, and after 22:00 local every one of its requests answered
-     * 401, a red bar once a day for a reason nothing in that file mentions.
+     * A check that read `time()` would ignore Carbon's test clock: travelling
+     * past the lifetime would leave the session valid, and travelling
+     * backwards would expire one that had just started. EventIndexTest
+     * travels to 10:00 today for an unrelated rule, so with `time()` every one
+     * of its requests would answer 401 after 22:00 local.
      *
-     * The two directions are both here deliberately. Only the first fails
-     * against `time()` in an obvious way; the second is the one that was
-     * actually costing time, and it passes for the wrong reason if the stamp
-     * and the check ever read different clocks again.
+     * Both directions are tested. The second fails if the stamp and the check
+     * ever read different clocks.
      */
     public function test_the_absolute_lifetime_follows_the_applications_clock(): void
     {
@@ -223,8 +195,8 @@ class SessionLifetimeTest extends TestCase
 
     public function test_a_session_with_no_stamp_is_refused(): void
     {
-        // A session predating this middleware, or one forged by hand. Failing
-        // closed is the only safe reading of "we do not know when this began".
+        // A session predating this middleware, or one forged by hand. With no
+        // known start, the middleware fails closed.
         $member = $this->member();
 
         $this->actingAs($member)

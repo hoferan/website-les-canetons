@@ -13,14 +13,12 @@ use Tests\TestCase;
 class ApiErrorContractTest extends TestCase
 {
     /**
-     * The whole problem document, member by member, because this is the one
-     * test that says what the shape IS rather than testing something through it.
+     * The whole problem document, member by member: this is the one test that
+     * says what the shape is.
      *
-     * Not assertExactJson: `requestId` is a fresh ULID per request, so an exact
-     * comparison could only be written by reading the value out of the response
-     * and comparing it to itself. The members are asserted individually instead,
-     * and the closing assertion pins the KEY SET — which is what assertExactJson
-     * was really buying, and it still fails if a member is added or dropped.
+     * Not assertExactJson, because `requestId` is a fresh ULID per request.
+     * The members are asserted one by one, and the closing assertion pins the
+     * key set, so adding or dropping a member still fails.
      */
     public function test_a_failure_is_an_rfc_9457_problem_document(): void
     {
@@ -54,22 +52,18 @@ class ApiErrorContractTest extends TestCase
             ['field' => 'subject', 'reason' => 'required'],
         ], $body['errors']);
 
-        // A ULID, not merely "a string": the identifier is only useful if it
-        // can be matched against a log line, and Str::isUlid is what the
-        // middleware uses to decide whether to trust an inbound one.
+        // A ULID, not just a string: it must match a log line, and Str::isUlid
+        // is what the middleware uses to decide whether to trust an inbound one.
         $this->assertTrue(Str::isUlid($body['requestId']), 'requestId is not a ULID.');
 
-        // The explanation travels WITH the failure. That is the whole reason
-        // there is no catalogue in the reference and no endpoint to fetch one:
-        // a problem description is wanted by whoever has that problem, at the
-        // moment they have it.
+        // The explanation travels with the failure, so the reference has no
+        // catalogue and no endpoint serves one.
         $this->assertSame(ErrorVocabulary::detailFor('validation_failed'), $body['detail']);
 
-        // No `type`. RFC 9457 makes it optional, and here it could only have
-        // been a constant prefix in front of `code`.
+        // No `type`: RFC 9457 makes it optional, and here it would only be a
+        // constant prefix in front of `code`.
         $this->assertArrayNotHasKey('type', $body);
-        // And no `documentation`: the link it carried pointed at a catalogue
-        // that no longer exists, because `detail` replaced it.
+        // No `documentation` link either; `detail` carries the explanation.
         $this->assertArrayNotHasKey('documentation', $body);
 
         $this->assertSame(
@@ -84,10 +78,8 @@ class ApiErrorContractTest extends TestCase
 
     /**
      * `errors` is present even when there is nothing field-level to say.
-     *
-     * The previous contract omitted `fields` when empty, which made it optional
-     * in the document and cost every consumer a null check for a case that
-     * carries no information.
+     * Omitting it would make it optional in the document and cost every
+     * consumer a null check for a case that carries no information.
      */
     public function test_errors_is_present_and_empty_when_there_is_nothing_to_say(): void
     {
@@ -139,17 +131,15 @@ class ApiErrorContractTest extends TestCase
     }
 
     /**
-     * Every other test here uses getJson()/postJson(), which set
-     * `Accept: application/json` — and that header is exactly what used to hide
-     * this. Without it, Laravel's default guest redirect (installed by
-     * ApplicationBuilder::withMiddleware() as
-     * `redirectGuestsTo(fn () => route('login'))`) ran inside the Authenticate
-     * middleware, BEFORE any exception renderer, and blew up with
-     * RouteNotFoundException: an API-only app defines no `login` route. On PROD,
-     * APP_DEBUG=false turns that into an opaque 500 for anyone who pastes an API
+     * Every other test here sends `Accept: application/json`, which hides this
+     * case. Without it, Laravel's default guest redirect
+     * (`redirectGuestsTo(fn () => route('login'))`, installed by
+     * ApplicationBuilder::withMiddleware()) runs inside the Authenticate
+     * middleware, before any exception renderer, and throws
+     * RouteNotFoundException because an API-only app has no `login` route.
+     * With APP_DEBUG=false that is an opaque 500 for anyone who pastes an API
      * URL into a browser. bootstrap/app.php overrides the redirect with
-     * `fn () => null`; this pins that the contract holds whatever the client asks
-     * for.
+     * `fn () => null`.
      */
     public function test_unauthenticated_request_without_a_json_accept_header_still_uses_the_contract(): void
     {
@@ -208,9 +198,9 @@ class ApiErrorContractTest extends TestCase
 
     public function test_a_numeric_rule_failure_uses_a_paramless_reason(): void
     {
-        // invalid_value interpolates {{allowed}} in i18n.js, and i18next emits
-        // that placeholder literally when no value is supplied — so numeric
-        // failures must NOT use it.
+        // invalid_value interpolates {{allowed}} in web/src/i18n/, and i18next
+        // prints the placeholder literally when no value is supplied, so
+        // numeric failures must not use it.
         Route::post('/api/v1/_contract_probe_gt', fn () => request()->validate([
             'eventId' => ['required', 'integer', 'gt:0'],
         ]));
@@ -247,14 +237,9 @@ class ApiErrorContractTest extends TestCase
      * their closures are registered earlier and short-circuit before the
      * catch-all runs.
      *
-     * This used to assert the 404 carried NO `code` at all, which was a true
-     * description of a defect rather than of a contract: a 404 fell past every
-     * renderer to Laravel's default {"message": "..."}, the one status in the
-     * API that escaped its own error shape, and the only thing the French layer
-     * could do with it was the generic fallback. A dedicated NotFoundHttpException
-     * renderer now catches it — registered BEFORE this catch-all, which is what
-     * makes it reachable — so the assertion is inverted: 404 is `not_found`, and
-     * emphatically not `invalid_session`.
+     * A 404 is caught by a dedicated NotFoundHttpException renderer, registered
+     * before this catch-all so it is reachable: it answers `not_found`, never
+     * `invalid_session`.
      */
     public function test_the_catch_all_http_renderer_does_not_swallow_other_statuses(): void
     {
@@ -290,8 +275,8 @@ class ApiErrorContractTest extends TestCase
     }
 
     /**
-     * The `$request->is('api/*')` guard is what keeps the old app's web pages on
-     * Laravel's HTML error pages. Nothing else pins the `: null` fallthrough.
+     * The `$request->is('api/*')` guard keeps non-API routes on Laravel's HTML
+     * error pages. Nothing else pins the `: null` fallthrough.
      */
     public function test_non_api_routes_do_not_get_the_json_contract(): void
     {

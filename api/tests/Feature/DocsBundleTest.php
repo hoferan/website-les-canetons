@@ -7,9 +7,8 @@ use Tests\TestCase;
 /**
  * The third-party bundle the reference page loads.
  *
- * The page is public by default now, and the bundle is 3.7 MB of somebody
- * else's JavaScript. Three properties are worth pinning, and none of them was
- * true before 2026-09-11.
+ * The page can be public, and the bundle is 3.7 MB of somebody else's
+ * JavaScript, so its version, integrity and features are pinned here.
  */
 class DocsBundleTest extends TestCase
 {
@@ -22,13 +21,9 @@ class DocsBundleTest extends TestCase
     }
 
     /**
-     * A VERSION, not the bare package path.
-     *
-     * jsdelivr resolves `@scalar/api-reference` to whatever is published as
-     * latest, re-resolved on every visit. That is how an "Ask AI" button, a
-     * "Deploy" menu, MCP generation and a GitHub import arrived on this page
-     * with no commit on our side — and it means any Scalar release can change
-     * or break a public page nobody has touched.
+     * A version, not the bare package path: jsdelivr resolves
+     * `@scalar/api-reference` to the latest release on every visit, so any
+     * Scalar release could add features to or break a page nobody touched.
      */
     public function test_the_bundle_is_pinned_to_a_version(): void
     {
@@ -43,9 +38,8 @@ class DocsBundleTest extends TestCase
     }
 
     /**
-     * Subresource integrity. An unpinned script from a CDN on a public page
-     * executes whatever is served; with this the browser refuses anything that
-     * is not the exact bundle that was reviewed.
+     * Subresource integrity: the browser refuses anything but the exact
+     * bundle that was reviewed.
      */
     public function test_the_bundle_carries_an_integrity_hash(): void
     {
@@ -57,12 +51,9 @@ class DocsBundleTest extends TestCase
 
     /**
      * Scalar's developer-tools toolbar is where "Ask AI", "Ask AI Agent" and
-     * "Generate MCP" live. There is no per-feature switch in the bundle — no
-     * hideAskAi or anything like it — so this flag is the whole mechanism.
-     *
-     * Its default is "localhost", which already kept it off deployed
-     * environments. "never" makes its absence a decision rather than a default
-     * somebody else owns and can change.
+     * "Generate MCP" live. The bundle has no per-feature switch, so this flag
+     * is the whole mechanism. Its default is "localhost"; "never" keeps it off
+     * even if Scalar changes that default.
      */
     public function test_the_developer_tools_toolbar_is_off(): void
     {
@@ -72,15 +63,11 @@ class DocsBundleTest extends TestCase
     }
 
     /**
-     * THREE switches, because Scalar surfaces this in three places and no
-     * single flag covers all of them — measured in a browser on 2026-09-11,
-     * not inferred from the schema. With only showDeveloperTools set to
-     * "never", the toolbar went but the sidebar's "Ask AI" button and the
-     * "Generate MCP" layer both remained on the page.
-     *
-     * Each defaults to enabled based on the URL the page is served from, so
-     * they were live locally and would become live anywhere Scalar decided a
-     * host qualified.
+     * Scalar surfaces these in three places and no single flag covers them:
+     * with only showDeveloperTools set to "never", the sidebar's "Ask AI"
+     * button and the "Generate MCP" layer stay on the page (checked in a
+     * browser). Each defaults to enabled depending on the host serving the
+     * page.
      */
     public function test_the_ai_and_mcp_integrations_are_off(): void
     {
@@ -91,9 +78,8 @@ class DocsBundleTest extends TestCase
     }
 
     /**
-     * The view and config/scramble.php name the same URL. They drifted apart
-     * silently before, which is survivable while both are the bare package path
-     * and is not once a version is in the string.
+     * The view and config/scramble.php name the same URL, so a version bump
+     * cannot change one and silently miss the other.
      */
     public function test_the_view_and_the_config_name_the_same_bundle(): void
     {

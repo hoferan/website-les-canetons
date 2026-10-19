@@ -10,9 +10,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * One message from the public contact form, as the committee reads it.
  *
- * The sender's own words travel raw: they were stored raw and are escaped at
- * output time by React, which escapes by default. Nothing here is translated —
- * a stranger's message is content, and `handledBy` is a person's name.
+ * The sender's words travel raw, as stored; React escapes them on output.
+ * Nothing here is translated: the message is content, and `handledBy` is a
+ * person's name.
  *
  * @mixin ContactMessage
  */

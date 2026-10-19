@@ -12,10 +12,8 @@ use Illuminate\Support\Carbon;
 /**
  * One member's answer for one event.
  *
- * The @property tags say what casts() already does at runtime. Larastan runs
- * at level 5 and cannot read casts(), so without them these read as their raw
- * column types and every caller has to defend against a type that never
- * occurs. Event.php and Member.php carry the same block for the same reason.
+ * The @property tags repeat what casts() does at runtime: Larastan cannot
+ * read casts() and would otherwise see the raw column types.
  *
  * @property AttendanceStatus $status
  * @property Carbon $created_at
@@ -26,11 +24,7 @@ class Attendance extends Model
     /** @use HasFactory<AttendanceFactory> */
     use HasFactory;
 
-    /**
-     * Laravel would pluralise this to `attendances`. The table is
-     * `attendance`, because the word is already a mass noun and
-     * "attendances" is not something anybody says about a rehearsal.
-     */
+    /** Laravel would pluralise this to `attendances`; the word is a mass noun. */
     protected $table = 'attendance';
 
     protected $fillable = [
@@ -73,9 +67,8 @@ class Attendance extends Model
     /**
      * True when somebody else entered this answer.
      *
-     * Read from the column rather than compared against the current user: the
-     * chase list renders "saisie par la direction" for every reader, not only
-     * for the one who typed it.
+     * Read from the column rather than compared against the current user,
+     * because the chase list shows it to every reader.
      */
     public function wasRecordedByDirection(): bool
     {

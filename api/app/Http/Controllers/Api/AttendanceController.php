@@ -40,23 +40,17 @@ class AttendanceController extends Controller
      */
     public function index(Event $event): AnonymousResourceCollection
     {
-        // THE CHASE LIST — every answerable member, not just those who
-        // replied. Returning only the answers would push "who has not
-        // replied?" — the entire point of this screen — into a client-side
-        // diff against a separately-fetched roster, which is two requests
-        // that can disagree.
+        // The chase list: every answerable member, not only those who replied,
+        // so "who has not replied?" needs no client-side diff against a
+        // separately fetched roster.
         //
-        // Answerable means holding attendance.respond, the same permission
-        // the member's own answer route requires, so the people this screen
-        // chases are exactly the people able to answer. The register only
-        // labels each row.
+        // Answerable means holding attendance.respond, the permission the
+        // member's own answer route requires. The register only labels a row.
         //
-        // TWO QUERIES WHATEVER THE ROSTER SIZE: the players with their
-        // register, and this event's answers keyed by member. The permission
-        // filter is a subquery inside the first, so it adds no round trip.
-        // Pinned by test_the_chase_list_costs_a_fixed_number_of_queries — the
-        // roster is ~45 people and this screen is read on a phone at a
-        // rehearsal.
+        // Two queries whatever the roster size (the permission filter is a
+        // subquery), pinned by
+        // test_the_chase_list_costs_a_fixed_number_of_queries. This screen is
+        // read on a phone at a rehearsal.
         $players = Member::query()
             ->with('section')
             ->whereIn('id', EffectivePermissions::holders(Permission::AttendanceRespond))
@@ -69,9 +63,7 @@ class AttendanceController extends Controller
             ->get()
             ->keyBy('member_id');
 
-        // setRelation rather than a lookup inside the Resource: the Resource
-        // must not be able to issue a query per row, which is the N+1 this
-        // endpoint would otherwise grow the first time somebody edited it.
+        // setRelation, so the Resource never issues a query per row.
         $players->each(fn (Member $player) => $player->setRelation(
             'attendance',
             $answers->get($player->id)
@@ -110,24 +102,20 @@ class AttendanceController extends Controller
 
         $data = $request->validated();
 
-        // PUT, so it is an IDEMPOTENT UPSERT: tapping Oui and then Non needs
-        // no create-versus-update branch in the client and cannot race itself
-        // into two rows — UNIQUE(event_id, member_id) is the backstop.
+        // An idempotent upsert: the client needs no create-versus-update
+        // branch, and UNIQUE(event_id, member_id) stops a race into two rows.
         //
-        // NOT AUDITED, deliberately. The audit log records privileged
-        // mutations, and answering for yourself is the one write in this
-        // release that everybody makes and nobody administers. The on-behalf
-        // route IS audited, because that one is a person acting for another
-        // person.
+        // Not audited. The audit log records privileged mutations, and
+        // answering for yourself is a write everybody makes and nobody
+        // administers. The on-behalf route is audited.
         $attendance = Attendance::updateOrCreate(
             ['event_id' => $event->id, 'member_id' => $member->id],
             [
                 'status' => $data['status'],
                 'note' => $data['note'] ?? null,
-                // Cleared, including when this overwrites an answer the
-                // direction had entered: the member correcting it themselves
-                // is exactly the case where "saisie par la direction" stops
-                // being true.
+                // Cleared even over an answer the direction entered: once the
+                // member corrects it, "saisie par la direction" is no longer
+                // true.
                 'recorded_by_member_id' => null,
             ]
         );
@@ -154,15 +142,11 @@ class AttendanceController extends Controller
     {
         AttendanceIntegrity::assertPublished($event);
 
-        // UNDO. Removes the answer entirely, returning the event to
-        // unanswered — which is what a second PUT cannot express, and the
-        // whole reason this endpoint exists rather than the client sending
-        // the opposite answer.
+        // Undo exists because a second PUT cannot express "unanswered".
         //
-        // The window is AttendanceIntegrity's: five minutes from updated_at,
-        // so the rule that withdrawing a yes costs a reason is not decorative
-        // — an unlimited undo would let a member erase a yes and re-answer no
-        // for free.
+        // AttendanceIntegrity limits it to five minutes from updated_at: an
+        // unlimited undo would let a member erase a yes and re-answer no
+        // without the reason that costs.
         /** @var Member $member */
         $member = $request->user();
 
@@ -171,9 +155,8 @@ class AttendanceController extends Controller
             ->where('member_id', $member->id)
             ->first();
 
-        // Already gone. Idempotent rather than 404: undo is reached from a
-        // toast, and a double tap on a flaky connection must not read as an
-        // error to the member.
+        // Idempotent rather than 404: undo is reached from a toast, and a
+        // double tap on a flaky connection must not read as an error.
         if ($attendance === null) {
             return response()->json(['ok' => true]);
         }

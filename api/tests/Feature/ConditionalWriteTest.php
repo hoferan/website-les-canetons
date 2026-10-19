@@ -21,11 +21,10 @@ use Tests\TestCase;
 /**
  * Conditional writes: the ETag a read hands out, and the If-Match a write owes.
  *
- * The bug this closes is live and unremarkable: two committee members with the
- * planning open, one moves a start time, the other clears the notes, and today
- * the second write silently discards the first. Requiring the header rather
- * than merely honouring it is the rigorous reading — a client that forgets it
- * is told so (428) instead of quietly overwriting somebody.
+ * Two committee members have the planning open; one moves a start time, the
+ * other clears the notes, and without a condition the second write discards
+ * the first. The header is required, not just honoured, so a client that
+ * forgets it gets a 428 instead of overwriting somebody.
  */
 class ConditionalWriteTest extends TestCase
 {
@@ -48,9 +47,8 @@ class ConditionalWriteTest extends TestCase
             ->assertOk()
             ->headers->get('ETag');
 
-        // Strong, quoted, and not weak: RFC 9110 §13.1.1 compares If-Match
-        // with the STRONG comparison function, so a `W/` prefix here would
-        // make every tag this API hands out unusable for the one job it has.
+        // Strong and quoted: RFC 9110 §13.1.1 compares If-Match with the strong
+        // comparison function, so a `W/` prefix would make every tag useless.
         $this->assertIsString($tag);
         $this->assertMatchesRegularExpression('/^"[0-9a-f]{64}"$/', $tag);
     }
@@ -64,9 +62,8 @@ class ConditionalWriteTest extends TestCase
             ->assertStatus(428)
             ->assertJson(['code' => 'if_match_required']);
 
-        // The refusal has to be a refusal to WRITE. A middleware that answered
-        // 428 after the controller ran would pass the assertion above and
-        // still have made the change it was refusing.
+        // A middleware that answered 428 after the controller ran would pass
+        // the assertion above and still have made the change.
         $this->assertSame('Répétition', $event->fresh()->title);
     }
 
@@ -76,8 +73,7 @@ class ConditionalWriteTest extends TestCase
 
         $stale = $this->tagFor($event);
 
-        // Somebody else moves the start time. The tag the first client is
-        // holding now describes a state that is gone.
+        // Somebody else changes the event, so the held tag is stale.
         $event->update(['title' => 'Répétition générale']);
 
         $this->actingAsMember($this->organiser)
@@ -98,10 +94,9 @@ class ConditionalWriteTest extends TestCase
             ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Concert'])
             ->assertStatus(412);
 
-        // Sending the current tag on the refusal would be a kindness that
-        // defeats the mechanism: a client could retry blindly with it and land
-        // exactly the overwrite it was just stopped from making. The fix for a
-        // 412 is to re-read and re-decide.
+        // With the current tag a client could retry blindly and land the
+        // overwrite it was just stopped from making. A 412 means re-read and
+        // re-decide.
         $this->assertNull($response->headers->get('ETag'));
     }
 
@@ -118,9 +113,8 @@ class ConditionalWriteTest extends TestCase
 
         $this->assertSame('Concert', $event->fresh()->title);
 
-        // The tag on the way out describes the state the write just produced,
-        // not the one it was checked against — so a client editing twice in a
-        // row never has to re-read between them.
+        // The returned tag describes the state the write produced, so a client
+        // editing twice in a row need not re-read between them.
         $after = $response->headers->get('ETag');
         $this->assertIsString($after);
         $this->assertNotSame($before, $after);
@@ -129,9 +123,8 @@ class ConditionalWriteTest extends TestCase
 
     public function test_the_lost_update_two_committee_members_produce_is_refused(): void
     {
-        // The scenario the whole mechanism exists for, written out: both have
-        // the planning open, each sends only their own field, and before this
-        // the second write silently discarded the first.
+        // The scenario the mechanism exists for: both have the planning open
+        // and each sends only their own field.
         $event = Event::factory()->create(['title' => 'Répétition', 'notes' => 'Apporter la partition']);
 
         $bothRead = $this->tagFor($event);
@@ -148,8 +141,7 @@ class ConditionalWriteTest extends TestCase
             ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Concert'])
             ->assertStatus(412);
 
-        // The first write survives, and the second is told to re-read rather
-        // than being given the overwrite it asked for.
+        // The first write survives, and the second is told to re-read.
         $this->assertSame('Répétition', $event->fresh()->title);
         $this->assertNull($event->fresh()->notes);
     }
@@ -171,17 +163,16 @@ class ConditionalWriteTest extends TestCase
 
         $this->assertModelMissing($event);
 
-        // Nothing to tag once it is gone. An ETag here would name a thing that
-        // no longer exists.
+        // Nothing is left to tag.
         $this->assertNull($response->headers->get('ETag'));
     }
 
     public function test_an_events_tag_does_not_depend_on_who_is_asking(): void
     {
-        // EventResource carries `myAttendance`, the CALLER's own answer. If the
-        // tag were computed from the rendered response body, two committee
-        // members would hold different tags for the same event — and a member
-        // answering an event would invalidate their own pending edit of it.
+        // EventResource carries `myAttendance`, the caller's own answer. A tag
+        // computed from the rendered response would differ between two
+        // committee members, and answering an event would invalidate the
+        // member's own pending edit of it.
         $event = Event::factory()->create();
 
         $answering = Member::factory()->administrator()->inSection('Cloches')->musician()->create();
@@ -206,10 +197,9 @@ class ConditionalWriteTest extends TestCase
     {
         $event = Event::factory()->create();
 
-        // RFC 9110 §13.1.1: If-Match uses the STRONG comparison function, under
-        // which a weak tag matches nothing. This API never emits one, so the
-        // only way a client sends this is by having invented it — and inventing
-        // a validator is exactly what must not be allowed to work.
+        // RFC 9110 §13.1.1: If-Match uses the strong comparison function, under
+        // which a weak tag matches nothing. This API never emits one, so a
+        // client sending one has invented it.
         $weak = 'W/'.$this->tagFor($event);
 
         $this->actingAsMember($this->organiser)
@@ -240,12 +230,11 @@ class ConditionalWriteTest extends TestCase
 
     public function test_a_role_change_moves_a_members_tag(): void
     {
-        // THE REASON THE MEMBER FACET IS COMPUTED OVER THE RESOURCE. Roles live
-        // in a pivot table, so `members.updated_at` does not move when they
-        // change — a timestamp validator would let one administrator's grant be
-        // silently discarded by another's, which is the worst lost update in
-        // the system and the one with no shell to repair it from.
-        // MemberResource publishes `roleIds`, so this tag moves.
+        // Why the member facet is computed over the resource: roles live in a
+        // pivot table, so `members.updated_at` does not move when they change,
+        // and a timestamp validator would let one administrator's grant be
+        // discarded by another's, with no shell to repair it. MemberResource
+        // publishes `roleIds`, so this tag moves.
         $target = Member::factory()->inSection('Cloches')->create();
 
         $before = EntityTag::compute('member', $target);
@@ -278,11 +267,10 @@ class ConditionalWriteTest extends TestCase
 
     public function test_an_events_options_are_tagged_apart_from_the_event(): void
     {
-        // THE REASON event.options IS ITS OWN FACET. The options are absent
-        // from EventResource, so conditioning their write on the event's tag
-        // would be wrong in both directions: an option change would not move
-        // the tag at all (a lost update straight through), and correcting the
-        // dress code would refuse a perfectly good options edit.
+        // Why event.options is its own facet: the options are absent from
+        // EventResource, so the event's tag would be wrong both ways. An option
+        // change would not move it (a lost update), and correcting the dress
+        // code would refuse a good options edit.
         $event = Event::factory()->create(['attire' => 'Costume']);
 
         $options = EntityTag::compute('event.options', $event);
@@ -316,10 +304,9 @@ class ConditionalWriteTest extends TestCase
 
     public function test_reading_a_member_and_a_booking_hands_out_the_tag_their_writes_need(): void
     {
-        // These two have no other read: the roster and the guest list hand out
-        // no tag, because one tag cannot validate forty-five rows. Without
-        // these endpoints the conditional writes on them would be unreachable
-        // rather than merely strict.
+        // The roster and the guest list hand out no tag, because one tag
+        // cannot validate many rows. Without these single reads the
+        // conditional writes on them would be unreachable.
         $target = Member::factory()->inSection('Cloches')->create();
 
         $memberTag = $this->actingAsMember($this->organiser)
@@ -341,12 +328,10 @@ class ConditionalWriteTest extends TestCase
 
     public function test_the_tag_describes_what_is_stored_not_what_is_in_hand(): void
     {
-        // The tag answers "what is in the database", and a model in hand can
-        // say something else — the attributes a request is about to write, or
-        // an edit a caller made and has not saved. Without the re-read in
-        // EntityTag::compute() a write would be compared against itself and
-        // every If-Match would match, which is a mechanism that reports success
-        // and enforces nothing.
+        // The tag answers "what is in the database", and a model in hand may
+        // carry unsaved attributes. Without the re-read in EntityTag::compute()
+        // a write would be compared against itself and every If-Match would
+        // match.
         $event = Event::factory()->create(['title' => 'Répétition']);
 
         $stored = EntityTag::compute('event', $event);
@@ -358,12 +343,10 @@ class ConditionalWriteTest extends TestCase
 
     public function test_an_unknown_id_is_a_404_and_not_a_precondition_refusal(): void
     {
-        // ORDERING, and it is not free: this middleware asks what is STORED, so
-        // it has to run after route-model binding. Ahead of it, it would see a
-        // raw id string, find nothing to tag, and answer 428 for a thing that
-        // does not exist — turning every unknown id into a lecture about a
-        // header. Proved against a route that is known to work: the same verb
-        // on an id that resolves is exercised throughout this file.
+        // Ordering: this middleware asks what is stored, so it runs after
+        // route-model binding. Ahead of it, it would see a raw id string, find
+        // nothing to tag, and answer 428 for a thing that does not exist. The
+        // same verb on an id that resolves is exercised throughout this file.
         $this->actingAsMember($this->organiser)
             ->patchJson('/api/v1/events/999999', ['title' => 'X'])
             ->assertStatus(404)
@@ -372,10 +355,8 @@ class ConditionalWriteTest extends TestCase
 
     public function test_a_caller_without_the_permission_is_refused_before_the_header_is_considered(): void
     {
-        // 403, not 428, and with no If-Match sent at all. "You may not do this"
-        // and "you did not say which version" are answers to different
-        // questions, and telling somebody to go and fetch a tag for a write
-        // they will never be allowed to make is the wrong one.
+        // 403, not 428, with no If-Match sent: telling somebody to fetch a tag
+        // for a write they may never make is the wrong answer.
         $event = Event::factory()->create();
 
         $this->actingAsMember(Member::factory()->inSection('Cloches')->create())
@@ -389,9 +370,9 @@ class ConditionalWriteTest extends TestCase
     public function test_every_facet_a_route_may_name_can_actually_be_computed(): void
     {
         // App\Support\EntityTag::state() has no default arm, so a facet added
-        // to the list and not to the match throws UnhandledMatchError — from
-        // inside a middleware, on a write, in production. Walking the list here
-        // is what turns that into a test failure instead.
+        // to the list and not to the match throws UnhandledMatchError from
+        // inside a middleware, on a write. Walking the list makes that a test
+        // failure.
         $models = [
             'event' => Event::factory()->create(),
             'event.options' => Event::factory()->create(),
@@ -415,12 +396,11 @@ class ConditionalWriteTest extends TestCase
 
     public function test_the_published_document_declares_every_conditional_route(): void
     {
-        // DERIVED FROM THE ROUTES, not from a list written out here, so a
-        // thirteenth conditional route is covered without an edit — and a route
-        // that gains `etag:` while App\Support\Scramble\DocumentsFailureModes
-        // stops being called fails here. A Scramble extension that quietly
-        // stops running changes nothing and says nothing, which is the failure
-        // this whole family of tests exists for.
+        // Derived from the routes, not from a list here, so a new conditional
+        // route is covered without an edit. It also fails if
+        // App\Support\Scramble\DocumentsFailureModes stops being called: a
+        // Scramble extension that stops running changes nothing and says
+        // nothing.
         $document = json_decode(
             (string) file_get_contents(__DIR__.'/../../openapi.json'),
             true,
@@ -477,9 +457,8 @@ class ConditionalWriteTest extends TestCase
                     }
                 }
 
-                // A DELETE is the one that must NOT promise a tag: there is
-                // nothing left to tag, and a client told to expect one would be
-                // reading a header the API deliberately does not send.
+                // A DELETE must not promise a tag: nothing is left to tag, and
+                // the API does not send one.
                 $tagged = [];
                 foreach ($operation['responses'] ?? [] as $status => $response) {
                     if ((int) $status < 300 && isset($response['headers']['ETag'])) {
@@ -497,9 +476,8 @@ class ConditionalWriteTest extends TestCase
             }
         }
 
-        // The floor, set below the real count so adding a route needs no edit
-        // here. A scan that stopped matching would otherwise report a clean
-        // document it never read.
+        // A floor below the real count, so adding a route needs no edit here,
+        // while a scan that stopped matching cannot report a clean document.
         $this->assertGreaterThanOrEqual(12, $checked, 'Found almost no conditional routes; this test is reading the wrong thing.');
 
         $this->assertSame([], $wrong, "The document and the routes disagree:\n  - ".implode("\n  - ", $wrong));
@@ -508,9 +486,8 @@ class ConditionalWriteTest extends TestCase
     public function test_answering_an_event_does_not_move_its_tag(): void
     {
         // EntityTag::state() renders EventResource itself, so a count left in
-        // the tag would make a member's ANSWER invalidate a committee
-        // member's pending edit of the TITLE — a 412 for a reason that has
-        // nothing to do with the title.
+        // the tag would let a member's answer invalidate a committee member's
+        // pending edit of the title with a 412.
         $event = Event::factory()->create();
         $before = EntityTag::compute('event', $event);
 

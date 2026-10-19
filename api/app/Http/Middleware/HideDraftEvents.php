@@ -19,20 +19,16 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * draft exists.
  *
  * `event.published:everyone` is for the two public registration routes, where
- * not even a manager is let through. A logged-in manager still hits those as a
- * visitor, and a booking taken against an event nobody else can see would be
- * a booking nobody could ever be told about.
+ * not even a manager is let through: a booking against an event nobody else
+ * can see is one nobody could be told about.
  *
- * IT RUNS AFTER ROUTE-MODEL BINDING, which is why it reads a bound Event off
- * the route. It needs no query of its own and no permission query either: the
- * caller's permission set is the one EffectivePermissions::ofRequest()
- * memoizes on the request, which a `permission:` gate on the same route has
- * usually resolved already.
+ * It runs after route-model binding and reads the bound Event off the route.
+ * The permission set comes from EffectivePermissions::ofRequest(), memoized on
+ * the request, so it usually costs no query.
  *
- * Attendance is the one place a manager passes this and is refused anyway:
- * being allowed to see a draft is not being allowed to answer it, and that
- * refusal is `event_not_published`, raised in the controllers, because it is a
- * conflict with the event's state and not a missing thing.
+ * Attendance is where a manager passes this and is refused anyway: seeing a
+ * draft is not answering it. That refusal is `event_not_published`, raised in
+ * the controllers, because it is a conflict with the event's state.
  */
 class HideDraftEvents
 {

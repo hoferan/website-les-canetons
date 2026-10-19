@@ -15,89 +15,48 @@ use UnexpectedValueException;
 /**
  * Applies pending migrations on the first Laravel request after a deploy,
  * guarded by a MySQL advisory lock so concurrent PHP-FPM workers cannot
- * double-apply or race. Prepended to BOTH middleware groups in
- * bootstrap/app.php — `api` for routes/api.php and `web` for Sanctum's
- * GET /sanctum/csrf-cookie, which app/assets/js/api.js primes before every
- * mutating call and which would otherwise 500 in StartSession on a
- * never-migrated server. See that file for the ordering argument.
+ * double-apply or race (ADR 0008). Prepended to both middleware groups in
+ * bootstrap/app.php: `api` for routes/api.php and `web` for Sanctum's
+ * GET /sanctum/csrf-cookie, which the SPA primes and which would otherwise 500
+ * in StartSession on a never-migrated server. That file has the ordering
+ * argument.
  *
- * WHY THIS EXISTS AT ALL — and it is not "convenience".
- *
- * The deploy host firewalls the GitHub runner's IP. FTP out of a runner works
- * (that is how every deploy runs); an inbound HTTP request from a runner to the
- * site does not. So CI physically CANNOT call POST /api/migrate after it
- * uploads. Without something on the request path, a merge to main deploys new
- * code to TEST over FTP and then nothing ever migrates it: the API serves
- * against yesterday's schema until a human notices and runs
+ * The deploy host firewalls the GitHub runners, so CI cannot call
+ * POST /api/migrate after it uploads over FTP. Without something on the request
+ * path, a deploy to TEST would serve against the old schema until somebody runs
  * `npm run dbmigrate:test` by hand.
  *
- * This is a port of the old app's App\AutoMigrator (deleted at c18b623 when the
- * old SQL migration system was retired — that change reasoned about who OWNS
- * the schema, which is now Laravel, and missed that the old class was also the
- * only thing that TRIGGERED a migration on this host). Same shape, same lock
- * name, same argument.
+ * POST /api/migrate remains the explicit operator path: `npm run
+ * dbmigrate:<env>` calls it, and it is the only way to get a dry run. This
+ * middleware is the safety net under it.
  *
- * POST /api/migrate stays exactly as it was: it is the explicit, operator-driven
- * path, it is what `npm run dbmigrate:<env>` calls from a machine that CAN reach
- * the site, and it is the only way to get a dry run. This middleware is the
- * safety net under it, not its replacement.
+ * Hot path: nearly every request has nothing pending, and that costs one glob
+ * of database/migrations plus two round trips (the information_schema lookup
+ * for `migrations` and `SELECT migration FROM migrations`), with no lock, no
+ * migration class booted and no cache access. On the local Docker stack that is
+ * about 2.5 ms, almost all of it the glob over a Windows bind mount; on a
+ * server's local disk expect a few hundred microseconds. The glob scales with
+ * the number of migration files.
  *
- * ------------------------------------------------------------------ hot path
+ * It is not cached on purpose. A cache would have to be invalidated by the
+ * deploy, which is an FTP upload that cannot run anything on the server, and a
+ * TTL reopens a window in which the API serves against the wrong schema.
  *
- * Nearly every request has nothing pending, so that case must be cheap. It
- * costs, per request: one glob of database/migrations (13 files today), one
- * information_schema lookup for the `migrations` table, and one
- * `SELECT migration FROM migrations` — two round trips on the already-open
- * local connection, no advisory lock, no migration class booted, no cache
- * access. Measured on the local Docker stack (PHP 8.4/MariaDB 10.3), averaged
- * over 300 calls:
+ * Why a raw GET_LOCK: Cache::lock() and `artisan migrate --isolated` both go
+ * through the cache store, which is the `database` store
+ * (CACHE_STORE=database, see api/.env.example), and the `cache` table is itself
+ * created by a migration. GET_LOCK needs no table, so it works on an empty
+ * database.
  *
- *     glob migration files       2.095 ms      <- the whole cost, effectively
- *     repositoryExists()         0.254 ms
- *     getRepository()->getRan()  0.199 ms
- *     (a bare SELECT 1           0.192 ms)     <- i.e. both queries ARE just
- *                                                 their round trips
- *     total                      ~2.5 ms
- *
- * Read that glob number as a local-dev artefact, not the server cost:
- * database/migrations is a Windows bind mount in the dev stack, where every
- * stat() crosses the VM boundary. On a server the directory is on local disk
- * behind PHP's realpath cache, and the honest expectation is a few hundred
- * microseconds — the two DB round trips, which are irreducible.
- *
- * Even the pessimistic 2.5 ms is bounded and constant. It is worth checking
- * again if database/migrations ever grows by an order of magnitude, since the
- * scan is the part that scales with file count.
- *
- * That is not free, and it is deliberately not cached. A cache would have to be
- * invalidated by the deploy, and the deploy is an FTP upload that cannot run
- * anything on the server — which is the very constraint this class exists for.
- * Any cache with a TTL just reintroduces a window in which the API serves
- * against the wrong schema. Two indexed reads on a warm connection is the price
- * of not having that window.
- *
- * ------------------------------------------------------- why a raw GET_LOCK
- *
- * NOT Cache::lock() and NOT `php artisan migrate --isolated`. Both route
- * through the cache store, which this project configures as the `database`
- * store (CACHE_STORE=database, set project-wide — see api/.env.example), and
- * the `cache` table is ITSELF created by a migration. On a
- * fresh or never-migrated server, taking the lock would query a table that the
- * lock exists to let us create. GET_LOCK is a server-level function and needs
- * no table, so it works on an empty database.
- *
- * The lock is held on the CONNECTION, so every statement here is pinned to the
- * write PDO (useReadPdo: false) — the same one `artisan migrate` writes
- * through. A GET_LOCK taken on a read connection would guard nothing.
+ * The lock is held on the connection, so every statement here is pinned to the
+ * write PDO (useReadPdo: false), the one `artisan migrate` writes through.
  */
 class RunPendingMigrations
 {
     /**
-     * Shared with the deleted App\AutoMigrator on purpose. During any overlap
-     * where both an old-app request and an API request could migrate the same
-     * database, the same name is what makes them exclude each other. Advisory
-     * lock names are server-wide, not per-database, which is fine here: the two
-     * apps share one database anyway.
+     * The same name as the old server-rendered site's migrator, so the two
+     * exclude each other while both can run against one database. Advisory
+     * lock names are server-wide, not per-database.
      */
     private const LOCK_NAME = 'lescanetons_migrate';
 
@@ -109,11 +68,8 @@ class RunPendingMigrations
     private const LOCK_TIMEOUT_SECONDS = 30;
 
     /**
-     * Overridable only so a test can ask for a 0-second wait: proving that an
-     * unavailable lock produces a 503 means holding the lock on another
-     * connection and then making a request, and at the real value that test
-     * would sit there for half a minute. Nothing in the application overrides
-     * this.
+     * Overridable only so the test proving that an unavailable lock produces a
+     * 503 can wait 0 seconds instead of 30.
      */
     protected function lockTimeoutSeconds(): int
     {
@@ -122,10 +78,8 @@ class RunPendingMigrations
 
     public function handle(Request $request, Closure $next): Response
     {
-        // Default TRUE (see config/app.php). A server that simply does not have
-        // the key must still self-heal — a silently-disabled server is the exact
-        // failure this whole class exists to prevent, so the fail-safe direction
-        // here is "missing means ON", not "missing means OFF".
+        // Defaults to true (config/app.php): a server without the key must
+        // still migrate itself.
         if (config('app.auto_migrate')) {
             $this->maybeMigrate();
         }
@@ -141,9 +95,8 @@ class RunPendingMigrations
         }
 
         if (! $this->acquireLock()) {
-            // 0 = timed out waiting for a worker that is already migrating,
-            // NULL = error. Either way we do not know the schema is current, so
-            // the request must not be served.
+            // Timed out behind a worker that is migrating, or an error. Either
+            // way the schema may not be current, so the request is not served.
             throw new SchemaUnavailable(sprintf(
                 'Could not acquire the migration lock (%s) within %d seconds; '
                 .'migrations are pending and the schema may be out of date.',
@@ -153,11 +106,8 @@ class RunPendingMigrations
         }
 
         try {
-            // Re-check UNDER the lock. Between the hot-path check above and the
-            // lock being granted, a concurrent worker may have queued ahead of
-            // us and finished the whole run — in which case there is nothing
-            // left to do and re-running `migrate` would be wasted work on every
-            // worker that piled up behind the first one.
+            // Re-checked under the lock: a worker queued ahead may already
+            // have finished the run.
             if ($this->hasPending()) {
                 $this->migrate();
             }
@@ -170,24 +120,18 @@ class RunPendingMigrations
      * Are there migration files that the `migrations` table has no row for?
      *
      * The paths are assembled the way BaseCommand::getMigrationPaths() does, so
-     * this cannot disagree with what `artisan migrate` would actually pick up,
-     * including any path a service provider registered.
+     * this agrees with what `artisan migrate` picks up, including any path a
+     * service provider registered.
      *
-     * Deliberately a boolean and deliberately separate from
-     * MigrateController::pendingMigrations(), which answers a different
-     * question (WHICH migrations, by name, for a JSON body an operator reads).
-     * That endpoint's behaviour is pinned by tooling outside this repo and is
-     * left untouched.
+     * Separate from MigrateController::pendingMigrations(), which lists the
+     * pending migrations by name for an operator and is pinned by tooling
+     * outside this repo.
      *
-     * protected, not private, only so AutoMigrateTest can call it on a
-     * throwaway subclass. The never-migrated branch below is the one state that
-     * cannot be reached through an HTTP test — reaching it means dropping the
-     * `migrations` table, and the request that follows would then try to re-run
-     * every migration against a database whose tables already exist (the
-     * framework's own create_cache_table is not guarded, so it would fail for a
-     * reason unrelated to what is being tested). Calling this directly is the
-     * only way to assert the thing that matters: that a missing ledger reports
-     * "everything is pending" instead of throwing SQLSTATE 42S02.
+     * Protected only so AutoMigrateTest can call it on a subclass. The
+     * never-migrated branch cannot be reached through an HTTP test: dropping
+     * the `migrations` table makes the next request re-run every migration
+     * against existing tables, and the framework's create_cache_table is not
+     * guarded.
      */
     /** @phpstan-impure It queries the migrations table, so two calls in one request can legitimately disagree — which is why the check is repeated under the lock. */
     protected function hasPending(): bool
@@ -203,11 +147,8 @@ class RunPendingMigrations
             return false;
         }
 
-        // On a database that has never been migrated the ledger does not exist
-        // yet — which is the state of EVERY server the first time this ships.
-        // Asking the repository would throw (SQLSTATE 42S02), so treat a missing
-        // repository as "everything is pending" rather than letting it escape as
-        // a 500 that no operator can act on.
+        // On a never-migrated database the ledger does not exist, and asking
+        // the repository would throw (SQLSTATE 42S02). Everything is pending.
         if (! $migrator->repositoryExists()) {
             return true;
         }
@@ -220,9 +161,7 @@ class RunPendingMigrations
         try {
             $exitCode = Artisan::call('migrate', ['--force' => true]);
         } catch (Throwable $e) {
-            // A migration that throws must not be swallowed into a normal
-            // response: the schema is now half-applied, which is strictly worse
-            // than not having migrated at all.
+            // The schema may now be half-applied, so the request is not served.
             throw new SchemaUnavailable(
                 'Automatic migration failed: '.$e->getMessage(),
                 previous: $e
@@ -254,10 +193,9 @@ class RunPendingMigrations
         );
 
         if ($row === null) {
-            // GET_LOCK always returns a row; no row means something other than
-            // MariaDB answered (a stubbed connection in a test, say). Refusing
-            // is the safe direction, but it is a programming error rather than
-            // an operational one, so it is not a SchemaUnavailable.
+            // GET_LOCK always returns a row, so no row means something other
+            // than MariaDB answered. A programming error, not a
+            // SchemaUnavailable.
             throw new UnexpectedValueException('GET_LOCK returned no row; the connection is not MariaDB/MySQL.');
         }
 
@@ -265,11 +203,9 @@ class RunPendingMigrations
     }
 
     /**
-     * Best-effort by design: the lock is released automatically when the
-     * connection closes at the end of the request, so a failure here cannot
-     * strand it. Throwing out of a finally{} would replace the real exception
-     * (a failed migration) with a meaningless one, which is the opposite of
-     * failing loud.
+     * Best-effort: the lock is released anyway when the connection closes at
+     * the end of the request. Throwing out of the finally{} would replace the
+     * real exception (a failed migration) with this one.
      */
     private function releaseLock(): void
     {

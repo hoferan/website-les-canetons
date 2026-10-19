@@ -35,10 +35,10 @@ class RoleController extends Controller
     #[Endpoint(operationId: 'role.index')]
     public function index(): AnonymousResourceCollection
     {
-        // `index()`, not `__invoke()` — see SectionController for why.
+        // `index()`, not `__invoke()`: see SectionController.
         //
-        // The permissions travel with the role rather than being fetched
-        // per member: see App\Http\Resources\RoleResource.
+        // The permissions travel with the role rather than being fetched per
+        // member (App\Http\Resources\RoleResource).
         $roles = Role::orderBy('id')->get();
 
         return RoleResource::collection($roles);

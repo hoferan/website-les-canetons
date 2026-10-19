@@ -11,13 +11,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * One thing a guest can book at an event: a menu, a seat, a child's portion.
  *
- * PER EVENT, not a reusable catalogue. Next year's souper is a form the
- * committee fills in, and an option list shared between years is one nobody
- * dares edit.
+ * Per event, not a reusable catalogue, so editing one year's options cannot
+ * change another's.
  *
- * `price_cents` is nullable — a free option, or one whose price lives in the
- * description, is a real case and must not be forced to invent a zero that
- * means "unknown".
+ * `price_cents` is nullable: a free option, or one whose price is in the
+ * description, must not store a zero that means "unknown".
  *
  * @property int|null $price_cents
  */
@@ -51,10 +49,9 @@ class RegistrationOption extends Model
     /**
      * True when somebody has already booked this option.
      *
-     * What stops a replace-all PUT from deleting it: the foreign key is
-     * RESTRICT, so the database would refuse anyway, but refusing in the
-     * application is what lets the committee be told WHICH option is in use
-     * rather than meeting a 500.
+     * Stops a replace-all PUT from deleting it. The RESTRICT foreign key would
+     * refuse too, but only with a 500; checking here lets the committee be
+     * told which option is in use.
      */
     public function isBooked(): bool
     {

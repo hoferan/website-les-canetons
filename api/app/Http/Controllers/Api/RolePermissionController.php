@@ -39,13 +39,12 @@ class RolePermissionController extends Controller
     {
         $permissions = $request->permissions();
 
-        // Checked BEFORE the write, so a refusal leaves no trace.
+        // Checked before the write, so a refusal leaves no trace.
         //
-        // NO SESSIONS ARE ENDED, unlike PUT /members/{member}/roles. Every
+        // Unlike PUT /members/{member}/roles, no sessions are ended. Every
         // request reads its permissions afresh (EffectivePermissions), so a
-        // grant taken away stops working on the holder's next request anyway,
-        // and ending the sessions of everybody holding `musician` because
-        // somebody edited it would log the whole band out.
+        // removed grant stops working on the holder's next request, and ending
+        // every `musician` session after an edit would log the whole band out.
         AccessIntegrity::assertMayReplacePermissions($request->user(), $role, $permissions);
 
         $role->syncPermissions($permissions);

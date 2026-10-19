@@ -23,14 +23,10 @@ class AccessIntegrityTest extends TestCase
     {
         parent::setUp();
 
-        // FIXTURE KEYS, not 'direction'/'committee'. Those two are reference
-        // data now, seeded by the 2026_09_07_000001 migration that
-        // RefreshDatabase runs, so re-creating them here is a duplicate-key
-        // error. Reading the seeded ones instead would be worse: this suite
-        // needs a role granting exactly one permission (below, `plain` grants
-        // events.manage, which the real committee role does not), and roles
-        // are editable data — a committee changing what `direction` grants
-        // must not turn this suite red.
+        // Fixture roles, not 'direction'/'committee'. Those are seeded by the
+        // 2026_09_07_000001 migration, so re-creating them is a duplicate-key
+        // error, and reading them would tie this suite to editable data: it
+        // needs roles granting exactly one permission each.
         $this->admins = Role::factory()->granting(Permission::MembersManage)->create();
         $this->plain = Role::factory()->granting(Permission::EventsManage)->create();
     }
@@ -87,10 +83,9 @@ class AccessIntegrityTest extends TestCase
         } catch (AccessIntegrityViolation $e) {
             $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
 
-            // Exception::$code is inherited, untyped, and expected by the
-            // wider PHP ecosystem to stay an int — it must NOT be shadowed
-            // with the machine token above. Pins the fix; don't "simplify"
-            // the property back to `code`.
+            // Exception::$code is inherited, untyped, and expected by the wider
+            // PHP ecosystem to stay an int, so the machine token must not
+            // shadow it. Do not rename errorCode to `code`.
             $this->assertSame(0, $e->getCode());
         }
     }
@@ -110,9 +105,7 @@ class AccessIntegrityTest extends TestCase
 
     public function test_a_member_without_the_permission_may_be_deleted_freely(): void
     {
-        // The assertion IS that the call returns rather than throwing.
-        // expectNotToPerformAssertions() says so honestly; assertTrue(true)
-        // would only be silencing PHPUnit's risky-test warning.
+        // The assertion is that the call returns without throwing.
         $this->expectNotToPerformAssertions();
 
         $actor = $this->member('actor', $this->admins);
@@ -143,9 +136,9 @@ class AccessIntegrityTest extends TestCase
     {
         $only = $this->member('only', $this->admins);
 
-        // Both conditions apply here: $only is the sole administrator, AND is
-        // acting on themselves. The orphan check must win; see the ordering
-        // comment in AccessIntegrity::assertAdministrationSurvives().
+        // $only is the sole administrator and acts on themselves. The orphan
+        // check wins; see the ordering comment in
+        // AccessIntegrity::assertAdministrationSurvives().
         $this->assertRefusedWith('cannot_remove_last_administrator', fn () => AccessIntegrity::assertMayReplaceRoles($only, $only, $this->keeping($this->plain)));
     }
 
@@ -158,9 +151,6 @@ class AccessIntegrityTest extends TestCase
 
     public function test_keeping_only_the_baseline_on_a_non_administrator_is_allowed(): void
     {
-        // The assertion IS that the call returns rather than throwing.
-        // expectNotToPerformAssertions() says so honestly; assertTrue(true)
-        // would only be silencing PHPUnit's risky-test warning.
         $this->expectNotToPerformAssertions();
 
         $actor = $this->member('actor', $this->admins);
@@ -215,10 +205,9 @@ class AccessIntegrityTest extends TestCase
 
     public function test_taking_members_manage_from_the_only_role_granting_it_is_refused_though_two_people_hold_it(): void
     {
-        // Two holders, so a count of PEOPLE says administration survives. It
-        // does not: both hold it through this one role. The actor is one of
-        // the two, so the self-demotion applies as well and the orphan code
-        // must still win.
+        // A count of people says administration survives, but both hold it
+        // through this one role. The actor is one of them, so self-demotion
+        // applies too, and the orphan code still wins.
         $actor = $this->member('actor', $this->admins);
         $this->member('other', $this->admins);
 
@@ -260,9 +249,9 @@ class AccessIntegrityTest extends TestCase
 
     public function test_an_account_without_members_manage_is_not_demoted_by_a_role_edit(): void
     {
-        // The role editor will be gated on its own permission (#194), so its
-        // caller need not administer members. Such a caller has nothing to be
-        // demoted from; only losing members.manage they HELD is a demotion.
+        // The role editor is gated on its own permission (#194), so its caller
+        // need not administer members. Only losing a members.manage the
+        // caller held is a demotion.
         $this->expectNotToPerformAssertions();
 
         $actor = $this->member('actor', $this->plain);
@@ -356,8 +345,8 @@ class AccessIntegrityTest extends TestCase
 
     public function test_members_manage_is_checked_before_roles_manage(): void
     {
-        // A write that would orphan both is refused with the older code, so a
-        // client seeing one refusal sees the same one it always did.
+        // A write that would orphan both answers the members.manage code, so
+        // a client keeps seeing the refusal it already handles.
         $both = Role::factory()->granting(Permission::MembersManage, Permission::RolesManage)->create();
         $actor = $this->member('actor', $both);
 
@@ -366,10 +355,9 @@ class AccessIntegrityTest extends TestCase
 
     public function test_a_permission_nobody_held_does_not_block_a_write(): void
     {
-        // Nobody in this database holds roles.manage. Refusing every write
-        // for an orphan the write did not cause would freeze member
-        // administration on any database in that state, with nothing the
-        // committee could do from the site to get out of it.
+        // Nobody here holds roles.manage. Refusing every write for an orphan
+        // the write did not cause would freeze member administration, with
+        // no way out from the site.
         $this->expectNotToPerformAssertions();
 
         $actor = $this->member('actor', $this->admins);

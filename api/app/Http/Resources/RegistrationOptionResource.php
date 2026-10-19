@@ -10,11 +10,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * One bookable option, as the public form and the committee's editor both
  * see it.
  *
- * `priceCents` travels as an INTEGER, never a formatted string. Currency
- * formatting is a display concern and belongs beside the language it is
- * rendered in — which for this project means web/src/i18n/, the only place
- * French exists. Sending "CHF 45.-" from here would put French in an API
- * body and make a total impossible to compute.
+ * `priceCents` travels as an integer, never a formatted string: currency
+ * formatting happens in web/src/i18n/, and a string like "CHF 45.-" could not
+ * be summed.
  *
  * @mixin RegistrationOption
  */

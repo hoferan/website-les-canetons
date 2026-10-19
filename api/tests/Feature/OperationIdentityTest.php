@@ -7,15 +7,11 @@ use PHPUnit\Framework\TestCase;
 /**
  * How an operation names itself, and how a group explains itself.
  *
- * NEITHER IS COSMETIC. An operationId is what orval turns into the hook name a
- * screen imports, so it is the client's vocabulary — `useMemberRoleReplace`
- * rather than `useMemberRole`. And a group with no description is a heading in
- * the reference's sidebar with nothing under it, which is where a developer
- * decides whether the section they are looking at is the one they want.
- *
- * Nine operations carried a class-derived name until 2026-09-11, because an
- * invokable controller has no method for Scramble to build one from. All seven
- * groups were bare.
+ * An operationId is what orval turns into the hook name a screen imports
+ * (`useMemberRoleReplace`), so it is the client's vocabulary. A group with no
+ * description is an empty heading in the reference's sidebar. An invokable
+ * controller has no method for Scramble to build a name from, so it needs an
+ * explicit one.
  */
 class OperationIdentityTest extends TestCase
 {
@@ -45,8 +41,8 @@ class OperationIdentityTest extends TestCase
             $id = $operation['operationId'] ?? null;
 
             // camelCase either side of one dot. `memberAttendance.destroy` and
-            // `registrationOption.replace` are the shape; `guestListExport` and
-            // `MemberRoleController` are not.
+            // `registrationOption.replace` match; `guestListExport` and
+            // `MemberRoleController` do not.
             if (! is_string($id) || preg_match('/^[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*$/', $id) !== 1) {
                 $wrong[] = "{$where}: ".var_export($id, true);
             }

@@ -14,9 +14,7 @@ class ContactMessageReadTest extends TestCase
 
     public function test_an_anonymous_caller_gets_401_not_403(): void
     {
-        // 401 rather than 403, so a caller is told to log in rather than told
-        // they are not allowed — see the note in CLAUDE.md on pairing
-        // auth:sanctum with permission:.
+        // auth:sanctum paired with permission: tells the caller to log in.
         $this->getJson('/api/v1/contact-messages')->assertStatus(401);
     }
 
@@ -79,12 +77,9 @@ class ContactMessageReadTest extends TestCase
             ->getJson("/api/v1/contact-messages/{$message->id}")
             ->assertOk()
             ->assertHeader('ETag')
-            // Bare, not `data.message`: single-resource reads in this API are
-            // unwrapped (JsonResource::withoutWrapping() in AppServiceProvider) —
-            // the {data, meta} envelope is only for endpoints that answer with a
-            // list, per PaginatesCollections. Every other show() test in this
-            // suite (e.g. EventIndexTest::assertJsonPath('title', …)) reads a
-            // field the same way.
+            // Bare, not `data.message`: single-resource reads are unwrapped
+            // (JsonResource::withoutWrapping() in AppServiceProvider). Only
+            // lists get the {data, meta} envelope, from PaginatesCollections.
             ->assertJsonPath('message', $message->message);
     }
 

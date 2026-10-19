@@ -49,22 +49,14 @@ class EventSeriesController extends Controller
     #[Endpoint(operationId: 'event.series')]
     public function __invoke(StoreEventSeriesRequest $request): JsonResponse
     {
-        // Writes a whole season in one request — thirteen rehearsals, the
-        // gigs, the AG.
+        // A generator, with no stored rule and no `series_id`: it writes N
+        // independent events and forgets they arrived together, so each row
+        // is an ordinary event, edited and answered like any other.
+        // EventSeriesTest asserts the column is absent, so nobody adds one.
         //
-        // A GENERATOR, NOT AN ENTITY. This endpoint stores no
-        // rule and no `series_id`: it writes N independent events and forgets
-        // they arrived together. That is what makes "how does a player attend
-        // one occurrence?" a non-question — each row is an ordinary event,
-        // edited and answered like any other. EventSeriesTest asserts the
-        // absence of the column directly, because the cheapest way for that
-        // decision to erode is for somebody to add one.
-        //
-        // Single-action, matching MemberRoleController and
-        // MemberPasswordController. That is not only style: Scramble names the
-        // generated operation after the controller and drops the method for
-        // single-action ones, which is what makes the client hook
-        // `useEventSeries` rather than `useEventSeriesStore`.
+        // Single-action, so Scramble names the operation after the controller
+        // and the client hook is `useEventSeries` rather than
+        // `useEventSeriesStore`.
         $data = $request->validated();
 
         /** @var array<string, mixed> $template */
@@ -75,29 +67,22 @@ class EventSeriesController extends Controller
         /** @var Member|null $actor */
         $actor = $request->user();
 
-        // ONE TRANSACTION FOR THE WHOLE BATCH. A half-created season is worse
-        // than none: the committee has no way to tell which half landed, and
-        // the obvious repair — send it again — duplicates whatever did.
+        // One transaction for the whole batch. A half-created season is worse
+        // than none: the committee cannot tell which half landed, and sending
+        // it again duplicates whatever did.
         //
-        // NO TEST PINS IT. MEASURED 2026-09-10 by removing this wrapper: all
-        // 14 tests stay green, test_one_bad_date_writes_nothing_at_all
-        // included. That test passes because `dates.*` refuses the bad date in
-        // validation, before this method runs at all — so what it actually pins
-        // is that the batch is vetted before any write, which is the valuable
-        // half and is not this. What the transaction covers is a failure
-        // part-way through the loop: a deadlock, a lost connection, a unique
-        // index some later release adds. None of those is reachable from a
-        // feature test, so it is kept on the argument rather than on a red bar.
+        // No test pins it; removing it keeps the suite green.
+        // test_one_bad_date_writes_nothing_at_all passes because validation
+        // refuses the bad date before this method runs. The transaction covers
+        // a failure part-way through the loop (a deadlock, a lost connection),
+        // which no feature test can reach.
         $events = DB::transaction(function () use ($template, $dates, $actor): array {
             $created = [];
 
             foreach ($dates as $date) {
-                // BandTime::compose, never a bare parse. The band's zone is
-                // Europe/Zurich, and a season crosses the daylight-saving
-                // change: parsing "$date $time" against app.timezone (UTC)
-                // would put every event outside CEST an hour out, so half a
-                // season would be wrong and the other half right. This is the
-                // reason BandTime exists at all.
+                // BandTime::compose, never a bare parse: a season crosses the
+                // daylight-saving change, and parsing "$date $time" against
+                // app.timezone (UTC) would put half the season an hour out.
                 $created[] = $event = Event::create([
                     'title' => $template['title'],
                     'starts_at' => BandTime::compose($date, $template['startTime']),
@@ -108,10 +93,8 @@ class EventSeriesController extends Controller
                     'notes' => $template['notes'] ?? null,
                 ]);
 
-                // `event.created`, the same action a single create writes —
-                // they are the same thing, and somebody chasing an event
-                // through the audit log should not have to know which screen
-                // made the row.
+                // `event.created`, as a single create writes, so the audit
+                // log does not depend on which screen made the row.
                 Audit::record($actor, 'event.created', 'event', $event->id, $event->title);
             }
 
@@ -135,12 +118,9 @@ class EventSeriesController extends Controller
         // list from this response rather than guessing what it just made.
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, EventController::answerable($request));
 
-        // BATCHED ON THE COLLECTION, not per event: Collection::loadCount()/
-        // loadSum() run one query for the whole batch via a WHERE IN, the same
-        // way index()'s ->withCount()/->withSum() run one query for the whole
-        // list. Calling these on each Model in turn would run one query per
-        // date and blow test_a_season_does_not_cost_a_query_per_row_beyond_its_writes'
-        // budget the moment a season has more than a couple of rows.
+        // Loaded on the collection, so each relation costs one WHERE IN query
+        // for the whole batch rather than one per date.
+        // test_a_season_does_not_cost_a_query_per_row_beyond_its_writes pins it.
         $events = Collection::make($events);
         $events->load(['tags', Event::POSTER]);
         $events->loadCount(EventController::counts());

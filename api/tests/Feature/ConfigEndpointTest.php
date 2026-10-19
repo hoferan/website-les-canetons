@@ -5,10 +5,8 @@ namespace Tests\Feature;
 use Tests\TestCase;
 
 /**
- * The SPA's only source of server configuration.
- *
- * Replaces what the old app rendered server-side from config.php: the env
- * ribbon (App\Env). Public on purpose — an anonymous visitor sees the ribbon.
+ * The SPA's only source of server configuration, including the env ribbon.
+ * Public on purpose: an anonymous visitor sees the ribbon.
  */
 class ConfigEndpointTest extends TestCase
 {
@@ -25,9 +23,8 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
-     * Mirrors App\Env exactly: anything that is not a known non-prod environment
-     * collapses to prod, so a stale or misspelled APP_ENV can never paint a
-     * staging ribbon on the live site.
+     * Anything that is not a known non-prod environment collapses to prod, so a
+     * stale or misspelled APP_ENV cannot paint a staging ribbon on the live site.
      */
     public function test_an_unknown_environment_collapses_to_prod(): void
     {
@@ -37,13 +34,10 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
-     * The regression this endpoint must not repeat: Docker dev sets
-     * APP_ENV=local (Laravel's own idiomatic value for local development —
-     * other code, e.g. Scramble's docs-UI gate, keys off that literal string,
-     * so renaming it to `dev` is not an option). Locally the OLD app's
-     * config.docker.php sets its own 'env' to 'dev' and shows a DEV ribbon, so
-     * this response must translate `local` onto `dev` too, or the SPA would
-     * show no ribbon at all in local development.
+     * Docker dev sets APP_ENV=local, Laravel's own value, which other code
+     * (Scramble's docs-UI gate) keys off, so it cannot be renamed to `dev`.
+     * The response translates `local` onto `dev`, or the SPA would show no
+     * ribbon in local development.
      */
     public function test_local_is_mapped_to_the_dev_ribbon(): void
     {
@@ -53,10 +47,8 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
-     * Laravel's idiomatic production value must land on 'prod' deliberately,
-     * not merely by falling through the same branch as a genuinely unknown
-     * value — pinning this stops a future edit to the translation map from
-     * silently breaking it.
+     * Laravel's production value lands on 'prod' through the fallback today;
+     * pinning it keeps an edit to the translation from breaking it silently.
      */
     public function test_production_is_mapped_to_prod(): void
     {
@@ -65,11 +57,7 @@ class ConfigEndpointTest extends TestCase
         $this->getJson('/api/v1/config')->assertJsonPath('env', 'prod');
     }
 
-    /**
-     * `dev`->`dev` is otherwise only reached indirectly via the local->dev
-     * translation test above; pinned directly so ENV_MAP's own dev entry
-     * cannot silently drift (e.g. a typo like 'dev' => 'deb').
-     */
+    /** Pinned directly so the translation's own `dev` entry cannot drift. */
     public function test_dev_is_mapped_to_dev(): void
     {
         config(['app.env' => 'dev']);
@@ -78,9 +66,8 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
-     * qa is a real staging environment whose ribbon exists specifically to
-     * stop someone mistaking it for production — a typo in ENV_MAP's qa entry
-     * (e.g. 'qa' => 'q') would ship unnoticed without this.
+     * The QA ribbon exists to stop someone mistaking it for production, and a
+     * typo in the `qa` entry would otherwise ship unnoticed.
      */
     public function test_qa_is_mapped_to_qa(): void
     {
@@ -90,10 +77,9 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
-     * LEAK GUARD. This endpoint is public and unauthenticated, so it is the one
-     * place where a careless config() spread would publish database or mail
-     * credentials to the internet. The assertion is an allowlist, not a
-     * blocklist: any new top-level key fails until it is added deliberately.
+     * A leak guard. This endpoint is public, so a careless config() spread here
+     * would publish database or mail credentials. The key check is an
+     * allowlist: any new top-level key fails until it is added deliberately.
      */
     public function test_it_exposes_only_allowlisted_keys(): void
     {
@@ -112,10 +98,8 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
-     * The KEY SET is fixed in code, not read from the environment. This
-     * response is public and unauthenticated, and the config it draws from
-     * also carries database and mail secrets — so the shape is a reviewed
-     * list, never a dump.
+     * The flag set is fixed in code, not read from the environment: the config
+     * it draws from also carries secrets, so the shape is a reviewed list.
      */
     public function test_it_reports_every_known_feature_flag(): void
     {
@@ -151,11 +135,8 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
-     * The other two falsy strings PHP's boolean cast gets wrong: (bool) '0'
-     * and (bool) '' both mean something different from what filter_var()
-     * reports here. Pinned separately from 'false' above so the fail-closed
-     * rule is proven on all three shapes a longhand .env value can take, not
-     * assumed from the one string that happens to spell out the word.
+     * '0' and '' are the other longhand .env shapes; with 'false' above, the
+     * fail-closed rule is checked on all three.
      */
     public function test_the_digit_zero_string_reads_as_false(): void
     {
@@ -172,16 +153,12 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
-     * A stale ribbon would survive a server-side change, so this must never be
-     * cached — the old app re-read config.php on every request.
+     * A cached response would keep a stale ribbon after a server-side change.
      *
-     * Not an exact-match assertion: Symfony's Response::prepare() appends
-     * ", private" to Cache-Control whenever a session cookie is present (this
-     * route runs after StartSession, so one always is), regardless of what the
-     * controller set. That addition only tightens the directive further — it
-     * never weakens it into something revalidate-and-reuse — so this asserts
-     * the `no-store` directive is really present rather than the header's exact
-     * string value.
+     * Not an exact match: Symfony's Response::prepare() appends ", private" to
+     * Cache-Control whenever a session cookie is present (this route runs
+     * after StartSession, so one always is). That only tightens the directive,
+     * so the test checks that `no-store` is present.
      */
     public function test_it_is_not_cacheable(): void
     {

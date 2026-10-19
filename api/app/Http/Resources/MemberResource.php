@@ -10,25 +10,24 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * One person on the roster.
  *
- * EVERY MEMBER HAS AN ACCOUNT (2026_09_08_000001). The roster is the people the
- * band tracks for events, and all of them can log in — a young member's parent
- * uses their login on their behalf. People the band merely displays, such as
- * instructors or honorary members, are CONTENT and are not in this table at
- * all, so there is no `hasAccount` question to answer.
+ * Every member has an account and can log in (a young member's parent uses
+ * the child's login). People the band only displays, such as instructors or
+ * honorary members, are content and not in this table, so there is no
+ * `hasAccount` field.
  *
- * NO PASSWORD FIELD, AND NO PERMISSIONS FIELD.
+ * There is no password field: the model's $hidden does not apply to a
+ * Resource, so the protection is not reading $this->password here.
+ * MemberIndexTest asserts the rendered body carries no hash.
  *
- * The password hash is absent because nothing may ever read it back. The
- * model's $hidden protects a directly-serialised model, but a Resource that
- * read $this->password would sail straight past it — so the protection here is
- * simply not writing the line, and MemberIndexTest asserts the rendered body
- * carries no hash.
+ * There is no permissions field either. This sends roleIds, GET /api/v1/roles
+ * sends what each role grants, and the UI joins them. That keeps every
+ * permission traceable to a role (ADR 0014) and the endpoint at a fixed number
+ * of queries.
  *
- * Permissions are absent because they are answered by the ROLE: this sends
- * roleIds, GET /api/v1/roles sends what each role grants, and the UI joins them.
- * That is what keeps "why does she have this?" answerable — always "because she
- * is in Team Direction" (ADR 0014) — and it keeps the endpoint at a fixed
- * number of queries instead of one per member.
+ * The committee seat travels as an id, unlike the register's name: only the
+ * form shows the seat, and it resolves it from GET /api/v1/committee-functions.
+ * A name would be hashed into the member's entity tag, so renaming a seat
+ * would move the tag of everybody holding it and refuse open edits.
  *
  * @mixin Member
  */
@@ -50,13 +49,6 @@ class MemberResource extends JsonResource
             'sectionId' => $this->section_id,
             'sectionName' => $this->section?->name,
 
-            // THE ID, NOT THE NAME, unlike sectionName above. The roster
-            // screen renders the register in its table and so needs the name
-            // here; nothing renders the committee seat outside the form, which
-            // resolves it from GET /api/v1/committee-functions. A name here
-            // would also be hashed into the member's entity tag — so fixing a
-            // typo in one seat would move the tag of everybody holding it and
-            // refuse whatever roster edits were open at the time.
             'committeeFunctionId' => $this->committee_function_id,
             'instructorOfSectionId' => $this->instructor_of_section_id,
             'publicVisible' => $this->public_visible,
@@ -67,10 +59,9 @@ class MemberResource extends JsonResource
     }
 
     /**
-     * A typed method, not an inline expression. Measured 2026-09-07: an inline
+     * A typed method, not an inline expression: an inline
      * `->pluck('id')->all()` types as {"type":"object","additionalProperties":{}}
-     * in the OpenAPI document and arrives in TypeScript as an untyped object.
-     * The docblock is what makes it number[].
+     * in the OpenAPI document. The docblock makes it number[].
      *
      * @return list<int>
      */
@@ -82,10 +73,9 @@ class MemberResource extends JsonResource
     /**
      * Typed for the same reason as roleIds().
      *
-     * The ternary is what keeps it nullable in the document: Scramble reads the
-     * expression rather than the signature, so a `?Iso8601` helper here would
-     * publish a required `string` and every generated client would stop
-     * expecting the null a member who has never logged in returns.
+     * The ternary keeps it nullable in the document: Scramble reads the
+     * expression rather than the signature, so a `?Iso8601` helper would
+     * publish a required `string`, and a member who never logged in has null.
      */
     private function lastLoginAt(): ?Iso8601
     {

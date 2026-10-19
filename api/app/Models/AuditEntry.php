@@ -9,7 +9,7 @@ class AuditEntry extends Model
 {
     protected $table = 'audit_log';
 
-    // Only created_at exists — an audit entry is never updated.
+    // Only created_at exists: an audit entry is never updated.
     public const UPDATED_AT = null;
 
     protected $fillable = [

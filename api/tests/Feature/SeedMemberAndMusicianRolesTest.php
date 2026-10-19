@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * DONE WHEN, from #190: holding attendance.respond is the same set of members
- * as section_id IS NOT NULL, and holding events.view is every member. Both on a
- * fresh database and on one migrated from main.
+ * After this migration (#190), the members holding attendance.respond are
+ * exactly those with a register, and every member holds events.view. Both on a
+ * fresh database and on one that predates the migration.
  */
 class SeedMemberAndMusicianRolesTest extends TestCase
 {

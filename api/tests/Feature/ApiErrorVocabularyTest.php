@@ -12,32 +12,25 @@ use ReflectionClass;
 
 /**
  * Vocabulary guard: every machine token the API can emit must have copy in
- * every locale the SPA ships — web/src/i18n/fr.ts and web/src/i18n/de.ts.
+ * every locale the SPA ships, web/src/i18n/fr.ts and web/src/i18n/de.ts.
  *
- * WHY THIS EXISTS. translateApiError() is the ONLY place either language is
- * computed in the whole system, reading whichever catalogue i18next has
- * active. It looks up three vocabularies — `code` under `errors.*`,
- * `fields[].reason` under `validation.*` and `fields[].field` under
- * `fields.*` — and a miss does not throw. A missing code or reason degrades to
- * the generic fallback sentence; a missing field name leaks the raw ENGLISH
- * identifier onto the screen; and a token whose copy interpolates would print
- * a literal {{placeholder}}. All of that is silent, and a locale simply absent
- * from a token falls back to French via i18next's fallbackLng — silent in a
- * different way, a French sentence on a German reader's screen. That class of
- * bug was introduced three times during this migration and caught three times
- * by hand — this makes it mechanical.
+ * translateApiError() is the only place either language is computed. It looks
+ * up `code` under `errors.*`, `errors[].reason` under `validation.*` and
+ * `errors[].field` under `fields.*`, and a miss does not throw: a missing code
+ * or reason degrades to the generic fallback sentence, a missing field name
+ * puts the raw English identifier on screen, and copy that interpolates would
+ * print a literal {{placeholder}}. A token missing from one locale falls back
+ * to French through i18next's fallbackLng. All of it is silent.
  *
- * DERIVATION, NOT DUPLICATION. Hardcoding the token lists here would just move
- * the rot: the list would go stale the first time a controller gained a new
- * code. So each list is read out of the code that emits it —
- * ApiError::REASONS by reflection, the FormRequests' rules() keys by
- * reflection, and the hand-rolled `'code'`/`'reason'`/`'field'` literals by
- * scanning app/. Only the handful of tokens no mechanical read can see are
- * listed explicitly, each with the construct it comes from.
+ * Each token list is read out of the code that emits it, so it cannot go
+ * stale: ApiError::REASONS and the FormRequests' rules() keys by reflection,
+ * the hand-rolled `'code'`/`'reason'`/`'field'` literals by scanning app/.
+ * Only the few tokens no mechanical read can see are listed explicitly, each
+ * with the construct it comes from.
  *
- * Because derivation can under-report (a regex that matches nothing would make
- * this test vacuously green), every derived list is itself checked against a
- * floor of tokens known to be reachable — see the MUST_INCLUDE_* constants.
+ * A regex that matches nothing would make this vacuously green, so every
+ * derived list is checked against a floor of tokens known to be reachable
+ * (the MUST_INCLUDE_* constants).
  *
  * It extends PHPUnit's TestCase rather than Tests\TestCase: it reads source
  * files and uses reflection, and needs no booted framework.
@@ -48,13 +41,12 @@ class ApiErrorVocabularyTest extends TestCase
      * Where each locale's vocabulary lives: <root>/web/src/i18n/<locale>.ts,
      * three levels up from this file.
      *
-     * One layout covers every place the suite runs. A developer's checkout,
-     * CI and a web session run it from the repository tree, and so does the
-     * compose `php` service, which mounts the whole repository at /repo. Run
-     * it inside `web` instead and this fails: that container's document root
-     * is the built artifact, with no web/ source in it.
+     * A developer's checkout, CI, a web session and the compose `php` service
+     * (which mounts the repository at /repo) all run the suite from the
+     * repository tree. Inside `web` this fails: that container's document root
+     * is the built artifact, with no web/ source.
      *
-     * Kept a list so the failure message below can name every place it looked.
+     * A list, so the failure message can name every place it looked.
      */
     private const I18N_DIRS = [
         __DIR__.'/../../../web/src/i18n',
@@ -62,11 +54,8 @@ class ApiErrorVocabularyTest extends TestCase
 
     /**
      * Every locale the SPA ships, each of which must carry copy for every token.
-     *
-     * GERMAN IS NOT OPTIONAL HERE. de-CH is a shipped locale, and i18next's
-     * fallbackLng would quietly render a French error message to a German
-     * reader for any token nobody translated — silent, and exactly the class of
-     * bug this file exists to make mechanical.
+     * Without German here, i18next's fallbackLng would show a German reader a
+     * French message for any untranslated token.
      */
     private const LOCALES = ['fr', 'de'];
 
@@ -75,13 +64,8 @@ class ApiErrorVocabularyTest extends TestCase
 
     /**
      * Scanned alongside app/, because several exception renderers live there and
-     * emit codes directly.
-     *
-     * This was a blind spot twice over. The scan originally covered app/ only,
-     * so `rate_limited` — raised by the ThrottleRequestsException renderer in
-     * bootstrap/app.php — read as "documented but never emitted" while being
-     * emitted on every rate-limited public request. Directories are not the
-     * boundary that matters here; "everywhere a code literal can appear" is.
+     * emit codes directly, `rate_limited` from the ThrottleRequestsException
+     * renderer among them.
      */
     private const BOOTSTRAP_FILE = __DIR__.'/../../bootstrap/app.php';
 
@@ -110,19 +94,11 @@ class ApiErrorVocabularyTest extends TestCase
     /**
      * The second way a code reaches a response: carried on an exception.
      *
-     * These four classes take the code as a constructor argument and are
-     * rendered by closures in bootstrap/app.php, which sits outside APP_DIR —
-     * so a scan for `::json(<status>, '<code>'` never encounters them.
-     *
-     * THIS REPLACED A HAND-WRITTEN EXTRA_CODES LIST, and the replacement is the
-     * point. That list named the three AccessIntegrityViolation codes and was
-     * never extended when AttendanceRefused and ReauthenticationFailed arrived,
-     * so `answer_already_settled`, `cannot_record_for_self`, `not_answerable`
-     * and `reauth_failed` were invisible to the scan — and
-     * test_every_emittable_code_has_copy_in_every_locale was quietly not checking any of
-     * them. They happened to have French. A list that must be remembered is a
-     * list that will not be; a pattern that matches the CONSTRUCT covers every
-     * future one for free.
+     * These classes take the code as a constructor argument and are rendered by
+     * closures in bootstrap/app.php, so a scan for `::json(<status>, '<code>'`
+     * never meets them. The scan matches the `new <Class>(` construct, so every
+     * throw site is covered without listing its codes; a hand-written code list
+     * is one somebody forgets to extend.
      */
     private const CODE_CARRYING_EXCEPTIONS = [
         'AccessIntegrityViolation',
@@ -132,10 +108,9 @@ class ApiErrorVocabularyTest extends TestCase
     ];
 
     /**
-     * Floors for the derived lists, so a derivation that silently stops working
-     * fails loudly instead of passing on an empty set. These are NOT the
-     * authoritative lists — the derivations are; growing one of those needs no
-     * edit here.
+     * Floors for the derived lists, so a derivation that stops working fails
+     * instead of passing on an empty set. The derivations are the
+     * authoritative lists; growing one needs no edit here.
      */
     private const MUST_INCLUDE_REASONS = [
         'required', 'too_long', 'invalid_format', 'invalid_type',
@@ -149,12 +124,11 @@ class ApiErrorVocabularyTest extends TestCase
         'method_not_allowed', 'invalid_session', 'invalid_credentials',
         'service_unavailable', 'cannot_remove_last_administrator',
         'cannot_demote_self', 'cannot_delete_self',
-        // One from each code-carrying exception class, so a regex that stops
-        // matching that construct fails here rather than silently shrinking the
-        // derived set — which is exactly how these four went unchecked before.
+        // Code-carrying exceptions, so a regex that stops matching that
+        // construct fails here instead of shrinking the derived set.
         'not_answerable', 'reauth_failed', 'answer_already_settled',
-        // Emitted from bootstrap/app.php, not from app/ — the floor that keeps
-        // that file in the scan.
+        // Emitted from bootstrap/app.php, not from app/: keeps that file in
+        // the scan.
         'rate_limited',
     ];
 
@@ -163,14 +137,9 @@ class ApiErrorVocabularyTest extends TestCase
     ];
 
     /*
-     * There is deliberately NO exemption list here.
-     *
-     * This file once carried a KNOWN_GAPS constant holding the single token the
-     * guard found untranslated (fields.weekend), paired with a test that failed
-     * the moment the French copy landed — a self-deleting escape hatch. The copy
-     * landed, so both are gone. An empty exemption list is an invitation to add
-     * the next entry; a missing one means the only way to satisfy this guard is
-     * to write the French.
+     * There is deliberately no exemption list here. An empty one invites the
+     * next entry; without one, the only way to satisfy this guard is to write
+     * the copy.
      */
 
     // ---------------------------------------------------------------- the tests
@@ -191,21 +160,14 @@ class ApiErrorVocabularyTest extends TestCase
     }
 
     /**
-     * App\Support\ErrorVocabulary is CHECKED against the source scan, in both
-     * directions, rather than trusted.
+     * App\Support\ErrorVocabulary is checked against the source scan in both
+     * directions, so it describes the API instead of a wish about it. It feeds
+     * the OpenAPI `code` enum and the locale-coverage tests above.
      *
-     * That is what makes it a description of the API rather than a wish about
-     * it. It feeds three readers — the OpenAPI `code` enum, the problem-type
-     * pages at /api/problems, and the French-coverage test above — and a
-     * hand-maintained list feeding three readers is exactly the sort of thing
-     * that rots six months after the person who wrote it moved on.
-     *
-     * Both directions matter, and they catch opposite mistakes. A code the
-     * source emits but the vocabulary omits ships a problem type with no
-     * documentation, and a `type` URI that 404s. A code the vocabulary
-     * documents but nothing emits publishes a page for an error that cannot
-     * happen, which is worse than no page: a developer reads it and writes a
-     * branch that never runs.
+     * The two directions catch opposite mistakes. A code the source emits but
+     * the vocabulary omits ships with no status, title or detail. A code the
+     * vocabulary lists but nothing emits documents an error that cannot
+     * happen, and a developer writes a branch for it that never runs.
      */
     public function test_the_error_vocabulary_matches_what_the_code_emits(): void
     {
@@ -284,8 +246,8 @@ class ApiErrorVocabularyTest extends TestCase
     /**
      * Reason tokens: every value of ApiError::REASONS (read by reflection, so
      * this cannot drift from the map) plus every `'reason' => '...'` literal in
-     * app/ (the hand-rolled ones in EventController and ResponseController),
-     * plus JpegInspector::PROBLEMS, ImageSet::PROBLEMS and EXTRA_REASONS.
+     * app/ (hand-rolled, as in EventController), plus JpegInspector::PROBLEMS,
+     * ImageSet::PROBLEMS and EXTRA_REASONS.
      *
      * @return list<string>
      */
@@ -315,18 +277,16 @@ class ApiErrorVocabularyTest extends TestCase
 
     public function test_every_code_carries_the_status_the_source_emits_it_with(): void
     {
-        // WHY THIS IS SCANNED AND NOT DERIVED. App\Support\ErrorVocabulary now
-        // carries a status per code, and that status is what the OpenAPI
-        // document groups its responses by — so the document, the extension
-        // that builds it and the tests that read it all agree with the map by
-        // construction. Filing a code under the wrong number would be invisible
-        // to every one of them and wrong in every generated client. The only
-        // way to catch it is to read the status off the CODE THAT RAISES IT,
-        // which is what this does.
+        // Scanned, not derived. App\Support\ErrorVocabulary carries a status
+        // per code, and the OpenAPI document groups its responses by it, so
+        // the document, its extension and the tests that read it agree with
+        // the map by construction. A code filed under the wrong status would
+        // be invisible to all of them and wrong in every generated client, so
+        // the status is read off the code that raises it.
         $pairs = $this->emittedStatuses();
 
-        // The floor, for the reason every derivation here has one: a regex that
-        // stopped matching would make this vacuously green.
+        // A floor: a regex that stopped matching would make this vacuously
+        // green.
         self::assertGreaterThanOrEqual(
             20,
             count($pairs),
@@ -372,9 +332,8 @@ class ApiErrorVocabularyTest extends TestCase
      *    renderers, the controllers and the middleware;
      *  - `new AttendanceRefused(<status>, '<code>'` and ReauthenticationFailed,
      *    which carry their own because theirs varies;
-     *  - AccessIntegrityViolation, which carries NO status — the render closure
-     *    in bootstrap/app.php supplies it, so that literal is read from there
-     *    rather than assumed here.
+     *  - AccessIntegrityViolation, which carries no status: the render closure
+     *    in bootstrap/app.php supplies it, so the literal is read from there.
      *
      * @return array<string, list<int>>
      */
@@ -412,9 +371,8 @@ class ApiErrorVocabularyTest extends TestCase
      *
      * AccessIntegrityViolation is the only one: every violation it carries is a
      * conflict, so bootstrap/app.php renders the lot at one status and the
-     * throw sites name only the code. Reading that literal out of the closure
-     * keeps this test anchored on the source rather than on a number repeated
-     * here.
+     * throw sites name only the code. The status is read out of the closure,
+     * not repeated here.
      *
      * @return array<string, int>
      */
@@ -443,20 +401,20 @@ class ApiErrorVocabularyTest extends TestCase
     }
 
     /**
-     * Code tokens: every `::json(<status>, '<code>'` call site in app/ — which
-     * covers both ApiError's own named helpers (self::json(401,
-     * 'not_authenticated', …)) and the controllers' direct ApiError::json(…)
-     * calls, including SignupController's multi-line one — plus EXTRA_CODES.
+     * Code tokens: every `::json(<status>, '<code>'` call site in app/ and
+     * bootstrap/app.php (ApiError's own named helpers such as
+     * self::json(401, 'not_authenticated', …) and the controllers' direct
+     * ApiError::json(…) calls), plus every code a CODE_CARRYING_EXCEPTIONS
+     * class is constructed with.
      *
      * @return list<string>
      */
     private function emittableCodes(): array
     {
-        // `new SomeRefusal(..., 'the_code', ...)` — the code is not always the
+        // `new SomeRefusal(..., 'the_code', ...)`: the code is not always the
         // first argument (AttendanceRefused and ReauthenticationFailed put the
         // status first, because theirs varies), so this takes the first
-        // snake_case string literal inside the constructor call rather than
-        // assuming a position. [^)]* keeps it inside that call.
+        // snake_case string literal inside the call. [^)]* keeps it there.
         $carried = sprintf(
             "/new\s+(?:%s)\(\s*[^)]*?'([a-z_]{4,})'/",
             implode('|', self::CODE_CARRYING_EXCEPTIONS),
@@ -498,20 +456,15 @@ class ApiErrorVocabularyTest extends TestCase
             $rules = $instance->rules();
             self::assertNotEmpty($rules, "{$class}::rules() came back empty.");
 
-            // Two reductions, each mirroring exactly what translateApiError
-            // does before it looks a label up. Asking for a token the SPA
-            // never requests would demand French copy for a key nothing reads,
-            // while leaving the real one unchecked.
+            // Two reductions, mirroring what translateApiError does before it
+            // looks a label up, so this checks the key the SPA actually reads.
             //
-            // 1. `roleIds.*` is rule syntax, not a field name. Laravel reports
-            //    the failure against `roleIds.0`, and the SPA strips the index
-            //    — so the token that must exist is `roleIds`.
-            // 2. A NESTED path resolves to its last segment.
+            // 1. `roleIds.*` is rule syntax. Laravel reports `roleIds.0` and
+            //    the SPA strips the index, so the token is `roleIds`.
+            // 2. A nested path resolves to its last segment.
             //    StoreEventSeriesRequest nests the event under `template`, so
-            //    Laravel reports `template.endTime`; the SPA tries that whole
-            //    path, then falls back to `endTime`, whose French is the same
-            //    words. This checks the fallback target, which is the one the
-            //    catalogue actually carries.
+            //    Laravel reports `template.endTime`; the SPA tries that path,
+            //    then falls back to `endTime`, which the catalogue carries.
             $fields = array_merge($fields, array_map(
                 function (string $key): string {
                     $stripped = preg_replace('/\.(\*|\d+)(?=\.|$)/', '', $key) ?? $key;
@@ -596,8 +549,8 @@ class ApiErrorVocabularyTest extends TestCase
     // ----------------------------------------------------------- i18n catalogue read
 
     /**
-     * The keys defined under one flat section of a locale's
-     * resources.<locale>.translation object.
+     * The keys defined under one flat section of a locale's exported
+     * catalogue object.
      *
      * @return list<string>
      */
@@ -605,10 +558,9 @@ class ApiErrorVocabularyTest extends TestCase
     {
         $source = $this->blankNonCode($this->i18nSource($locale));
 
-        // Keys are matched as BARE identifiers, which is how the catalogues write
-        // them. Quoting one would hide it from this reader — but blanking is
-        // length-preserving and only ever removes keys, so the failure direction
-        // is a loud "missing copy for X", never a silent pass.
+        // Keys are matched as bare identifiers, as the catalogues write them.
+        // A quoted key is blanked and so hidden from this reader, which can
+        // only fail as "missing copy for X", never pass silently.
         $anchor = preg_quote($section, '/');
         if (! preg_match('/(?:^|[{,])\s*'.$anchor.'\s*:\s*\{/', $source, $m, PREG_OFFSET_CAPTURE)) {
             self::fail(
@@ -617,10 +569,9 @@ class ApiErrorVocabularyTest extends TestCase
             );
         }
 
-        // Walk from the section's opening brace to its match. Safe to brace-count
-        // because blankNonCode() has emptied every string literal and comment, so
-        // no `{{max}}` interpolation placeholder — nor a brace or apostrophe in a
-        // comment — can be mistaken for structure.
+        // Walk from the section's opening brace to its match. Brace-counting is
+        // safe because blankNonCode() has emptied every string and comment, so
+        // no `{{max}}` placeholder or stray brace can pass for structure.
         $open = strpos($source, '{', $m[0][1] + strlen($m[0][0]) - 1);
         $depth = 0;
         $end = null;
@@ -654,10 +605,8 @@ class ApiErrorVocabularyTest extends TestCase
             }
         }
 
-        // Fail loudly rather than skip: a silently-skipped vocabulary guard
-        // reports green while checking nothing, which is worse than not having
-        // it — the untranslated-token bugs it exists to catch are themselves
-        // silent.
+        // Fail rather than skip: a skipped guard reports green while checking
+        // nothing, and the bugs it catches are silent themselves.
         self::fail(
             "Cannot find web/src/i18n/{$locale}.ts, so the API's error vocabulary is unchecked for that locale. "
             ."Looked in:\n  - ".implode("\n  - ", self::I18N_DIRS)
@@ -670,12 +619,10 @@ class ApiErrorVocabularyTest extends TestCase
      * of the same length (newlines kept, so offsets and line structure survive).
      * What is left is structure and key names only.
      *
-     * Both are blanked for the same reason — anything that is not code can carry
-     * a character this reader treats as structure. A `{{max}}` placeholder in the
-     * French copy looks like a brace; an apostrophe in a comment looks like a
-     * quote; `}` in prose closes a section early. The alternation is ordered and
-     * scanned left to right, so a `//` inside a string is consumed as part of the
-     * string, not mistaken for a comment.
+     * Anything that is not code can carry a character this reader treats as
+     * structure: a `{{max}}` placeholder looks like a brace, an apostrophe in a
+     * comment like a quote. The alternation is scanned left to right, so a
+     * `//` inside a string is consumed with the string.
      */
     private function blankNonCode(string $source): string
     {

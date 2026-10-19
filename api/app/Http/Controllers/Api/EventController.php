@@ -47,11 +47,9 @@ class EventController extends Controller
      * `?q=` narrows either half to the events whose title or location contains
      * it, ignoring case and accents. `meta.total` counts the matches.
      */
-    // `type` is the LITERAL '1', not `string`. Scramble parses this argument as
-    // a PHPDoc type, so a constant string becomes an enum of one value — which
-    // is the contract: send `1`, or leave the parameter off. The controller is
-    // lenient about anything else on purpose (see below), and leniency is not
-    // something a document should invite a client to rely on.
+    // `type` is the literal '1', which Scramble parses as a PHPDoc type and
+    // publishes as an enum of one value. The contract is "send `1` or leave it
+    // off"; the controller's leniency about other values is not advertised.
     #[QueryParameter(
         'past',
         'Set to `1` for the history — past events, newest first — instead of the upcoming planning. Omit it for the planning.',
@@ -61,27 +59,18 @@ class EventController extends Controller
     )]
     public function index(Request $request): AnonymousResourceCollection
     {
-        // `?past=1` is the OTHER HALF of the list, not a superset of it — by
-        // next carnival the full list is a hundred rehearsals to scroll past
-        // on a phone. It also reverses the order, because history is read
-        // backwards from now, while the planning ahead is read soonest-first.
+        // `?past=1` is the other half of the list, not a superset, so the
+        // phone never scrolls past a season of rehearsals. History reads
+        // newest first, the planning soonest first.
         //
-        // Anything that is not exactly the magic word '1' is the default,
-        // upcoming view — the same fail-safe direction MigrateController
-        // takes with its `mode` parameter: a missing, misspelled or truncated
-        // value must never be the one that hides events.
+        // Anything but exactly '1' gives the upcoming view, so a missing,
+        // misspelled or truncated value never hides events.
         //
-        // ONE eager load below, the one the query budget left room for:
-        // the caller's own answer, constrained to them in the query.
-        // MEASURED 2026-09-09 at exactly 1 query before attendance existed;
-        // the join makes it 2, against the budget of 3 that
-        // test_listing_the_planning_costs_a_fixed_number_of_queries has
-        // always asserted. The spare room was deliberate and is now spent.
+        // The query count is pinned by
+        // test_listing_the_planning_costs_a_fixed_number_of_queries.
         //
-        // This note lives HERE and not immediately above the return, because
-        // Scramble publishes the comment directly preceding a return as the
-        // 200 response description. Measured 2026-09-10: it had shipped this
-        // paragraph, test names included, to /api/docs.
+        // This note stays away from the return so Scramble does not publish
+        // it as the 200 description.
         $past = $request->query('past') === '1';
 
         // `q` is validated, unlike `past`: leniency there fails safe towards
@@ -98,24 +87,19 @@ class EventController extends Controller
             'tag' => ['sometimes', 'integer', 'exists:event_tags,id'],
         ]);
 
-        // The split is on BandTime::startOfToday(), not now(): a rehearsal
-        // that began an hour ago must stay in the planning of somebody
-        // running late. Pinned by
-        // EventIndexTest::test_an_event_happening_today_stays_in_the_planning_all_day,
-        // and mutation-tested by hand against now().
+        // Split on BandTime::startOfToday(), not now(): a rehearsal that
+        // began an hour ago stays in the planning of somebody running late.
+        // Pinned by
+        // EventIndexTest::test_an_event_happening_today_stays_in_the_planning_all_day.
         $startOfToday = BandTime::startOfToday();
 
-        // DRAFTS HAVE A QUERY OF THEIR OWN, and are filtered here, in the
-        // query, rather than afterwards: the envelope slices what this
-        // returns, and meta.total has to count what the caller may see.
+        // Drafts are filtered in the query, since the envelope slices what
+        // this returns and meta.total counts what the caller may see.
         //
-        // They cannot ride the starts_at split. NULL >= anything is false, so
-        // a draft with no date would answer neither half and be invisible to
-        // the person who wrote it. Instead every draft belongs to the default
-        // half, dated or not, and none to the history: a draft dated last
-        // week is still unfinished business, and burying it in the history is
-        // how it gets forgotten. Undated ones sort first, since they have
-        // nowhere else to sort to.
+        // They cannot ride the starts_at split: NULL >= anything is false, so
+        // an undated draft would fall in neither half. Every draft belongs to
+        // the default half, dated or not, so one dated last week is not
+        // buried in the history. Undated ones sort first.
         $mayManage = EffectivePermissions::ofRequest($request)->contains(Permission::EventsManage);
 
         $query = $past
@@ -140,15 +124,14 @@ class EventController extends Controller
                 ->orWhere('location', 'like', $pattern));
         });
 
-        // THE DENOMINATOR RIDES THE REQUEST, not the collection envelope.
-        // It is one number for the whole list, so running the COUNT per row
-        // would be a query per event; and ->additional() writes into the
-        // envelope, which PaginatesCollections owns and every EventResource
-        // in the collection is rendered beneath rather than inside.
         $query->when(isset($filters['tag']), function ($query) use ($filters): void {
             $query->whereHas('tags', fn ($tags) => $tags->whereKey($filters['tag']));
         });
 
+        // The denominator rides the request. It is one number for the whole
+        // list, so a per-row COUNT would be a query per event, and
+        // ->additional() would write into the envelope PaginatesCollections
+        // owns, outside every EventResource.
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return EventResource::collection(
@@ -160,15 +143,12 @@ class EventController extends Controller
     }
 
     /**
-     * The eager load that puts the CALLER's own answer on an event, and only
+     * The eager load that puts the caller's own answer on an event, and only
      * theirs.
      *
-     * One extra query for a whole list, not one per row — and constrained to
-     * the caller inside the QUERY rather than filtered afterwards, so
-     * another member's answer is never loaded into memory at all. That is
-     * the half a post-hoc filter gets wrong: it works, until somebody reads
-     * `$event->attendance` for a different purpose and quietly gets
-     * everybody's. Pinned by
+     * One extra query for a whole list, constrained to the caller in the
+     * query, so another member's answer is never loaded and a later reader of
+     * `$event->attendance` cannot get everybody's. Pinned by
      * MyAttendanceTest::test_it_never_shows_somebody_elses_answer.
      *
      * @return array<string, \Closure>
@@ -185,18 +165,15 @@ class EventController extends Controller
     /**
      * Whether the caller may see how many people have answered.
      *
-     * RESOLVED ONCE PER REQUEST, not once per row, and not by a boolean
-     * memoized per gate — that shape looked fixed-cost but was not: it
-     * throws away the rest of the permission set after reading one entry, so
-     * the bookings gate paid for a second query for data this one had already
-     * fetched. EffectivePermissions::ofRequest() memoizes the SET once instead,
-     * and every gate reads it — here and in the Resource — which is what
+     * EffectivePermissions::ofRequest() memoizes the whole permission set once
+     * per request, and every gate reads it, here and in the Resource. A
+     * boolean memoized per gate would make each gate pay its own query.
+     * Pinned by
      * EventCountsTest::test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries
-     * and EventIndexTest::test_listing_the_planning_costs_a_fixed_number_of_queries
-     * actually pin.
+     * and EventIndexTest::test_listing_the_planning_costs_a_fixed_number_of_queries.
      *
-     * A request with no user answers false. That is not only the anonymous
-     * case: EntityTag::state() renders this Resource through a bare
+     * A request with no user answers false. Besides the anonymous case,
+     * EntityTag::state() renders this Resource through a bare
      * Request::create('/'), and the counts must not reach the tag.
      */
     private static function maySeeAnswers(Request $request): bool
@@ -205,37 +182,32 @@ class EventController extends Controller
     }
 
     /**
-     * THE BOOKINGS GATE LIVES IN THE RESOURCE, not here, and there is no
-     * sibling to maySeeAnswers() above.
+     * The bookings gate lives in EventResource, so maySeeAnswers() has no
+     * sibling here.
      *
-     * This controller has to ask about answers because it decides whether to
-     * run the denominator COUNT at all. It never has to ask about bookings:
-     * the guest sum is a subselect on the query it already runs, so it is
-     * loaded unconditionally and EventResource gates the OUTPUT. A copy here
-     * was written and never called — Larastan caught it as dead code.
+     * This controller asks about answers because it decides whether to run
+     * the denominator COUNT at all. The guest sum is a subselect on the query
+     * that already runs, so it is loaded unconditionally and the Resource
+     * gates the output.
      *
-     * The two gates stay genuinely independent wherever they are checked: the
-     * seeded `committee` role holds registrations.view and NOT
-     * attendance.view_all, pinned by
+     * The two gates are independent: the seeded `committee` role holds
+     * registrations.view and not attendance.view_all, pinned by
      * EventCountsTest::test_the_two_gates_are_independent.
      */
 
     /**
      * The aggregate loads that back the planning's metadata strip (#93).
      *
-     * SUBSELECTS ON THE QUERY THAT ALREADY RUNS, so neither of these is a
-     * round trip and neither scales with the number of events. Nothing is
-     * stored: a cached total would have to be invalidated by every answer,
-     * every booking, and every member who joins or leaves a register.
+     * Subselects on the query that already runs, so no extra round trip and
+     * no cost per event. Nothing is stored: a cached total would need
+     * invalidating on every answer, booking and roster change.
      *
-     * The answer count is constrained to members who CURRENTLY hold
-     * attendance.respond, so the fraction cannot read 19/18 when somebody
-     * who answered has since lost it, and so this and the chase list it links
-     * to count the same population.
+     * The answer count covers only members who currently hold
+     * attendance.respond, so the fraction cannot read 19/18 after somebody
+     * who answered lost it, and it counts the same people as the chase list.
      *
-     * PUBLIC because EventSeriesController returns EventResource too, and the
-     * shape has to be the same there. A second copy of this map is a second
-     * place to forget a field.
+     * Public because EventSeriesController returns EventResource too and
+     * needs the same shape.
      *
      * @return array<string, \Closure>
      */
@@ -250,15 +222,12 @@ class EventController extends Controller
     }
 
     /**
-     * How many members are answerable at all — the denominator.
+     * How many members are answerable at all: the denominator.
      *
-     * A property of the ROSTER, not of the event, so it is one query for the
-     * whole list rather than one per row. Only run for a caller who may see
-     * it, so a player never pays for it.
+     * A property of the roster, not of the event, so one query for the whole
+     * list. Only run for a caller who may see it.
      *
-     * PUBLIC for the same reason counts() is: EventSeriesController answers
-     * with EventResource too, and the denominator has to land on its request
-     * the same way it does everywhere else.
+     * Public for the same reason as counts().
      */
     public static function answerable(Request $request): ?int
     {
@@ -278,18 +247,14 @@ class EventController extends Controller
      */
     public function show(Request $request, Event $event): EventResource
     {
-        // Not redundant with index(): the edit form loads through this rather
-        // than hunting the list, because a past event is absent from the
-        // default list entirely — finding it there would work right up until
-        // somebody edited last month's rehearsal.
+        // The edit form loads through this rather than the list, because a
+        // past event is absent from the default list.
         //
         // Route-model binding turns an unknown id into a
-        // ModelNotFoundException; Laravel's own exception handler rewrites
-        // that into a 404 before any render() closure sees it (checked against
-        // bootstrap/app.php — no closure there is typed on it, so this 404 is
-        // the FRAMEWORK's default JSON shape, not App\Exceptions\ApiError's
-        // {error, code, fields[]} contract; EventIndexTest only asserts the
-        // status for that reason).
+        // ModelNotFoundException, which Laravel rewrites into a 404 before any
+        // render() closure sees it. No closure in bootstrap/app.php is typed
+        // on it, so this 404 has the framework's JSON shape rather than
+        // ApiError's; EventIndexTest asserts only the status.
         $event->load(self::myAttendance($request));
         $event->loadCount(self::counts());
         $event->loadSum('registrationChoices as guest_count', 'quantity');
@@ -319,14 +284,13 @@ class EventController extends Controller
      */
     public function store(StoreEventRequest $request): JsonResponse
     {
-        // 201 with the created row, not 204: the SPA drops the response
-        // straight into the list it is already showing, and a second GET to
-        // learn the id would race the next writer.
+        // 201 with the created row, not 204: the SPA drops it straight into
+        // its list, and a second GET to learn the id would race the next
+        // writer.
         //
-        // The two timestamps go in as the SPA sent them, offset and all.
-        // Turning them into UTC instants is App\Casts\UtcDateTime's job, on
-        // the column — this endpoint deliberately knows nothing about it,
-        // which is what makes every other writer of these columns correct too.
+        // The timestamps go in as sent, offset and all. App\Casts\UtcDateTime
+        // on the column turns them into UTC, so every writer of these columns
+        // is correct without converting.
         $data = $request->validated();
 
         $event = Event::create([
@@ -343,9 +307,8 @@ class EventController extends Controller
         ]);
         $event->tags()->sync(EventTag::distinctIds($data['tagIds'] ?? []));
 
-        // Audited, like every other privileged mutation, with the title
-        // captured as the label — see App\Support\Audit for why the CALLER
-        // reads it.
+        // The title is the label; App\Support\Audit explains why the caller
+        // supplies it.
         Audit::record($request->user(), 'event.created', 'event', $event->id, $event->title);
 
         $event->loadCount(self::counts());
@@ -371,23 +334,11 @@ class EventController extends Controller
      */
     public function update(UpdateEventRequest $request, Event $event): EventResource
     {
-        // The fields go through array_key_exists(), not isset(): isset() is
-        // false for an explicitly-sent null, so clearing the attire or the
-        // notes — the committee deciding a gig is in ordinary clothes after
-        // all — would answer 200 and silently change nothing.
-        // MemberController::update() carries the same loop for the same
-        // reason.
+        // array_key_exists() on validated(), not isset(): isset() is false for
+        // an explicit null, so clearing the attire or the notes would answer
+        // 200 and change nothing.
         //
-        // (That comment there also names $request->has(). MEASURED
-        // 2026-09-10: has() is in fact TRUE for an explicitly-sent null —
-        // Arr::has() is array_key_exists underneath, and it is filled() that
-        // reads false. So has() would work here; array_key_exists is still the
-        // right shape, because it asks the question of validated() — the array
-        // the rules have already vetted — rather than of the raw input.)
-        //
-        // The two timestamps go in as the SPA sent them, offset and all — see
-        // store(), and App\Casts\UtcDateTime for why no endpoint converts
-        // them.
+        // The timestamps go in as sent; see store().
         $data = $request->validated();
 
         $columns = [
@@ -454,8 +405,8 @@ class EventController extends Controller
             return $this->present($request, $event);
         }
 
-        // The columns no longer say a published event has both dates (decision
-        // C6 in the events migration), so this is where it is held.
+        // The columns allow a draft without dates (ADR 0027), so publishing is
+        // where a complete event is enforced.
         $problems = [];
         foreach (['startsAt' => 'starts_at', 'endsAt' => 'ends_at', 'location' => 'location'] as $field => $column) {
             if ($event->{$column} === null) {
@@ -534,38 +485,26 @@ class EventController extends Controller
     #[Response(200, 'Deleted, with the counts of answers and bookings that went with it.')]
     public function destroy(Request $request, Event $event): JsonResponse
     {
-        // NO AccessIntegrity EQUIVALENT, unlike deleting a member: an event has
-        // no lockout invariant to violate, and nothing references `events` yet.
+        // No AccessIntegrity check, unlike deleting a member: an event has no
+        // lockout invariant to violate.
         //
-        // The title and the id are captured BEFORE the delete, because the row
-        // is gone by the time anybody reads the audit back — the label is then
-        // the only part of that entry that still means anything.
-        //
-        // NO TEST PINS THAT ORDERING, and cannot. MEASURED 2026-09-10 by moving
-        // both reads after $event->delete(): all 25 tests stay green, because
-        // Eloquent leaves the deleted model's attributes in memory. It is kept
-        // first for the reason MemberController::destroy() keeps its own
-        // ordering — the audit must not depend on what a soft delete, a
-        // cascading delete or a refreshed model would leave behind.
+        // The title and id are captured before the delete, because the label
+        // is all the audit entry has once the row is gone. No test pins this
+        // order (Eloquent keeps a deleted model's attributes in memory), but
+        // the audit must not depend on what a delete leaves behind.
         $label = $event->title;
         $id = $event->id;
 
-        // COUNTED BEFORE THE DELETE, because the cascade removes the rows
-        // this counts. Deleting an event destroys every answer given for it,
-        // and saying so is the difference between a confirmation that warns
-        // and one that merely asks again. The same goes for the bookings, which
-        // is why registrationsDeleted sits beside it.
-        //
-        // {ok: true} rather than 204 for the same reason: the confirmation
-        // needs somewhere to read the counts from, and a 204 has no body to
-        // say them in.
+        // Counted before the delete, because the cascade removes these rows,
+        // so the confirmation can warn what is about to be discarded. That is
+        // also why this answers a body rather than 204.
         $attendanceDeleted = $event->attendance()->count();
         $registrationsDeleted = $event->registrations()->count();
 
-        // ONE TRANSACTION: the delete now spans four tables — the choices
+        // One transaction: the delete spans four tables (the choices
         // Event::booted() clears first, then the cascades into registrations,
-        // options and attendance. A failure part-way through would leave a
-        // half-deleted event whose bookings point at nothing.
+        // options and attendance), and a failure part-way would leave
+        // bookings pointing at nothing.
         DB::transaction(fn () => $event->delete());
 
         Audit::record($request->user(), 'event.deleted', 'event', $id, $label);

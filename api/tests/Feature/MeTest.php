@@ -29,22 +29,11 @@ class MeTest extends TestCase
         $role->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
         $member->roles()->attach($role);
 
-        // Re-fetch from the database rather than acting as the freshly-created
-        // in-memory model: a model that never round-trips the DB default
-        // serialises must_change_password as null instead of false, which
-        // would pin a test-harness artifact rather than the real contract —
-        // production always hydrates the authenticated user from the row.
+        // Re-fetched so the DB default is hydrated: the in-memory model
+        // serialises must_change_password as null, and production always
+        // loads the authenticated user from the row.
         $member = Member::find($member->id);
 
-        // App\Http\Middleware\EnforceAbsoluteSessionLifetime (appended to the
-        // `api` group) reads auth.started_at off the request's session, so
-        // every actingAs() call against /api/v1/* now needs both: the Origin
-        // header is what makes Sanctum's EnsureFrontendRequestsAreStateful
-        // treat this as a stateful frontend request and actually attach a
-        // session store to the request (fromFrontend() checks Origin/Referer);
-        // withSession() alone only seeds the container's session singleton,
-        // not this simulated request's own session. Mirrors
-        // LoginTest::spaPostJson().
         $response = $this->actingAsMember($member)
             ->getJson('/api/v1/me')->assertOk();
 
@@ -55,22 +44,12 @@ class MeTest extends TestCase
             'lastName' => 'Keller',
         ]);
 
-        // `role` was deliberately removed from the API surface (ADR 0014):
-        // permissions come from the roles-as-data enum, and no role name
-        // may ever appear in an authorization decision or a response body.
-        // assertJson() above only checks that the listed keys are PRESENT
-        // with the given values — it says nothing about extra keys, so a
-        // reintroduced 'role' entry would pass every assertion above (and
-        // below) undetected. This is the one assertion that actually
-        // enforces the "no role key" half of ADR 0014.
+        // ADR 0014: no single `role` key decides access. assertJson() ignores
+        // extra keys, so this is the assertion that keeps one out.
         $this->assertArrayNotHasKey('role', $response->json());
 
-        // assertJson() above compares LOOSELY (PHPUnit array-subset semantics
-        // under `==`), and in PHP `null == false` — so a boolean field that
-        // regressed to null would still satisfy an `assertJson([... => false])`
-        // expectation. Pinning both booleans here with assertSame() (identity
-        // comparison) is what actually pins the contract; do not fold these
-        // back into the assertJson() block above.
+        // assertJson() compares loosely, and `null == false`, so the boolean
+        // is pinned with assertSame(). Do not fold it into assertJson().
         $this->assertSame(false, $response->json('mustChangePassword'));
 
         // The role made here, plus the baseline and musician the factory gave.
@@ -145,8 +124,8 @@ class MeTest extends TestCase
     {
         // The SPA shows the answer buttons on can('attendance.respond'), so
         // `permissions` has to agree with what the API lets through, whatever
-        // the register says. There is no second field saying the same thing:
-        // `isPlayer` was one, and two answers to one question can disagree.
+        // the register says. No second field such as `isPlayer` may say the
+        // same thing, since two answers to one question can disagree.
         $registerOnly = Member::factory()->named('Marc', 'Rossier', 'marc.rossier')->inSection('Cloches')->create();
         $unplaced = Member::factory()->named('Nora', 'Bulliard', 'nora.bulliard')->musician()->create();
 
@@ -161,10 +140,9 @@ class MeTest extends TestCase
 
     public function test_the_response_is_never_cached(): void
     {
-        // /api/v1/me varies by identity; a shared proxy caching it would serve one
-        // member's identity to another. Cache-Control is the only thing
-        // stopping that, so its exact value is pinned here rather than
-        // asserted with a loose substring match.
+        // /api/v1/me varies by identity, and a shared proxy caching it would
+        // serve one member's identity to another. Cache-Control is the only
+        // thing stopping that, so its exact value is pinned.
         $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->create();
 
         $this->actingAsMember($member->fresh())

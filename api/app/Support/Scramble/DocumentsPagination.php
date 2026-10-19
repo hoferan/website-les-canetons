@@ -18,23 +18,21 @@ use Dedoc\Scramble\Support\RouteInfo;
  * applies: `{data, meta}`, the `limit` and `offset` parameters, and the
  * RFC 8288 `Link` header.
  *
- * DERIVED FROM THE SAME FACT THE MIDDLEWARE USES, which is what keeps the two
- * from drifting. The middleware envelopes a response whose body is a JSON list;
- * this envelopes an operation whose success schema is an array. Those are the
- * static and runtime readings of one property — "this endpoint answers with a
- * collection" — so a new collection gains the envelope and its documentation in
- * the same commit, with nothing annotated anywhere.
+ * Derived from the same fact the middleware uses, so the two cannot drift.
+ * The middleware envelopes a response whose body is a JSON list; this
+ * envelopes an operation whose success schema is an array. Those are the
+ * runtime and static readings of "this endpoint answers with a collection", so
+ * a new collection gains the envelope and its documentation together, with
+ * nothing annotated.
  *
- * The agreement is asserted rather than assumed: Tests\Feature\PaginationTest
- * walks the exported document and the live routes and fails if an operation is
- * enveloped in one and not the other.
+ * Tests\Feature\PaginationTest walks the exported document and the live routes
+ * and fails if an operation is enveloped in one and not the other.
  *
- * A `$ref` IS LEFT ALONE, deliberately. The array schemas here are inline
- * (`{type: array, items: {$ref: MemberResource}}`), so there is nothing to
- * resolve — but if Scramble ever hoists one into a shared component, wrapping
- * the reference in place would redefine that component for every operation
- * pointing at it. Skipping is the safe direction, and the test above is what
- * turns the skip into a failure rather than a silent bare array.
+ * A `$ref` is left alone. The array schemas here are inline
+ * (`{type: array, items: {$ref: MemberResource}}`), but if Scramble hoists one
+ * into a shared component, wrapping the reference in place would redefine that
+ * component for every operation pointing at it. The test above turns the skip
+ * into a failure instead of a silent bare array.
  */
 class DocumentsPagination extends OperationExtension
 {
@@ -65,8 +63,8 @@ class DocumentsPagination extends OperationExtension
             $wrapped = true;
 
             // `Link` describes how to walk a collection, so it belongs on the
-            // reads. The one write that answers with a collection —
-            // PUT .../registration-options — gets the envelope without it;
+            // reads. The one write that answers with a collection
+            // (PUT .../registration-options) gets the envelope without it;
             // see the middleware for why.
             if (strtoupper($operation->method ?: $routeInfo->method) === 'GET') {
                 $this->declareLinkHeader($response);

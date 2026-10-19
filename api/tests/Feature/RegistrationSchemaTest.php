@@ -19,9 +19,8 @@ class RegistrationSchemaTest extends TestCase
 
     public function test_registration_is_enabled_by_the_close_date_alone(): void
     {
-        // No separate boolean (ADR 0020). A flag beside a date is a flag that
-        // drifts out of step with it, which is what the retired `weekend`
-        // column did.
+        // No separate boolean (ADR 0020): a flag beside a date drifts out of
+        // step with it.
         $this->assertFalse(Event::factory()->create()->takesRegistrations());
         $this->assertTrue(Event::factory()->takingRegistrations()->create()->takesRegistrations());
     }
@@ -49,8 +48,7 @@ class RegistrationSchemaTest extends TestCase
 
     public function test_a_booking_may_take_an_option_only_once(): void
     {
-        // "3 x meat" is ONE row with a quantity, not three rows — which is
-        // what makes a total a SUM rather than a COUNT over a text column.
+        // "3 x meat" is one row with a quantity, so a total is a SUM.
         $option = RegistrationOption::factory()->create();
         $booking = Registration::factory()->withChoice($option, 2)->create([
             'event_id' => $option->event_id,
@@ -73,14 +71,14 @@ class RegistrationSchemaTest extends TestCase
         $booking->delete();
 
         $this->assertSame(0, RegistrationChoice::query()->count());
-        // But the option survives: it belongs to the event, not the booking.
+        // The option survives: it belongs to the event.
         $this->assertSame(1, RegistrationOption::query()->count());
     }
 
     public function test_a_booked_option_cannot_be_deleted(): void
     {
-        // RESTRICT, not CASCADE. Deleting an option people have already
-        // booked would silently rewrite what those people ordered.
+        // RESTRICT, not CASCADE: deleting a booked option would silently
+        // rewrite what people ordered.
         $option = RegistrationOption::factory()->create();
         Registration::factory()->withChoice($option)->create(['event_id' => $option->event_id]);
 
@@ -114,9 +112,8 @@ class RegistrationSchemaTest extends TestCase
 
     public function test_deleting_the_event_reports_both_cascades(): void
     {
-        // The confirmation dialog names the damage rather than merely asking
-        // again. Attendance and registrations are counted separately because
-        // they are different losses to the reader.
+        // The confirmation dialog names what was lost, attendance and
+        // registrations separately.
         $organiser = Member::factory()->administrator()->create();
         $option = RegistrationOption::factory()->create();
         Registration::factory()->withChoice($option)->create(['event_id' => $option->event_id]);
@@ -149,9 +146,8 @@ class RegistrationSchemaTest extends TestCase
 
     public function test_the_total_is_computed_in_centimes(): void
     {
-        // The whole reason price_cents is an integer rather than the
-        // sketch's pre-formatted string: 3 x 45.- plus 1 x 20.- is a number
-        // the committee checks against the cash box.
+        // price_cents is an integer so 3 x 45.- plus 1 x 20.- is a number the
+        // committee can check against the cash box.
         $event = Event::factory()->takingRegistrations()->create();
         $meat = RegistrationOption::factory()->create(['event_id' => $event->id]);
         $child = RegistrationOption::factory()->labelled('Menu enfant', 2000)->create(['event_id' => $event->id]);
@@ -166,10 +162,8 @@ class RegistrationSchemaTest extends TestCase
 
     public function test_a_booking_of_unpriced_options_totals_null_not_zero(): void
     {
-        // Null rather than zero, and the difference is the point: a free
-        // event owes nothing, an event whose prices live in the descriptions
-        // owes an unknown amount, and "CHF 0.-" would assert the first about
-        // the second.
+        // A free event owes nothing; an event whose prices live in the
+        // descriptions owes an unknown amount, and "CHF 0.-" would be wrong.
         $option = RegistrationOption::factory()->free()->create();
         $booking = Registration::factory()->withChoice($option, 2)->create(['event_id' => $option->event_id]);
 
@@ -190,11 +184,9 @@ class RegistrationSchemaTest extends TestCase
 
     public function test_committee_is_not_quietly_given_the_power_to_delete_bookings(): void
     {
-        // The role exists so somebody can LOOK at the guest list, and (since
-        // the committee inbox) the messages the public has sent. Widening
-        // registrations.view would have handed it deletion instead; widening
-        // messages.view to messages.manage would have handed it the power to
-        // clear the inbox. Neither happened.
+        // The role reads the guest list and the messages the public sends.
+        // registrations.manage would let it delete bookings, and
+        // messages.manage would let it clear the inbox.
         $roleId = DB::table('roles')->where('key', 'committee')->value('id');
 
         $permissions = DB::table('role_permissions')->where('role_id', $roleId)

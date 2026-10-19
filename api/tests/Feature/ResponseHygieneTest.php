@@ -8,10 +8,9 @@ use Tests\TestCase;
 /**
  * What a response says about itself, and what it should stop saying.
  *
- * Every assertion here was a real defect on 2026-09-11, and every one of them
- * came from the same place: Scramble reads a controller's Response object,
- * which is built to be SENT rather than to be described, so transport detail
- * arrives with the content and prose does not arrive at all.
+ * Scramble reads a controller's Response object, which is built to be sent
+ * rather than described, so transport detail arrives with the content and
+ * prose does not arrive at all. Each test guards one consequence.
  */
 class ResponseHygieneTest extends TestCase
 {
@@ -39,12 +38,8 @@ class ResponseHygieneTest extends TestCase
     }
 
     /**
-     * Thirty operations answered a success with an empty description, or with a
-     * type name already visible in the schema beside it.
-     *
-     * The sidebar of a reference is a list of those sentences. Without them the
-     * only way to learn what a `200` means is to read the request handler,
-     * which a third party does not have.
+     * Without a description, the only way to learn what a `200` means is to
+     * read the request handler, which a third party does not have.
      */
     public function test_every_success_says_what_it_means(): void
     {
@@ -109,23 +104,21 @@ class ResponseHygieneTest extends TestCase
         self::assertArrayHasKey($xlsx, $export, 'The export no longer declares a spreadsheet body.');
         self::assertSame('binary', $export[$xlsx]['schema']['format'] ?? null);
 
-        // The text formats must NOT be marked binary — the rule is about the
-        // media type, not about "anything that downloads".
+        // The text formats are not binary: the rule follows the media type,
+        // not whether the body downloads.
         self::assertArrayNotHasKey('format', $export['text/csv']['schema'] ?? []);
     }
 
     /**
      * Every shared failure is a problem document, and is named for its status.
      *
-     * TWO THINGS THIS CAUGHT. `#/components/responses/ModelNotFoundException`
-     * described a 404 as Laravel's `{"message": "..."}` on `application/json`,
-     * which this API no longer answers (ADR 0012) — the most common failure in the
-     * contract, described as a body that cannot occur, referenced by nineteen
-     * operations. And the component NAME published an ORM word to readers who
-     * have no ORM.
+     * Scramble's default components describe a failure as Laravel's
+     * `{"message": "..."}` on `application/json`, which this API never answers
+     * (ADR 0012), and name them after framework classes such as
+     * `ModelNotFoundException`, an ORM word readers have no use for.
      *
-     * Derived from the components themselves, so an eighth shared failure is
-     * held to the same two rules without an edit here.
+     * Derived from the components themselves, so a new shared failure is held
+     * to the same two rules without an edit here.
      */
     public function test_every_shared_failure_is_a_problem_document(): void
     {
@@ -167,13 +160,11 @@ class ResponseHygieneTest extends TestCase
     }
 
     /**
-     * Which operations are anonymous, compared against the ROUTES rather than
-     * against a list.
+     * Which operations are anonymous, compared against the routes.
      *
      * `security: []` is the only machine-readable way the document says "no
-     * session needed". Reading it off `auth:sanctum` means a route that gains or
-     * loses authentication says so in the contract without anybody remembering
-     * to edit it.
+     * session needed". Reading it off `auth:sanctum` means a route that gains
+     * or loses authentication says so in the contract without a manual edit.
      */
     public function test_exactly_the_unauthenticated_routes_are_marked_public(): void
     {
