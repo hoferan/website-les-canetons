@@ -28,9 +28,10 @@ class DevSeeder extends Seeder
 {
     public function run(): void
     {
-        // This seeder ships in the build artifact (only tests/ is excluded),
-        // and nothing may ever create demo.* accounts with a known password on
-        // a real server. Nothing invokes it there, but this guard holds anyway.
+        // Nothing may ever create demo.* accounts with a known password on a
+        // real server. The build artifact leaves database/seeders/ out
+        // (tools/artifact-excludes.mjs) and nothing on a server runs db:seed;
+        // this guard holds if either of those changes.
         if (app()->isProduction()) {
             return;
         }
