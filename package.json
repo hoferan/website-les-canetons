@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "build": "node tools/build.mjs",
-    "build:web": "vite build",
     "dev:web": "vite",
     "dev:mock": "vite --mode mock",
     "build:overlay": "node tools/build-overlays.mjs",

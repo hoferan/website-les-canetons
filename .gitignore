@@ -9,20 +9,18 @@ config.php
 # Superpowers specs and plans: working documents for a single task. Decisions
 # that outlive the task go into docs/adr/.
 /docs/superpowers/
-/public/
 
 # HTTP Basic Auth credential files (hashed, but still secrets — brute-forcible
 # offline; usernames exposed). The .htaccess that references them IS tracked.
 # See staging/README.md for how to (re)generate these.
 .htpasswd
 
-# real prod data — never commit (use the synthetic Docker seed instead)
+# real prod data — never commit (use the synthetic DevSeeder instead)
 *.dump.sql
 prod-*.sql
 
 # dependencies (dev-only tooling; never deployed)
 /node_modules/
-/vendor/
 
 # Persistent Composer download cache reused across builds (tools/build.mjs)
 /.composer-cache/
@@ -93,6 +91,7 @@ prod-*.sql
 Thumbs.db
 desktop.ini
 .idea/
+.vscode/
 
 # Cross-process lock held while api/vendor is being installed
 # (tools/api-vendor.mjs and tools/ensure-dev-stack.sh share it).
