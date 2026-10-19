@@ -6,24 +6,16 @@ use RuntimeException;
 
 /**
  * A destructive privileged action was refused because the actor did not
- * re-prove who they are. Since 2026-09-08 the only caller is a member changing
- * their own password (ADR 0017).
+ * re-prove who they are. The only caller is a member changing their own
+ * password (ADR 0017).
  *
- * 403 for a wrong password, 429 when the actor has been throttled — so the
- * STATUS TRAVELS ON THE EXCEPTION rather than being assumed by the renderer.
- * They are genuinely different answers: one says "that is not your password",
- * the other says "stop asking", and a renderer that hard-coded 403 would turn
- * the throttle into a silent lie.
+ * 403 for a wrong password, 429 when the actor has been throttled, so the
+ * status travels on the exception rather than being assumed by the renderer.
  *
- * Not 401 in either case. The session is valid and the caller holds the
- * permission; what failed is the re-proof, not the authentication.
+ * Not 401 in either case: the session is valid and the caller holds the
+ * permission; what failed is the re-proof.
  *
- * `errorCode`, not `code`: \Exception already declares `protected $code`
- * (untyped, mutable), PHP 8.4 fatally refuses a subclass that redeclares an
- * inherited property with a type or `readonly`, and the wider ecosystem —
- * loggers, monitoring — expects getCode() to return an int. Same reasoning,
- * and the same trap, as AccessIntegrityViolation; read that class before
- * renaming anything here.
+ * `errorCode`, not `code`: see AccessIntegrityViolation.
  */
 final class ReauthenticationFailed extends RuntimeException
 {

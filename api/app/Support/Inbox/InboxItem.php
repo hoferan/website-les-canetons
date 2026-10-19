@@ -9,8 +9,7 @@ use Carbon\CarbonInterface;
  *
  * A value object with no table behind it. The inbox is computed from its
  * sources at read time, so an item exists only for as long as it takes to
- * answer one request — which is what makes it impossible for the inbox to
- * drift from the rows it describes.
+ * answer one request, and the inbox cannot drift from the rows it describes.
  */
 final readonly class InboxItem
 {

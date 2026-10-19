@@ -12,11 +12,10 @@ use Tests\TestCase;
 /**
  * Searching the roster (#97): `?q=`, `?section=` and `?role=` on GET /members.
  *
- * ON THE SERVER, NOT OVER THE ROWS A SCREEN HAPPENS TO HOLD. The collection
- * envelope slices on the server, so a filter that ran in the browser would
- * search page one of a cut-short roster and miss everybody else without
- * saying so. Here the query narrows first and the envelope slices what is
- * left, so `meta.total` counts the matches. See App\Support\Search.
+ * The search runs on the server. The collection envelope slices there, so a
+ * filter in the browser would search page one only and silently miss everybody
+ * else. The query narrows first and the envelope slices what is left, so
+ * `meta.total` counts the matches. See App\Support\Search.
  */
 class MemberSearchTest extends TestCase
 {
@@ -70,8 +69,8 @@ class MemberSearchTest extends TestCase
     {
         Member::factory()->named('Hélène', 'Dürrenmatt')->create();
 
-        // Free from the connection collation, utf8mb4_unicode_ci. A phone
-        // keyboard makes the accent the hard half to type.
+        // From the connection collation, utf8mb4_unicode_ci. Accents are hard
+        // to type on a phone keyboard.
         $this->assertSame(['Dürrenmatt'], $this->search('q=HELENE'));
         $this->assertSame(['Dürrenmatt'], $this->search('q=durren'));
     }
@@ -138,7 +137,7 @@ class MemberSearchTest extends TestCase
     public function test_an_id_naming_nothing_is_an_empty_list_not_an_error(): void
     {
         // A select left open while somebody deletes the register it offered
-        // is a filter that matches nobody, not a broken screen.
+        // matches nobody, and the screen keeps working.
         $this->assertSame([], $this->search('section=999999'));
         $this->assertSame([], $this->search('role=999999'));
     }

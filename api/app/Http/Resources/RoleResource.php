@@ -8,19 +8,16 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * A role, WITH what it grants.
+ * A role, with what it grants.
  *
- * TWO KINDS OF NAME. `labelFr` and `labelDe` are what the committee typed in
- * the role editor, rendered verbatim (ADR 0026). A seeded role nobody has
- * renamed has neither, and the UI translates its fixed `key` through
- * web/src/i18n/fr.ts instead: a name a developer chose is system text, and the
- * API is English without exception.
+ * `labelFr` and `labelDe` are what the committee typed in the role editor,
+ * rendered verbatim (ADR 0026). A seeded role nobody has renamed has neither,
+ * and the UI translates its fixed `key` through web/src/i18n/ instead.
  *
- * The permissions travel with the role because that is how the UI answers "why
- * does she have this?" — always "because she is in Team Direction", never a
- * per-member grant (ADR 0014). The roster screen therefore needs no per-member
- * permission list, which also keeps GET /api/v1/members to one query per relation
- * instead of one per member.
+ * The permissions travel with the role because every grant comes from a role,
+ * never from a per-member grant (ADR 0014). The roster therefore needs no
+ * per-member permission list, which keeps GET /api/v1/members to one query
+ * per relation.
  *
  * @mixin Role
  */
@@ -68,11 +65,9 @@ class RoleResource extends JsonResource
     }
 
     /**
-     * A typed method, not an inline expression, and that is not style. Measured
-     * 2026-09-07: written inline this types as
-     * {"type":"object","additionalProperties":{}} in the OpenAPI document and
-     * arrives in TypeScript as an untyped object. The docblock is what makes it
-     * string[].
+     * A typed method, not an inline expression: written inline this types as
+     * {"type":"object","additionalProperties":{}} in the OpenAPI document. The
+     * docblock makes it string[].
      *
      * @return list<string>
      */

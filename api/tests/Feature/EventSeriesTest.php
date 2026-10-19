@@ -65,8 +65,8 @@ class EventSeriesTest extends TestCase
 
     public function test_every_created_event_is_independent(): void
     {
-        // Nothing links them. This is what makes "how does a player attend
-        // one occurrence?" a non-question — each one is an ordinary event.
+        // Nothing links them, so a player answers each occurrence like any
+        // ordinary event.
         $this->actingAsMember($this->organiser)->postJson('/api/v1/events/series', $this->payload());
 
         $titles = Event::query()->pluck('title')->all();
@@ -78,9 +78,8 @@ class EventSeriesTest extends TestCase
 
     public function test_the_wall_clock_time_is_the_same_in_summer_and_winter(): void
     {
-        // The trap this whole endpoint could fall into: September is CEST and
-        // December is CET, so a naive fixed offset makes half a season an hour
-        // wrong. Both must read back as 10:00 in Fribourg.
+        // September is CEST and December is CET, so a fixed offset makes half
+        // a season an hour wrong. Both must read back as 10:00 in Fribourg.
         $this->actingAsMember($this->organiser)->postJson('/api/v1/events/series', $this->payload([
             'dates' => ['2026-09-05', '2026-12-05'],
         ]));
@@ -91,11 +90,8 @@ class EventSeriesTest extends TestCase
 
         $this->assertSame(['10:00', '10:00'], $times);
 
-        // And the STORED instants differ by exactly the offset change, which
-        // is the half of it a wall-clock assertion alone cannot see: an
-        // endpoint that stored the literal 10:00 in both rows would satisfy
-        // the check above only if it also read them back wrong in the same
-        // way. 08:00 UTC in CEST, 09:00 UTC in CET.
+        // The stored instants must differ by the offset change, which the
+        // wall-clock check alone cannot see. 08:00 UTC in CEST, 09:00 UTC in CET.
         $stored = Event::query()->orderBy('starts_at')->get()
             ->map(fn (Event $e) => $e->starts_at->utc()->format('H:i'))
             ->all();
@@ -116,10 +112,9 @@ class EventSeriesTest extends TestCase
 
     public function test_events_manage_alone_is_enough_to_generate_a_season(): void
     {
-        // PINS THE PERMISSION STRING, for the reason EventWriteTest's twin of
-        // this test documents: the organiser holds `direction`, which the seed
-        // grants every permission, so a player with none cannot tell
-        // events.manage from any other string in that middleware.
+        // Pins the permission string. The organiser holds every permission, so
+        // the player test alone cannot tell events.manage from any other
+        // string in that middleware.
         $organiserOnly = Member::factory()
             ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
             ->create();
@@ -152,10 +147,9 @@ class EventSeriesTest extends TestCase
 
     public function test_sixty_dates_is_still_accepted(): void
     {
-        // The boundary from the other side. `max:60` and a controller-side
-        // `>= 60` differ by exactly one row, and only a test at the edge can
-        // tell them apart — 61 being refused says nothing about whether 60
-        // works.
+        // The boundary from the other side: `max:60` and a controller-side
+        // `>= 60` differ by one row, and 61 being refused says nothing about
+        // whether 60 works.
         $dates = [];
         for ($i = 0; $i < 60; $i++) {
             $dates[] = now()->addWeeks($i)->format('Y-m-d');
@@ -211,16 +205,13 @@ class EventSeriesTest extends TestCase
 
     public function test_an_unparseable_end_time_is_a_format_error_not_a_comparison(): void
     {
-        // Pins the REPORTED REASON: told that '25:00' "doit être après le
-        // début", the committee would go and check the start time, which is
-        // not what is wrong.
+        // Pins the reported reason: told that '25:00' "doit être après le
+        // début", the committee would go and check the start time.
         //
-        // It does NOT pin the rule order, and the obvious assumption that it
-        // does is wrong. MEASURED 2026-09-10 by reversing date_format and
-        // after on template.endTime: this test still passes and the reason is
-        // still invalid_format. EventWriteTest's equivalent for
-        // StoreEventRequest::endsAt DOES flip under the same reversal, so the
-        // two files genuinely differ — see StoreEventSeriesRequest's docblock.
+        // It does not pin the rule order: reversing date_format and after on
+        // template.endTime keeps this test green. EventWriteTest's equivalent
+        // for StoreEventRequest::endsAt does flip under the same reversal; see
+        // StoreEventSeriesRequest's docblock.
         $payload = $this->payload();
         $payload['template']['endTime'] = '25:00';
 
@@ -233,10 +224,9 @@ class EventSeriesTest extends TestCase
 
     public function test_the_template_is_applied_to_every_event(): void
     {
-        // NON-DEFAULT VALUES THROUGHOUT, for the reason a review found
-        // the hard way: isPublic false and notes null are also the column
-        // defaults, so a generator that never wrote those two columns passed
-        // every assertion made against the default payload.
+        // Non-default values throughout: isPublic false and notes null are
+        // also the column defaults, so a generator that never wrote those
+        // columns would pass against the default payload.
         $this->actingAsMember($this->organiser)
             ->postJson('/api/v1/events/series', $this->payload([
                 'template' => [
@@ -265,10 +255,9 @@ class EventSeriesTest extends TestCase
 
     public function test_a_season_does_not_cost_a_query_per_row_beyond_its_writes(): void
     {
-        // Twenty rows is the first place in this project where one request
-        // writes more than a handful, and this runs on a shared host. The
-        // budget allows the inserts and the audit rows and little else — what
-        // it catches is a SELECT sneaking into the loop.
+        // One request writing twenty rows on a shared host. The budget allows
+        // the inserts and the audit rows and little else, so it catches a
+        // SELECT sneaking into the loop.
         $dates = [];
         for ($i = 0; $i < 20; $i++) {
             $dates[] = now()->addWeeks($i)->format('Y-m-d');
@@ -293,9 +282,7 @@ class EventSeriesTest extends TestCase
 
         $this->assertSame(3, DB::table('audit_log')->where('action', 'event.created')->count());
 
-        // Each entry points at its own row, not three times at the last one:
-        // an audit log whose target_id is the same for a whole season cannot
-        // answer the only question anybody asks of it.
+        // Each entry points at its own row, not three times at the last one.
         $this->assertSame(
             Event::query()->orderBy('id')->pluck('id')->all(),
             DB::table('audit_log')->where('action', 'event.created')->orderBy('target_id')

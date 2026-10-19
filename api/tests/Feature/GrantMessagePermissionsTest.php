@@ -10,13 +10,11 @@ use Tests\TestCase;
 /**
  * The permissions exist as data on a database that already had the roles.
  *
- * WHY THIS TEST IS THE IMPORTANT ONE. 2026_09_07_000001 seeds `direction` with
- * Permission::cases(), so a FRESH database picks both new tokens up for free
- * and every test here would pass without the grant migration existing at all.
- * TEST is not a fresh database: both roles are already there, that migration
- * returns early for a role that exists, and the result is a perfectly correct
- * feature that 403s for every single person. The third test below is the one
- * that fails when the grant migration is missing.
+ * 2026_09_07_000001 seeds `direction` with Permission::cases(), so a fresh
+ * database picks both tokens up for free. A server database already has both
+ * roles, and that migration returns early for a role that exists, so without
+ * the grant migration the feature 403s for everyone. The third test below is
+ * the one that fails when the grant migration is missing.
  */
 class GrantMessagePermissionsTest extends TestCase
 {
@@ -36,7 +34,7 @@ class GrantMessagePermissionsTest extends TestCase
 
     public function test_the_grant_reaches_roles_that_already_existed(): void
     {
-        // Reproduces TEST: the roles are here, the permissions are not.
+        // A server database: the roles are here, the permissions are not.
         $this->revoke('direction', Permission::MessagesView);
         $this->revoke('direction', Permission::MessagesManage);
         $this->revoke('committee', Permission::MessagesView);

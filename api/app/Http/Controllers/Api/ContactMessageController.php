@@ -19,8 +19,8 @@ class ContactMessageController extends Controller
     /**
      * List the messages the public has sent.
      *
-     * Newest first. `?handled=0` returns only what is still open — the same
-     * set the inbox shows — and `?handled=1` only what has been dealt with.
+     * Newest first. `?handled=0` returns only what is still open (the same
+     * set the inbox shows), and `?handled=1` only what has been dealt with.
      * Omit the parameter for everything.
      *
      * Paginated: read `data` for the rows and `meta.total` for the count.
@@ -67,8 +67,8 @@ class ContactMessageController extends Controller
      * Mark a message handled, or put it back.
      *
      * `{"handled": true}` stamps who did it and when; `{"handled": false}`
-     * clears both. Reopening is not an error — a message marked handled by
-     * mistake is a normal thing to correct.
+     * clears both. Reopening is allowed, so a message marked handled by
+     * mistake can be corrected.
      *
      * Requires `If-Match` with the tag from reading this message. Without one
      * the request answers `428`; with a stale one, `412`.

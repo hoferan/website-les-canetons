@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The switch from the register to attendance.respond takes answering away from
+ * Moving answering from the register to attendance.respond takes it away from
  * nobody. A member given a register after 2026_09_29_000002 ran holds only the
  * baseline role, which is the state every factory member with inSection() and
  * no musician() reproduces.

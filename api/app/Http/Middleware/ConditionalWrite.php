@@ -14,73 +14,51 @@ use Throwable;
 /**
  * Hands out an `ETag` on a read, and demands a matching `If-Match` on a write.
  *
- * `etag:<facet>` on a route. The facet names what is tagged — see
- * App\Support\EntityTag::FACETS — and the route parameter it is read from.
+ * `etag:<facet>` on a route. The facet names what is tagged (see
+ * App\Support\EntityTag::FACETS) and the route parameter it is read from.
  *
- * THE BUG THIS CLOSES IS LIVE AND UNREMARKABLE. Two committee members have the
- * planning open. One moves a start time; the other clears the notes. Both send
- * a PATCH carrying only their own field, both succeed, and the second write
- * silently discards the first — no error, no trace, and the only way anybody
- * finds out is that the band turns up at the wrong hour.
+ * It stops lost updates: two people send a PATCH carrying only their own
+ * field, both succeed, and the second silently discards the first.
  *
- * REQUIRED, NOT MERELY HONOURED. RFC 9110 §13.1.1 lets a server require
- * `If-Match` and answer 428 (RFC 6585) when it is absent, and that is the
- * rigorous reading: a client that forgets the header is told so, rather than
- * being quietly given the overwrite semantics the header exists to prevent. We
- * own the only client today, and a public API that silently loses writes for
- * the integrator who did not read carefully is worse than one that refuses.
+ * The header is required. RFC 9110 §13.1.1 lets a server answer 428 (RFC 6585)
+ * when `If-Match` is absent, so a client that forgets it is told so instead of
+ * silently getting overwrite semantics.
  *
- * WHICH WRITES. Every one that replaces or removes state a caller read first:
- * PATCH and DELETE on events, members and registrations, plus the two
- * replace-all PUTs (a member's roles, an event's bookable options) and the
- * publish POST on an event. The two
- * that change WHO MAY DO WHAT — replacing roles, deleting a member — are the
- * ones this matters most for, and they are the reason the member facet is
- * computed over `roleIds` rather than over `members.updated_at`.
+ * Every write that replaces or removes state a caller read first carries it:
+ * PATCH and DELETE on events, members and registrations, the two replace-all
+ * PUTs (a member's roles, an event's bookable options) and the publish POST on
+ * an event. Replacing roles and deleting a member change who may do what,
+ * which is why the member facet is computed over `roleIds` and not over
+ * `members.updated_at`.
  *
- * ATTENDANCE IS DELIBERATELY EXEMPT, and that is a decision rather than an
- * omission. PUT /events/{event}/attendance is a member answering for
- * themselves: they are its only ordinary writer, the whole answer is one value
- * so there is no half of it to lose, and a member answering for the first time
- * has no entity to have a tag for — so requiring the header would mean a read
- * before every answer, against a design that exists to make answering one tap
- * on a bus with poor signal. The one race left is the committee recording on
- * somebody's behalf while that member answers, which the five-minute undo
- * window and the audit entry already cover.
+ * Attendance is exempt on purpose. PUT /events/{event}/attendance is a member
+ * answering for themselves: the answer is one value, so there is no half of it
+ * to lose, and a first answer has no entity to tag, so the header would cost a
+ * read before every one-tap answer. The remaining race (the committee recording
+ * on a member's behalf while they answer) is covered by the five-minute undo
+ * window and the audit entry.
  *
- * PLACING A PHOTO IS EXEMPT FOR THE SAME REASON. PUT /photo-slots/{slot} sets
- * one value, the image id in one slot, so there is no half of it to lose. Two
- * editors placing photos at once either work on different slots, which never
- * touch, or pick for the same one, where the second pick is what the page
- * shows and both are in the audit log. A tag would buy a read before every
- * pick and a 412 for an editor who lost a race nobody could see.
+ * Placing a photo is exempt for the same reason. PUT /photo-slots/{slot} sets
+ * one value. Two editors either work on different slots, or the second pick on
+ * the same slot is what the page shows, with both in the audit log.
  *
- * NO CONDITIONAL GET. `If-None-Match` is not implemented and no 304 is ever
- * returned: every route here also sends `Cache-Control: no-store`, so there is
- * no cache to serve one. The tag is an optimistic-concurrency token that
- * happens to be spelled the way HTTP spells one.
- *
- * THAT PARAGRAPH BECAME LOAD-BEARING ON 2026-09-12. `GET /events/{event}/
- * registration-options` is a collection, so App\Http\Middleware * PaginatesCollections slices its body afterwards, and `?limit=1` and
- * `?limit=500` now return different representations under the same strong tag.
- * That is harmless for what the tag is for — If-Match compares the facet's
- * state, which paging cannot touch — and would be a wrong-body 304 the day
- * anybody implements the conditional GET this class says it does not. Read
- * this before implementing one.
+ * There is no conditional GET: `If-None-Match` is not implemented and no 304 is
+ * returned, since every route here also sends `Cache-Control: no-store`. The tag
+ * is an optimistic-concurrency token. Read this before adding a conditional
+ * GET: `GET /events/{event}/registration-options` is a collection that
+ * PaginatesCollections slices afterwards, so `?limit=1` and `?limit=500` return
+ * different bodies under the same strong tag. If-Match is unaffected, because it
+ * compares the facet's state, but a 304 would serve the wrong body.
  */
 class ConditionalWrite
 {
     /**
      * The methods that must prove they are working from current state.
      *
-     * POST is here for two routes: publishing an event, and replacing a
-     * library photo, which is a POST only because PHP parses multipart bodies
-     * on POST alone. Every other write listed above is a PUT, PATCH or
-     * DELETE, but both change a thing somebody read first. Two people editing
-     * a draft, and one publishing it on the strength of what they saw, is the
-     * same lost update this class exists to stop. A POST that CREATES
-     * something must not carry `etag:`, because there is no entity yet to
-     * have a tag for.
+     * POST is here for two routes that change a thing somebody read first:
+     * publishing an event, and replacing a library photo (a POST only because
+     * PHP parses multipart bodies on POST alone). A POST that creates something
+     * must not carry `etag:`, because there is no entity yet to tag.
      *
      * Public, so the published document and its test read the same list.
      */
@@ -104,16 +82,14 @@ class ConditionalWrite
             );
         }
 
-        // ONE TRANSACTION FROM THE CHECK TO THE COMMIT (#231). The row is
-        // locked before its tag is compared and stays locked until the write
-        // commits, so a second request carrying the same tag waits, re-reads
-        // the state the first one left, and is refused. Comparing first and
-        // writing after, with nothing held in between, let both pass and the
-        // second silently undo the first.
+        // One transaction from the check to the commit (#231). The row stays
+        // locked from the tag comparison until the write commits, so a second
+        // request carrying the same tag waits, re-reads the new state and is
+        // refused.
         //
-        // A RESPONSE THAT IS NOT A SUCCESS ROLLS BACK. Laravel renders a
-        // controller's exception into a response before it reaches here, so
-        // a write that failed half-way would otherwise commit its first half.
+        // A response that is not a success rolls back: Laravel renders a
+        // controller's exception into a response before it reaches here, so a
+        // write that failed half-way would otherwise commit its first half.
         DB::beginTransaction();
 
         try {
@@ -161,15 +137,11 @@ class ConditionalWrite
      * write, so it names the state the body describes and not one another
      * request wrote a moment later.
      *
-     * Never on a DELETE: there is no entity left to tag, and an `ETag` on a
-     * 200 that announces a deletion would name something that no longer
-     * exists.
+     * Never on a DELETE, since there is no entity left to tag.
      *
-     * Never on a 412 either, which is the one worth saying out loud: the
-     * refusal knows the current tag and sending it would be a kindness that
-     * defeats the mechanism — a client could retry blindly with the fresh tag
-     * and land exactly the overwrite it was just stopped from making. The fix
-     * for a 412 is to re-read and re-decide, not to re-send.
+     * Never on a 412 either: a client could retry blindly with the fresh tag
+     * and make exactly the overwrite it was just stopped from making. After a
+     * 412 the client has to re-read.
      */
     private function tagged(Response $response, Request $request, string $facet, string $method): Response
     {
@@ -203,12 +175,10 @@ class ConditionalWrite
     /**
      * RFC 9110 §13.1.1, strong comparison.
      *
-     * `*` matches any existing entity — the caller asserting only that there
-     * is something there — and $current being non-null is that assertion. A
-     * list is compared entry by entry, and a weak tag (`W/"…"`) matches
-     * NOTHING here, because strong comparison requires both sides to be
-     * strong. We never emit one, so the only way a client sends a weak tag is
-     * by having invented it.
+     * `*` matches any existing entity, which $current being non-null already
+     * establishes. A list is compared entry by entry. A weak tag (`W/"…"`)
+     * never matches, because strong comparison requires both sides to be
+     * strong, and this API never emits one.
      */
     private static function matches(string $header, string $current): bool
     {

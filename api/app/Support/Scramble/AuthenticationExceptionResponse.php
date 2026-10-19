@@ -11,7 +11,7 @@ use Dedoc\Scramble\Support\Type\ObjectType;
 use Dedoc\Scramble\Support\Type\Type;
 use Illuminate\Auth\AuthenticationException;
 
-/** 401 not_authenticated — see App\Exceptions\ApiError::unauthenticated(). */
+/** 401 not_authenticated; see App\Exceptions\ApiError::unauthenticated(). */
 final class AuthenticationExceptionResponse extends ExceptionToResponseExtension
 {
     public function shouldHandle(Type $type): bool
@@ -27,10 +27,9 @@ final class AuthenticationExceptionResponse extends ExceptionToResponseExtension
     }
 
     /**
-     * Named for the STATUS, not for the exception class that happens to raise
-     * it. `#/components/responses/AuthenticationException` published a PHP class
-     * name to readers with no PHP, and it would become a lie the day the
-     * renderer typed on a different exception. Matches the components
+     * Named for the status, not for the exception class that raises it: a PHP
+     * class name means nothing to a reader without PHP, and would be wrong if
+     * the renderer typed on a different exception. Matches the components
      * App\Support\Scramble\DocumentsFailureModes registers, so one failure has
      * one name whichever half of the machinery declared it.
      */

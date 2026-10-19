@@ -8,31 +8,25 @@ use Illuminate\Support\Facades\Config;
  * A signed "this form was rendered at" stamp, used to refuse submissions
  * that arrive impossibly fast.
  *
- * NO STORAGE. The timestamp travels inside the token and is authenticated by
- * an HMAC over it, so the server keeps nothing: no table, no cache entry, no
- * cleanup job. That matters on a shared host where the cache store is itself
- * a database table created by a migration.
+ * No storage. The timestamp travels inside the token and is authenticated by
+ * an HMAC over it, so the server keeps nothing. That matters on a shared host
+ * where the cache store is itself a database table created by a migration.
  *
- * DELIBERATELY NOT SINGLE-USE. The Altcha replay guard this replaces
- * (App\Support\ChallengeGuard, since deleted) burned each challenge with
- * Cache::add(), which is right for proof-of-work and wrong here: a guest who
- * hits a validation error and resubmits would be rejected for reusing their
- * own token, and the form would have to re-fetch one on every failed attempt.
- * Replaying a valid token inside its own window is a marginal attack next to
- * that friction — the honeypot is the filter that catches naive bots, and
- * this is the one that catches instant submissions.
+ * Not single-use: a guest who hits a validation error and resubmits would be
+ * rejected for reusing their own token, and the form would have to fetch a
+ * new one on every failed attempt. Replaying a valid token inside its window
+ * is a marginal attack next to that friction. The honeypot catches naive
+ * bots, and this catches instant submissions.
  *
- * Signed with APP_KEY, which every environment already has and no
- * environment shares.
+ * Signed with APP_KEY, which every environment has and no environment shares.
  */
 final class FormToken
 {
     /**
      * A human cannot read a form and submit it this fast; a script can.
      *
-     * Two seconds rather than something larger because this must never
-     * refuse a real person — somebody returning to a tab they left open is
-     * handled by the upper bound, not this one.
+     * Two seconds, because this must never refuse a real person. Somebody
+     * returning to a tab they left open is the upper bound's concern.
      */
     public const MIN_AGE_SECONDS = 2;
 
@@ -61,14 +55,13 @@ final class FormToken
      */
     public static function isValid(?string $token): bool
     {
-        // FAIL CLOSED ON A BLANK APP_KEY. MEASURED 2026-09-10: PHP hash_hmac
-        // accepts an empty key and returns a digest anybody can recompute
-        // offline, and api/.env.example ships APP_KEY empty for the operator
-        // to fill. Nothing else catches it on this path either — an
-        // anonymous request carries no Origin, so Sanctum never starts a
-        // session and the encrypter is never resolved. A server missing that
-        // one line of .env would look healthy while its only anti-abuse
-        // token was public knowledge.
+        // Fail closed on a blank APP_KEY. hash_hmac accepts an empty key and
+        // returns a digest anybody can recompute offline, and
+        // api/.env.example ships APP_KEY empty for the operator to fill.
+        // Nothing else catches it on this path: an anonymous request carries
+        // no Origin, so Sanctum never starts a session and the encrypter is
+        // never resolved. A server missing that line would look healthy while
+        // its anti-abuse token was public knowledge.
         if (self::secret() === '') {
             return false;
         }

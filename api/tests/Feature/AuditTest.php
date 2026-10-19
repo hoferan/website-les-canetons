@@ -35,8 +35,8 @@ class AuditTest extends TestCase
 
     public function test_the_label_survives_the_target_being_deleted(): void
     {
-        // The whole point: after a hard delete, target_id points at nothing, so
-        // the entry must still say who it was.
+        // After a hard delete target_id points at nothing, so the label is
+        // what still says who it was.
         $actor = $this->member('actor');
         $target = $this->member('target');
 

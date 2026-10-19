@@ -7,9 +7,8 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * Marking a message handled, or putting it back.
  *
- * `required` rather than defaulting to true: a PATCH with an empty body would
- * otherwise silently handle the message, and this endpoint is also how one is
- * reopened.
+ * `handled` is required and has no default, so an empty PATCH cannot silently
+ * handle a message. This endpoint is also how one is reopened.
  */
 class HandleContactMessageRequest extends FormRequest
 {

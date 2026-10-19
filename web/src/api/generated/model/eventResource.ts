@@ -114,12 +114,13 @@
  * group permissions; which role granted one is not a question the API answers.
  * `GET /api/v1/me` returns the caller's effective permissions.
  *
- * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
- * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`, `images.manage`.
+ * `events.view`, `events.manage`, `attendance.respond`, `attendance.view_all`,
+ * `attendance.record_for_others`, `members.manage`, `roles.manage`,
+ * `registrations.view`, `registrations.manage`, `messages.view`,
+ * `messages.manage`, `history.manage`, `images.manage`, `account.manage`.
  *
- * Answering an event deliberately needs **no** permission: anyone in a register
- * answers for themselves.
+ * Every account holds `events.view` and `account.manage`. Answering an event for
+ * yourself needs `attendance.respond`.
  *
  * ## Conventions
  *
@@ -359,15 +360,15 @@ export interface EventResource {
    */
   answeredCount: number | null;
   /**
-   * How many members are answerable at all — the denominator of the
+   * How many members are answerable at all: the denominator of the
    * fraction. Null when the caller may not see answers.
    * @nullable
    */
   answerableCount: number | null;
   /**
-   * How many PEOPLE are booked — the sum of the quantities, because
-   * "3 x adulte, 1 x enfant" is four people and four is what fills
-   * the hall. Null when the caller may not see bookings.
+   * How many people are booked: the sum of the quantities, so
+   * "3 x adulte, 1 x enfant" counts as four. Null when the caller
+   * may not see bookings.
    * @nullable
    */
   guestCount: number | null;

@@ -10,11 +10,9 @@ use Tests\TestCase;
 /**
  * The public agenda: what a visitor may come and watch.
  *
- * THE FIRST AND ONLY READER OF `is_public`. The column has been settable since
- * the planning shipped and meant nothing until this endpoint, which is why
- * these tests lean on it harder than the shape: a filter that silently stopped
- * working would publish the band's whole rehearsal schedule, addresses
- * included, to anybody.
+ * This endpoint is the only reader of `is_public`, so these tests lean on the
+ * filter harder than on the shape: a filter that stopped working would publish
+ * the band's whole rehearsal schedule, addresses included, to anybody.
  */
 class AgendaTest extends TestCase
 {
@@ -72,9 +70,8 @@ class AgendaTest extends TestCase
     /**
      * A concert that started an hour ago is still tonight's concert to
      * somebody checking the address on the way there. The split is
-     * BandTime::startOfToday(), like the planning's, not now().
-     *
-     * Mutation-tested by hand against now(): this is the only test that fails.
+     * BandTime::startOfToday(), like the planning's, not now(). This is the
+     * only test that fails if the split becomes now().
      */
     public function test_an_event_happening_today_stays_on_the_agenda_all_day(): void
     {
@@ -111,14 +108,13 @@ class AgendaTest extends TestCase
     }
 
     /**
-     * Six fields, and not one of them internal. `notes` is the committee's
-     * own note and `isPublic` is the decision itself — publishing either would
-     * tell a visitor things about the band's diary that the filter above is
-     * there to keep out.
+     * No internal field. `notes` is the committee's own note and `isPublic` is
+     * the decision itself; publishing either would tell a visitor what the
+     * filter above keeps out.
      *
-     * `id` and `registrationOpen` joined the four when the booking form was
-     * built: the agenda is the only public list of events, so without them a
-     * visitor has no way to reach the form. See PublicEventResource.
+     * `id` and `registrationOpen` are there because the agenda is the only
+     * public list of events, and a visitor reaches the booking form through
+     * it. See PublicEventResource.
      */
     public function test_it_publishes_what_is_on_a_poster_and_nothing_else(): void
     {
@@ -143,11 +139,11 @@ class AgendaTest extends TestCase
     /**
      * The flag the public agenda decides whether to offer a booking link on.
      *
-     * Both events below take bookings — `registration_closes_at` is what
-     * enables that at all — and they differ only in whether the window has
-     * opened. A resource that published `takesRegistrations()` instead of
-     * `registrationIsOpen()` would pass every other test here and send a
-     * visitor to a form that refuses them.
+     * Both events below take bookings (`registration_closes_at` enables that)
+     * and differ only in whether the window has opened. A resource that
+     * published `takesRegistrations()` instead of `registrationIsOpen()` would
+     * pass every other test here and send a visitor to a form that refuses
+     * them.
      */
     public function test_it_says_which_events_are_taking_bookings_right_now(): void
     {
@@ -181,8 +177,8 @@ class AgendaTest extends TestCase
     }
 
     /**
-     * An event nobody may book answers `false`, not null and not absent — the
-     * ordinary case, and the one every rehearsal-shaped event is in.
+     * An event nobody may book answers `false`, not null and not absent. It is
+     * the ordinary case, for every rehearsal-shaped event.
      */
     public function test_an_event_that_takes_no_bookings_says_so(): void
     {

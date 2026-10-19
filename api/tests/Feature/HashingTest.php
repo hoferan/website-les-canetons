@@ -9,9 +9,8 @@ class HashingTest extends TestCase
 {
     public function test_this_php_build_supports_argon2id(): void
     {
-        // PHPStan's stubs assume argon2 is compiled in. Whether THIS build has
-        // it is exactly what this asserts, and it is not knowable statically —
-        // TEST runs on a shared host whose PHP is not ours.
+        // PHPStan's stubs assume argon2 is compiled in. Whether this build has
+        // it cannot be known statically: the servers run a shared host's PHP.
         // @phpstan-ignore method.alreadyNarrowedType (the runtime build is the subject)
         $this->assertTrue(
             defined('PASSWORD_ARGON2ID'),

@@ -41,7 +41,7 @@ class ContactEndpointTest extends TestCase
 
         $response->assertStatus(400)->assertJsonPath('code', 'validation_failed');
 
-        // These names must match i18n.js's fields.* keys exactly.
+        // These names must match the fields.* keys in web/src/i18n/ exactly.
         $fields = array_column($response->json('errors'), 'field');
         $this->assertSame(['lastName', 'firstName', 'email', 'subject', 'message'], $fields);
     }
@@ -70,12 +70,10 @@ class ContactEndpointTest extends TestCase
     {
         Mail::fake();
 
-        // THE TWO ADDRESSES ARE DIFFERENT HERE ON PURPOSE. The mailbox the
-        // site sends AS holds the SMTP credentials and is routinely a
-        // noreply@ nobody opens; the mailbox the committee READS is a
-        // separate per-server decision. A notification addressed to the
-        // sender would arrive unread and undo the reason it is sent, so this
-        // fails if the two are ever collapsed back onto one key.
+        // The two addresses differ on purpose. The mailbox the site sends as
+        // holds the SMTP credentials and is often a noreply@ nobody opens; the
+        // mailbox the committee reads is set per server. This fails if the two
+        // are collapsed onto one key.
         config([
             'mail.committee.address' => 'comite@example.com',
             'mail.from.address' => 'noreply@example.com',
@@ -93,10 +91,9 @@ class ContactEndpointTest extends TestCase
 
     public function test_a_failing_mail_server_does_not_lose_the_message(): void
     {
-        // BEST-EFFORT ON PURPOSE, as the booking confirmation is (ADR 0009). The
-        // row is already committed and the committee can read it in their
-        // inbox; an SMTP blip must not show a visitor an error for something
-        // that worked.
+        // Best effort, like the booking confirmation (ADR 0009). The row is
+        // already committed and readable in the inbox, so an SMTP failure must
+        // not show the visitor an error.
         Mail::shouldReceive('to')->andThrow(new \RuntimeException('smtp is down'));
 
         $this->postJson('/api/v1/contact', $this->publicWriteBody(self::VALID), $this->publicWriteHeaders())
@@ -108,10 +105,9 @@ class ContactEndpointTest extends TestCase
 
     public function test_the_notification_renders_what_the_committee_needs(): void
     {
-        // Rendered for real, because Mail::fake() never renders the view and
-        // ContactController swallows what the send throws. A template that
-        // only breaks in production would pass every other test here and
-        // then send nothing, silently, on the server.
+        // Rendered for real: Mail::fake() never renders the view and
+        // ContactController swallows what the send throws, so a broken
+        // template would pass every other test and send nothing on a server.
         $message = ContactMessage::create([
             'last_name' => 'Lovelace',
             'first_name' => 'Ada',
@@ -130,12 +126,10 @@ class ContactEndpointTest extends TestCase
 
     public function test_the_notification_sends_the_committee_to_the_inbox(): void
     {
-        // THE MAIL ALERTS; THE APP ANSWERS. /contact-messages is where a
-        // message is replied to and marked handled, and a reply sent straight
-        // from the mail client leaves handled false: the worklist keeps
-        // showing an answered message as open, and two people can both write
-        // back to the same stranger. So the notification carries a link into
-        // the app rather than inviting a reply to itself.
+        // The mail alerts and the app answers. /contact-messages is where a
+        // message is replied to and marked handled; a reply from the mail
+        // client leaves it open, and two people can both write back. So the
+        // notification links into the app.
         config(['app.url' => 'https://example.test']);
 
         $message = ContactMessage::create([

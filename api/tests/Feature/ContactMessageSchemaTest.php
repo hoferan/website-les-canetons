@@ -31,8 +31,8 @@ class ContactMessageSchemaTest extends TestCase
 
     public function test_the_record_of_who_handled_it_survives_that_member_leaving(): void
     {
-        // nullOnDelete rather than cascade: losing the member must not lose
-        // the message, which is a stranger's and not the band's to discard.
+        // nullOnDelete, not cascade: the message belongs to a stranger and
+        // must outlive the member who handled it.
         $camille = Member::factory()->named('Camille', 'Committee', 'camille')->create();
         $message = ContactMessage::factory()->handled($camille)->create();
 
@@ -47,7 +47,6 @@ class ContactMessageSchemaTest extends TestCase
     {
         // RunPendingMigrations re-checks on every request; a migration that
         // throws on a second pass takes the whole API down with a 503.
-        // Invoke the migration again to verify it is truly idempotent.
         (require database_path('migrations/2026_09_15_000001_add_handled_to_contact_messages.php'))->up();
 
         $this->assertTrue(Schema::hasColumn('contact_messages', 'handled_at'));

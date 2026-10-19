@@ -46,22 +46,20 @@ Everything else goes in `//` comments inside the method. That is where the
 measurements, the ADR references, the traps and the arguments belong,
 and nothing is lost by moving them there.
 
-**Except directly above a `return`.** Measured 2026-09-10: Scramble
-publishes the comment immediately preceding a return statement as that
-operation's **200 response description**. Two endpoints had shipped a
-paragraph of internal notes to `/api/docs` that way, test names included,
-while their docblocks were perfectly clean.
-
-So either put the note higher in the method, or leave a blank line between it
-and the `return`. A blank line is enough, and it is worth saying why in the
-comment so nobody closes the gap while tidying.
+**Except directly above a `return`.** Scramble publishes the comment block
+preceding a return statement as that operation's **200 response
+description**, closures included, and it walks back past blank lines to find
+it. A blank line is not enough. Put the note higher in the method, or assign
+the result first so a statement sits between the comment and the `return`, and
+say in one line why the assignment is there so nobody inlines it while
+tidying.
 
 ```php
 public function store(StoreRegistrationRequest $request, Event $event): JsonResponse
 {
-    // NO CAPACITY CHECK (ADR 0020), and that absence is what keeps this
-    // lock-free: a count-then-insert would need a locking read on the one
-    // endpoint strangers can hammer.
+    // No capacity check (ADR 0020), which keeps this lock-free: a
+    // count-then-insert would need a locking read on the one endpoint
+    // strangers can hammer.
     ...
 }
 ```

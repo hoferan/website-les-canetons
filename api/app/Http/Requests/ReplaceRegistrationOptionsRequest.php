@@ -41,20 +41,25 @@ class ReplaceRegistrationOptionsRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // REPLACE-ALL, matching PUT /members/{member}/roles rather than three
-        // per-option endpoints: the committee edits the list as a set in one
-        // form, and an "add one" API cannot express removal — which is the
-        // half the booked-option invariant exists for.
+        // Replace-all, like PUT /members/{member}/roles: the committee edits
+        // the list as a set in one form, and an "add one" API cannot express
+        // removal, which is what the booked-option invariant guards.
         //
-        // priceCents is an INTEGER and nullable. Never a float — binary
-        // floating point cannot represent 0.1, and this is money.
+        // priceCents is a nullable integer, never a float, because this is
+        // money.
+        //
+        // `options` is `present`, not `required`, since `required` refuses the
+        // empty array of an event with nothing bookable. Its example has one
+        // entry with an id and one without, which is what makes this a
+        // replacement.
+        //
+        // `options.*.id` is nullable because a new row has no id yet, and
+        // scoped to this event: an id from another event would update zero
+        // rows and the controller would answer 200 with an option missing.
+        //
+        // `priceCents` is gte:0 because a free option (0) differs from one
+        // with no price (null).
         return [
-            // `present`, not `required`: an event may legitimately have no
-            // options, and `required` refuses an empty array.
-            // The example carries one entry WITH an id and one without,
-            // because that difference is what makes this a replacement rather
-            // than an update, and it is the part the description above cannot
-            // show.
             /**
              * The whole list, replacing whatever the event offered before. Send `[]` to offer nothing.
              *
@@ -62,12 +67,6 @@ class ReplaceRegistrationOptionsRequest extends FormRequest
              */
             'options' => ['present', 'array', 'max:50'],
 
-            // Nullable rather than absent-or-int: the client sends the whole
-            // list back, and a new row has no id yet.
-            // Scoped to THIS event. An unscoped id updates zero rows and
-            // the controller moves on, so the committee submits three
-            // options, gets 200, and sees two — silent loss rather than a
-            // refusal.
             /** The id of an existing option of this event, to update it. Omit or send `null` to create a new one. */
             'options.*.id' => [
                 'nullable',
@@ -78,8 +77,6 @@ class ReplaceRegistrationOptionsRequest extends FormRequest
             'options.*.label' => ['required', 'string', 'max:255'],
             'options.*.description' => ['nullable', 'string', 'max:255'],
 
-            // gte:0 rather than gt:0 — an option really can cost nothing,
-            // and that is different from having no price at all (null).
             /** Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own. */
             'options.*.priceCents' => ['nullable', 'integer', 'gte:0', 'max:1000000'],
             /** Where this option sits on the form, lowest first, ties broken by id. Omitted, it takes the entry position in the list you send. */

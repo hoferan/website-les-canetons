@@ -9,13 +9,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The registers and roles arrive as a MIGRATION, not a seeder, because the
- * shared host has no shell: `artisan db:seed` cannot be run on a server, and
- * the only remote trigger that exists is the migration path. See ADR 0014.
+ * The registers and roles arrive as a migration, not a seeder, because the
+ * shared host has no shell: `artisan db:seed` cannot run on a server, and the
+ * migration path is the only remote trigger. See ADR 0014.
  *
- * RefreshDatabase runs migrations, so every test in the suite now starts with
- * these rows present. That is intentional — they are reference data, not
- * fixtures.
+ * RefreshDatabase runs migrations, so every test in the suite starts with
+ * these rows present. They are reference data, not fixtures.
  */
 class SeedRegistersAndRolesTest extends TestCase
 {
@@ -25,11 +24,10 @@ class SeedRegistersAndRolesTest extends TestCase
     {
         $names = Section::orderBy('sort_order')->pluck('name')->all();
 
-        // The band's own order, recovered from the pre-rebuild /canetons page.
-        // "Direction" was listed there too and is NOT a register: a musical
+        // The band's own order. "Direction" is not a register: a musical
         // director is a member holding the "Responsable Team Direction" seat in
         // committee_functions, or one whose instructor_of_section_id points at
-        // the register they teach. Putting it here would make it selectable as
+        // the register they teach. As a register it would be selectable as
         // somebody's instrument.
         $this->assertSame([
             'Batteurs',
@@ -43,11 +41,9 @@ class SeedRegistersAndRolesTest extends TestCase
 
     public function test_the_seeded_roles_carry_no_typed_name(): void
     {
-        // The API is English without exception. A seeded role's name is system
-        // text — a developer chose it in a migration — so it is translatable by
-        // a fixed identifier, and `key` is that identifier. The display name
-        // lives in web/src/i18n/fr.ts. `label_fr` and `label_de` hold only
-        // what the committee types in the role editor (ADR 0026).
+        // A seeded role's name is system text chosen by a developer, so it is
+        // translated from `key` in web/src/i18n/. `label_fr` and `label_de`
+        // hold only what the committee types in the role editor (ADR 0026).
         $this->assertSame(
             0,
             Role::query()->whereNotNull('label_fr')->orWhereNotNull('label_de')->count(),
@@ -86,18 +82,12 @@ class SeedRegistersAndRolesTest extends TestCase
 
     public function test_re_running_the_migration_neither_duplicates_nor_resets(): void
     {
-        // A deployed server re-runs nothing, but RunPendingMigrations and
-        // `artisan migrate` both must be safe to invoke twice, and a
-        // committee that has edited what a role grants must not have it
-        // silently reset underneath them — the "roles are editable data"
-        // capability this rebuild exists to add.
+        // Every migration must be safe to run twice, and a committee that has
+        // edited what a role grants must not have it silently reset.
         //
-        // The migration's up() is invoked DIRECTLY rather than through
-        // `artisan migrate`. RefreshDatabase has already migrated, so `migrate`
-        // would find nothing pending and no-op — the assertions below would
-        // then pass without the idempotency they claim to test ever being
-        // exercised. Mutation-tested: making the migration re-sync
-        // unconditionally fails this test, which it could not do via artisan.
+        // up() is called directly: RefreshDatabase has already migrated, so
+        // `artisan migrate` would find nothing pending and the assertions
+        // would pass without running the migration again.
         $direction = Role::where('key', 'direction')->sole();
         $direction->syncPermissions([Permission::RegistrationsView]);
 

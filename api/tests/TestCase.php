@@ -16,31 +16,20 @@ abstract class TestCase extends BaseTestCase
     /**
      * Acts as a member the way a real browser does.
      *
-     * BOTH EXTRAS ARE REQUIRED, and neither is obvious:
+     * All three extras are required:
      *
      *   - the `Origin` header makes Sanctum treat this as a request from a
-     *     stateful frontend, which is what attaches a session store to it at
-     *     all;
+     *     stateful frontend, which is what attaches a session store to it;
      *   - `auth.started_at` satisfies EnforceAbsoluteSessionLifetime, which
-     *     fails closed on a session it cannot date.
+     *     fails closed on a session it cannot date;
+     *   - the flush lets a test act as a second member after a first has made
+     *     a request. Without it the first session is still started,
+     *     `withSession()` never re-stamps `auth.started_at`, and the second
+     *     request answers 401. A browser does the same: a different person is
+     *     a different session.
      *
-     * Get either wrong and the request answers 401, which reads as a broken
-     * endpoint rather than a broken test. That three-line incantation was
-     * copy-pasted into ten test files and twenty-four call sites before it
-     * moved here.
-     *
-     * THE FLUSH IS THE THIRD, and it is what lets a test act as a SECOND
-     * member after a first has already made a request. Without it that second
-     * request answers 401 — measured 2026-09-12 — because the session from the
-     * first is still started, so `withSession()` below never re-stamps
-     * `auth.started_at` and EnforceAbsoluteSessionLifetime does what it
-     * promises and fails closed. It reads as "the endpoint rejects this
-     * member", which is a lie, and the two tests it caught were about two
-     * committee members racing each other — precisely the scenario that cannot
-     * be written without switching.
-     *
-     * Flushing is also what a browser does: a different person is a different
-     * session, not the same one with a new name on it.
+     * Get any of them wrong and the request answers 401, which looks like a
+     * broken endpoint when the test is what is broken.
      */
     protected function actingAsMember(Member $member): static
     {
@@ -54,17 +43,13 @@ abstract class TestCase extends BaseTestCase
     /**
      * The `If-Match` header a conditional write owes for this thing.
      *
-     * Every PATCH, DELETE and replace-all PUT on an event, a member, a booking
-     * or an event's options is refused with 428 without one — see
-     * App\Http\Middleware\ConditionalWrite. A test that is about what the write
-     * DOES should not have to perform a read first to say so, so this reads the
-     * tag straight out of App\Support\EntityTag.
-     *
-     * THROUGH THE SAME CODE THE MIDDLEWARE USES, deliberately. A helper that
-     * computed a tag its own way would agree with itself and disagree with the
-     * API, and every test here would pass against a broken gate.
-     * Tests\Feature\ConditionalWriteTest is where the header is exercised the
-     * way a client really gets it, over HTTP, from the read that hands it out.
+     * A conditional write without one is refused with 428 (see
+     * App\Http\Middleware\ConditionalWrite). This reads the tag straight out of
+     * App\Support\EntityTag, so a test about what a write does needs no read
+     * first. It uses the same code as the middleware on purpose: a helper that
+     * computed the tag its own way would agree with itself and let every test
+     * pass against a broken gate. Tests\Feature\ConditionalWriteTest takes the
+     * header from the read over HTTP, the way a client does.
      *
      * @return array<string, string>
      */
@@ -102,11 +87,10 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * A body that satisfies PublicWriteGuard, merged over the caller"s own.
+     * A body that satisfies PublicWriteGuard, merged over the caller's own.
      *
-     * The decoy field must be PRESENT and empty. A real form always renders
-     * it, so sending it costs a browser nothing; omitting it is what a
-     * script does, and that is the case the guard exists to catch.
+     * The decoy field must be present and empty. A real form always renders
+     * it; omitting it is what a script does, and the guard refuses that.
      *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
@@ -119,17 +103,12 @@ abstract class TestCase extends BaseTestCase
     /**
      * Headers that satisfy App\Http\Middleware\PublicWriteGuard.
      *
-     * The token is built by SIGNING A PAST TIMESTAMP rather than by issuing
-     * one and waiting. The guard's whole point is that a real form takes
-     * seconds to fill in, so a suite that actually slept would add two
-     * seconds to every public-write test — and the thing worth testing is
-     * the signature and the window, not the clock.
+     * The token signs a past timestamp so the suite never sleeps through the
+     * guard's minimum fill-in time.
      *
-     * THE IDEMPOTENCY KEY IS FRESH ON EVERY CALL, which is what a real form
-     * does: one key per render, so two submissions of the same form are two
-     * submissions and a retry of one is a retry. Pass `key:` to reuse one on
-     * purpose — that is a retry — or `key: null` to send none and be refused.
-     * See App\Http\Middleware\IdempotentWrite.
+     * The idempotency key is fresh on every call, one per render as in a real
+     * form. Pass `key:` to reuse one (a retry), or `key: null` to send none
+     * and be refused. See App\Http\Middleware\IdempotentWrite.
      *
      * @return array<string, string>
      */

@@ -12,34 +12,22 @@ use LogicException;
  * An event as a stranger sees it: enough to recognise the one they were told
  * about, and nothing else.
  *
- * DELIBERATELY NOT EventResource, which carries `notes` (internal) and
- * `isPublic` (the public agenda's business) and is only ever served to a
- * member. Four fields, each one a fact already on a poster.
+ * Deliberately not EventResource, which carries `notes` (internal) and
+ * `isPublic` and is only served to members. The fields here are facts
+ * already on a poster.
  *
- * A RESOURCE RATHER THAN AN ARRAY INSIDE RegistrationFormResource, which is
- * where it lived until 2026-09-11. The shape was identical; what changed is
- * that the document now names it. An inline object is published anonymously,
- * so a generated client typed it as an unnamed nested object while every
- * sibling had a component of its own — and the public agenda, which needs
- * exactly these four fields, would have had no type to reuse.
+ * A Resource rather than an inline array in RegistrationFormResource so the
+ * OpenAPI document names it and the public agenda can reuse the type.
  *
- * `id` AND `registrationOpen` WERE ADDED WHEN THE BOOKING SCREENS WERE BUILT,
- * and they are the two facts a booking form is unreachable without. The agenda
- * is the only public list of events there is; with no id it cannot link to
- * `/events/{id}/book`, and with no flag it would either link to a form that
- * refuses everybody or hide a form that is taking bookings. Neither is a
- * disclosure: the id opens nothing on its own — `GET /events/{event}/registration`
- * answers 404 for an event that takes no bookings, whether or not it exists —
- * and this list is already filtered to what the committee chose to publish.
+ * `id` and `registrationOpen` let the agenda link to `/events/{id}/book` only
+ * when the form takes bookings. Neither discloses anything: `GET
+ * /events/{event}/registration` answers 404 for an event that takes no
+ * bookings, whether or not it exists, and this list is already filtered to
+ * what the committee published. `poster` is safe for the same reason: it is
+ * the flyer, shown only on an event this list already shows.
  *
- * `poster` IS SAFE HERE FOR THE SAME REASON: it is the flyer the committee
- * made to hand out, and it reaches a stranger only on an event this list
- * already shows.
- *
- * `registrationOpen` REPEATS RegistrationFormResource's top-level `open`
- * when this resource is nested inside it. The two are always equal and
- * computed from the same method; the top-level one is the form's own answer
- * and stays the one that screen reads.
+ * Nested in RegistrationFormResource, `registrationOpen` repeats the top-level
+ * `open`. Both come from the same method; that screen reads `open`.
  *
  * @mixin Event
  */
@@ -67,14 +55,13 @@ class PublicEventResource extends JsonResource
     }
 
     /**
-     * TYPED METHODS THAT REFUSE A NULL, so the document keeps promising strings.
+     * Typed methods that refuse a null, so the document keeps promising
+     * strings.
      *
-     * The model now types these three as nullable, because a draft may not
-     * have them yet, and Scramble reads types. This list only ever holds
-     * published events, which always have all four, so the contract must not
-     * widen with the model. A draft reaching here is a bug in a route that
-     * forgot to hide it, and failing loudly beats a null in a field a
-     * generated client treats as a string.
+     * The model types these three as nullable because a draft may lack them,
+     * and Scramble reads types. This list only holds published events, which
+     * always have them. A draft reaching here is a bug in a route that forgot
+     * to hide it, so it throws instead of sending a null.
      */
     private function startsAt(): Iso8601
     {

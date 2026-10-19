@@ -9,7 +9,7 @@ use App\Models\Section;
 use Illuminate\Database\Seeder;
 
 /**
- * Local development and test data. SYNTHETIC ONLY — never a real member's name
+ * Local development and test data. Synthetic only: never a real member's name
  * and never a real password.
  *
  * Personas, by the roles they hold (every one also holds the baseline `member`
@@ -28,25 +28,21 @@ class DevSeeder extends Seeder
 {
     public function run(): void
     {
-        // Belt-and-braces: this seeder ships to every deployed environment
-        // (only tests/ is excluded from the build artifact, not
-        // database/seeders/), and nothing must ever be able to invoke it
-        // there and create demo.* accounts with a known password on a real
-        // server. Nothing currently does, but this must hold regardless.
+        // This seeder ships in the build artifact (only tests/ is excluded),
+        // and nothing may ever create demo.* accounts with a known password on
+        // a real server. Nothing invokes it there, but this guard holds anyway.
         if (app()->isProduction()) {
             return;
         }
 
-        // The registers come from the 2026_09_07_000001 migration now — they
-        // are reference data, not fixtures. Assigning demo members to the REAL
-        // registers also means the dev stack renders the same register list a
-        // server does, which is what makes a local screenshot worth anything.
+        // The registers are reference data from migration 2026_09_07_000001.
+        // Using the real ones makes the dev stack render the same register
+        // list as a server, so a local screenshot is representative.
         $sections = Section::orderBy('sort_order')->get()->keyBy('name');
 
         // The roles come from the migration too. firstOrCreate here would
-        // create a SECOND role with the same key on a database where the
-        // migration had run — and syncPermissions would undo a developer's
-        // hand-edits, which is the thing DevSeederTest pins.
+        // create a second role with the same key, and syncPermissions would
+        // undo a developer's hand-edits, which DevSeederTest pins.
         $direction = Role::where('key', 'direction')->sole();
         $committee = Role::where('key', 'committee')->sole();
 
@@ -57,15 +53,12 @@ class DevSeeder extends Seeder
         // Plays, organises nothing.
         $this->member('demo.player', 'Perrine', 'Player', $sections['Cloches']->id);
 
-        // BOTH — the case the old role matrix could not express. If someone
-        // reintroduces an either/or, this member is what breaks.
+        // Plays and organises: an either/or role model breaks on this member.
         //
-        // ALSO THE ONE INSTRUCTOR, and that is what makes the public band page
-        // renderable in development: `instructor_of_section_id` is a different
+        // Also the one instructor, so the public band page's instructor branch
+        // renders in development. `instructor_of_section_id` is a different
         // column from `section_id`, so Bastien is listed as a player under the
-        // trumpets and as an instructor under the drums. With nobody teaching
-        // anything, that branch of the page could only be looked at on a
-        // server.
+        // trumpets and as an instructor under the drums.
         $this->member('demo.both', 'Bastien', 'Both', $sections['Trompettes']->id, [
             'instructor_of_section_id' => $sections['Batteurs']->id,
         ])->roles()->syncWithoutDetaching([$direction->id]);
@@ -73,25 +66,22 @@ class DevSeeder extends Seeder
         // Holds the committee role and plays: the guest list is the only
         // thing they can see, and they are still in the attendance list.
         //
-        // The SEAT is what puts them on the public committee page, and it is
-        // deliberately not the same thing as the role: `committee` grants
-        // `registrations.view`, while 'Responsable intendance' is a row in
-        // committee_functions that the site renders verbatim. One is
-        // authorisation and the other is a caption, and a demo roster where they
-        // coincide is how somebody comes to believe they are one field.
+        // The seat, not the role, puts them on the public committee page. The
+        // `committee` role is authorisation; 'Responsable intendance' is a row
+        // in committee_functions that the site shows verbatim as a caption.
+        // The demo keeps the two distinct so nobody mistakes them for one field.
         $this->member('demo.committee', 'Camille', 'Committee', $sections['Trombones']->id, [
             'committee_function_id' => CommitteeFunction::where('name', 'Responsable intendance')->value('id'),
         ])->roles()->syncWithoutDetaching([$committee->id]);
 
-        // A young member whose PARENT uses the login on their behalf. Every
-        // member has an account (2026_09_08_000001): the roster is the people
-        // the band tracks for events, and all of them are answerable. People
-        // the band merely displays — instructors, honorary members — are
-        // content and are not members at all.
+        // A young member whose parent uses the login. Every member has an
+        // account (ADR 0015): the roster is the people the band tracks for
+        // events. People the band only displays (instructors, honorary
+        // members) are content, not members.
         //
-        // The account is used, so it has a last login (#148). The column is not
-        // fillable, because only logging in writes it, so it is forced here, and
-        // on creation only like every other attribute this seeder sets.
+        // The account is in use, so it has a last login (#148). Only logging
+        // in writes that column, so it is not fillable and is forced here, on
+        // creation only like every other attribute this seeder sets.
         $young = $this->member('demo.young', 'Nadia', 'Sansconnexion', $sections['Batteurs']->id);
         if ($young->wasRecentlyCreated) {
             $young->forceFill(['last_login_at' => '2026-09-12 18:05:00'])->save();
@@ -99,15 +89,14 @@ class DevSeeder extends Seeder
     }
 
     /**
-     * @param  array<string, mixed>  $extra  Applied ON CREATION ONLY, like every
+     * @param  array<string, mixed>  $extra  Applied on creation only, like every
      *                                       other attribute here: firstOrCreate
-     *                                       leaves an existing row alone, which
-     *                                       is what stops this seeder undoing a
-     *                                       developer's hand-edits (DevSeederTest
-     *                                       pins that). A database seeded before
-     *                                       one of these was added therefore does
-     *                                       not gain it — re-seed from empty, or
-     *                                       set it in DbGate.
+     *                                       leaves an existing row alone, so the
+     *                                       seeder never undoes a developer's
+     *                                       hand-edits (DevSeederTest). An
+     *                                       attribute added later does not reach
+     *                                       an already seeded database; re-seed
+     *                                       from empty, or set it in DbGate.
      */
     private function member(string $username, string $first, string $last, ?int $sectionId, array $extra = []): Member
     {
@@ -123,8 +112,8 @@ class DevSeeder extends Seeder
             ],
         );
 
-        // Every account holds the baseline. A persona with a register is also
-        // given `musician` here, by this seeder: the register grants nothing.
+        // Every account holds the baseline. A persona with a register also
+        // gets `musician` here, since the register grants nothing.
         $member->roles()->syncWithoutDetaching(array_filter([
             Role::baseline()->id,
             $sectionId !== null ? Role::where('key', 'musician')->value('id') : null,

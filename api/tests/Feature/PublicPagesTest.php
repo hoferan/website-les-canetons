@@ -13,19 +13,15 @@ use Tests\TestCase;
 /**
  * The two people-pages of the public site, generated from the roster.
  *
- * WHAT THESE TESTS ARE REALLY GUARDING is consent. `public_visible` defaults
- * to false because most of the band are children, and these are the only two
- * endpoints in the system that serve a member's name to somebody with no
- * session at all. The assertions about shape are ordinary; the ones about who
- * is listed are a promise made to a parent.
+ * These tests guard consent. `public_visible` defaults to false because most of
+ * the band are children, and these are the only two endpoints that serve a
+ * member's name to somebody with no session. The assertions about who is
+ * listed are a promise made to a parent.
  *
- * THE SIX REGISTERS ARE ALREADY THERE. `2026_09_07_000001` seeds them as
- * reference data and RefreshDatabase runs every migration, so a fresh database
- * has Batteurs through Trombones before a single line of a test runs. These
- * tests therefore use those rather than inventing registers of their own — a
- * `Section::factory()->create(['name' => 'Batteurs'])` collides with the
- * unique index, and indexing the answer by position reads whichever seeded
- * register sorts first.
+ * A migration seeds the six registers as reference data and RefreshDatabase
+ * runs it, so these tests use them. Creating `Batteurs` again collides with the
+ * unique index, and indexing the answer by position reads whichever register
+ * sorts first.
  */
 class PublicPagesTest extends TestCase
 {
@@ -62,8 +58,8 @@ class PublicPagesTest extends TestCase
 
         $trumpets = $this->registerIn($this->getJson('/api/v1/band'), 'Trompettes');
 
-        // assertSame on VALUES, not assertJsonStructure: key presence alone
-        // stays green when two fields are swapped in the Resource.
+        // assertSame on values: key presence alone stays green when two fields
+        // are swapped in the Resource.
         $this->assertSame('Perrine', $trumpets['members'][0]['firstName']);
         $this->assertSame('Player', $trumpets['members'][0]['lastName']);
     }
@@ -84,10 +80,9 @@ class PublicPagesTest extends TestCase
     }
 
     /**
-     * A register everybody has withheld consent for is STILL RENDERED, empty.
-     * Dropping it would tell a visitor the band has no drummers, which is a
-     * false claim about the band, and it would let a reader infer that a named
-     * child withheld consent, which is the one thing this page must not leak.
+     * A register everybody has withheld consent for is still rendered, empty.
+     * Dropping it would tell a visitor the band has no drummers, and would let
+     * a reader infer that a named child withheld consent.
      */
     public function test_it_keeps_a_register_whose_members_all_withheld_consent(): void
     {
@@ -116,8 +111,7 @@ class PublicPagesTest extends TestCase
     {
         $response = $this->getJson('/api/v1/band')->assertStatus(200);
 
-        // By sort_order, which is what that column is for: the pre-rebuild front
-        // end hardcoded this order in TSX, where it drifted from the table.
+        // By sort_order, so the order lives in the table and nowhere else.
         $this->assertSame(
             self::SEEDED_REGISTERS,
             array_column($response->json('data'), 'name'),
@@ -125,9 +119,8 @@ class PublicPagesTest extends TestCase
     }
 
     /**
-     * An instructor teaches ONE register and may play in ANOTHER. The two
-     * columns are separate for that reason, and the same person appearing
-     * under two headings is correct rather than a duplicate.
+     * An instructor teaches one register and may play in another, so the two
+     * columns are separate and the same person under two headings is correct.
      */
     public function test_an_instructor_is_listed_under_the_register_they_teach(): void
     {
@@ -163,10 +156,9 @@ class PublicPagesTest extends TestCase
     }
 
     /**
-     * NOTHING ABOUT AN ACCOUNT LEAVES THE BUILDING. MemberResource carries the
-     * username, the last login, the roles and the consent flag itself; this
-     * endpoint shares none of it, and the protection is that
-     * PublicMemberResource does not write those lines.
+     * Nothing about an account is published. MemberResource carries the
+     * username, the last login, the roles and the consent flag; this endpoint
+     * shares none of it because PublicMemberResource does not write them.
      */
     public function test_it_publishes_a_name_and_nothing_else(): void
     {
@@ -197,10 +189,8 @@ class PublicPagesTest extends TestCase
         $response = $this->getJson('/api/v1/committee')->assertStatus(200);
 
         $this->assertSame('Camille', $response->json('data.0.firstName'));
-        // THE NAME, NOT THE ID. A seat is still content — the committee types
-        // it — so the public page renders it verbatim and no translation layer
-        // reaches it. What changed is who may type it and when, not what a
-        // visitor reads.
+        // The name, not the id. A seat is content the committee types, so the
+        // public page renders it verbatim and no translation layer reaches it.
         $this->assertSame('Responsable caisse', $response->json('data.0.function'));
         // A seat shows no portrait: the committee page is names and seats.
         $this->assertArrayNotHasKey('photo', $response->json('data.0'));
@@ -219,10 +209,7 @@ class PublicPagesTest extends TestCase
 
     public function test_the_committee_omits_a_member_holding_no_seat(): void
     {
-        // ONE STATE NOW, not three. The free-text column had a member with no
-        // seat arriving as null, as '' and as '   ', and the controller carried
-        // a trimming filter to tell all three from a real seat. A foreign key
-        // has exactly one way to say "nobody".
+        // A foreign key has one way to say "no seat": null.
         Member::factory()->create(['committee_function_id' => null, 'public_visible' => true]);
 
         $this->assertSame([], $this->getJson('/api/v1/committee')->json('data'));
@@ -230,10 +217,9 @@ class PublicPagesTest extends TestCase
 
     public function test_the_committee_is_ordered_by_rank(): void
     {
-        // THE POINT OF THE WHOLE REFERENCE TABLE. Alphabetically this is the
-        // wrong way round in both columns at once — Aebischer before Zbinden,
-        // "Responsable caisse" before "Présidente" — so an ordering that
-        // survives this test cannot be either of the two it replaced.
+        // The reason for the reference table. Alphabetically both columns sort
+        // the wrong way round (Aebischer before Zbinden, "Responsable caisse"
+        // before "Présidente"), so only ordering by rank passes.
         Member::factory()->create([
             'last_name' => 'Aebischer',
             'committee_function_id' => $this->seat('Responsable caisse')->id,
@@ -256,9 +242,8 @@ class PublicPagesTest extends TestCase
     public function test_two_people_sharing_a_seat_are_ordered_by_name(): void
     {
         // "Membre" is held by several people at once, so rank alone does not
-        // determine the order. Without the tie-break the two cards would come
-        // back in whatever order the database felt like, which changes under
-        // them for no reason a reader can see.
+        // determine the order. Without the tie-break the cards would come back
+        // in whatever order the database chose.
         $seat = $this->seat('Membre')->id;
 
         Member::factory()->create(['last_name' => 'Zbinden', 'committee_function_id' => $seat, 'public_visible' => true]);
@@ -283,10 +268,8 @@ class PublicPagesTest extends TestCase
     }
 
     /**
-     * One register out of the answer, BY NAME rather than by position. The six
-     * seeded registers all come back, so `data.0` is Batteurs whatever the test
-     * is about — which is how the first draft of this file passed an assertion
-     * about trumpets while reading drummers.
+     * One register out of the answer, by name. The six seeded registers all
+     * come back, so `data.0` is Batteurs whatever the test is about.
      *
      * @return array{name: string, members: list<array<string, mixed>>, instructors: list<array<string, mixed>>}
      */

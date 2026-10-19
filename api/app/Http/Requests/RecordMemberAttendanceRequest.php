@@ -10,8 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * The same payload a member sends for themselves, with one rule missing:
  * `note` is always optional here, even when the answer changes from `yes` to
- * `no`. The committee is writing down what somebody told them on the phone,
- * not justifying a decision of their own.
+ * `no`, because the committee is writing down what the member told them.
  *
  * The route refuses a caller who aims it at their own membership, so a member
  * who both plays and manages still has to answer for themselves through
@@ -22,18 +21,14 @@ class RecordMemberAttendanceRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // NO REASON RULE FOR A WITHDRAWN YES, deliberately (ADR 0018). The
-        // member phoned the committee to say they cannot come; making the
-        // committee invent a written reason on their behalf would put words in
-        // their mouth, and the note is free text here for whatever they
-        // actually said.
+        // No reason is required for a withdrawn yes (ADR 0018): the committee
+        // records what the member told them and should not invent a reason.
         //
-        // That exemption is exactly why the route refuses its own caller:
-        // a member who both plays and manages — demo.both — could
-        // otherwise withdraw their own yes through this endpoint and never
-        // supply the reason RecordOwnAttendanceRequest asks for. The refusal
-        // is in the controller, not here, because it is a conflict with the
-        // state of the system rather than a malformed field.
+        // That exemption is why the route refuses its own caller: a member who
+        // both plays and manages could otherwise withdraw their own yes here
+        // without the reason RecordOwnAttendanceRequest asks for. The refusal
+        // is in the controller because it is a conflict with the system's
+        // state, not a malformed field.
         return [
             /** Whether the member is coming. One of `yes` or `no`. */
             'status' => ['required', 'string', AttendanceStatus::rule()],

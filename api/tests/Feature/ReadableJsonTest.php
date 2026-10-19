@@ -8,12 +8,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Asserted on the RAW BODY, not on the decoded array.
+ * Asserted on the raw body, not on the decoded array.
  *
- * That is the whole point and the only way this can be tested at all: every
- * assertion helper in the framework decodes the response first, and after
- * decoding `"Répétition"` and `"Répétition"` are the same string.
- * A test written through json() would pass with the middleware deleted.
+ * Every assertion helper in the framework decodes the response first, and
+ * after decoding `"R\u00e9p\u00e9tition"` and `"Répétition"` are the same
+ * string. A test written through json() would pass with the middleware deleted.
  */
 class ReadableJsonTest extends TestCase
 {
@@ -28,9 +27,8 @@ class ReadableJsonTest extends TestCase
     }
 
     /**
-     * The one with a measurable cost. Every event title, location and note in
-     * this API is French; escaping turns each accented character from two bytes
-     * into six.
+     * Event titles, locations and notes are French, and escaping turns each
+     * accented character from two bytes into six.
      */
     public function test_french_content_is_not_unicode_escaped(): void
     {
@@ -50,9 +48,8 @@ class ReadableJsonTest extends TestCase
     }
 
     /**
-     * Raw UTF-8 has to survive the round trip, or this middleware would be
-     * trading bytes for corruption. Decoding is the check the assertions above
-     * deliberately avoid, so it is made once, here, on purpose.
+     * Raw UTF-8 has to survive the round trip. This is the one test that
+     * decodes, on purpose.
      */
     public function test_the_content_still_decodes_to_the_same_string(): void
     {

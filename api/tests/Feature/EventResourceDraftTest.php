@@ -45,7 +45,7 @@ class EventResourceDraftTest extends TestCase
 
     public function test_the_public_resource_keeps_its_four_fields_non_null_in_the_document(): void
     {
-        // The model's types now say startsAt, endsAt and location may be null,
+        // The model's types say startsAt, endsAt and location may be null,
         // and Scramble reads types. The agenda only ever lists published
         // events, so the published contract must not widen with them.
         $document = json_decode(file_get_contents(base_path('openapi.json')), true);

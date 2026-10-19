@@ -69,8 +69,7 @@ class SessionRevocationTest extends TestCase
     public function test_deleting_a_member_cascades_nothing_onto_sessions(): void
     {
         // sessions has no foreign key to members, so the row survives the
-        // delete — which is exactly why SessionRevoker must be called
-        // explicitly, and why this test exists to state it.
+        // delete and SessionRevoker must be called explicitly.
         $lea = $this->member('lea');
         $this->seedSession('session-lea', $lea->id);
 
@@ -82,11 +81,9 @@ class SessionRevocationTest extends TestCase
     public function test_revoking_all_but_one_session_leaves_that_one_alive(): void
     {
         // ADR 0010 wants revocation to be immediate on a password change. Taken
-        // literally that also kills the session the actor is standing in — and
-        // the forced-change screen is where every first login begins, so the
-        // literal reading bounces every new account straight back to the login
-        // form. The property that actually matters is that every OTHER session
-        // dies.
+        // literally that also kills the actor's own session, and every first
+        // login begins on the forced-change screen, so every new account would
+        // bounce back to the login form. Every other session dies.
         $member = $this->member('perrine');
         $this->seedSession('current', $member->id);
         $this->seedSession('phone', $member->id);

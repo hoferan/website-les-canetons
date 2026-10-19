@@ -23,63 +23,42 @@ use Illuminate\Support\Facades\Route;
  * Declares the failures a route can answer with, read off the route's own
  * middleware.
  *
- * WHY THIS EXISTS. A documentation review on 2026-09-11 counted the statuses
- * the document declared against the ones the API emits:
+ * The schema is what gets compiled into a client: a status missing here is
+ * missing from a generated client's type union, whatever the operation's prose
+ * says. The statuses are derived from the middleware instead of annotated per
+ * route, because the middleware is what refuses (`permission:events.manage` is
+ * the reason a 403 exists). Adding or removing it adds or removes the status,
+ * so the document cannot drift from the routes.
  *
- *     declared:  200×30  201×3  400×14  401×28  404×19  409×1  429×1  503×1
- *     reality:   403 on sixteen permission-gated routes, 419 on every write,
- *                422 on both public forms, 409 on seven endpoints
+ * The route table cannot imply the 409s, or the 403s that are not about a
+ * missing permission (`not_answerable`, `reauth_failed`). Controllers and
+ * domain services raise those, so the action declares them with
+ * `#[Emits(...)]`. See App\Support\Emits.
  *
- * `403` appeared **zero** times, while a dozen operation descriptions said
- * "Requires `events.manage`". The prose was accurate and the schema was not —
- * and the schema is the half that gets compiled into a client. Every one of
- * those is a status a generated client's type union does not contain.
- *
- * WHY IT IS DERIVED RATHER THAN ANNOTATED. Sixteen routes needing a `403`
- * annotation is sixteen chances to forget one, and the seventeenth route added
- * next year has nobody to remind it. The middleware is already the authority on
- * what a route refuses — `permission:events.manage` IS the reason a 403 exists —
- * so reading it means the document cannot drift from the routes. Add the
- * middleware and the status appears; remove it and the status goes.
- *
- * WHAT IT CANNOT SEE: the 409s, and the 403s that are not about a missing
- * permission (`not_answerable`, `reauth_failed`). Those are raised by
- * controllers and domain services — a date comparison, a count — so nothing in
- * the route table implies them and no inference is going to find them. They
- * carry `#[Emits(...)]` on the action, which is where annotation belongs
- * because the fact really is per-action. See App\Support\Emits.
- *
- * ONE RESPONSE PER STATUS, NAMING EVERY CODE THAT STATUS CAN CARRY HERE. The
- * two sources meet in handle(), which collects a status => codes map before
- * declaring anything: the public forms answer 400 both for a rejected field and
- * for a missing Idempotency-Key, and a response naming one of those is a
- * response lying about the other. Until 2026-09-12 each status was a shared
- * component with a single code, and `POST /events/{event}/registrations`
- * declared a 409 that named `idempotency_key_reuse` while the controller also
- * answers `registration_not_open` and `registration_closed` — two branches a
- * generated client was told could not happen.
+ * handle() collects a status => codes map before declaring anything, so each
+ * status gets one response naming every code it can carry on that route. The
+ * public forms answer 400 both for a rejected field and for a missing
+ * Idempotency-Key, and a response naming only one of them misleads a client
+ * about the other.
  */
 class DocumentsFailureModes extends OperationExtension
 {
     /**
-     * status => the code the SHARED `Problem<status>` component carries.
+     * status => the code the shared `Problem<status>` component carries.
      *
-     * The baseline: what a route answers with that status when nothing but the
-     * ordinary machinery is involved. An operation whose set for a status is
-     * exactly this references the shared component; an operation that can also
-     * answer with something else carries an inline response naming all of them.
-     * See declare().
+     * The baseline is what a route answers with that status from the ordinary
+     * machinery alone. An operation whose set for a status is exactly this
+     * references the shared component; one that can also answer with something
+     * else gets an inline response naming all of them. See declare().
      *
-     * 400's baseline is registered by ValidationExceptionResponse rather than
-     * here, and 401 and 404 likewise by their own extensions. They are listed
-     * so this class knows what an already-declared response contains when it
-     * comes to widen one.
+     * ValidationExceptionResponse registers the 400 baseline, and their own
+     * extensions register 401 and 404. They are listed so this class knows
+     * what an already-declared response contains when it widens one.
      *
-     * NO 409. Every 409 in this API names a specific conflict — a booking
-     * outside its window, an option somebody has taken, a key already used —
-     * so there is no baseline to share and each operation declares its own.
-     * A `Problem409` component would be a general-sounding name for whichever
-     * conflict happened to register it first.
+     * There is no 409. Every 409 in this API names a specific conflict (a
+     * booking outside its window, an option somebody has taken, a key already
+     * used), so each operation declares its own. A shared `Problem409` would
+     * carry whichever conflict happened to register it first.
      */
     private const BASELINE = [
         400 => 'validation_failed',
@@ -121,11 +100,9 @@ class DocumentsFailureModes extends OperationExtension
         $middleware = $this->middlewareOf($routeInfo);
         $method = strtoupper($operation->method ?: $routeInfo->method);
 
-        // status => the codes THIS operation can answer with. Collected first
-        // and declared at the end, because a status can gain codes from more
-        // than one source — the public forms answer 400 for a rejected field
-        // and for a missing Idempotency-Key — and a response has to name all of
-        // them at once or it names some of them wrongly.
+        // status => the codes this operation can answer with. Declared at the
+        // end, because a status can gain codes from more than one source and
+        // its response has to name all of them.
         $failures = [];
 
         $can = function (int $status, string ...$codes) use (&$failures): void {
@@ -153,10 +130,9 @@ class DocumentsFailureModes extends OperationExtension
         }
 
         // Sanctum's stateful mode puts /api/v1/* behind the `web` middleware
-        // group, so EVERY mutating request needs the replayed X-XSRF-TOKEN and
-        // every one of them can answer 419. Derived from the method rather than
-        // from a middleware name because the CSRF check lives inside the group
-        // Sanctum nests, not as a listed entry.
+        // group, so every mutating request needs the replayed X-XSRF-TOKEN and
+        // can answer 419. Derived from the method because the CSRF check lives
+        // inside the group Sanctum nests, not as a listed entry.
         if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
             $can(419, 'invalid_session');
         }
@@ -185,17 +161,15 @@ class DocumentsFailureModes extends OperationExtension
         }
 
         if (in_array('idempotent', $middleware, true)) {
-            // BOTH STATUSES, which is the thing the shared components could not
-            // express: the 400 joins the one validation already put there.
+            // The 400 joins the codes validation already declared for it.
             $can(400, 'idempotency_key_required', 'idempotency_key_invalid');
             $can(409, 'idempotency_key_reuse');
             $this->declareIdempotencyKey($operation);
         }
 
-        // EVERY route behind RunPendingMigrations can answer 503: it refuses to
-        // serve against a schema it cannot vouch for. A client that does not
-        // know 503 is possible — and retryable — has no branch for the one
-        // answer a half-deployed server gives it.
+        // Every route behind RunPendingMigrations can answer 503: it refuses to
+        // serve against a schema it cannot vouch for. A client needs to know
+        // that answer is possible and retryable.
         if (in_array(RunPendingMigrations::class, $middleware, true)) {
             $can(503, 'service_unavailable');
         }
@@ -219,14 +193,12 @@ class DocumentsFailureModes extends OperationExtension
     /**
      * The route's middleware, with group names expanded to what they contain.
      *
-     * `gatherMiddleware()` returns the GROUP NAME — a route in routes/api.php
-     * reports `['api']` and nothing else — so a middleware registered on the
-     * group rather than on the route is invisible to a plain scan. That is
-     * where RunPendingMigrations lives, which is why the 503 it can answer with
-     * went undeclared on every operation until this expansion existed.
+     * `gatherMiddleware()` returns the group name (a route in routes/api.php
+     * reports `['api']` and nothing else), so middleware registered on the
+     * group, such as RunPendingMigrations, is invisible to a plain scan.
      *
-     * One level deep, which is all Laravel's groups are here. A group holding
-     * another group would need recursion, and would be worth noticing anyway.
+     * One level deep, which is all the groups here are. A group holding
+     * another group would need recursion.
      *
      * @return list<mixed>
      */
@@ -281,10 +253,9 @@ class DocumentsFailureModes extends OperationExtension
     /**
      * The header a public submission must carry.
      *
-     * The statuses it can answer with — 400 for a missing or malformed key, 409
-     * for one already used — are collected in handle() alongside everything
-     * else, so they join the codes those statuses already carry instead of
-     * replacing them.
+     * The statuses it can answer with (400 for a missing or malformed key, 409
+     * for one already used) are collected in handle(), so they join the codes
+     * those statuses already carry.
      */
     private function declareIdempotencyKey(Operation $operation): void
     {
@@ -304,21 +275,18 @@ class DocumentsFailureModes extends OperationExtension
     /**
      * What `etag:<facet>` on a route means for its contract.
      *
-     * Both halves, because the header a write owes and the header a read hands
-     * out are one mechanism and a document carrying only one of them sends the
-     * reader looking for the other. A client generated from a document that
-     * declared the 428 but not the `ETag` would know it had to send something
-     * and have nowhere to get it.
+     * Both halves: the header a write owes and the header a read hands out are
+     * one mechanism. A client that knows about the 428 but not the `ETag`
+     * would have to send something it has nowhere to get.
      *
-     * Read off the middleware rather than annotated, for the reason everything
-     * else here is: `etag:` IS the reason these statuses exist, so a route
-     * gaining or losing it moves the document with no second edit to remember.
+     * Read off the middleware like everything else here, so a route gaining or
+     * losing `etag:` moves the document with it.
      */
     private function declareConditionalWrite(Operation $operation, string $method): void
     {
         if (! in_array($method, self::CONDITIONED, true)) {
-            // A read. It hands out the tag the writes above need — see
-            // App\Http\Middleware\ConditionalWrite — and refuses nothing.
+            // A read: it hands out the tag the writes need (see
+            // App\Http\Middleware\ConditionalWrite) and refuses nothing.
             $this->declareEntityTagHeader($operation);
 
             return;
@@ -336,7 +304,7 @@ class DocumentsFailureModes extends OperationExtension
         ]);
 
         // A PUT or PATCH answers with the thing it just wrote, so it carries
-        // the NEW tag and a second edit needs no read between them. A DELETE
+        // the new tag and a second edit needs no read between them. A DELETE
         // does not: there is nothing left to tag.
         if ($method !== 'DELETE') {
             $this->declareEntityTagHeader($operation);
@@ -347,9 +315,9 @@ class DocumentsFailureModes extends OperationExtension
     private function declareEntityTagHeader(Operation $operation): void
     {
         foreach ($operation->responses ?? [] as $response) {
-            // A Reference here is one of the shared Problem components added
-            // above, which must not claim to carry a tag — and could not, since
-            // they are shared between every operation that fails that way.
+            // A Reference here is one of the shared Problem components, which
+            // every operation that fails that way points at, so it carries no
+            // tag.
             if (! $response instanceof Response) {
                 continue;
             }
@@ -373,21 +341,16 @@ class DocumentsFailureModes extends OperationExtension
     /**
      * Declares one status, naming every code this operation can answer it with.
      *
-     * SHARED WHEN IT CAN BE, INLINE WHEN IT MUST BE. A set that is exactly the
-     * baseline for that status — the ordinary machinery and nothing else —
-     * references the shared `Problem<status>` component, so the document still
-     * carries that shape once and twenty-eight operations point at it. A set
-     * with anything extra gets its own inline response naming all of them,
-     * because a shared component cannot be right for two different sets and the
-     * one that registers first would quietly define it for everybody.
+     * A set that is exactly the baseline for that status references the shared
+     * `Problem<status>` component, so the document carries that shape once. A
+     * set with anything extra gets its own inline response naming all of them,
+     * because a shared component cannot be right for two different sets.
      *
-     * WIDENING AN EXISTING RESPONSE is the other half, and it is what the 400
-     * needs. Scramble infers that one from the FormRequest and declares it
-     * before this extension runs, so an operation that can also answer 400 for
-     * a missing Idempotency-Key has to REPLACE that reference rather than skip
-     * it — the old code skipped, which is how those two codes came to be
-     * declared nowhere at all. The baseline tells us what the existing response
-     * carries, so the replacement is a union rather than an overwrite.
+     * An existing response is widened. Scramble infers the 400 from the
+     * FormRequest before this extension runs, so an operation that can also
+     * answer 400 for a missing Idempotency-Key has to replace that reference.
+     * The baseline says what the existing response carries, so the replacement
+     * is a union.
      *
      * @param  list<string>  $codes
      */
@@ -400,8 +363,8 @@ class DocumentsFailureModes extends OperationExtension
             $codes[] = self::BASELINE[$status];
         }
 
-        // Sorted and deduplicated, so the exported document is byte-identical
-        // between runs — CI's openapi-drift job diffs it.
+        // Sorted and deduplicated so the exported document is byte-identical
+        // between runs, which CI's openapi-drift job diffs.
         $codes = array_values(array_unique($codes));
         sort($codes);
 
@@ -460,10 +423,9 @@ class DocumentsFailureModes extends OperationExtension
      * Replaces this operation's response for a status with one naming exactly
      * the codes it can answer with.
      *
-     * The replacement is a rebuild of the responses array rather than a mutation
-     * of the existing object, because the existing one is usually a Reference
-     * into the shared components — editing it there would change the shape for
-     * every other operation pointing at the same component.
+     * The responses array is rebuilt instead of the existing object being
+     * edited, because that object is usually a Reference into the shared
+     * components, and editing it would change every operation pointing at it.
      */
     private function inline(Operation $operation, int $status, array $codes): void
     {
@@ -472,8 +434,8 @@ class DocumentsFailureModes extends OperationExtension
     }
 
     /**
-     * One problem response, built by the single builder every status goes
-     * through so the shape cannot differ between them.
+     * One problem response. Every status goes through this builder so the
+     * shape cannot differ between them.
      *
      * `withErrors` only for a status that really populates `errors`, which is
      * validation alone: everywhere else the array is always empty and an item
@@ -513,17 +475,12 @@ class DocumentsFailureModes extends OperationExtension
     }
 
     /**
-     * The two things a public form must send, which existed only in prose.
+     * The two things a public form must send: the X-Form-Token header and the
+     * `website` honeypot field. Omitting either answers 422, so a client
+     * generated without them could never submit a public form.
      *
-     * A client generated from the document could not submit either public form:
-     * `StoreRegistrationRequest` listed seven fields and none of them was
-     * `website`, and no operation in the document declared a single header
-     * parameter. Both are MANDATORY — omitting either answers 422 — so a
-     * codegen'd contact form failed 100% of the time.
-     *
-     * Derived from the `public-write` middleware for the same reason as
-     * everything else here: that middleware IS the guard, so a route gaining it
-     * gains the documentation automatically.
+     * Derived from the `public-write` middleware, which is the guard itself, so
+     * a route gaining it gains the documentation.
      */
     private function declarePublicWriteGuard(Operation $operation): void
     {
@@ -539,16 +496,14 @@ class DocumentsFailureModes extends OperationExtension
 
         $body = $operation->requestBodyObject?->content['application/json'] ?? null;
 
-        // The content entry ITSELF is a $ref to a shared request schema, not a
-        // schema carrying a $ref — which is why a first attempt that resolved
-        // `$body->type` added the header and silently dropped the field. The
-        // object to extend is the component the reference names.
+        // The content entry itself is a $ref to a shared request schema, not a
+        // schema carrying a $ref, so the object to extend is the component the
+        // reference names. Reading `$body->type` directly silently drops the
+        // field.
         //
-        // Larastan calls this branch impossible because Scramble types
-        // `content` as Schema|null in a docblock. The docblock is narrower than
-        // the runtime: a var_dump here prints Reference for both public forms,
-        // which is how the dropped field was diagnosed. Trusting the annotation
-        // over the observation would restore the bug.
+        // Larastan calls this branch impossible because Scramble's docblock
+        // types `content` as Schema|null. At runtime it is a Reference for both
+        // public forms; trust that over the annotation.
         /** @phpstan-ignore instanceof.alwaysFalse */
         if ($body instanceof Reference) {
             $body = $this->openApiTransformer->getComponents()->get($body);
@@ -563,11 +518,11 @@ class DocumentsFailureModes extends OperationExtension
             return;
         }
 
-        // NOT added to the FormRequest's rules(), which would document itself
-        // for free. A rule would answer 400 validation_failed naming `website`,
-        // telling a script precisely which check it failed and how to pass next
-        // time — the exact thing App\Http\Middleware\PublicWriteGuard's vague
-        // 422 exists to avoid. The guard stays silent; the DOCUMENT explains.
+        // Not in the FormRequest's rules(), where it would document itself: a
+        // rule would answer 400 validation_failed naming `website`, telling a
+        // script which check it failed. App\Http\Middleware\PublicWriteGuard's
+        // vague 422 exists to avoid that, so the guard stays silent and the
+        // document explains.
         $type
             ->addProperty('website', (new OpenApiTypes\StringType)
                 ->setDescription(

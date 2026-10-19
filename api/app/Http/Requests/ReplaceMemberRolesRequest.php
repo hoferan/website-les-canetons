@@ -20,12 +20,12 @@ class ReplaceMemberRolesRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // PUT SEMANTICS: a PATCH-style "add this one" API cannot express
-        // removal, and removal is the half that needs the invariants.
+        // A replacement, because an "add this one" API cannot express removal,
+        // and removal is what needs the invariants.
         //
-        // `roleIds` is `present`, not `required`. An empty array is refused
-        // now, but by AccessIntegrity with a code a client can act on, not by
-        // a validation rule that would only say the field is missing.
+        // `roleIds` is `present`, not `required`: AccessIntegrity refuses an
+        // empty array with a code a client can act on, where `required` would
+        // only say the field is missing.
         return [
             /** Every role the member should hold afterwards, the baseline role included. */
             'roleIds' => ['present', 'array'],

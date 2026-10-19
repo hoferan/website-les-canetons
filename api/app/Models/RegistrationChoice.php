@@ -8,13 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * How many of one option a booking asked for.
  *
- * A QUANTITY, not a row per person. The old signups.menus was a text column
- * holding ["meat","meat","child"]; this is the normalised form of exactly
- * that, and UNIQUE(registration_id, option_id) is what keeps it one row per
- * option rather than drifting back.
+ * A quantity, not a row per person: UNIQUE(registration_id, option_id) keeps
+ * it one row per option.
  *
- * No factory: a choice without a registration and an option is not a thing,
- * so RegistrationFactory builds them through withChoice() instead.
+ * No factory: a choice cannot exist without a registration and an option, so
+ * RegistrationFactory builds them through withChoice().
  */
 class RegistrationChoice extends Model
 {

@@ -114,12 +114,13 @@
  * group permissions; which role granted one is not a question the API answers.
  * `GET /api/v1/me` returns the caller's effective permissions.
  *
- * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
- * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`, `images.manage`.
+ * `events.view`, `events.manage`, `attendance.respond`, `attendance.view_all`,
+ * `attendance.record_for_others`, `members.manage`, `roles.manage`,
+ * `registrations.view`, `registrations.manage`, `messages.view`,
+ * `messages.manage`, `history.manage`, `images.manage`, `account.manage`.
  *
- * Answering an event deliberately needs **no** permission: anyone in a register
- * answers for themselves.
+ * Every account holds `events.view` and `account.manage`. Answering an event for
+ * yourself needs `attendance.respond`.
  *
  * ## Conventions
  *
@@ -310,7 +311,7 @@
  */
 
 /**
- * The colours an event tag may take (#107). A closed set of names rather than a free hex value, because the SPA pairs each one with a tint and an ink that were checked together for 4.5:1 at the chip's 12px. A hex the committee typed could not be. The pairs live in web/src/styles.css; a name added here needs its pair there.
+ * The colours an event tag may take: a closed set of names, not a free hex value.
  */
 export type TagColour = (typeof TagColour)[keyof typeof TagColour];
 

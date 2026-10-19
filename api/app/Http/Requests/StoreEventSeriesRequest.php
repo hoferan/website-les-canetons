@@ -23,47 +23,42 @@ class StoreEventSeriesRequest extends FormRequest
     /**
      * The largest season this endpoint will write in one request.
      *
-     * Two seasons of weekly rehearsals is roughly 26 dates less than this, so
-     * 60 is well past any honest use while still refusing the malformed
-     * request that asks a shared host to write ten thousand rows. The cap is
-     * a validation rule rather than a check in the controller so that a
-     * refusal costs no database work and reports against `dates` like every
-     * other field.
+     * Well past any honest season, while refusing a request that asks the
+     * shared host to write thousands of rows. A validation rule, so a refusal
+     * costs no database work and reports against `dates`.
      */
     public const MAX_DATES = 60;
 
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // A LIST OF DATES, NOT A RECURRENCE RULE. The browser
-        // computes the candidate dates, the committee unticks the ones that
-        // fall in school holidays, and what arrives here is exactly the rows
-        // they looked at. No rule engine exists on either side of the wire,
-        // and after the request there is no series — just N ordinary events.
+        // A list of dates, not a recurrence rule. The browser computes the
+        // candidate dates, the committee unticks the school holidays, and
+        // exactly those rows arrive here. After the request there is no
+        // series, only ordinary events.
         //
-        // The H:i times are the whole point of the shape: a season spans the
-        // daylight-saving change, so the one thing every event in it shares
-        // is the time on the clock in Fribourg, not an offset.
-        // App\Support\BandTime::compose() turns each (date, time) pair into
-        // the right instant; see
+        // The times are H:i because a season spans the daylight-saving change,
+        // so what its events share is the time on the clock in Fribourg, not
+        // an offset. App\Support\BandTime::compose() turns each (date, time)
+        // pair into an instant; see
         // EventSeriesTest::test_the_wall_clock_time_is_the_same_in_summer_and_winter.
+        // date_format refuses '25:00' and '10:70' instead of composing them.
         //
-        // RULE ORDER: `required` leads every list, because ApiError reports
-        // only the FIRST failed rule per field and an empty field must report
-        // `required` rather than a format complaint.
+        // `required` leads every list, because ApiError reports only the first
+        // failed rule per field.
         //
-        // The format-before-comparison order on `template.endTime` is kept
-        // for consistency with StoreEventRequest, but — MEASURED 2026-09-10 —
-        // it is NOT load-bearing here, unlike there. Reversing it on `endsAt`
-        // changes that field's reported reason from `invalid_format` to
-        // `must_be_after`; reversing it here does not, and '25:00' still
-        // reports `invalid_format` either way. Different rule pair
-        // (`date_format:H:i` + `after:<field>` rather than `date` +
-        // `after:<field>`), different behaviour. So do not copy the claim
-        // from one file to the other without re-measuring, and do not read
-        // test_an_unparseable_end_time_is_a_format_error_not_a_comparison as
-        // pinning an ordering — it pins the reported reason, which is what
-        // the committee actually reads.
+        // The format-before-comparison order on `template.endTime` matches
+        // StoreEventRequest but does not matter here: with `date_format:H:i`
+        // '25:00' reports `invalid_format` in either order, unlike `date` on
+        // `endsAt`. test_an_unparseable_end_time_is_a_format_error_not_a_comparison
+        // pins the reported reason, not the order.
+        //
+        // `dates` has no `min:1`: `required` already refuses an empty array
+        // with a reason the committee can act on, and ApiError reads `min` as a
+        // string length, so its copy would count characters.
+        //
+        // Each date is Y-m-d with no offset, because the offset is derived per
+        // date from the band's zone.
         return [
             /**
              * The event every date is stamped out from.
@@ -83,26 +78,11 @@ class StoreEventSeriesRequest extends FormRequest
             'template.tagIds' => ['sometimes', 'array', 'max:8'],
             'template.tagIds.*' => ['integer', 'exists:event_tags,id'],
 
-            // H:i, because these are wall-clock times and not instants — see
-            // the class docblock. date_format rather than a regex so '25:00'
-            // and '10:70' are refused rather than composed into nonsense.
             /** Start time as `H:i`, for example `20:00`. Read as a wall-clock time in Europe/Zurich on each date. */
             'template.startTime' => ['required', 'date_format:H:i'],
             /** End time as `H:i`, strictly after `startTime`. Every generated event begins and ends on its own date. */
             'template.endTime' => ['required', 'date_format:H:i', 'after:template.startTime'],
 
-            // NO `min:1`, deliberately. Laravel's `required` already refuses an
-            // empty array, and it reports the reason a French reader can act on
-            // ("Dates est requis"). `min` would report `too_short`, whose copy
-            // interpolates a character count — ApiError's REASONS docblock
-            // records that `min` is committed to the string-length reading, so
-            // an array minimum here would tell the committee their list of
-            // dates "est trop court (minimum 1 caractères)".
-            // The example is the real 2026 autumn rehearsal season as the
-            // committee would enter it: Tuesday evenings, with the school
-            // holidays simply absent from the list. That gap is the whole
-            // argument for sending dates rather than a recurrence rule, and it
-            // is the part no description can show.
             /**
              * The dates to generate, at least one and at most 60. Order does not matter.
              *
@@ -110,9 +90,6 @@ class StoreEventSeriesRequest extends FormRequest
              */
             'dates' => ['required', 'array', 'max:'.self::MAX_DATES],
 
-            // Y-m-d only. An ISO instant would carry an offset, and the whole
-            // point of this endpoint is that the offset is derived per date
-            // from the band's zone rather than sent.
             /** One calendar date as `Y-m-d`, for example `2026-11-14`. No time and no offset: both come from the template. */
             'dates.*' => ['required', 'date_format:Y-m-d'],
         ];

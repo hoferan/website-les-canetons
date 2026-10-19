@@ -11,45 +11,38 @@ use Dedoc\Scramble\Support\Generator\Types\StringType;
 use Dedoc\Scramble\Support\RouteInfo;
 
 /**
- * Three things the document says about a response because PHP said them to a
- * browser, not because a contract should.
+ * Removes three things the document would say about a response because PHP
+ * said them to a browser, not because a contract should.
  *
- * Scramble reads a controller's Response object, which is a thing built to be
- * SENT rather than to be described, so transport detail leaks through with the
- * content. All three below came from `GET /events/{event}/registrations.{format}`
- * — the one endpoint here that returns a file — and all three would come back
- * with the next one.
+ * Scramble reads a controller's Response object, which is built to be sent
+ * rather than described, so transport detail leaks through with the content.
+ * `GET /events/{event}/registrations.{format}`, the one endpoint here that
+ * returns a file, shows all three.
  *
- * 1. **Hop-by-hop headers.** The export declared a required
- *    `Transfer-Encoding: chunked` response header. That is negotiated between
- *    one client and one server on one connection (RFC 9110 §7.6.1); a proxy is
- *    entitled to change it, and a contract that promises it is promising
- *    something it does not control. It is also noise: nobody writes a client
- *    against it.
+ * 1. Hop-by-hop headers. `Transfer-Encoding: chunked` is negotiated between
+ *    one client and one server on one connection (RFC 9110 §7.6.1). A proxy
+ *    may change it, so a contract cannot promise it.
  *
- * 2. **A charset on a media type.** `text/csv; charset=UTF-8` is a correct
- *    Content-Type and a poor key. OpenAPI matches content by media type, and
- *    the parameter makes the entry fail to match `text/csv` for any tool doing
- *    so — while saying nothing a reader of this API needs, since every response
- *    it sends is UTF-8 and the reference says so once.
+ * 2. A charset on a media type. `text/csv; charset=UTF-8` is a correct
+ *    Content-Type and a poor key: OpenAPI matches content by media type, and
+ *    the parameter stops the entry matching `text/csv`. Every response is
+ *    UTF-8, and the reference says so once.
  *
- * 3. **A file that claims to be text.** An XLSX body was `{"type":"string"}`,
- *    identical to the Markdown one beside it. `format: binary` is what tells a
- *    generated client to keep the bytes rather than decode them, and the rule
- *    is general: a string body under a media type that is neither JSON nor
- *    text/* is a file.
+ * 3. A file that claims to be text. Left alone, an XLSX body is
+ *    `{"type":"string"}`, like the Markdown one beside it. `format: binary`
+ *    tells a generated client to keep the bytes rather than decode them. A
+ *    string body under a media type that is neither JSON nor text/* is a file.
  *
- * Derived rather than annotated for the usual reason — the next endpoint that
- * streams something gets all three for free, and cannot forget.
+ * Derived rather than annotated, so the next endpoint that streams something
+ * gets all three.
  */
 class TidiesResponseMedia extends OperationExtension
 {
     /**
      * Headers that describe this connection rather than this API.
      *
-     * RFC 9110 §7.6.1's list. Only `Transfer-Encoding` has ever appeared here;
-     * the rest are listed because the reason covers them equally and a
-     * half-list invites an argument about the missing half.
+     * RFC 9110 §7.6.1's list, in full: the reason covers every entry, though
+     * only `Transfer-Encoding` occurs in practice.
      */
     private const HOP_BY_HOP = [
         'transfer-encoding', 'connection', 'keep-alive', 'upgrade',
@@ -86,13 +79,13 @@ class TidiesResponseMedia extends OperationExtension
         $tidied = [];
 
         foreach ($content as $mediaType => $schema) {
-            // Everything after the first `;` is a parameter — charset, boundary,
-            // profile. The bare type is the key OpenAPI matches on.
+            // Everything after the first `;` is a parameter (charset, boundary,
+            // profile). The bare type is the key OpenAPI matches on.
             $bare = trim(explode(';', (string) $mediaType)[0]);
 
             // First entry wins if stripping the parameter collides with one
             // already present. Two entries differing only by charset describe
-            // the same body, so either is right and dropping one is the point.
+            // the same body, so either is right.
             if (array_key_exists($bare, $tidied)) {
                 continue;
             }

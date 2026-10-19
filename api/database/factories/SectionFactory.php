@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 /**
  * A register ("pupitre").
  *
- * The six real ones are reference data from 2026_09_07_000001 and are already
- * present in every test — read them with Section::where('name', …), or use
- * MemberFactory::inSection(). This factory is for a register that must NOT be
+ * The six real ones are reference data from migration 2026_09_07_000001 and
+ * are present in every test: read them with Section::where('name', …), or use
+ * MemberFactory::inSection(). This factory is for a register that must not be
  * one of the six, such as MemberModelTest's check that deleting a register
  * leaves its members sectionless.
  *

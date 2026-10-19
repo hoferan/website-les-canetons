@@ -18,11 +18,10 @@ use Tests\TestCase;
 /**
  * The counts behind the planning's metadata strip (#93).
  *
- * THE GATE IS THE API, NOT THE SPA. Knowing that twelve people have already
- * said yes can move a thirteenth person's own answer, so the count is not
- * merely something a player has no use for — it would change what the screen
- * is measuring. A count left on the wire and hidden by can() is readable in
- * the network tab.
+ * The API withholds the counts, since a count hidden only by can() is still
+ * readable in the network tab. Knowing that twelve people have said yes can
+ * move a thirteenth person's own answer, which would change what the screen
+ * measures.
  */
 class EventCountsTest extends TestCase
 {
@@ -46,8 +45,7 @@ class EventCountsTest extends TestCase
 
     public function test_a_player_is_told_nothing_about_answers(): void
     {
-        // THE LEAK TEST. Mutation-test it by hand: drop the ternary in
-        // EventResource and this must go red.
+        // The leak test: dropping the ternary in EventResource must turn it red.
         Attendance::factory()->create(['event_id' => $this->event->id]);
 
         $response = $this->actingAsMember(Member::factory()->inSection('Cloches')->musician()->create())
@@ -67,17 +65,16 @@ class EventCountsTest extends TestCase
             ->getJson('/api/v1/events')
             ->assertOk();
 
-        // One answer; two holders of attendance.respond — the answering
-        // player and the one just created. The viewer holds a role but not
-        // musician, so they are not answerable and not counted.
+        // One answer; two holders of attendance.respond (the answering player
+        // and the one just created). The viewer is not a musician, so not counted.
         $this->assertSame(1, $response->json('data.0.answeredCount'));
         $this->assertSame(2, $response->json('data.0.answerableCount'));
     }
 
     public function test_an_answer_from_somebody_who_lost_attendance_respond_is_not_counted(): void
     {
-        // Otherwise the fraction reads 1/0, and the strip disagrees with the
-        // chase list it links to — which lists holders of the permission only.
+        // Otherwise the fraction reads 1/0 and disagrees with the chase list it
+        // links to, which lists holders of the permission only.
         $departed = Member::factory()->inSection('Cloches')->musician()->create();
         Attendance::factory()->create([
             'event_id' => $this->event->id,
@@ -95,11 +92,10 @@ class EventCountsTest extends TestCase
 
     public function test_the_register_does_not_decide_who_is_counted(): void
     {
-        // Both halves at once, against the rule this replaced: a musician
-        // with no register counts, and a register with no musician does not.
-        // Two of the first and one of the second, all of them answered, so
-        // counting by register reads 1/1 where the right answer is 2/2. With
-        // one of each, both rules read 1/1 and this test could not fail.
+        // A musician with no register counts, and a register with no musician
+        // does not. Two of the first and one of the second, all answered, so
+        // counting by register would read 1/1 where the right answer is 2/2.
+        // With one of each, both rules read 1/1 and this test could not fail.
         $answered = [
             Member::factory()->musician()->create(),
             Member::factory()->musician()->create(),
@@ -119,9 +115,8 @@ class EventCountsTest extends TestCase
 
     public function test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries(): void
     {
-        // The player path is pinned at <= 3 by EventIndexTest and stays there.
-        // This is the path that grew: resolving permissions, and the
-        // denominator a player never pays for.
+        // The player path is pinned by EventIndexTest. This one adds resolving
+        // permissions and the denominator, which a player never pays for.
         Event::factory()->count(20)->create();
         $viewer = $this->answerViewer();
 
@@ -132,8 +127,8 @@ class EventCountsTest extends TestCase
 
         $this->actingAsMember($viewer)->getJson('/api/v1/events')->assertOk();
 
-        // 5 since #107: the event tags are one eager load for the whole list.
-        // 6 since #228: so are the posters, one query while no event has one.
+        // The event tags (#107) and the posters (#228) are each one eager load
+        // for the whole list.
         $this->assertLessThanOrEqual(
             6,
             $queries,
@@ -160,7 +155,7 @@ class EventCountsTest extends TestCase
     public function test_guest_count_sums_quantities_rather_than_counting_bookings(): void
     {
         // "3 x adulte, 1 x enfant" is four people, and four is what fills the
-        // hall. One booking that reads "1" is the bug this pins.
+        // hall, so the booking must not count as 1.
         $event = Event::factory()->takingRegistrations()->create();
         $option = RegistrationOption::factory()->create(['event_id' => $event->id]);
         Registration::factory()
@@ -179,9 +174,8 @@ class EventCountsTest extends TestCase
 
     public function test_the_two_gates_are_independent(): void
     {
-        // demo.committee holds registrations.view WITHOUT attendance.view_all.
-        // Anything that collapses these into one "committee" check breaks this
-        // member, the way demo.both breaks an either/or role matrix.
+        // demo.committee holds registrations.view without attendance.view_all,
+        // so collapsing both into one "committee" check breaks that member.
         Attendance::factory()->create(['event_id' => $this->event->id]);
 
         $viewer = Member::factory()
@@ -197,8 +191,8 @@ class EventCountsTest extends TestCase
 
     public function test_reading_one_event_carries_the_same_counts_as_the_list(): void
     {
-        // One Resource, one shape. A client reading a single event should not
-        // have to fetch a list to learn the denominator.
+        // A client reading a single event should not have to fetch a list to
+        // learn the denominator.
         Attendance::factory()->create(['event_id' => $this->event->id]);
         Member::factory()->inSection('Trompettes')->musician()->create();
 
@@ -206,37 +200,26 @@ class EventCountsTest extends TestCase
             ->getJson("/api/v1/events/{$this->event->id}")
             ->assertOk();
 
-        // No `data.` prefix: JsonResource::withoutWrapping() (see
-        // AppServiceProvider::boot()) means a single-resource response is not
-        // enveloped, unlike the collection in the test above it. Every other
-        // single-event test in this suite reads the same way — see
-        // EventIndexTest::test_it_shows_one_event and
-        // MyAttendanceTest::test_it_never_shows_somebody_elses_answer.
+        // No `data.` prefix: JsonResource::withoutWrapping() (in
+        // AppServiceProvider::boot()) leaves a single resource unenveloped.
         $this->assertSame(1, $response->json('answeredCount'));
         $this->assertSame(2, $response->json('answerableCount'));
     }
 
     /**
-     * GUARD A IN ISOLATION — the not-loaded guard (`array_key_exists()` in
+     * Guard A in isolation: the not-loaded guard (`array_key_exists()` in
      * `EventResource::countOrNull()`/`guestCountOrNull()`).
      *
-     * An AUTHORIZED caller (holds both attendance.view_all and
-     * registrations.view, so every gate passes and Guard B does not fire)
-     * renders an event whose aggregates were NEVER loaded — the shape a
-     * controller produces if it forgets `->withCount(EventController::
-     * counts())` / `->withSum('registrationChoices as guest_count', ...)`.
-     * This is the write-path case: a controller that forgets to load the
-     * aggregates must answer null rather than a wrong number or a crash.
+     * An authorized caller (every gate passes, so Guard B does not fire)
+     * renders an event whose aggregates were never loaded, as happens when a
+     * controller forgets `->withCount(EventController::counts())` or
+     * `->withSum('registrationChoices as guest_count', ...)`. It must answer
+     * null rather than a wrong number or a crash. Removing the early return
+     * makes reading the missing attribute throw.
      *
-     * Goes red if the `array_key_exists()` early-return is removed, because
-     * reading the missing attribute then throws instead of answering null.
-     *
-     * TWO OF THE THREE ASSERTIONS EXERCISE THE GUARD, not all three.
-     * `answerableCount` never passes through `countOrNull()` at all — it reads
-     * the `ANSWERABLE_COUNT` request attribute, which no unit-style render
-     * sets, so it is null here whatever Guard A does. It is asserted for shape
-     * rather than as evidence; `answeredCount` and `guestCount` are what this
-     * test actually pins.
+     * Only `answeredCount` and `guestCount` exercise the guard.
+     * `answerableCount` reads the `ANSWERABLE_COUNT` request attribute, which
+     * no unit-style render sets, so it is asserted for shape only.
      */
     public function test_unloaded_aggregates_render_as_null_for_an_authorized_caller(): void
     {
@@ -258,24 +241,18 @@ class EventCountsTest extends TestCase
     }
 
     /**
-     * GUARD B IN ISOLATION — the no-caller guard (`EffectivePermissions::ofRequest()`
+     * Guard B in isolation: the no-caller guard (`EffectivePermissions::ofRequest()`
      * resolving an unauthenticated request's permission set to empty).
      *
-     * A bare, unauthenticated `Request::create('/')` — exactly what
-     * `EntityTag::state()` renders `EventResource` through — with the
-     * aggregates already LOADED, as a controller normally loads them. Guard
-     * A alone would let these loaded values through; only Guard B (no user
-     * -> empty permission set -> maySeeAnswers()/maySeeGuests() false) keeps
-     * them out. This is exactly the regression a reviewer proved: loading
-     * the aggregates inside EntityTag::state() defeats Guard A, and nothing
-     * but Guard B stops the counts reaching the tag.
+     * A bare `Request::create('/')`, which is what `EntityTag::state()`
+     * renders `EventResource` through, with the aggregates already loaded.
+     * Guard A would let these values through; only Guard B (no user, so an
+     * empty permission set, so maySeeAnswers()/maySeeGuests() false) keeps
+     * them out. Loading the aggregates inside EntityTag::state() would defeat
+     * Guard A, leaving Guard B as the only thing between the counts and the tag.
      *
-     * Goes red if `EffectivePermissions::ofRequest()` ever resolves a bare request's
-     * permission set to anything but empty.
-     *
-     * As in the test above, `answerableCount` is null here for its own reason
-     * — its request attribute is never set — so the evidence is carried by
-     * `answeredCount` and `guestCount`, whose aggregates ARE loaded.
+     * As above, `answerableCount` is null because its request attribute is
+     * never set, so `answeredCount` and `guestCount` carry the evidence.
      */
     public function test_loaded_aggregates_render_as_null_for_a_bare_request(): void
     {

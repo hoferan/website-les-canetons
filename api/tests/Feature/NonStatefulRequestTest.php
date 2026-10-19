@@ -10,23 +10,13 @@ use Tests\TestCase;
 /**
  * Logging in from a request Sanctum does not treat as stateful.
  *
- * FOUND BY A BLACK-BOX REVIEW on 2026-09-11. `POST /api/v1/login` called
- * `$request->session()` unguarded, which throws when no session store is
- * attached — surfacing as a 500 carrying a stack trace that named the
- * controller and line, to an anonymous caller, on the first request any
- * server-side integrator makes.
+ * `$request->session()` throws when no session store is attached, which would
+ * be a 500 with a stack trace to an anonymous caller. Every other login test
+ * sets an `Origin` matching SANCTUM_STATEFUL_DOMAINS, as the SPA does, so only
+ * this file drives the non-stateful path. Only correct credentials reach the
+ * session call; a wrong password answers 401 before it.
  *
- * WHY 452 GREEN TESTS MISSED IT, which is the part worth keeping: every
- * existing login test goes through a helper that sets an `Origin` matching
- * SANCTUM_STATEFUL_DOMAINS, because that is what the SPA does. The suite
- * therefore exercised the one path that works, thoroughly. The bug lived in the
- * path nothing internal had any reason to drive — and a reviewer with no such
- * helper hit it on their first call.
- *
- * It also only bit on CORRECT credentials: a wrong password returns 401 before
- * reaching the session call, so probing looked healthy.
- *
- * These tests drive the real endpoint, and the difference between them is one
+ * The tests drive the real endpoint, and the difference between them is one
  * header.
  */
 class NonStatefulRequestTest extends TestCase
@@ -44,7 +34,7 @@ class NonStatefulRequestTest extends TestCase
         return $this->withHeaders(['Origin' => 'http://localhost'])->postJson($uri, $data);
     }
 
-    /** THE REGRESSION. Valid credentials, no Origin — this was the 500. */
+    /** Valid credentials, no Origin. */
     public function test_valid_credentials_without_a_stateful_origin_are_refused_cleanly(): void
     {
         $this->member();
@@ -58,16 +48,14 @@ class NonStatefulRequestTest extends TestCase
         $this->assertSame('application/problem+json', $response->headers->get('Content-Type'));
         $response->assertJsonPath('code', 'stateful_request_required');
 
-        // Not 419 invalid_session, whose own detail says "prime the cookie and
-        // retry" — advice that loops forever here, because a request does not
-        // become stateful by being repeated.
+        // Not 419 invalid_session, whose detail says "prime the cookie and
+        // retry": a request does not become stateful by being repeated.
         $this->assertNotSame('invalid_session', $response->json('code'));
     }
 
     /**
-     * The leak half, asserted separately because it is the half that matters on
-     * a server with APP_DEBUG on. A body carrying `exception`, `trace` or a
-     * vendor path means the contract was escaped and internals went with it.
+     * Asserted separately because it matters on a server with APP_DEBUG on. A
+     * body carrying `exception`, `trace` or a vendor path leaks internals.
      */
     public function test_the_refusal_leaks_no_internals(): void
     {
@@ -85,9 +73,8 @@ class NonStatefulRequestTest extends TestCase
     }
 
     /**
-     * The same request with the header the SPA sends. One header apart from the
-     * test above, which is what makes the pair meaningful: it shows the guard
-     * discriminates on statefulness and not on something incidental.
+     * The same request with the header the SPA sends, which shows the guard
+     * discriminates on statefulness and nothing incidental.
      */
     public function test_the_same_credentials_with_a_stateful_origin_still_work(): void
     {
@@ -102,11 +89,11 @@ class NonStatefulRequestTest extends TestCase
     }
 
     /**
-     * The guard sits AFTER the credential check, deliberately.
+     * The guard sits after the credential check on purpose.
      *
-     * Otherwise it would answer differently for a right and a wrong password on
-     * a non-stateful request — turning a hardening fix into an oracle that
-     * confirms credentials without ever establishing a session.
+     * Before it, it would answer differently for a right and a wrong password
+     * on a non-stateful request, an oracle that confirms credentials without
+     * establishing a session.
      */
     public function test_a_wrong_password_is_still_a_generic_401_without_an_origin(): void
     {
@@ -121,17 +108,12 @@ class NonStatefulRequestTest extends TestCase
     /**
      * The dev stack lists `localhost:*`, and this is what says that works.
      *
-     * WHY IT IS A WILDCARD. Each git worktree runs a Vite dev server of its own
-     * on whatever port was free — :5173 belongs to the compose `assets`
-     * container and serves whichever checkout compose was started from — so the
-     * ports cannot be written down in advance. Listing them would mean editing
-     * docker/api/env.docker every time somebody makes a worktree, which is the
-     * kind of step that gets skipped once and then costs an hour, because the
-     * symptom is a SPA that renders perfectly and cannot sign in.
+     * Each git worktree runs its own Vite dev server on whatever port was free
+     * (:5173 belongs to the compose `assets` container), so the ports cannot be
+     * listed in advance. A missing port shows as a SPA that renders and cannot
+     * sign in.
      *
-     * Sanctum matches with Str::is(), so `*` is a pattern rather than a literal
-     * — this asserts that rather than trusting it, because the whole
-     * arrangement rests on it.
+     * Sanctum matches with Str::is(), so `*` is a pattern. This asserts it.
      */
     public function test_a_wildcard_stateful_domain_accepts_any_local_port(): void
     {
@@ -147,12 +129,9 @@ class NonStatefulRequestTest extends TestCase
     }
 
     /**
-     * The same request against the list the wildcard replaced.
-     *
-     * This is the mutation test for the one above: put the four explicit
-     * host:port entries back and a worktree on 5175 cannot log in. It is also
-     * the exact failure anybody hits who moves a dev server off 5173 without
-     * knowing this file exists.
+     * The same request against an explicit host:port list: a dev server on a
+     * port outside it cannot log in. This is the counterpart that makes the
+     * test above meaningful.
      */
     public function test_a_port_outside_an_explicit_list_is_refused(): void
     {
@@ -168,11 +147,10 @@ class NonStatefulRequestTest extends TestCase
     }
 
     /**
-     * The wildcard widens the PORT and nothing else.
+     * The wildcard widens the port and nothing else.
      *
-     * `localhost:*` is one pattern away from `*`, and the difference is the
-     * whole security argument for allowing it in a dev file: a host that is not
-     * this machine stays non-stateful, so the cookie never applies to it.
+     * A host that is not this machine stays non-stateful, so the cookie never
+     * applies to it. That is why `localhost:*` is acceptable in a dev file.
      */
     public function test_the_wildcard_does_not_accept_another_host(): void
     {
@@ -188,9 +166,8 @@ class NonStatefulRequestTest extends TestCase
     }
 
     /**
-     * And an unknown username answers the same as a wrong password with no
-     * session either — the enumeration defence must not gain a hole from the
-     * new branch.
+     * An unknown username answers the same as a wrong password without a
+     * session too, so the guard opens no enumeration hole.
      */
     public function test_an_unknown_username_answers_the_same_without_an_origin(): void
     {

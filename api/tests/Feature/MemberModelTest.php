@@ -12,11 +12,9 @@ use Tests\TestCase;
 /**
  * The model and its schema, not the API.
  *
- * DELIBERATELY BUILDS ROWS BY HAND rather than through MemberFactory: these
- * tests are ABOUT the raw shape — that credentials are mandatory, that the
- * username index is unique, that the password is hashed on save. A factory
- * exists precisely to supply valid defaults, which is the thing these assert
- * cannot be assumed.
+ * Rows are built by hand, without MemberFactory: these tests are about the raw
+ * shape (mandatory credentials, a unique username, a password hashed on save),
+ * and a factory would supply the valid defaults they must not assume.
  */
 class MemberModelTest extends TestCase
 {
@@ -24,15 +22,11 @@ class MemberModelTest extends TestCase
 
     public function test_a_member_cannot_exist_without_an_account(): void
     {
-        // INVERTED on 2026-09-08. This test used to assert the opposite, and
-        // that model is what allowed a "ghost administrator": somebody holding
-        // members.manage who could not log in, so deleting the only real
-        // administrator passed every invariant and locked the band out.
-        //
-        // The roster is now the people the band TRACKS FOR EVENTS, and all of
-        // them have an account — a young member's parent uses their login on
-        // their behalf. People the band merely DISPLAYS are content, not rows
-        // here.
+        // A member without credentials could hold members.manage and be unable
+        // to log in, so deleting the only real administrator would lock the
+        // band out. The roster is the people the band tracks for events, and
+        // all of them have an account (a young member's parent uses their
+        // login). People the band only displays are content, not rows here.
         $this->expectException(QueryException::class);
 
         Member::create([
@@ -44,9 +38,6 @@ class MemberModelTest extends TestCase
 
     public function test_two_members_cannot_share_a_username(): void
     {
-        // Replaces a test that asserted MariaDB permits many NULLs under one
-        // unique index — true, and no longer relevant now that the column is
-        // NOT NULL. What the index is actually for is this.
         Member::create([
             'first_name' => 'A',
             'last_name' => 'One',

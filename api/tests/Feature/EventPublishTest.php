@@ -78,7 +78,7 @@ class EventPublishTest extends TestCase
     {
         // A draft is built one field at a time, so PATCH can leave it with an
         // end before its start. Publishing is where a well-formed event is
-        // held now, and an event of negative length must not reach the band.
+        // enforced, and an event of negative length must not reach the band.
         $draft = Event::factory()->draft()->create([
             'starts_at' => '2026-10-03 14:00:00',
             'ends_at' => '2026-10-03 12:00:00',
@@ -107,9 +107,9 @@ class EventPublishTest extends TestCase
 
     public function test_a_published_event_always_has_both_dates(): void
     {
-        // Decision C6: no `weekend` flag can come back while every published
-        // row carries a start and an end. The columns no longer say so, so
-        // this is the pin. Try every way a dateless event could slip through.
+        // Every published row carries a start and an end, so no `weekend` flag
+        // can come back (ADR 0027). The columns are nullable, so this test is
+        // the guarantee. Try every way a dateless event could slip through.
         $complete = Event::factory()->draft()->create();
         $noEnd = Event::factory()->draft()->create(['ends_at' => null]);
         $noStart = Event::factory()->draft()->create(['starts_at' => null]);
@@ -165,7 +165,7 @@ class EventPublishTest extends TestCase
     public function test_a_player_cannot_publish_or_unpublish(): void
     {
         $player = Member::factory()->inSection('Cloches')->create();
-        // A PUBLISHED event: the player can see it, so lacking the permission is
+        // A published event: the player can see it, so lacking the permission is
         // a 403. Against a draft the same request is a 404, because the player
         // may not know it exists (EventDraftVisibilityTest pins that answer).
         $event = Event::factory()->create();

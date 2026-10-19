@@ -11,10 +11,10 @@ use Illuminate\Support\Facades\DB;
  * A member's effective permissions: the union over their roles.
  *
  * One query with a join, rather than loading roles and their permissions as
- * relations — this runs on every permission-gated request and an N+1 here would
- * be paid on a shared host.
+ * relations: this runs on every permission-gated request, and an N+1 here
+ * would be paid on a shared host.
  *
- * Unknown stored values are DROPPED, not thrown on. A permission removed from
+ * Unknown stored values are dropped, not thrown on. A permission removed from
  * the enum leaves rows behind, and a Permission::from() would turn that into a
  * 500 for every member who still carried one.
  */
@@ -24,24 +24,22 @@ final class EffectivePermissions
     private const REQUEST_KEY = 'permissions';
 
     /**
-     * The caller's permission set, resolved ONCE per request.
+     * The caller's permission set, resolved once per request.
      *
-     * for() is a single query returning EVERY permission the member holds,
-     * but Member::hasPermission() re-runs it on every call, so a request that
-     * asks two questions would pay twice. Memoizing a boolean PER GATE (the
-     * shape the planning's gates used to take) still costs one query per gate,
-     * because each gate's first check throws the rest of the set away.
-     * Memoizing the SET, once, keeps the total at one query however many
-     * askers there are: the route's `permission:` middleware, the draft
-     * filter, and the planning's per-row gates all read this. That is what
-     * the query budgets in EventIndexTest, EventCountsTest and ChaseListTest
-     * actually pin.
+     * for() is a single query returning every permission the member holds,
+     * but Member::hasPermission() re-runs it on every call. A boolean memoized
+     * per gate would still cost one query per gate, because each gate's first
+     * check throws the rest of the set away. Memoizing the set keeps the total
+     * at one query however many askers there are: the route's `permission:`
+     * middleware, the draft filter and the planning's per-row gates all read
+     * this. The query budgets in EventIndexTest, EventCountsTest and
+     * ChaseListTest pin it.
      *
      * A request with no user resolves to an empty set: EntityTag::state()
      * renders EventResource through a bare Request::create('/'), and every
      * gate must answer false there rather than throw.
      *
-     * Only for the CALLER, never for a member a request acts on, and only
+     * Only for the caller, never for a member a request acts on, and only
      * read before anything in the request changes the caller's roles.
      *
      * @return Collection<int, Permission>

@@ -8,9 +8,6 @@ use Illuminate\Support\Collection;
 
 /**
  * Messages from the public contact form that nobody has dealt with yet.
- *
- * The first inbox source, and the reason the inbox exists: these rows have
- * been accumulating since 2026-07-23 with no route that could read one.
  */
 final class ContactMessageSource implements InboxSource
 {

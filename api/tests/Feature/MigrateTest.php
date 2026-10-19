@@ -9,23 +9,19 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * POST /api/migrate is gated by a shared secret carried in the X-Migrate-Token
- * REQUEST HEADER — never a body or query parameter. See MigrateController for
- * why; the tests below pin both halves of that: the header works, and the two
- * parameter spellings do not.
+ * POST /api/migrate is gated by a shared secret in the X-Migrate-Token request
+ * header, never a body or query parameter (MigrateController says why). The
+ * tests pin both halves: the header works, and the two parameter spellings do
+ * not.
  *
- * They also pin the RESPONSE CONTRACT, which is not this endpoint's to choose:
- * tools/dbmigrate.mjs is the only caller, every environment's CI runs it, and it
- * reads `status`, `applied[]` and `pending[]` and appends `?mode=dry-run|apply`.
- * The old app/api/migrate.php spoke exactly that. So the shape is asserted here
- * key by key, and — the reason this file grew a database — `mode=dry-run` is
- * asserted to leave the schema and the `migrations` table untouched, by looking
- * at both rather than trusting the flag.
+ * They also pin the response contract, which tools/dbmigrate.mjs owns: it reads
+ * `status`, `applied[]` and `pending[]` and appends `?mode=dry-run|apply`. The
+ * shape is asserted key by key, and `mode=dry-run` is asserted to leave the
+ * schema and the `migrations` table untouched by looking at both.
  *
- * The probe migration below is what makes that assertion mean anything: with
- * every real migration already applied, "dry-run changed nothing" would be
- * vacuously true. Registering a throwaway migration path gives the endpoint
- * something genuinely pending to either report or (wrongly) apply.
+ * With every real migration already applied, "dry-run changed nothing" would be
+ * vacuously true, so a throwaway probe migration gives the endpoint something
+ * pending to report or (wrongly) apply.
  */
 class MigrateTest extends TestCase
 {
@@ -51,8 +47,7 @@ class MigrateTest extends TestCase
     protected function tearDown(): void
     {
         // DDL implicitly commits on MariaDB, so RefreshDatabase's transaction
-        // cannot undo an applied probe. Undo it by hand instead, or the leftovers
-        // outlive this test.
+        // cannot undo an applied probe. Undo it by hand.
         Schema::dropIfExists(self::PROBE_TABLE);
         DB::table('migrations')->where('migration', 'like', '2099_%_probe%')->delete();
         File::deleteDirectory($this->probePath);
@@ -81,10 +76,9 @@ class MigrateTest extends TestCase
     }
 
     /**
-     * An unconfigured MIGRATE_TOKEN must refuse everything, not accept anything:
-     * without the empty-token guard, hash_equals('', '') — or any caller's token
-     * against a null config — would open the endpoint on a server whose
-     * config.php is missing the key.
+     * An unconfigured MIGRATE_TOKEN must refuse everything. Without the
+     * empty-token guard, hash_equals('', '') would open the endpoint on a
+     * server whose configuration is missing the key.
      */
     public function test_migrate_refuses_when_no_token_is_configured(): void
     {
@@ -95,9 +89,8 @@ class MigrateTest extends TestCase
     }
 
     /**
-     * The gate is checked before `mode` is even read, so no spelling of the
-     * parameter can slip past it — in particular `mode=apply`, the one that
-     * writes to the database.
+     * The gate is checked before `mode` is read, so no value of it, `mode=apply`
+     * included, gets past.
      */
     public function test_the_token_gate_applies_in_every_mode(): void
     {
@@ -109,14 +102,13 @@ class MigrateTest extends TestCase
                 ->assertStatus(403);
         }
 
-        // And the refusal is total: nothing ran behind any of them.
+        // Nothing ran behind any of them.
         self::assertFalse(Schema::hasTable(self::PROBE_TABLE));
     }
 
     /**
-     * The whole point of the header: a secret in the query string is written to
-     * Apache's access log on every environment, so ?token=… must not work even
-     * though it is the correct secret.
+     * A secret in the query string is written to Apache's access log, so
+     * ?token=… must not work even with the correct secret.
      */
     public function test_migrate_rejects_a_token_passed_as_a_query_parameter(): void
     {
@@ -127,12 +119,7 @@ class MigrateTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /**
-     * Replaces this file's original test_migrate_runs_with_a_valid_token, which
-     * asserted the body-parameter contract. Only one spelling may work, so the
-     * old assertion is inverted rather than dropped — that keeps the retired
-     * spelling pinned shut instead of merely untested.
-     */
+    /** Only the header spelling may work. */
     public function test_migrate_rejects_a_token_passed_as_a_body_parameter(): void
     {
         config(['app.migrate_token' => self::TOKEN]);
@@ -162,14 +149,11 @@ class MigrateTest extends TestCase
     // ------------------------------------------------------------ mode=dry-run
 
     /**
-     * The bug this file was rewritten for: the endpoint ignored `mode` entirely
-     * and applied migrations on every call, so `npm run dbmigrate:<env>
-     * -- --dry-run` — the command an operator runs precisely BECAUSE they do not
-     * want to change the database yet — silently changed it.
+     * `npm run dbmigrate:<env> -- --dry-run` is what an operator runs to see
+     * what would change without changing it.
      *
-     * Note what is asserted: not "the flag was honoured" but "the schema and the
-     * ledger are byte-for-byte what they were". A pretend/dry-run flag that
-     * quietly stops working would pass the first and fail these.
+     * The test checks that the schema and the ledger are what they were, which
+     * a dry-run flag that quietly stops working would fail.
      */
     public function test_dry_run_reports_pending_and_applies_nothing(): void
     {
@@ -204,10 +188,8 @@ class MigrateTest extends TestCase
     }
 
     /**
-     * A missing `mode` must mean dry-run, not apply — the safe default the old
-     * app/api/migrate.php chose ("=== 'apply' ? 'apply' : 'dry-run'"), and the
-     * one that matters because a hand-rolled curl, a health probe or a
-     * misconfigured caller reaches this endpoint without a query string.
+     * A missing `mode` means dry-run, the safe default: a hand-rolled curl, a
+     * health probe or a misconfigured caller arrives without a query string.
      */
     public function test_a_missing_mode_defaults_to_dry_run(): void
     {
@@ -257,8 +239,8 @@ class MigrateTest extends TestCase
     }
 
     /**
-     * Re-running apply with nothing outstanding is the normal post-deploy case:
-     * it must succeed with an empty applied[], not fail and not re-run anything.
+     * Apply with nothing outstanding is the normal post-deploy case: it
+     * succeeds with an empty applied[] and re-runs nothing.
      */
     public function test_apply_with_nothing_pending_succeeds_with_an_empty_applied_list(): void
     {
@@ -275,12 +257,9 @@ class MigrateTest extends TestCase
     // ------------------------------------------------------------- the failure
 
     /**
-     * A failed migration reported as a success is worse than no report at all:
-     * tools/dbmigrate.mjs exits non-zero on a non-2xx OR a status other than
-     * 'ok', and that exit code gates the CI deploy step. So both signals are
-     * pinned here — the status code AND the body — because the caller accepts
-     * either as failure and we must not rely on only the one it happens to
-     * check first.
+     * tools/dbmigrate.mjs exits non-zero on a non-2xx or on a status other
+     * than 'ok', and that exit code gates the CI deploy step. Both signals are
+     * pinned, since the caller treats either as failure.
      */
     public function test_a_failing_migration_is_reported_as_a_failure(): void
     {
@@ -300,11 +279,11 @@ class MigrateTest extends TestCase
     // ----------------------------------------------------------- probe plumbing
 
     /**
-     * Write a throwaway migration into a directory registered on the migrator,
-     * which is exactly how `artisan migrate` discovers extra paths
+     * Writes a throwaway migration into a directory registered on the migrator,
+     * which is how `artisan migrate` discovers extra paths
      * (BaseCommand::getMigrationPaths() merges Migrator::paths() with
-     * database/migrations) — so the endpoint sees it the same way it sees a real
-     * one. The 2099_ prefix sorts it last, after every real migration.
+     * database/migrations), so the endpoint sees it like a real one. The 2099_
+     * prefix sorts it after every real migration.
      *
      * @return string the migration name, as the migrations table records it
      */

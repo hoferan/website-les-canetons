@@ -7,20 +7,19 @@ use App\Support\Permission;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * A FIXTURE role — never one of the seeded ones.
+ * A fixture role, never one of the seeded ones.
  *
- * `direction` and `committee` are reference data created by
+ * `direction` and `committee` are reference data from migration
  * 2026_09_07_000001, which RefreshDatabase runs, so producing them here is a
  * duplicate-key error. Read those with Role::where('key', …), or use
  * MemberFactory's administrator() / committee() states.
  *
- * This exists for suites that need a role granting EXACTLY one permission —
- * AccessIntegrityTest needs one that grants members.manage and one that does
- * not — which no seeded role happens to do. Coupling those tests to reference
- * data would also mean a committee editing a role turns the suite red, and
- * roles are editable data.
+ * For suites that need a role granting exactly the permissions they name
+ * (AccessIntegrityTest needs one with members.manage and one without), which
+ * no seeded role does. Roles are editable data, so tests coupled to the
+ * seeded grants would break whenever somebody edited one.
  *
- * Roles carry no display name: the UI translates by `key`.
+ * The definition sets only `key`; a fixture role has no labels.
  *
  * @extends Factory<Role>
  */

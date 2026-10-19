@@ -11,28 +11,21 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Gives every request an identifier, echoes it, and puts it in the log line.
  *
- * It is what turns "it said something went wrong" into a log line. A member
- * reporting a failure reads one string off the screen — RFC 9457's `requestId`
- * extension member, which App\Exceptions\ApiError puts in every problem
- * document — and that string finds the request in the log.
+ * A member reporting a failure reads one string off the screen (the RFC 9457
+ * `requestId` extension member, which App\Exceptions\ApiError puts in every
+ * problem document), and that string finds the request in the log.
  *
- * GLOBAL, and prepended, so it wraps everything including the middleware groups.
- * It deliberately does NOT go on the `api` group: RunPendingMigrations has to be
- * index 0 there (AutoMigrateTest asserts it), and prepending anything else would
- * displace it. Global middleware is a separate stack that Router::
- * getMiddlewareGroups() never sees, so this cannot disturb that.
+ * Global and prepended, so it wraps everything including the middleware groups.
+ * It stays off the `api` group because RunPendingMigrations must be index 0
+ * there (AutoMigrateTest asserts it). Router::getMiddlewareGroups() never sees
+ * the global stack.
  *
- * AN INBOUND ID IS HONOURED, but only if it is a well-formed ULID. A caller
- * behind a gateway that already stamps requests can correlate its logs with
- * ours; a caller sending anything else gets a fresh one rather than having
- * arbitrary text written into our logs and echoed back to it.
+ * An inbound id is honoured only if it is a well-formed ULID, so a gateway that
+ * stamps requests can correlate logs while arbitrary text never reaches the log.
  *
- * self::current() GENERATES ONE IF THIS MIDDLEWARE NEVER RAN. That is not
- * defensive padding — it is what makes the identifier correct for the one case
- * that matters most. RunPendingMigrations sits inside the group, which is deeper
- * in the stack than this; when it refuses a request with 503 the exception
- * unwinds past here, and the renderer still needs an id to put in the body.
- * The body is the half a human reads out; the echoed header is the convenience.
+ * self::current() mints an id if this middleware never ran. When
+ * RunPendingMigrations, deeper in the stack, refuses with 503, the exception
+ * unwinds past here and the renderer still needs an id for the body.
  */
 class RequestId
 {
@@ -48,13 +41,9 @@ class RequestId
     {
         $inbound = $request->headers->get(self::HEADER);
 
-        // ALWAYS WRITTEN, never merely defaulted. Context is not guaranteed to
-        // be empty when a request starts: it survives between requests in the
-        // test process, and would survive between requests in a worker under
-        // Octane. Leaving the previous request's value in place and falling
-        // back to current() gave two consecutive requests the same identifier —
-        // which makes the whole feature quietly useless, because every log line
-        // in a worker's lifetime then names one request.
+        // Always written, never defaulted. Context survives between requests
+        // in the test process (and would under Octane), so falling back to
+        // current() would give consecutive requests the same identifier.
         $id = is_string($inbound) && Str::isUlid($inbound)
             ? $inbound
             : (string) Str::ulid();

@@ -9,27 +9,23 @@ use Stringable;
 /**
  * A moment as this API renders it: ISO 8601, UTC, with an explicit offset.
  *
- * TWO JOBS, AND THE SECOND IS WHY IT IS AN OBJECT. The first is the rule every
- * Resource used to repeat by hand — `->utc()` BEFORE `->toIso8601String()`.
- * That order is load-bearing: `toIso8601String()` renders in whatever timezone
- * the Carbon instance happens to carry, which is not always what the database
- * holds. App\Casts\UtcDateTime normalises on READ, but a model whose attribute
- * was just ASSIGNED keeps the instance it was given, and Eloquent's class-cast
- * cache hands that same object back. A black-box review found the consequence
- * on 2026-09-11: POST /api/v1/events/series builds its times as Europe/Zurich
- * wall-clock, so its 201 rendered `+01:00` while a GET of the same row rendered
- * `+00:00` — the same instant, the same declared resource, two spellings. With
- * the conversion here there is no call site left that can get the order wrong.
+ * It has two jobs. The first is calling `->utc()` before
+ * `->toIso8601String()`, an order that is load-bearing: `toIso8601String()`
+ * renders in whatever timezone the Carbon instance carries, which is not
+ * always what the database holds. App\Casts\UtcDateTime normalises on read,
+ * but a model whose attribute was just assigned keeps the instance it was
+ * given, and Eloquent's class-cast cache hands that same object back. POST
+ * /api/v1/events/series builds its times as Europe/Zurich wall-clock, so
+ * without the conversion its 201 would render `+01:00` where a GET of the same
+ * row renders `+00:00`.
  *
- * The second job is the contract. Every REQUEST schema carried
- * `format: date-time` and no RESPONSE schema did, because a rendered timestamp
- * left a Resource as a bare PHP string and nothing downstream could tell it
- * from a title. Returning this type instead gives
- * App\Support\Scramble\Iso8601ToSchema something to recognise, and the nine
- * timestamps the API returns gained the format the nine it accepts already had.
+ * The second job is the contract, and is why this is an object. A timestamp
+ * rendered as a bare PHP string cannot be told from a title, so response
+ * schemas would lack the `format: date-time` that request schemas carry.
+ * Returning this type gives App\Support\Scramble\Iso8601ToSchema something to
+ * recognise.
  *
- * It is JsonSerializable, so the bytes on the wire are unchanged: the same
- * string, in the same place. Nothing about the response moved.
+ * It is JsonSerializable, so the bytes on the wire are the same string.
  */
 final class Iso8601 implements JsonSerializable, Stringable
 {

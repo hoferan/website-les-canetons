@@ -10,15 +10,13 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * The chicken-and-egg problem this solves: /members is gated on
- * members.manage, so somebody must already hold it before anybody can grant it
- * — and the host has no shell to create that first person with.
+ * /members is gated on members.manage, so somebody must hold it before anybody
+ * can grant it, and the host has no shell to create that first person.
  *
- * The migration reads BOOTSTRAP_ADMIN_* from the server's own .env, which is
- * the file each server already owns by hand, and does nothing at all unless
- * administration is genuinely unheld. Under phpunit.xml those keys are unset,
- * so the migration no-ops for the whole suite and these tests drive it
- * directly with config().
+ * The migration reads BOOTSTRAP_ADMIN_* from the server's own .env and does
+ * nothing unless administration is unheld. phpunit.xml leaves those keys
+ * unset, so the migration no-ops for the suite and these tests drive it with
+ * config().
  */
 class BootstrapAdministratorTest extends TestCase
 {
@@ -26,9 +24,8 @@ class BootstrapAdministratorTest extends TestCase
 
     private function runBootstrap(): void
     {
-        // The migration has already run (RefreshDatabase) and no-opped, so
-        // invoke the class directly rather than re-running `migrate`, which
-        // would find nothing pending.
+        // RefreshDatabase already ran it as a no-op, and `migrate` would find
+        // nothing pending, so call it directly.
         $migration = require database_path(
             'migrations/2026_09_07_000002_bootstrap_first_administrator.php',
         );
@@ -104,10 +101,9 @@ class BootstrapAdministratorTest extends TestCase
             'bootstrap.admin.last_name' => 'Canetons',
         ]);
 
-        // Failing loudly is the right answer: a migration that quietly skipped
-        // would leave a server with no way in and no message saying why, and
-        // one that created the account anyway would put a five-character
-        // password on the only account that can administer the band.
+        // Skipping quietly would leave a server with no way in and no message;
+        // creating the account would put a five-character password on the
+        // only administrator.
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('BOOTSTRAP_ADMIN_PASSWORD');
 
@@ -116,9 +112,8 @@ class BootstrapAdministratorTest extends TestCase
 
     public function test_an_existing_holder_of_members_manage_counts_as_bootstrapped(): void
     {
-        // Not merely "a member exists" — the guard is whether ADMINISTRATION is
-        // held. A database full of players with no administrator still needs
-        // this migration to run.
+        // The guard is whether members.manage is held, not whether a member
+        // exists: players without an administrator still need the bootstrap.
         config([
             'bootstrap.admin.username' => 'comite',
             'bootstrap.admin.password' => 'a-long-enough-secret',

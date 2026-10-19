@@ -41,49 +41,38 @@ class AccountPasswordController extends Controller
      * `newPassword` equal to the current one answers `409 password_unchanged`
      * and changes nothing, the forced-change flag included.
      */
-    // An invokable controller has no method name for Scramble to build an
-    // operationId from, so it falls back to the class name and the operation
-    // loses the `resource.action` shape every other one here has. That shape is
-    // what orval turns into a hook name, so it is the client's vocabulary
-    // rather than a documentation detail.
+    // An invokable controller gives Scramble no method name, so the explicit
+    // operationId keeps the `resource.action` shape orval turns into a hook
+    // name.
     #[Response(200, 'Changed. `sessionsEnded` counts the caller other sessions that were revoked.')]
     #[Endpoint(operationId: 'account.password')]
     #[Emits('reauth_failed', 'too_many_attempts', 'password_unchanged')]
     public function __invoke(AccountPasswordRequest $request): JsonResponse
     {
-        // GATED ON account.manage, which the baseline role grants to every
-        // account. This is the one screen every account holder needs and
-        // nobody administers, and it is where every first login lands, because
-        // a committee-issued password arrives with must_change_password set.
+        // Gated on account.manage, which the baseline role grants to every
+        // account. Every first login lands here, because a committee-issued
+        // password arrives with must_change_password set.
         //
-        // Re-authentication here is not ceremony bolted on: knowing the current
-        // password is the only thing standing between a borrowed, unlocked
-        // phone and a permanently stolen account. It reuses Reauthentication,
-        // so the same per-actor throttle applies.
-        //
-        // Since 2026-09-08 (ADR 0017) this is Reauthentication's ONLY
-        // caller: the destructive roster endpoints no longer re-authenticate.
+        // Knowing the current password is what stands between a borrowed,
+        // unlocked phone and a stolen account. Reauthentication applies its
+        // per-actor throttle; this is its only caller (ADR 0017).
         $member = $request->user();
 
         $current = $request->string('currentPassword')->value();
 
         Reauthentication::assert($member, $current);
 
-        // #92, AND IT IS A STRING COMPARISON RATHER THAN A HASH CHECK, which is
-        // exact rather than a shortcut: assert() above has just proved $current
-        // IS this account's password, so the new one equals the stored password
-        // exactly when it equals $current. A second Hash::check would answer the
-        // same question and cost an argon2id verification to do it.
+        // #92. A string comparison is exact here: assert() has just proved
+        // $current is the stored password, so a second Hash::check would
+        // answer the same question at the cost of an argon2id verification.
         //
-        // AFTER the re-authentication, deliberately. Checking equality first
-        // would answer `password_unchanged` to somebody who does not know the
-        // password at all, telling them their guess was wrong in a way that
-        // `reauth_failed` does not.
+        // Checked after the re-authentication, so `password_unchanged` never
+        // tells somebody who does not know the password anything about their
+        // guess.
         //
-        // The refusal matters most under must_change_password: a committee
-        // password is dictated down a phone, so somebody else has heard it, and
-        // "changing" it to itself would clear the very flag protecting the
-        // account while leaving that credential live.
+        // The refusal matters most under must_change_password: a dictated
+        // committee password has been heard by somebody else, and "changing"
+        // it to itself would clear the flag while leaving it live.
         if ($request->string('newPassword')->value() === $current) {
             return ApiError::json(409, 'password_unchanged', 'The new password is the current one');
         }
@@ -93,20 +82,18 @@ class AccountPasswordController extends Controller
             $member->must_change_password = false;
             $member->save();
 
-            // A privilege change, so the session id must not survive it — the
-            // same fixation defence login performs.
+            // A privilege change, so the session id must not survive it (the
+            // same fixation defence login performs).
             $request->session()->regenerate();
 
-            // AFTER regenerate(), deliberately: the id changes, and reading it
-            // beforehand would keep the row regenerate() has just destroyed
-            // while deleting the live one. See SessionRevoker.
+            // After regenerate(): reading the id beforehand would keep the row
+            // regenerate() has just destroyed and delete the live one. See
+            // SessionRevoker.
             //
-            // Measured 2026-09-08: no test here distinguishes this from
-            // forMember(). regenerate() runs first, so the new id has no row
-            // yet and both calls remove the same three; the actor stays logged
-            // in either way because the session is persisted at the end of the
-            // request. Kept as the correct call — sessionsEnded then means
-            // "other sessions", which is what the UI reports.
+            // No test here tells this from forMember(): the new id has no row
+            // yet, and the session is persisted at the end of the request. It
+            // is kept so sessionsEnded means "other sessions", as the UI
+            // reports it.
             $ended = SessionRevoker::forMemberExcept($member->id, $request->session()->getId());
 
             return $ended;

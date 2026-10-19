@@ -11,22 +11,18 @@ use Tests\TestCase;
 /**
  * Every field of this contract whose values are a closed set says so.
  *
- * WHY A TEST AND NOT THE DRIFT CHECK. CI's `openapi-drift` job proves
- * api/openapi.json matches the code that generated it, which is a different
- * guarantee and does not cover this one: return `$status->value` instead of
- * `$status` from a Resource and the document regenerates cleanly, drift passes,
- * and the field quietly goes back to being an open `string`. Four of the five
- * fields below were exactly that until 2026-09-11 — documented in prose, open
- * in the schema — so the mistake is not hypothetical.
+ * CI's `openapi-drift` job only proves api/openapi.json matches the code that
+ * generated it. Return `$status->value` instead of `$status` from a Resource
+ * and the document regenerates cleanly, drift passes, and the field becomes an
+ * open `string`.
  *
- * WHAT IT COSTS A CONSUMER. orval turns an enum into a TypeScript union and a
- * bare string into `string`, so a closed set here is the difference between the
- * compiler refusing `status === "maybe"` and a branch that silently never runs.
+ * orval turns an enum into a TypeScript union and a bare string into `string`,
+ * so a closed set lets the compiler refuse `status === "maybe"` instead of
+ * leaving a branch that never runs.
  *
- * Each assertion compares the document against the CODE that owns the set — the
- * enum, the vocabulary, the route's own constraint — never against a list
- * retyped here, so adding a fifth environment or a fifth export format needs no
- * edit to this file.
+ * Each assertion compares the document with the code that owns the set (the
+ * enum, the vocabulary, the route's constraint), never with a list retyped
+ * here, so a new value needs no edit to this file.
  */
 class ClosedSetsTest extends TestCase
 {
@@ -49,8 +45,8 @@ class ClosedSetsTest extends TestCase
         self::assertIsArray($schema, 'AttendanceStatus is no longer a named schema in the document.');
         self::assertSame(AttendanceStatus::values(), $schema['enum'] ?? null);
 
-        // The Resource must REFERENCE it. An inline `{"type":"string"}` on the
-        // property would leave the component orphaned and this test green.
+        // The Resource must reference it. An inline `{"type":"string"}` on the
+        // property would leave the component orphaned and the check above green.
         self::assertSame(
             '#/components/schemas/AttendanceStatus',
             $this->document['components']['schemas']['AttendanceResource']['properties']['status']['$ref'] ?? null,
@@ -76,13 +72,10 @@ class ClosedSetsTest extends TestCase
     }
 
     /**
-     * The one place a CLOSED set would be wrong, asserted for the same reason as
-     * the rest.
-     *
-     * `features` is a map whose membership is the server's business: the
-     * endpoint documents that a flag it says nothing about reads as false, so
-     * pinning today's single flag as a required property would contradict its
-     * own contract and break every client the day a second flag lands.
+     * The one place a closed set would be wrong. `features` is a map whose
+     * membership is the server's business: the endpoint documents that an
+     * unmentioned flag reads as false, so pinning today's flags as required
+     * properties would contradict that and break clients when a flag is added.
      */
     public function test_the_feature_flags_are_an_open_map_of_booleans(): void
     {
@@ -100,12 +93,11 @@ class ClosedSetsTest extends TestCase
     }
 
     /**
-     * The export format, compared against the ROUTE rather than against a list.
+     * The export format, compared with the route's own constraint.
      *
-     * This is the assertion that would notice
-     * App\Support\Scramble\ConstrainsPathParameters silently not running — a
-     * Scramble extension that is never called changes nothing and reports
-     * nothing, which is how an hour went missing once already.
+     * This is the assertion that notices
+     * App\Support\Scramble\ConstrainsPathParameters not running: a Scramble
+     * extension that is never called changes nothing and reports nothing.
      */
     public function test_the_export_format_is_the_set_the_router_enforces(): void
     {

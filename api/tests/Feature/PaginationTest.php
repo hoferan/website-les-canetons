@@ -12,24 +12,19 @@ use Tests\TestCase;
 /**
  * Every collection this API answers with comes in one envelope.
  *
- * `{data, meta}` plus an RFC 8288 `Link` header — see
- * App\Http\Middleware\PaginatesCollections for why every collection and not
- * only the ones that are big today.
+ * `{data, meta}` plus an RFC 8288 `Link` header. See
+ * App\Http\Middleware\PaginatesCollections for why every collection gets it,
+ * not only the large ones.
  *
- * THE SCAN IS THE POINT OF THIS FILE. Asserting the envelope on `/members`
- * proves one endpoint; what has to be true is that no endpoint anywhere answers
- * a bare array, and that the published document says the same about the same
- * endpoints. Both halves are derived — one from the live routes, one from
- * openapi.json — so a collection added next year is covered without editing
+ * The scans matter more than any single endpoint: no endpoint may answer a bare
+ * array, and the published document must say the same. The document half is
+ * derived from openapi.json, so a new collection is covered without editing
  * this file.
  *
- * WHAT THE DOCUMENT HALF DOES NOT CATCH: App\Support\Scramble\
- * DocumentsPagination not running at all. These tests read the COMMITTED
- * openapi.json, so unregistering the extension leaves them green until
- * somebody regenerates. CI's `openapi-drift` job is what turns that red, by
- * regenerating and diffing. An earlier version of this paragraph claimed
- * otherwise, which is the kind of claim that makes a suite feel safer than it
- * is.
+ * These tests read the committed openapi.json, so they stay green if
+ * App\Support\Scramble\DocumentsPagination stops running, until somebody
+ * regenerates. CI's `openapi-drift` job catches that by regenerating and
+ * diffing.
  */
 class PaginationTest extends TestCase
 {
@@ -87,8 +82,8 @@ class PaginationTest extends TestCase
         $event = Event::factory()->create();
         $urls = $this->collectionUrls($event);
 
-        // A FLOOR, so a scan that stops finding things fails instead of passing
-        // vacuously. Seven is what exists today; a new collection raises it.
+        // A floor, so a scan that stops finding things fails instead of passing
+        // vacuously. A new collection raises it.
         self::assertGreaterThanOrEqual(7, count($urls));
 
         $reader = $this->reader();
@@ -103,24 +98,22 @@ class PaginationTest extends TestCase
                 array_keys($body['meta'] ?? []),
                 "The $what carries the wrong `meta`."
             );
-            // Weak on purpose, and only here: at the default limit every
-            // collection fits in one page, so this passes for a `total`
-            // computed over the slice as well as over the whole collection. The
-            // assertion with teeth is
-            // test_a_limit_returns_that_many_rows_and_still_counts_the_whole_collection.
+            // Weak on purpose: at the default limit every collection fits in
+            // one page, so a `total` computed over the slice passes too.
+            // test_a_limit_returns_that_many_rows_and_still_counts_the_whole_collection
+            // is the strict one.
             self::assertSame(count($body['data']), $body['meta']['total'], "The $what miscounts itself.");
             self::assertNotNull($response->headers->get('Link'), "The $what hands out no Link header.");
         }
     }
 
     /**
-     * The other half of the scan: nothing in the DOCUMENT still promises a bare
+     * The other half of the scan: nothing in the document promises a bare
      * array.
      *
-     * Derived rather than listed. An operation whose success schema is an array
-     * is one the middleware would envelope at runtime, leaving the document
-     * describing a shape the API does not send — which is the failure a
-     * generated client compiles straight into its types.
+     * The middleware would envelope such an operation at runtime, so the
+     * document would describe a shape the API does not send, and the generated
+     * client would compile that into its types.
      */
     public function test_the_document_promises_no_bare_array_anywhere(): void
     {
@@ -149,10 +142,8 @@ class PaginationTest extends TestCase
 
         self::assertSame([], $bare, 'These operations still answer with a bare array.');
 
-        // The floor again, and here it is what would notice
-        // App\Support\Scramble\DocumentsPagination not running at all: with the
-        // extension silent the list above would name these instead — but the
-        // day both lists are empty, nothing else in this file would say so.
+        // The floor again: if both lists were empty, nothing else in this file
+        // would say so.
         self::assertGreaterThanOrEqual(8, count($enveloped), 'The document describes no collections at all.');
     }
 
@@ -188,9 +179,9 @@ class PaginationTest extends TestCase
     /**
      * The one write that answers with a collection.
      *
-     * It gets the envelope — one shape for that collection whichever verb asked
-     * for it — and NOT the Link header, because `rel="next"` on a URL you would
-     * have to PUT again is not a link anybody should follow.
+     * It gets the envelope, one shape for that collection whichever verb asked
+     * for it, and no Link header: `rel="next"` on a URL you would have to PUT
+     * again is not a link anybody should follow.
      */
     public function test_replacing_the_bookable_options_answers_in_the_envelope_without_links(): void
     {
@@ -212,10 +203,9 @@ class PaginationTest extends TestCase
     /**
      * Nothing that is not a collection is touched.
      *
-     * The guest-list JSON export is the one that would hurt: it is a downloaded
-     * FILE whose body happens to be JSON, and enveloping it would corrupt every
-     * saved copy. It is an object, which is the whole reason the middleware
-     * keys on the body being a list.
+     * The guest-list JSON export is a downloaded file whose body is JSON, and
+     * enveloping it would corrupt every saved copy. It is an object, which is
+     * why the middleware keys on the body being a list.
      */
     public function test_an_object_response_is_left_exactly_as_it_was(): void
     {
@@ -237,8 +227,8 @@ class PaginationTest extends TestCase
             ->getJson("/api/v1/events/{$event->id}/registrations")
             ->assertOk();
 
-        // Without the envelope this is `[]`, and a client would have to handle
-        // two shapes for the case it is likeliest to meet first.
+        // Without the envelope this is `[]`, a second shape for a client to
+        // handle.
         self::assertSame([], $response->json('data'));
         self::assertSame(0, $response->json('meta.total'));
         self::assertStringContainsString('rel="first"', (string) $response->headers->get('Link'));
@@ -255,8 +245,7 @@ class PaginationTest extends TestCase
 
         self::assertCount(2, $response->json('data'));
 
-        // THE POINT OF `total`: a screen can write "5 membres" without having
-        // been sent five of them.
+        // `total` lets a screen write "5 membres" without being sent all five.
         self::assertSame(5, $response->json('meta.total'));
         self::assertSame(2, $response->json('meta.limit'));
     }
@@ -302,9 +291,8 @@ class PaginationTest extends TestCase
     /**
      * Following `next` off `/events?past=1` must stay in the past.
      *
-     * A Link header that dropped the caller's own filters would hand them page
-     * two of a DIFFERENT collection, which is the kind of bug that looks like
-     * missing data rather than like broken paging.
+     * A Link header that dropped the caller's filters would hand them page two
+     * of a different collection, which looks like missing data.
      */
     public function test_the_links_carry_the_callers_own_filters(): void
     {
@@ -318,9 +306,8 @@ class PaginationTest extends TestCase
 
         self::assertStringContainsString('past=1', $link);
 
-        // Compared against how many links there ARE rather than against a
-        // number typed here, so this stays true when a page gains or loses a
-        // `prev`.
+        // Compared against the number of links, so this holds whether or not a
+        // page has a `prev`.
         self::assertSame(
             substr_count($link, 'rel="'),
             substr_count($link, 'past=1'),
@@ -335,7 +322,7 @@ class PaginationTest extends TestCase
             ->assertOk();
 
         // Not a 400. These parameters are a hint about how much to send, and
-        // `meta` reports what was applied — see App\Support\Page.
+        // `meta` reports what was applied (see App\Support\Page).
         self::assertSame(Page::MAX_LIMIT, $response->json('meta.limit'));
     }
 
@@ -345,10 +332,9 @@ class PaginationTest extends TestCase
 
         $reader = $this->reader();
 
-        // None of these says anything a page size could be read from, so each
-        // gets the default. The failure being guarded against is a cast:
-        // `(int) "abc"` is 0, and a limit of 0 answers every collection in the
-        // system with nothing at all.
+        // None of these is a page size, so each gets the default. A cast would
+        // turn `"abc"` into 0, and a limit of 0 answers every collection with
+        // nothing.
         foreach (['abc', '', '2.5', 'ten'] as $nonsense) {
             $limit = $this->actingAsMember($reader)
                 ->getJson('/api/v1/members?limit='.urlencode($nonsense))
@@ -360,9 +346,8 @@ class PaginationTest extends TestCase
     }
 
     /**
-     * A number below the floor is CLAMPED, which is a different answer from
-     * ignored — and the previous version of this test, asserting only that the
-     * collection was not empty, could not tell the two apart.
+     * A number below the floor is clamped to 1, which a check that the
+     * collection is not empty could not tell apart from ignored.
      */
     public function test_a_limit_below_one_is_clamped_rather_than_ignored(): void
     {
@@ -381,13 +366,11 @@ class PaginationTest extends TestCase
     }
 
     /**
-     * A whole number too large for PHP's integer type still said what it meant.
+     * A whole number too large for PHP's integer type still means "past the
+     * end".
      *
-     * `filter_var` answers false for it exactly as it does for `abc`, so
-     * reading both as "no parameter at all" sent an offset past the end of the
-     * collection back to page ONE. Asking for row 99999999999999999999 and
-     * being handed the first three members is the one direction a fail-safe
-     * default must not fail in.
+     * `filter_var` answers false for it as it does for `abc`, so reading both
+     * as absent would send an offset past the end back to page one.
      */
     public function test_an_offset_too_large_for_an_integer_lands_past_the_end_not_at_the_start(): void
     {
@@ -419,7 +402,7 @@ class PaginationTest extends TestCase
      * The links the reference shows are the links the API sends.
      *
      * Relative, so nothing in them depends on what the server believes its own
-     * scheme and host to be — see App\Support\Page::url().
+     * scheme and host to be. See App\Support\Page::url().
      */
     public function test_the_links_are_relative_to_the_request(): void
     {
@@ -431,14 +414,14 @@ class PaginationTest extends TestCase
     }
 
     /**
-     * The one header this middleware could destroy, and did.
+     * The one header this middleware could destroy.
      *
      * App\Http\Middleware\ApiVersion announces a successor with its own `Link`,
      * and this middleware is appended to the group first, so on the way out it
-     * runs last. A replacing `set()` left seven collections silently not
-     * announcing the retirement while `Deprecation` and `Sunset` kept working —
-     * which nothing would have noticed, because the successor is null on every
-     * server and ApiVersionTest exercises `/config`, not a collection.
+     * runs last. A replacing `set()` would silently drop the successor link
+     * from every collection while `Deprecation` and `Sunset` kept working.
+     * Nothing else would notice: the successor is null on every server and
+     * ApiVersionTest exercises `/config`, not a collection.
      */
     public function test_the_page_links_do_not_silence_the_successor_version_link(): void
     {
@@ -458,8 +441,8 @@ class PaginationTest extends TestCase
 
         $response = $this->actingAsMember($this->reader())->getJson('/api/v1/members')->assertOk();
 
-        // The reason the SPA needs no paging: the default is above every
-        // collection this system holds.
+        // The SPA needs no paging: the default is above every collection this
+        // system holds.
         self::assertSame(Page::DEFAULT_LIMIT, $response->json('meta.limit'));
         self::assertSame(0, $response->json('meta.offset'));
         self::assertCount($response->json('meta.total'), $response->json('data'));

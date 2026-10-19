@@ -11,7 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * One item in the committee inbox.
  *
  * `kind` is a machine name and stays English; the SPA translates it. `title`
- * and `summary` are content — a stranger's name and their own words — and are
+ * and `summary` are content (a stranger's name and their own words) and are
  * rendered verbatim.
  *
  * @mixin InboxItem

@@ -206,8 +206,7 @@ class RoleEditorTest extends TestCase
     public function test_a_role_given_to_somebody_since_the_read_is_not_deleted(): void
     {
         // The confirmation named who would lose the role. Somebody given it
-        // since then was not named, so the delete must answer 412 rather than
-        // take it from them unannounced.
+        // since then was not named, so the delete answers 412.
         $role = Role::factory()->granting(Permission::ImagesManage)->create();
         $tag = $this->ifMatch('role', $role);
 
@@ -241,8 +240,8 @@ class RoleEditorTest extends TestCase
 
     public function test_a_new_ability_takes_effect_without_a_deploy(): void
     {
-        // #194's "done when": create a role, grant it a permission, assign it
-        // on the roster, and the new holder can do the thing at once.
+        // Create a role, grant it a permission, assign it on the roster, and
+        // the new holder can use it at once (#194).
         $member = Member::factory()->named('Perrine', 'Player', 'perrine')->create();
         $this->acting($member)->getJson('/api/v1/members')->assertStatus(403);
 

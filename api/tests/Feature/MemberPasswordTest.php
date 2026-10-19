@@ -12,11 +12,9 @@ use Tests\TestCase;
 /**
  * An administrator issues a member a new password, and reads it out (ADR 0016).
  *
- * Issuing a credential and resetting one are the SAME operation — ADR 0016
- * describes one mechanism, so there is one endpoint. Since 2026_09_08_000001
- * every member already has a password, so this is always a reset; the "give
- * this person an account" case is POST /api/v1/members, which mints one at
- * creation.
+ * Issuing a credential and resetting one are one mechanism in ADR 0016, so
+ * there is one endpoint. Every member already has a password, so this is
+ * always a reset; POST /api/v1/members mints the first one at creation.
  */
 class MemberPasswordTest extends TestCase
 {
@@ -102,20 +100,16 @@ class MemberPasswordTest extends TestCase
 
     public function test_resetting_your_own_password_here_keeps_you_logged_in(): void
     {
-        // The UI sends an administrator to /account for their own password, so
-        // this path is unusual — but being logged out by your own click, with a
-        // generated password you then have to use, is a bad enough outcome to
-        // be worth one branch. The forced change still applies.
+        // The UI sends an administrator to /account for their own password,
+        // so this path is unusual, but being logged out by your own click is
+        // worth one branch. The forced change still applies.
         //
-        // WHAT THIS DOES NOT PROVE, measured 2026-09-08: swapping
-        // forMemberExcept() for forMember() here keeps every test in this file
-        // green. phpunit.xml runs SESSION_DRIVER=array, so the acting request
-        // has no row in `sessions` and both calls delete exactly the same rows;
-        // switching that one test to the database driver does not help either,
-        // because actingAs() mints a fresh session id per request and persists
-        // none of them. The helper's own behaviour IS covered — see
-        // SessionRevocationTest — but the choice between the two calls is not
-        // observable from here.
+        // This does not prove the acting session survives: swapping
+        // forMemberExcept() for forMember() keeps this file green.
+        // phpunit.xml runs SESSION_DRIVER=array, so the acting request has no
+        // row in `sessions`, and the database driver does not help because
+        // actingAs() persists no session id. SessionRevocationTest covers the
+        // helper itself.
         $this->sessionFor('actor-other-device', $this->actor->id);
 
         $this->acting()->postJson("/api/v1/members/{$this->actor->id}/password")->assertOk();

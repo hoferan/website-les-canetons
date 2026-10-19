@@ -21,9 +21,9 @@ class LoginTest extends TestCase
     }
 
     /**
-     * Mirrors AuthController::throttleKey()'s normalisation, so this stays the
-     * same bucket the controller reads/clears no matter the case or padding a
-     * test (or a future caller) spells the username with.
+     * Mirrors AuthController::throttleKey()'s normalisation, so this is the
+     * bucket the controller reads and clears whatever the username's case or
+     * padding.
      */
     private function throttleKey(string $username = 'lea.keller'): string
     {
@@ -81,13 +81,9 @@ class LoginTest extends TestCase
             'password' => 'wrong',
         ])->assertStatus(401)
             ->assertJson(['code' => 'invalid_credentials'])
-            // Ported from the now-deleted LoginSmokeTest: pins the {error, code,
-            // fields[]} contract, not Laravel's native {message, exception, trace}.
-            //
-            // assertJsonMissing() searches for 'exception' as a VALUE, never as a
-            // key, so a body containing "exception":"QueryException" would still
-            // pass it — assertJsonMissingPath() is what actually checks the key
-            // is absent.
+            // The problem document, not Laravel's native {message, exception,
+            // trace}. assertJsonMissing() searches for 'exception' as a value,
+            // never as a key; assertJsonMissingPath() checks the key.
             ->assertJsonMissingPath('exception');
 
         $this->assertGuest();
@@ -107,10 +103,8 @@ class LoginTest extends TestCase
             'password' => 'wrong',
         ]);
 
-        // Concrete assertions, not just equality: two responses that were both
-        // e.g. a 500 with no `code` would satisfy assertSame() below without
-        // either actually being the generic-refusal contract this test exists
-        // to pin.
+        // Concrete assertions as well as equality: two 500s with no `code`
+        // would satisfy assertSame() below.
         $unknown->assertStatus(401)->assertJson(['code' => 'invalid_credentials']);
         $wrong->assertStatus(401)->assertJson(['code' => 'invalid_credentials']);
 
@@ -119,26 +113,13 @@ class LoginTest extends TestCase
     }
 
     /**
-     * members.password is nullable by design (see the members migration): a
-     * member row is a PERSON, not an account, so an admin can create one with
-     * a username assigned but no password yet issued. Auth::attempt() DOES
-     * find this row (unlike the null-username case, which is a WHERE that
-     * can never match), so this exercises the hasher path with a null hash —
-     * exactly the shape of bug this task was created to eliminate, so this
-     * must come back as the same generic 401 as every other failure, never a
-     * 500, and never a distinct code (a distinct code would let an attacker
-     * enumerate which accounts still lack a password).
+     * Every member has an account (ADR 0015), so both credentials are NOT NULL
+     * (2026_09_08_000001). The schema, not the login path, keeps a member
+     * without a password from reaching the hasher.
      */
     public function test_a_member_with_a_username_but_no_password_is_impossible(): void
     {
-        // This test used to log in against a credential-less row and assert a
-        // 401. That row can no longer exist: 2026_09_08_000001 made both
-        // credentials NOT NULL, because the roster is the people the band
-        // tracks for events and all of them have an account. The defence is now
-        // the schema rather than the login path.
-        // By hand, not through the factory: the factory supplies valid
-        // credentials, and a row without them is exactly what this asserts the
-        // schema refuses.
+        // By hand, not through the factory, which supplies valid credentials.
         $this->expectException(QueryException::class);
 
         Member::create([
@@ -189,13 +170,11 @@ class LoginTest extends TestCase
 
     public function test_the_throttle_survives_a_different_case_or_padding(): void
     {
-        // Proves the throttle key is normalised: members.username collates
-        // utf8mb4_unicode_ci (case-insensitive, PAD SPACE), so the database
-        // authenticates spellings a raw concatenation would count as separate
-        // RateLimiter buckets. Without Str::lower(trim(...)) in throttleKey(),
-        // an attacker who exhausts the limit as "lea.keller" walks straight
-        // past it by resubmitting "LEA.Keller" — even with the CORRECT
-        // password.
+        // members.username collates utf8mb4_unicode_ci (case-insensitive, PAD
+        // SPACE), so the database authenticates spellings a raw key would
+        // count as separate buckets. Without Str::lower(trim(...)) in
+        // throttleKey(), "LEA.Keller" would walk past the limit exhausted as
+        // "lea.keller".
         $this->member();
 
         for ($attempt = 0; $attempt < 5; $attempt++) {
@@ -215,11 +194,9 @@ class LoginTest extends TestCase
 
     public function test_the_lockout_decay_window_is_fifteen_minutes(): void
     {
-        // Pins the decay window itself, not merely that SOME lock exists —
-        // RateLimiter::hit()'s cache->add() sets the TTL once, on the first
-        // failure, and never extends it, so a DECAY_SECONDS regression (e.g.
-        // back to 60, or to 0) would still throttle the very next request and
-        // slip past every other test here.
+        // Pins the decay window itself. RateLimiter::hit() sets the TTL once,
+        // on the first failure, so a shorter DECAY_SECONDS would still
+        // throttle the next request and pass every other test here.
         $this->member();
 
         for ($attempt = 0; $attempt < 5; $attempt++) {
@@ -229,8 +206,7 @@ class LoginTest extends TestCase
             ]);
         }
 
-        // Both bounds matter: the floor alone would also pass at 90000
-        // seconds despite the test's name promising fifteen minutes (900s).
+        // Both bounds: the floor alone would also pass at 90000 seconds.
         $availableIn = RateLimiter::availableIn($this->throttleKey());
         $this->assertGreaterThan(800, $availableIn);
         $this->assertLessThan(1000, $availableIn);
@@ -259,25 +235,18 @@ class LoginTest extends TestCase
     {
         $member = $this->member();
 
-        // App\Http\Middleware\EnforceAbsoluteSessionLifetime (appended to the
-        // `api` group) reads auth.started_at off the request's session, so
-        // this actingAs() call needs the stamp too — see MeTest for the full
-        // explanation. The Origin header was already here.
+        // actingAsMember() stamps auth.started_at, which
+        // EnforceAbsoluteSessionLifetime reads; MeTest explains it.
         $this->actingAsMember($member)
             ->postJson('/api/v1/logout')
             ->assertOk()->assertJson(['ok' => true]);
 
-        // Pinned to the 'web' guard deliberately. /api/v1/logout sits behind
-        // auth:sanctum, and Illuminate\Auth\Middleware\Authenticate::authenticate()
-        // calls Auth::shouldUse('sanctum') once it passes — so a guard-less
-        // assertGuest() would check the 'sanctum' RequestGuard instead. That guard
-        // memoizes the user it resolved for THIS simulated request and is never
-        // reconstructed for the assertion that follows in the same test process,
-        // so it still reports authenticated no matter what logout() did — a
-        // testing-harness artifact (a real subsequent request builds a fresh
-        // RequestGuard that re-derives from the session, which IS cleared).
-        // Asserting the 'web' guard is what actually pins the production-relevant
-        // behaviour: AuthController::logout() calls Auth::guard('web')->logout().
+        // The 'web' guard on purpose. Behind auth:sanctum, Authenticate calls
+        // Auth::shouldUse('sanctum'), so a guard-less assertGuest() would check
+        // the sanctum RequestGuard, which memoizes the user it resolved for
+        // this simulated request and still reports authenticated. A real next
+        // request re-derives from the cleared session. AuthController::logout()
+        // logs out the 'web' guard, so that is what this asserts.
         $this->assertGuest('web');
     }
 }

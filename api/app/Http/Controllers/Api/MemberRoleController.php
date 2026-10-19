@@ -50,13 +50,12 @@ class MemberRoleController extends Controller
     #[Emits('baseline_role_is_fixed', 'cannot_remove_last_administrator', 'cannot_remove_last_role_administrator', 'cannot_demote_self')]
     public function __invoke(ReplaceMemberRolesRequest $request, Member $member): JsonResponse
     {
-        // NO RE-AUTHENTICATION (ADR 0017, since 2026-09-08). The cookie is
-        // trusted here as it is everywhere else in this API.
+        // No re-authentication: the session is trusted here as everywhere
+        // else (ADR 0017).
         //
-        // THE REMAINING ORDER IS STILL LOAD-BEARING: check the invariants
-        // BEFORE the write, so a refusal leaves no trace; and write, then
-        // revoke, then audit. Revoking before writing would end the sessions
-        // and then fail, leaving the member logged out with their old
+        // The order matters. The invariants are checked before the write, so
+        // a refusal leaves no trace; then write, revoke, audit. Revoking
+        // first and then failing would log the member out with their old
         // permissions intact.
         /** @var array<int, int> $roleIds */
         $roleIds = array_map('intval', $request->validated('roleIds'));
@@ -67,14 +66,12 @@ class MemberRoleController extends Controller
         // time of the change.
         $label = $member->fullName();
 
-        // Sessions are revoked in the SAME transaction as the change
-        // (ADR 0010). A revoked permission that only takes effect at the next
-        // login is a permission the holder can keep using all evening.
+        // Sessions are revoked in the same transaction as the change
+        // (ADR 0010), so a removed permission stops working now, not at the
+        // next login.
         //
-        // The note sits out here rather than beside the revoke call, because
-        // Scramble publishes the comment preceding a return as the response
-        // description, and inside the closure it was being served as the
-        // documentation for `sessionsEnded` on three separate endpoints.
+        // This note stays outside the closure: Scramble publishes a comment
+        // above a return as a response description, even inside a closure.
         $sessionsEnded = DB::transaction(function () use ($member, $roleIds): int {
             $member->roles()->sync($roleIds);
 

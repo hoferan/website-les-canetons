@@ -10,22 +10,19 @@ use Tests\TestCase;
 /**
  * Every timestamp this API emits is UTC.
  *
- * THE DECISION, taken 2026-09-11: the backend works in UTC end to end — the
- * column, the application timezone, and the wire. Europe/Zurich exists only in
- * what a human is shown, which is the SPA's job.
+ * The backend works in UTC end to end: the column, the application timezone
+ * and the wire. Europe/Zurich exists only in what a human is shown, which is
+ * the SPA's job.
  *
- * THE BUG THIS GUARDS, found by a black-box review the same day:
- * POST /api/v1/events/series builds its times as Europe/Zurich wall-clock — a
- * season must keep the same clock time across the daylight-saving change, which
- * is the entire reason that endpoint takes `H:i` rather than instants — and its
- * 201 therefore rendered `+01:00` while a GET on the very same row rendered
- * `+00:00`. Same instant, same declared EventResource, two spellings. Enough to
- * break anything that caches or diffs events, and enough to make a client that
- * slices the string show the wrong hour.
+ * POST /api/v1/events/series builds its times as Europe/Zurich wall-clock (a
+ * season keeps the same clock time across the daylight-saving change, which is
+ * why that endpoint takes `H:i`), so its 201 could render `+01:00` while a GET
+ * on the same row renders `+00:00`. Two spellings of one instant break
+ * anything that caches or diffs events, and a client that slices the string
+ * shows the wrong hour.
  *
- * The tests below compare a CREATION response against a READ of the same row,
- * which is the comparison that failed. Asserting only that a read is UTC would
- * have passed throughout.
+ * So the tests compare a creation response against a read of the same row.
+ * Asserting only that a read is UTC would not catch it.
  */
 class UtcRenderingTest extends TestCase
 {
@@ -40,9 +37,8 @@ class UtcRenderingTest extends TestCase
     }
 
     /**
-     * THE REGRESSION. The series generator is the endpoint that reasons in
-     * Europe/Zurich internally, so it is the one that used to leak that
-     * timezone into its response.
+     * The series generator reasons in Europe/Zurich internally, so it is the
+     * endpoint that could leak that timezone into its response.
      */
     public function test_a_generated_season_renders_utc_and_matches_a_later_read(): void
     {
@@ -74,9 +70,8 @@ class UtcRenderingTest extends TestCase
             'The creation response and a later read spell the same instant differently.'
         );
 
-        // 20:00 Europe/Zurich in December is 19:00 UTC. Pinning the value, not
-        // merely the agreement, so a bug that rendered both wrong the same way
-        // could not pass.
+        // 20:00 Europe/Zurich in December is 19:00 UTC. The value is pinned
+        // too, so both being wrong the same way cannot pass.
         $this->assertSame('2026-12-01T19:00:00+00:00', $fromCreate);
     }
 
@@ -101,9 +96,8 @@ class UtcRenderingTest extends TestCase
     }
 
     /**
-     * Every timestamp in the planning, not just the two that were wrong. A
-     * resource that rendered one field through Instant and forgot another is
-     * the obvious next version of this bug.
+     * Every timestamp in the planning, so a resource that renders one field
+     * correctly and forgets another fails.
      */
     public function test_every_event_timestamp_carries_a_utc_offset(): void
     {

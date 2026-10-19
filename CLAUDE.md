@@ -201,7 +201,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
 - **Runtime configuration comes from `GET /api/v1/config`**, never from
   `import.meta.env`: every environment runs the same build (ADR 0007).
 - **The API reference is `GET /api/docs`**, behind `API_DOCS_ENABLED` (default
-  off, answering 404), reading the committed `openapi.json`.
+  on; off answers 404), reading the committed `openapi.json`.
 - **Everything lives under `/api/v1/*`**, from `withRouting(apiPrefix:
   ApiVersion::PREFIX)` in `api/bootstrap/app.php`. `api/routes/meta.php`
   (docs, migrate, health) is deliberately outside it.

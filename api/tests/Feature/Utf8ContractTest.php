@@ -9,18 +9,15 @@ use Tests\TestCase;
 /**
  * The backend is UTF-8 end to end.
  *
- * A French band's API carries accented text in almost every user-supplied
- * field — event titles, locations, attire, notes, guest names — so this is not
- * an edge case, it is the normal case. The properties worth pinning are the
- * ones that fail SILENTLY and only for some inputs, which is what makes
- * encoding bugs expensive: they survive every test written in ASCII.
+ * Almost every user-supplied field carries accented text (event titles,
+ * locations, attire, notes, guest names). Encoding bugs fail silently and only
+ * for some inputs, so they survive every test written in ASCII.
  *
- * THE FOUR-BYTE CHARACTER IS THE LOAD-BEARING ONE. MySQL's `utf8` is three
- * bytes and silently truncates or rejects anything outside the basic plane;
- * only `utf8mb4` stores an emoji. So a round trip that includes one proves the
- * connection, the column and the response encoder are all really utf8mb4 —
- * whereas a test using only `é` would pass on a three-byte column and tell you
- * nothing.
+ * The four-byte character matters most. MySQL's `utf8` is three bytes and
+ * silently truncates or rejects anything outside the basic plane; only
+ * `utf8mb4` stores an emoji. A round trip with one proves the connection, the
+ * column and the response encoder are all utf8mb4, where `é` alone would pass
+ * on a three-byte column.
  */
 class Utf8ContractTest extends TestCase
 {
@@ -60,10 +57,10 @@ class Utf8ContractTest extends TestCase
     }
 
     /**
-     * Asserted on the RAW BODY, because every assertion helper decodes first —
-     * and after decoding, escaped and unescaped spellings are the same string.
+     * Asserted on the raw body, because every assertion helper decodes first,
+     * and after decoding escaped and unescaped spellings are the same string.
      * A test written through json() would pass with the encoder emitting
-     * `é` sequences.
+     * `\u00e9` sequences.
      */
     public function test_the_response_carries_raw_utf8_not_escape_sequences(): void
     {
@@ -92,12 +89,10 @@ class Utf8ContractTest extends TestCase
      * request. PHP's json_decode rejects it, so the payload arrives empty and
      * validation refuses it.
      *
-     * The message it produces is imperfect — it reports the fields as MISSING
-     * rather than the body as unparseable — and that is accepted rather than
-     * unnoticed: the failure is safe, documented here, and distinguishing the
-     * two cases would mean inspecting the raw body before Laravel parses it.
-     * What matters is that it is a clean 400 rather than a 500 or a partial
-     * write.
+     * The message reports the fields as missing rather than the body as
+     * unparseable. That is accepted: telling the two apart would mean
+     * inspecting the raw body before Laravel parses it, and the answer is a
+     * clean 400, not a 500 or a partial write.
      */
     public function test_a_body_that_is_not_valid_utf8_is_refused_cleanly(): void
     {
@@ -122,12 +117,11 @@ class Utf8ContractTest extends TestCase
     }
 
     /**
-     * Accented text counts CHARACTERS, not bytes, against a length limit.
+     * Accented text counts characters, not bytes, against a length limit.
      *
      * `é` is two bytes in UTF-8, so a byte-counting `max:255` would refuse a
      * 200-character French title. Laravel counts characters when mbstring is
-     * present — this pins that it is, on this stack, because the failure mode
-     * is a French-only bug nobody writing English tests would see.
+     * present; this pins that it is on this stack.
      */
     public function test_length_limits_count_characters_not_bytes(): void
     {

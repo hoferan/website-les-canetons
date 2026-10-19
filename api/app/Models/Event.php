@@ -18,19 +18,16 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * A rehearsal or gig on the planning. The committee enters it, every member
  * reads it, and every player answers it.
  *
- * `starts_at`/`ends_at` replace the old date + two TIME columns + `weekend`
- * boolean: a multi-day event is one whose start and end fall on different
+ * A multi-day event is one whose `starts_at` and `ends_at` fall on different
  * days, so there is no flag to keep in step with them. A draft may lack both
- * and its location; a PUBLISHED event never does, and the publish path is what
- * holds that now (see the add_published_at migration).
+ * and its location; a published event never does, and the publish path
+ * enforces that (see the add_published_at migration).
  *
  * `published_at` null means draft. It is a separate axis from `is_public`:
- * a draft is seen by nobody but `events.manage`, whatever `is_public` says.
+ * a draft is seen only by `events.manage`, whatever `is_public` says.
  *
- * The @property tags below say what casts() already does at runtime. Larastan
- * runs at level 5 and cannot read casts(), so without them these read as their
- * raw column types and every caller has to defend against a type that never
- * occurs. Member.php carries the same block for the same reason.
+ * The @property tags repeat what casts() does at runtime: Larastan cannot
+ * read casts() and would otherwise see the raw column types.
  *
  * @property CarbonImmutable|null $starts_at
  * @property CarbonImmutable|null $ends_at
@@ -47,13 +44,9 @@ class Event extends Model
     use HasFactory;
 
     /**
-     * Mirrors the column default. Eloquent's create() only ever inserts
-     * attributes it was given — it never reads back a DB-side DEFAULT after
-     * the insert — so a caller that omits `is_public` (as
-     * App\Http\Controllers will, once one exists) would otherwise see it as
-     * null in the same request rather than false. Declaring it here keeps the
-     * model's view of a fresh row consistent with what the migration defaults
-     * the column to.
+     * Mirrors the column default. Eloquent's create() never reads back a
+     * DB-side DEFAULT, so a caller that omits `is_public` would otherwise see
+     * null in the same request rather than false.
      */
     protected $attributes = [
         'is_public' => false,
@@ -79,10 +72,10 @@ class Event extends Model
     /**
      * Every answer for this event.
      *
-     * GET /api/v1/events loads it CONSTRAINED TO THE CALLER, which is what
-     * makes `myAttendance` one extra query for the whole list rather than
-     * one per row. The chase list does not use this relation at all — it
-     * fetches the answers once and setRelation()s them onto the roster.
+     * GET /api/v1/events loads it constrained to the caller, so `myAttendance`
+     * costs one query for the whole list. The chase list does not use this
+     * relation: it fetches the answers once and setRelation()s them onto the
+     * roster.
      *
      * @return HasMany<Attendance, $this>
      */
@@ -94,25 +87,17 @@ class Event extends Model
     /**
      * Clears the booking choices before the database cascades run.
      *
-     * WHY THIS IS NEEDED, MEASURED 2026-09-10. Deleting an event cascades
-     * into BOTH `registrations` and `event_registration_options`, and
-     * `registration_choices.option_id` is ON DELETE RESTRICT. MySQL does not
-     * order the two cascades, so it can try to remove an option while the
-     * choices still point at it, and the whole delete fails with a foreign
-     * key violation — which is what
-     * RegistrationSchemaTest::test_deleting_the_event_takes_the_whole_booking_tree
-     * caught.
+     * Deleting an event cascades into both `registrations` and
+     * `event_registration_options`, and `registration_choices.option_id` is
+     * ON DELETE RESTRICT. MySQL does not order the two cascades, so it can
+     * remove an option while choices still point at it and fail the delete.
+     * Pinned by
+     * RegistrationSchemaTest::test_deleting_the_event_takes_the_whole_booking_tree.
      *
-     * RESTRICT IS STILL RIGHT and is not the bug. It guards the case that
-     * matters: deleting an option somebody has already booked, while the
-     * event lives, would silently rewrite what that person ordered. SQL
-     * simply cannot express "restrict, unless the parent is going too", so
-     * the application says it here — on the model rather than in the
-     * controller, so a seeder, an import or a future endpoint cannot forget.
-     * The same argument App\Casts\UtcDateTime is on the column for.
-     *
-     * One extra DELETE, on a path that already writes several, and only for
-     * events that have bookings at all.
+     * RESTRICT stays: deleting a booked option while the event lives would
+     * rewrite what somebody ordered, and SQL cannot say "restrict unless the
+     * parent goes too". It lives on the model rather than the controller so
+     * every writer gets it.
      */
     protected static function booted(): void
     {
@@ -121,9 +106,8 @@ class Event extends Model
                 ->whereIn('registration_id', $event->registrations()->select('id'))
                 ->delete();
 
-            // The poster's slot goes too, or its image would stay in use by a
-            // slot no page shows any more and the library would refuse to
-            // delete it.
+            // The poster's slot goes too, or the library would count its image
+            // as in use and refuse to delete it.
             $event->poster()->delete();
         });
     }
@@ -176,10 +160,8 @@ class Event extends Model
     /**
      * Every option booked at this event, across every booking.
      *
-     * EXISTS SO withSum HAS A RELATION TO NAME. Laravel's aggregate helpers
-     * take one relation, not a dotted path, so "sum the quantities of the
-     * choices of this event's registrations" needs the hop declared. Nothing
-     * reads it as a relation.
+     * Exists so withSum has a relation to name: Laravel's aggregate helpers
+     * take one relation, not a dotted path. Nothing reads it as a relation.
      *
      * @return HasManyThrough<RegistrationChoice, Registration, $this>
      */
@@ -208,9 +190,8 @@ class Event extends Model
     /**
      * Whether this event takes public registrations at all.
      *
-     * IFF `registration_closes_at IS NOT NULL` (ADR 0020). No separate
-     * boolean — a flag beside a date is a flag that drifts out of step with it,
-     * which is exactly what the retired `weekend` column did.
+     * True exactly when `registration_closes_at` is set (ADR 0020). No
+     * separate boolean, which could drift out of step with the date.
      */
     public function takesRegistrations(): bool
     {
@@ -218,7 +199,7 @@ class Event extends Model
     }
 
     /**
-     * Whether the form is accepting bookings RIGHT NOW.
+     * Whether the form is accepting bookings right now.
      *
      * A missing `registration_opens_at` means open immediately, so the
      * committee can enable an event without also having to decide when the
@@ -240,21 +221,16 @@ class Event extends Model
     protected function casts(): array
     {
         return [
-            // NOT 'datetime'. That cast keeps an incoming offset and then
-            // formats it away, storing a Fribourg wall-clock hour in a column
-            // every reader treats as UTC — measured, with numbers, in
-            // App\Casts\UtcDateTime's docblock. It sits on the column rather
-            // than on the endpoint that happens to write it today, so the
-            // next writer is correct without knowing any of this.
+            // Not 'datetime', which would store a Fribourg wall-clock hour in
+            // a column every reader treats as UTC (see App\Casts\UtcDateTime).
+            // On the column so every writer gets it.
             'starts_at' => UtcDateTime::class,
             'ends_at' => UtcDateTime::class,
-            // Same cast, same reason. Null is a draft.
+            // Null is a draft.
             'published_at' => UtcDateTime::class,
             'is_public' => 'boolean',
-            // The same cast as the event's own times, and for the same
-            // measured reason: a closing date typed as 23:59 in Fribourg
-            // must not be stored as 23:59 UTC, or the form shuts an hour
-            // early in summer.
+            // A closing time typed as 23:59 in Fribourg must not be stored as
+            // 23:59 UTC, or the form shuts an hour early in summer.
             'registration_opens_at' => UtcDateTime::class,
             'registration_closes_at' => UtcDateTime::class,
             'registration_max_guests' => 'integer',

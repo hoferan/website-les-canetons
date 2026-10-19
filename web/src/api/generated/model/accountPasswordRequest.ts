@@ -114,12 +114,13 @@
  * group permissions; which role granted one is not a question the API answers.
  * `GET /api/v1/me` returns the caller's effective permissions.
  *
- * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
- * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`, `images.manage`.
+ * `events.view`, `events.manage`, `attendance.respond`, `attendance.view_all`,
+ * `attendance.record_for_others`, `members.manage`, `roles.manage`,
+ * `registrations.view`, `registrations.manage`, `messages.view`,
+ * `messages.manage`, `history.manage`, `images.manage`, `account.manage`.
  *
- * Answering an event deliberately needs **no** permission: anyone in a register
- * answers for themselves.
+ * Every account holds `events.view` and `account.manage`. Answering an event for
+ * yourself needs `attendance.respond`.
  *
  * ## Conventions
  *
@@ -313,9 +314,8 @@
  * The credentials for changing your own password.
  *
  * Send the password the account is using now and the one to replace it with.
- * The current password is checked again server-side before anything is
- * written, so knowing it is what separates a borrowed session from a
- * permanently stolen account.
+ * The current password is checked server-side before anything is written, so a
+ * borrowed session alone cannot change it.
  *
  * The only requirement on the new password is a minimum of eight characters.
  * There is no complexity rule, no reuse check and no expiry.

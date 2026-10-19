@@ -17,48 +17,38 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * App\Http\Middleware\RunPendingMigrations — the self-healing schema.
+ * App\Http\Middleware\RunPendingMigrations: the self-healing schema.
  *
- * WHAT IS ACTUALLY BEING PROTECTED. The deploy host firewalls the GitHub
- * runner's IP: CI can FTP a deploy up but cannot call POST /api/migrate
- * afterwards. This middleware is therefore the ONLY migration trigger a
- * deployed server has, and every property below is one an operator would
- * otherwise have to discover from a broken TEST site.
+ * The deploy host firewalls the GitHub runner's IP, so CI can FTP a deploy up
+ * but cannot call POST /api/migrate afterwards. This middleware is the only
+ * migration trigger a deployed server has (ADR 0030).
  *
- * The probe-migration plumbing is lifted from MigrateTest, for the same reason
- * that file has it: with every real migration already applied by
- * RefreshDatabase, "nothing pending" is the only state a test can reach on its
- * own, and half these assertions would be vacuous. Registering a throwaway
- * migration path gives the middleware something genuinely pending to act on.
+ * The probe-migration plumbing comes from MigrateTest: RefreshDatabase has
+ * applied every real migration, so "nothing pending" is the only state a test
+ * reaches on its own. A throwaway migration path gives the middleware
+ * something pending to act on.
  *
- * AUTO_MIGRATE is pinned false in phpunit.xml, so each test that wants the
- * middleware live turns it on with config([...]) — the same pattern MigrateTest
- * uses for app.migrate_token.
+ * phpunit.xml pins AUTO_MIGRATE false, so each test that wants the middleware
+ * live turns it on with config([...]), as MigrateTest does for
+ * app.migrate_token.
  *
- * ---------------------------------------------------- what is NOT tested here
+ * Not tested here: that two PHP-FPM workers finding the same pending migration
+ * apply it once. That needs two processes racing, and this suite is one
+ * process. The closest observable proxies are asserted:
  *
- * The concurrency property — "two PHP-FPM workers that find the same pending
- * migration apply it exactly once" — is not directly testable in PHPUnit.
- * Reaching it needs two processes racing into the same middleware, and this
- * suite is a single process making a synchronous request. What IS asserted, as
- * the closest observable proxies:
- *
- *   - the advisory lock is genuinely HELD by the migrating connection while a
- *     migration runs (test_the_lock_is_held_by_the_migrating_connection),
- *   - it is RELEASED afterwards, on both the success and the failure path
+ *   - the advisory lock is held by the migrating connection while a migration
+ *     runs (test_the_lock_is_held_by_the_migrating_connection),
+ *   - it is released afterwards on both paths
  *     (test_the_lock_is_released_after_a_successful_migration,
  *      test_the_lock_is_released_after_a_failed_migration),
- *   - a request that cannot get the lock is REFUSED rather than served
- *     (test_an_unavailable_lock_is_a_503) — a real second connection holds it,
- *     which is exactly what the losing worker in a race sees.
+ *   - a request that cannot get the lock is refused, with a real second
+ *     connection holding it, as the losing worker in a race sees
+ *     (test_an_unavailable_lock_is_a_503).
  *
- * What remains unproven by this file is the re-check under the lock: that the
- * worker which waited and then won the lock notices the winner already did the
- * work and skips it. It is a two-process property. Its failure mode is benign
- * (`artisan migrate` with nothing pending is a no-op that reports success), so
- * the cost of the gap is wasted work on a burst of concurrent first requests,
- * not a double-applied migration — MySQL's advisory lock is what rules that
- * out, and that is what the four tests above pin.
+ * The re-check under the lock (the worker that waited notices the work is
+ * done) stays unproven. Its failure is benign: `artisan migrate` with nothing
+ * pending is a no-op, so the cost is wasted work on a burst of first requests.
+ * The advisory lock is what rules out a double-applied migration.
  */
 class AutoMigrateTest extends TestCase
 {
@@ -87,16 +77,14 @@ class AutoMigrateTest extends TestCase
         File::deleteDirectory($this->probePath);
         File::ensureDirectoryExists($this->probePath);
 
-        // The precise signal for "a migration run was attempted". Asserting on
-        // the schema alone cannot tell "the middleware ran `migrate` and it had
-        // nothing to do" apart from "the middleware never ran `migrate`", and
-        // the difference between those two is the entire hot path.
+        // Counts attempted migration runs. The schema alone cannot tell "ran
+        // `migrate` with nothing to do" from "never ran `migrate`", which is
+        // the whole hot path.
         //
-        // BOTH events, which is the load-bearing part: Migrator::runPending()
-        // fires MigrationsStarted only when it has something to run and
-        // NoPendingMigrations otherwise, so listening to the first alone would
-        // score a wasteful `migrate` call on every request as a clean hot path
-        // — passing the one test it exists to fail.
+        // Both events are needed: Migrator::runPending() fires
+        // MigrationsStarted only when it has something to run and
+        // NoPendingMigrations otherwise, so the first alone would score a
+        // needless `migrate` on every request as a clean hot path.
         $this->migrationRuns = 0;
         $count = function (): void {
             $this->migrationRuns++;
@@ -104,17 +92,15 @@ class AutoMigrateTest extends TestCase
         Event::listen(MigrationsStarted::class, $count);
         Event::listen(NoPendingMigrations::class, $count);
 
-        // A route with no auth, no capability and no feature gate, so a failure
-        // here is unambiguously the middleware's. It is registered into the
-        // `api` group, which is what carries RunPendingMigrations.
+        // No auth, permission or feature gate, so a failure here is the
+        // middleware's. The `api` group carries RunPendingMigrations.
         Route::middleware('api')->get('/api/v1/auto-migrate-probe', fn () => response()->json(['ok' => true]));
     }
 
     protected function tearDown(): void
     {
         // DDL implicitly commits on MariaDB, so RefreshDatabase's transaction
-        // cannot undo an applied probe. Undo it by hand, or the leftovers
-        // outlive this test.
+        // cannot undo an applied probe.
         Schema::dropIfExists(self::PROBE_TABLE);
         DB::table('migrations')->where('migration', 'like', '2099_%_auto_migrate_probe%')->delete();
         File::deleteDirectory($this->probePath);
@@ -129,8 +115,8 @@ class AutoMigrateTest extends TestCase
     // ------------------------------------------------------------- the hot path
 
     /**
-     * The case that is true on essentially every request ever served. It must
-     * cost a pending-check and nothing else — no `migrate` run, no lock.
+     * True on almost every request served, so it must cost a pending-check and
+     * nothing else: no `migrate` run, no lock.
      */
     public function test_nothing_pending_means_no_migration_is_attempted(): void
     {
@@ -164,10 +150,9 @@ class AutoMigrateTest extends TestCase
     }
 
     /**
-     * The deploy-shaped sequence, and the one that decides whether this is
-     * affordable: repair on the first request, then nothing at all on the
-     * second. A middleware that re-ran `migrate` every time would still pass the
-     * test above.
+     * The deploy-shaped sequence: repair on the first request, nothing on the
+     * second. A middleware that re-ran `migrate` every time would still pass
+     * the test above.
      */
     public function test_the_next_request_does_no_work_at_all(): void
     {
@@ -184,11 +169,10 @@ class AutoMigrateTest extends TestCase
     }
 
     /**
-     * The route a real visitor actually reaches first on a fresh server.
-     * app/assets/js/api.js primes GET /sanctum/csrf-cookie before every mutating
-     * call, so a login or a contact submit starts here — on the `web` group,
-     * whose StartSession reads the `sessions` table that a migration creates.
-     * It must repair the schema and still answer normally.
+     * The route a visitor can reach first on a fresh server. web/src/api/http.ts
+     * primes GET /sanctum/csrf-cookie before writing, so a login or a contact
+     * submit starts here, on the `web` group, whose StartSession reads the
+     * `sessions` table a migration creates.
      */
     public function test_the_sanctum_cookie_route_also_repairs_the_schema(): void
     {
@@ -205,10 +189,9 @@ class AutoMigrateTest extends TestCase
     // ---------------------------------------------------------------- the toggle
 
     /**
-     * AUTO_MIGRATE=false is the switch that ends an outage caused by a failing
-     * migration, so it must be total: the request is served, and the pending
-     * migration is left exactly where it was. Answering 503 here would leave
-     * no way to bring the site back without a shell (docs/adr/0030).
+     * AUTO_MIGRATE=false ends an outage caused by a failing migration, so the
+     * request is served and the pending migration left alone. A 503 here would
+     * leave no way to bring the site back without a shell (ADR 0030).
      */
     public function test_the_toggle_off_leaves_a_pending_migration_alone(): void
     {
@@ -225,18 +208,14 @@ class AutoMigrateTest extends TestCase
     }
 
     /**
-     * The default is what a server that never got an AUTO_MIGRATE line gets, and
-     * getting it backwards is the exact bug being fixed — a silently-disabled
-     * server looks fine until the API is broken. Read from config/app.php's own
-     * expression rather than trusting the .env of whatever is running the suite.
+     * A server whose .env has no AUTO_MIGRATE line gets the default, and a
+     * silently disabled server looks fine until the API breaks. Read from
+     * config/app.php's own expression, not the .env running the suite.
      */
     public function test_the_default_is_on_when_the_key_is_absent(): void
     {
-        // Reads config/app.php with AUTO_MIGRATE genuinely absent from the
-        // environment, which is what a server whose .env predates this key
-        // actually has. It cannot just require the file as-is: phpunit.xml pins
-        // AUTO_MIGRATE=false for the suite, so env() would answer that and the
-        // assertion would be about the pin rather than the default.
+        // AUTO_MIGRATE is removed from the environment first: phpunit.xml pins
+        // it false, so env() would otherwise answer the pin, not the default.
         $original = [
             '_ENV' => array_key_exists('AUTO_MIGRATE', $_ENV) ? $_ENV['AUTO_MIGRATE'] : null,
             '_SERVER' => array_key_exists('AUTO_MIGRATE', $_SERVER) ? $_SERVER['AUTO_MIGRATE'] : null,
@@ -278,10 +257,9 @@ class AutoMigrateTest extends TestCase
     // ----------------------------------------------------------- the empty ledger
 
     /**
-     * The state of EVERY server the first time this ships: the `migrations`
-     * table does not exist, so the repository cannot be read. That must report
-     * "everything is pending", not throw SQLSTATE 42S02 — otherwise the one
-     * moment the middleware exists for is the one moment it 500s.
+     * A never-migrated server has no `migrations` table. That must report
+     * "everything is pending", not throw SQLSTATE 42S02, or the middleware
+     * 500s at the one moment it exists for.
      *
      * Called directly rather than over HTTP; see the note on
      * RunPendingMigrations::hasPending() for why an HTTP test cannot reach this
@@ -294,11 +272,10 @@ class AutoMigrateTest extends TestCase
         self::assertFalse($middleware->pending(), 'Fixture check: nothing should be pending yet.');
 
         // Snapshot the ledger before dropping it. DDL implicitly commits on
-        // MariaDB, so RefreshDatabase's transaction cannot put it back, and
-        // re-deriving it with `artisan migrate` is not an option either: with
-        // the ledger gone every migration looks pending and the framework's own
-        // (unguarded) create_cache_table would fail against tables that already
-        // exist. Restoring the exact rows is the only faithful undo.
+        // MariaDB, so RefreshDatabase cannot put it back, and `artisan migrate`
+        // cannot either: with the ledger gone every migration looks pending,
+        // and the framework's unguarded create_cache_table fails against
+        // existing tables. Restoring the exact rows is the only faithful undo.
         $ledger = DB::table('migrations')->get()->map(fn ($row) => (array) $row)->all();
         self::assertNotEmpty($ledger, 'Fixture check: the ledger must have rows to restore.');
 
@@ -323,12 +300,11 @@ class AutoMigrateTest extends TestCase
     // ---------------------------------------------------------------- the lock
 
     /**
-     * The lock must be held by the connection that is doing the migrating —
-     * MariaDB's IS_USED_LOCK returns the id of the holding session, so
-     * comparing it to CONNECTION_ID() inside the migration proves both that a
-     * lock was taken and that it was taken on the write connection the
-     * migration itself runs through. A GET_LOCK on some other connection would
-     * guard nothing and would pass a mere "is the lock held" check.
+     * The lock must be held by the connection doing the migrating. MariaDB's
+     * IS_USED_LOCK returns the holding session's id, so comparing it with
+     * CONNECTION_ID() inside the migration proves the lock was taken on the
+     * connection the migration runs through. A GET_LOCK on another connection
+     * would guard nothing and still pass an "is the lock held" check.
      */
     public function test_the_lock_is_held_by_the_migrating_connection(): void
     {
@@ -357,10 +333,9 @@ class AutoMigrateTest extends TestCase
     }
 
     /**
-     * The release lives in a finally{}, and this is what says so. A lock stranded
-     * by a failing migration would be released only when that FPM worker's
-     * connection closed — meanwhile every other worker would wait out the full
-     * timeout and 503, turning one broken migration into a site-wide stall.
+     * Pins the release in a finally{}. A lock stranded by a failing migration
+     * would last until that FPM worker's connection closed, and every other
+     * worker would wait out the full timeout and 503.
      */
     public function test_the_lock_is_released_after_a_failed_migration(): void
     {
@@ -373,12 +348,12 @@ class AutoMigrateTest extends TestCase
     }
 
     /**
-     * What the losing worker in a real race sees. A second, genuinely separate
-     * connection holds the lock, so GET_LOCK cannot succeed — and the request
-     * must be refused rather than served against a schema nobody has confirmed.
+     * What the losing worker in a race sees. A separate connection holds the
+     * lock, so GET_LOCK fails, and the request is refused rather than served
+     * against an unconfirmed schema.
      *
-     * The middleware is swapped for a subclass with a 0-second lock wait; at the
-     * real 30s this test would spend half a minute proving the same thing.
+     * The middleware is swapped for a subclass with a 0-second lock wait
+     * instead of the real 30s.
      */
     public function test_an_unavailable_lock_is_a_503(): void
     {
@@ -400,15 +375,14 @@ class AutoMigrateTest extends TestCase
     // ------------------------------------------------------------- the failure
 
     /**
-     * A failed migration must fail the REQUEST. Serving a 200 against a
-     * half-applied schema is the failure mode that costs the most to find,
-     * because it produces wrong answers rather than errors.
+     * A failed migration must fail the request. A 200 against a half-applied
+     * schema produces wrong answers instead of errors, which costs the most to
+     * find.
      *
-     * The body is asserted too, not just the status: /api/v1/* answers in the
-     * project's {error, code, fields[]} contract and app/assets/js/i18n.js is
-     * what turns `code` into French. A 503 carrying Laravel's native
-     * {message, exception} shape would reach the visitor as the generic
-     * "Une erreur est survenue".
+     * The body is asserted too: /api/v1/* answers with a problem document, and
+     * translateApiError() in web/src/i18n/ turns its `code` into copy. Laravel's
+     * native {message, exception} shape would reach the visitor as the
+     * generic fallback sentence.
      */
     public function test_a_failing_migration_surfaces_as_a_503_in_the_error_contract(): void
     {
@@ -432,15 +406,14 @@ class AutoMigrateTest extends TestCase
     // ------------------------------------------------------------ the placement
 
     /**
-     * RunPendingMigrations must be the FIRST middleware on the `api` group.
+     * RunPendingMigrations must be the first middleware on the `api` group.
      *
-     * Not tidiness. SESSION_DRIVER=database and CACHE_STORE=database mean
-     * StartSession and the cache both read tables that a migration creates, and
-     * Sanctum's EnsureFrontendRequestsAreStateful pulls the session middleware
-     * in. On a never-migrated server, anything ahead of this would 500 before
-     * the thing that would have created its table ever ran. bootstrap/app.php
-     * gets that ordering from calling prependToGroup() AFTER statefulApi(),
-     * which is not self-evident from reading it — hence this test.
+     * With SESSION_DRIVER=database and CACHE_STORE=database, StartSession and
+     * the cache read tables a migration creates, and Sanctum's
+     * EnsureFrontendRequestsAreStateful pulls the session middleware in. On a
+     * never-migrated server anything ahead of this would 500 before its table
+     * existed. bootstrap/app.php gets the order from calling prependToGroup()
+     * after statefulApi(), which is not obvious from reading it.
      */
     public function test_the_middleware_runs_before_everything_else_on_the_api_group(): void
     {
@@ -448,12 +421,10 @@ class AutoMigrateTest extends TestCase
     }
 
     /**
-     * The same guarantee for the OTHER group Laravel serves. `web` carries
-     * exactly one route — Sanctum's GET /sanctum/csrf-cookie — and
-     * app/assets/js/api.js primes it before every mutating call, so on a fresh
-     * server it is the first Laravel request a real visitor makes. Its
-     * EncryptCookies/StartSession pair reads the `sessions` table, which is
-     * created by a migration.
+     * The same guarantee for `web`, whose route is Sanctum's
+     * GET /sanctum/csrf-cookie. web/src/api/http.ts primes it before writing,
+     * so it can be the first request a visitor makes on a fresh server, and
+     * its StartSession reads the `sessions` table a migration creates.
      */
     public function test_the_middleware_runs_before_everything_else_on_the_web_group(): void
     {
@@ -461,13 +432,11 @@ class AutoMigrateTest extends TestCase
     }
 
     /**
-     * Group order is only half the story: Router::gatherRouteMiddleware() SORTS
-     * what it gathers, and StartSession is on the kernel's priority list while
-     * this middleware is not. So assert the ORDER THE PIPELINE ACTUALLY RUNS,
-     * for the real Sanctum route, rather than trusting the group array.
-     *
-     * StartSession specifically, because it is the one that reads `sessions`
-     * and therefore the one that 500s on a never-migrated server.
+     * Group order is not enough: Router::gatherRouteMiddleware() sorts what it
+     * gathers, and StartSession is on the kernel's priority list while this
+     * middleware is not. So this asserts the order the pipeline runs for the
+     * real Sanctum route. StartSession is the one that reads `sessions` and
+     * 500s on a never-migrated server.
      */
     public function test_the_middleware_is_sorted_ahead_of_start_session_on_the_sanctum_route(): void
     {
@@ -496,21 +465,15 @@ class AutoMigrateTest extends TestCase
     }
 
     /**
-     * The coordinator's question, answered by measurement rather than by
-     * reasoning about MySQL's lock semantics: a request that traverses BOTH
-     * groups must migrate once and must not hang.
+     * A request that traverses both groups must migrate once and must not hang.
      *
-     * Two independent reasons it is safe, and this pins the observable result
-     * of both. SortedMiddleware::sortMiddleware() ends in
-     * Router::uniqueMiddleware(), so the duplicate is collapsed before the
-     * pipeline is built at all; and even un-deduplicated it would be harmless,
-     * because all the work happens BEFORE $next() — the lock is already
-     * released by the time an inner copy could run, and that copy finds nothing
-     * pending anyway. There is no path on which this middleware waits on a lock
-     * its own request is holding.
+     * SortedMiddleware::sortMiddleware() ends in Router::uniqueMiddleware(), so
+     * the duplicate is collapsed before the pipeline is built. Even
+     * un-deduplicated it would be harmless: all the work happens before
+     * $next(), so the lock is released before an inner copy could run, and
+     * that copy finds nothing pending. This pins the observable result.
      *
-     * No route in the app carries both groups today. This registers one so the
-     * property is pinned rather than merely currently-unreachable.
+     * No route in the app carries both groups, so this registers one.
      */
     public function test_traversing_both_groups_migrates_once_and_does_not_deadlock(): void
     {
@@ -571,9 +534,8 @@ class AutoMigrateTest extends TestCase
 
     /**
      * A second connection to the same database. GET_LOCK is scoped to a
-     * SESSION, so asking the default connection whether the lock is free would
-     * be asking the connection that might be holding it — which answers "free"
-     * for its own lock in some cases and, worse, could take the lock itself.
+     * session, so the default connection might be the holder: it can answer
+     * "free" for its own lock, and could take the lock itself.
      */
     private function otherConnection(): Connection
     {
@@ -615,11 +577,10 @@ class AutoMigrateTest extends TestCase
     }
 
     /**
-     * Write a throwaway migration into a directory registered on the migrator,
-     * which is how `artisan migrate` discovers extra paths
-     * (BaseCommand::getMigrationPaths() merges Migrator::paths() with
-     * database/migrations) — so the middleware sees it exactly as it sees a real
-     * one. The 2099_ prefix sorts it last, after every real migration.
+     * Write a throwaway migration into a directory registered on the migrator.
+     * BaseCommand::getMigrationPaths() merges Migrator::paths() with
+     * database/migrations, so the middleware sees it as it sees a real one.
+     * The 2099_ prefix sorts it after every real migration.
      *
      * @return string the migration name, as the migrations table records it
      */

@@ -9,9 +9,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * A seat on the committee.
  *
- * Shaped like SectionResource because the table is shaped like `sections`: the
- * roster form renders both through the same select, and two reference lists
- * that differ for no reason are two things to learn.
+ * Shaped like SectionResource because the roster form renders both through
+ * the same select.
  *
  * @mixin CommitteeFunction
  */

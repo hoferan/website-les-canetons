@@ -29,110 +29,86 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // GUARDED, because Scramble is a DEV dependency and no server has it.
-        // `npm run build` runs `composer install --no-dev` into the artifact,
-        // so on a deployed server this class does not exist. An unguarded call
-        // here breaks the BUILD first: the `package:discover` composer runs
-        // after that install fatals with `Class "Dedoc\Scramble\Scramble" not
-        // found`, so from 2026-09-11 no artifact could be produced at all — and
-        // had one been, every request on the server would have fatalled in
-        // boot(), including the ones needed to diagnose it.
+        // Guarded because Scramble is a dev dependency: `npm run build` runs
+        // `composer install --no-dev`, so no server has the class. Unguarded,
+        // the build's `package:discover` fatals with `Class
+        // "Dedoc\Scramble\Scramble" not found`, and every request on a server
+        // would fatal in boot().
         //
-        // The reference does not need it. /api/docs is a Scalar page reading
-        // the COMMITTED openapi.json that ships in the artifact, which is why
-        // Scramble is a dev dependency in the first place: nothing at runtime
-        // generates the document.
+        // /api/docs reads the committed openapi.json, so nothing at runtime
+        // needs Scramble.
         if (class_exists(Scramble::class)) {
             $this->configureScramble();
         }
 
-        // The rate limiter the two ANONYMOUS write endpoints run behind.
+        // The rate limiter the two anonymous write endpoints run behind.
         //
         // Here rather than in bootstrap/app.php's withMiddleware() closure,
-        // which is where it reads most naturally and where it fatals:
-        // MEASURED 2026-09-10, `RateLimiter::for()` there throws "A facade
-        // root has not been set", because the closure runs while the
-        // container is still being built. A boot() method is the first point
-        // the facade is usable.
+        // where `RateLimiter::for()` throws "A facade root has not been set"
+        // because the container is still being built.
         //
-        // Ten a minute is far above anything a person does with a booking
-        // form, and far below what makes a mail relay worth operating.
-        // PublicWriteGuard alone does not stop one: its stamp is not bound
-        // to a caller and stays valid for two hours, so without this a
-        // single fetched token buys unlimited submissions, each sending mail
-        // inline to an address the caller chose.
+        // Ten a minute is far above what a person does with a booking form
+        // and far below what makes a mail relay worth operating.
+        // PublicWriteGuard alone does not stop one: its stamp is not bound to
+        // a caller and stays valid for two hours, and each submission sends
+        // mail to an address the caller chose.
         //
         // Per IP, because an anonymous caller has no session to key on. The
-        // backing store is the `database` cache this project already
-        // requires for the login throttle.
+        // store is the `database` cache the login throttle already requires.
         RateLimiter::for(
             'public-write',
             fn (Request $request) => Limit::perMinute(10)->by($request->ip()),
         );
 
-        // Uploads to the image library (#105). Per account rather than per IP:
-        // the route sits behind auth:sanctum, and a committee sharing one
-        // rehearsal-room connection must not share one allowance. Sixty a
-        // minute leaves room for a whole folder sent at once and still stops a
-        // runaway loop from filling the disk.
+        // Uploads to the image library (#105). Per account rather than per IP,
+        // so members sharing one connection do not share one allowance. Sixty
+        // a minute allows a whole folder at once and still stops a runaway
+        // loop from filling the disk.
         RateLimiter::for(
             'image-upload',
             fn (Request $request) => Limit::perMinute(60)->by($request->user()->id ?? $request->ip()),
         );
 
-        // This API returns BARE payloads: /api/v1/config and /api/v1/me both do, and
-        // the problem-document error contract has no envelope either.
-        // JsonResource wraps COLLECTIONS in {"data": …} by default, which would
-        // give the same API two shapes depending on whether a response happened
-        // to be built from a Resource.
-        //
-        // Verified 2026-09-07: this also removes the wrapper from the generated
-        // OpenAPI schema, not just from the response — so the generated client
-        // and the MSW handlers agree with the real API rather than with each
-        // other.
+        // Resources go out bare, like /api/v1/config, /api/v1/me and the
+        // problem documents, instead of in JsonResource's default {"data": …}
+        // wrapper; list envelopes come from PaginatesCollections. This also
+        // removes the wrapper from the generated OpenAPI schema, so the
+        // generated client matches the real API.
         JsonResource::withoutWrapping();
     }
 
     /**
      * The three pipelines the OpenAPI export goes through.
      *
-     * Only ever called when Scramble is installed — see boot(). Nothing on a
-     * deployed server reaches this.
+     * Only called when Scramble is installed (see boot()), so never on a
+     * deployed server.
      */
     private function configureScramble(): void
     {
-        // Declares each route's failure modes in the OpenAPI document, read off
-        // that route's own middleware. See App\Support\Scramble\
-        // DocumentsFailureModes for what it derives and why.
+        // Registered here so all four run in one ordered list. Extensions in
+        // config/scramble.php's `extensions` array are appended to the same
+        // list but run first, because Scramble's provider boots ahead of this
+        // one, so splitting them across both places would reorder them.
         //
-        // Registered here so that all four sit in one ordered list.
-        // config/scramble.php's `extensions` array would work as well: Scramble
-        // appends every OperationExtension listed there to this same list.
-        // Those run BEFORE the ones below, because Scramble's provider boots
-        // ahead of this one, so splitting the four across both places would
-        // reorder them.
+        // If a Scramble extension appears to do nothing, put a `throw` in
+        // handle() before debugging its logic (see docs/traps.md).
         //
-        // If a Scramble extension of yours appears to do nothing, put a `throw`
-        // in handle() before debugging its logic. docs/traps.md has the cause
-        // that cost an hour once.
-        //
-        // ConstrainsPathParameters joins it on the same footing and for the same
-        // reason: a route's `->where()` is already the authority on what that
-        // parameter accepts, so publishing the constraint beats restating it.
+        // DocumentsFailureModes reads each route's failure modes off its
+        // middleware. ConstrainsPathParameters publishes a route's `->where()`
+        // constraint instead of restating it.
         Scramble::configure()->withOperationTransformers([
             DocumentsFailureModes::class,
             ConstrainsPathParameters::class,
-            // The collection envelope, read off the operation's own success
-            // schema being an array — the static reading of the same fact
-            // App\Http\Middleware\PaginatesCollections acts on at runtime.
+            // The collection envelope, for an operation whose success schema
+            // is an array: the static side of what
+            // App\Http\Middleware\PaginatesCollections does at runtime.
             DocumentsPagination::class,
             TidiesResponseMedia::class,
         ]);
 
-        // A third pipeline again: a rule transformer is neither an operation
-        // transformer nor one of config/scramble.php's `extensions`. It sees
-        // each validation rule as the request schema is built, which is the
-        // only place a `gt:` can still be told apart from the `max:` beside it.
+        // A rule transformer is a separate pipeline. It sees each validation
+        // rule as the request schema is built, the only place a `gt:` can
+        // still be told apart from the `max:` beside it.
         Scramble::configure()->withRuleTransformers(DocumentsNumericFloors::class);
     }
 }

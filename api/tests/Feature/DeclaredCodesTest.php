@@ -9,26 +9,19 @@ use PHPUnit\Framework\TestCase;
  * Every failure this API can answer with is declared by the operation that can
  * answer with it.
  *
- * THE GAP THIS CLOSES. The contract first declared failures by attaching a
- * SHARED component per status — `Problem401`, `Problem409` — each carrying
- * exactly one `code` in its enum. That was right while every declared
- * failure was derived from middleware, because a middleware-derived failure
- * has exactly one cause. It stopped being
- * right the moment a second cause appeared for a status: on 2026-09-12
- * `POST /events/{event}/registrations` declared a 409 whose enum named only
- * `idempotency_key_reuse`, while the controller also answers 409
- * `registration_not_open` and `registration_closed`. A generated client
- * narrowing on that union is short by two, and TypeScript tells it the branches
- * cannot happen.
+ * A shared component per status (`Problem409`) carrying one `code` is right
+ * only while that status has one cause. `POST /events/{event}/registrations`
+ * answers 409 with `idempotency_key_reuse`, `registration_not_open` or
+ * `registration_closed`; a generated client narrowing on a one-code union is
+ * short by two, and TypeScript tells it those branches cannot happen.
  *
  * Under-stating is the failure that matters. Declaring a code an operation
- * cannot emit costs a reader a branch they will never take; omitting one they
- * CAN emit is a client that mishandles a real answer with the compiler's
- * blessing.
+ * cannot emit costs a reader a dead branch; omitting one it can emit lets a
+ * client mishandle a real answer with the compiler's approval.
  *
- * A plain PHPUnit TestCase — it reads two files and needs no booted framework.
- * The per-operation half lives in Tests\Feature\EmittedCodesTest, which needs
- * the route table.
+ * A plain PHPUnit TestCase: it reads two files and needs no booted framework.
+ * The per-operation half is Tests\Feature\EmittedCodesTest, which needs the
+ * route table.
  */
 class DeclaredCodesTest extends TestCase
 {
@@ -37,14 +30,13 @@ class DeclaredCodesTest extends TestCase
     /**
      * Codes that belong to no operation, with the reason each one does not.
      *
-     * SHORT ON PURPOSE, and every entry is a claim that has to keep being true.
-     * An exemption list is how a completeness test quietly stops being one.
+     * Short on purpose: every entry is a claim that has to stay true, and a
+     * growing exemption list turns a completeness test into a formality.
      */
     private const NOT_AN_OPERATIONS_ANSWER = [
-        // 405 is the PATH's answer, not an operation's: it happens when a
-        // caller uses a method for which there IS no operation. Declaring it on
-        // `GET /events` would say that operation can answer 405, which it
-        // cannot. The reference's status table is where a reader meets it.
+        // 405 is the path's answer: it happens for a method that has no
+        // operation. Declaring it on `GET /events` would say that operation can
+        // answer 405. A reader meets it in the reference's status table.
         'method_not_allowed',
     ];
 
@@ -66,9 +58,8 @@ class DeclaredCodesTest extends TestCase
     {
         $declared = $this->declaredCodes();
 
-        // The floor. A scan that stopped matching — a renamed schema key, a
-        // changed component shape — would otherwise report a clean contract it
-        // never read.
+        // A floor: a scan that stopped matching (a renamed schema key, a
+        // changed component shape) would otherwise report a clean contract.
         self::assertGreaterThan(
             20,
             count($declared),
@@ -102,12 +93,9 @@ class DeclaredCodesTest extends TestCase
     }
 
     /**
-     * Every `code` value named anywhere in the document, from the shared
-     * components and from the inline responses alike.
-     *
-     * Walks the whole document rather than the paths, because a code reaches a
-     * reader through either half and a scan of one would call the other
-     * missing.
+     * Every `code` value named anywhere in the document. It walks the whole
+     * document, since a code reaches a reader through a shared component or an
+     * inline response, and scanning one would call the other missing.
      *
      * @return list<string>
      */

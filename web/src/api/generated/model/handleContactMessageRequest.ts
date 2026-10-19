@@ -114,12 +114,13 @@
  * group permissions; which role granted one is not a question the API answers.
  * `GET /api/v1/me` returns the caller's effective permissions.
  *
- * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
- * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`, `images.manage`.
+ * `events.view`, `events.manage`, `attendance.respond`, `attendance.view_all`,
+ * `attendance.record_for_others`, `members.manage`, `roles.manage`,
+ * `registrations.view`, `registrations.manage`, `messages.view`,
+ * `messages.manage`, `history.manage`, `images.manage`, `account.manage`.
  *
- * Answering an event deliberately needs **no** permission: anyone in a register
- * answers for themselves.
+ * Every account holds `events.view` and `account.manage`. Answering an event for
+ * yourself needs `attendance.respond`.
  *
  * ## Conventions
  *
@@ -312,9 +313,8 @@
 /**
  * Marking a message handled, or putting it back.
  *
- * `required` rather than defaulting to true: a PATCH with an empty body would
- * otherwise silently handle the message, and this endpoint is also how one is
- * reopened.
+ * `handled` is required and has no default, so an empty PATCH cannot silently
+ * handle a message. This endpoint is also how one is reopened.
  */
 export interface HandleContactMessageRequest {
   handled: boolean;

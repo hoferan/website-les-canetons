@@ -12,29 +12,20 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * One row on the planning: a rehearsal or a gig.
  *
- * Carries `myAttendance`, the CALLER's own answer and never anybody else's.
+ * Carries `myAttendance`, the caller's own answer and never anybody else's.
  * The controller scopes that relation to the current member inside the
- * query, so another member's answer is not loaded at all; see
- * EventController::myAttendance(). An unloaded relation reports null, which
- * is why the write paths that need it load it explicitly.
+ * query (EventController::myAttendance()). An unloaded relation reports null,
+ * so the write paths that need it load it explicitly.
  *
- * Scramble does NOT publish this class docblock. Measured 2026-09-10: a
- * Resource's schema description comes from nothing, while a `/** ... *\/`
- * above an entry in toArray() below becomes that property's description in
- * the reference. So the notes here stay internal, and anything a caller
- * needs goes on the field.
+ * Scramble does not publish this class docblock, while a `/** ... *\/` above
+ * an entry in toArray() becomes that property's description. So internal
+ * notes go here and caller-facing ones go on the field.
+ * DocsTest::test_the_document_names_nothing_internal fails if a field
+ * description names a PHP method, and only once the document is generated.
  *
- * AND ANYTHING A CALLER MUST NOT SEE BELONGS HERE RATHER THAN ON THE FIELD.
- * DocsTest::test_the_document_names_nothing_internal scans the whole
- * published document for a PHP method reference, and a note on the
- * `answerableCount` field naming the controller method that writes its
- * request attribute failed that test in CI on 2026-09-17 — having passed
- * every local check, because the leak only exists once the document is
- * generated. The note it carried, kept here where it is safe: the
- * ANSWERABLE_COUNT attribute has exactly one writer, the controller's
+ * The ANSWERABLE_COUNT attribute has one writer, the controller's
  * denominator helper, which sets it only after checking the same permission
- * this Resource checks — so the field's own gate is the second guard rather
- * than the only one.
+ * this Resource checks, so the field's own gate is a second guard.
  *
  * @mixin Event
  */
@@ -78,7 +69,7 @@ class EventResource extends JsonResource
              */
             'answeredCount' => $this->countOrNull($request, 'answered_count'),
             /**
-             * How many members are answerable at all — the denominator of the
+             * How many members are answerable at all: the denominator of the
              * fraction. Null when the caller may not see answers.
              */
             'answerableCount' => ! $this->maySeeAnswers($request)
@@ -87,9 +78,9 @@ class EventResource extends JsonResource
                     ? null
                     : (int) $request->attributes->get(self::ANSWERABLE_COUNT)),
             /**
-             * How many PEOPLE are booked — the sum of the quantities, because
-             * "3 x adulte, 1 x enfant" is four people and four is what fills
-             * the hall. Null when the caller may not see bookings.
+             * How many people are booked: the sum of the quantities, so
+             * "3 x adulte, 1 x enfant" counts as four. Null when the caller
+             * may not see bookings.
              */
             'guestCount' => $this->guestCountOrNull($request),
             /** Free text for members. Not shown to the public. */
@@ -103,28 +94,23 @@ class EventResource extends JsonResource
             'registrationMaxGuests' => $this->registration_max_guests,
             /** Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set. */
             'takesRegistrations' => $this->takesRegistrations(),
-            /** The CALLING member's own answer for this event, or null if they have not replied. Never anybody else's. */
+            /** The calling member's own answer for this event, or null if they have not replied. Never anybody else's. */
             'myAttendance' => $this->myAttendance(),
         ];
     }
 
     /**
-     * The CALLER's own answer, or null when they have not given one.
+     * The caller's own answer, or null when they have not given one, so one
+     * request renders the whole planning with the buttons in the right state.
      *
-     * One request renders the whole planning with both buttons already in
-     * the right state; a per-event fetch would defeat one-tap answering on a
-     * bus with poor signal.
+     * Reads a pre-loaded relation that the controller scopes to the current
+     * member, and never queries. Querying here would silently leak other
+     * answers or add an N+1.
      *
-     * READS A PRE-LOADED, CALLER-CONSTRAINED RELATION and never queries. The
-     * controller is what scopes `attendance` to the current member, so this
-     * cannot leak somebody else's answer and cannot become an N+1 — which is
-     * the trap, because both failures would be silent.
-     *
-     * An unloaded relation reports null, so a write path that forgets to
-     * load it says "no answer" rather than throwing. That is deliberate for
-     * store() and the series generator, where a freshly created event
-     * genuinely has none, and it is why update() loads it explicitly —
-     * pinned by test_editing_an_event_still_reports_my_own_answer.
+     * An unloaded relation reports null rather than throwing. That suits
+     * store() and the series generator, where a new event has no answer, and
+     * it is why update() loads it explicitly (pinned by
+     * test_editing_an_event_still_reports_my_own_answer).
      */
     private function myAttendance(): ?AttendanceResource
     {
@@ -140,47 +126,29 @@ class EventResource extends JsonResource
     /**
      * An aggregate, or null.
      *
-     * NULL MEANS TWO THINGS AND THAT IS DELIBERATE: the caller may not see
-     * it, or it was never loaded. TWO INDEPENDENT GUARDS keep these counts
-     * out of EntityTag, and a review proved they are genuinely independent
-     * — neither is a restatement of the other:
+     * Null means either that the caller may not see it or that it was never
+     * loaded. Two independent guards keep these counts out of EntityTag:
      *
      * - Guard A, right below: `array_key_exists()` answers null when the
-     *   aggregate was never loaded on the model. Isolated by
-     *   EventCountsTest::test_unloaded_aggregates_render_as_null_for_an_authorized_caller,
-     *   which renders an authorized caller (every gate passes, so Guard B
-     *   does not fire) against a model with the aggregates never loaded.
-     *   Goes red if Guard A is removed.
+     *   aggregate was never loaded. Pinned by
+     *   EventCountsTest::test_unloaded_aggregates_render_as_null_for_an_authorized_caller.
      * - Guard B, in maySeeAnswers() and EffectivePermissions::ofRequest():
-     *   a request with no user resolves to an empty permission set, so the
-     *   gate answers false regardless of what is loaded. Isolated by EventCountsTest::
-     *   test_loaded_aggregates_render_as_null_for_a_bare_request, which
-     *   loads the aggregates and renders a bare, unauthenticated request
-     *   anyway. Goes red if Guard B is removed.
+     *   a request with no user has an empty permission set, so the gate
+     *   answers false whatever is loaded. Pinned by EventCountsTest::
+     *   test_loaded_aggregates_render_as_null_for_a_bare_request.
      *
-     * IN THE TAG PATH SPECIFICALLY, Guard B is the one doing the real work,
-     * not Guard A. EntityTag::state() renders this Resource from a
-     * freshly-read model with no ->load() at all — unlike the member and
-     * registration arms beside it — so Guard A also happens to hold there.
-     * But EntityTag::state() also renders through bare(), a request with no
-     * user, so Guard B holds independently of whether anything was loaded:
-     * a mutation that added a ->load() for the aggregates inside state()
-     * would defeat Guard A alone and still tag correctly, on Guard B. That
-     * mutation is exactly what test_loaded_aggregates_render_as_null_for_a_bare_request
-     * pins.
+     * In the tag path Guard B does the real work: EntityTag::state() renders
+     * through bare(), a request with no user, so adding a ->load() for the
+     * aggregates there would still tag correctly.
      *
-     * Without both, a member ANSWERING an event would move that event's tag,
-     * and a committee member's pending edit of the TITLE would answer 412 for
-     * a reason that has nothing to do with the title. That is exactly the
-     * failure myAttendance's docblock describes, arrived at from the other
-     * side. Pinned by ConditionalWriteTest::
-     * test_answering_an_event_does_not_move_its_tag — which pins the
-     * user-facing outcome but, being a plain HTTP round trip, cannot tell
-     * the two guards apart; the two EventCountsTest cases above do that.
+     * Without them, a member answering an event would move its tag, and a
+     * pending edit of the title would answer 412 for an unrelated reason.
+     * ConditionalWriteTest::test_answering_an_event_does_not_move_its_tag
+     * pins that outcome but cannot tell the guards apart.
      *
-     * The overload is invisible to every consumer: the SPA renders the strip
-     * only when can() passes AND the value is non-null, and the tag wants null
-     * either way.
+     * The SPA renders the strip only when can() passes and the value is
+     * non-null, and the tag wants null either way, so the double meaning is
+     * invisible to consumers.
      */
     private function countOrNull(Request $request, string $attribute): ?int
     {
@@ -194,9 +162,7 @@ class EventResource extends JsonResource
     }
 
     /**
-     * The booked head count, or null. Same two guards as countOrNull() — see
-     * its docblock for why "not loaded" (Guard A) and "no caller" (Guard B)
-     * are independent, and which one actually does the work in the tag path.
+     * The booked head count, or null. Same two guards as countOrNull().
      */
     private function guestCountOrNull(Request $request): ?int
     {
@@ -212,9 +178,8 @@ class EventResource extends JsonResource
     /**
      * Whether the caller may see answer counts.
      *
-     * Reads the permission set EffectivePermissions::ofRequest() resolved
-     * once for the whole request — see its docblock for why that, and not a
-     * boolean memoized per gate, is what keeps the query count fixed.
+     * Reads the permission set EffectivePermissions::ofRequest() resolves
+     * once per request, which keeps the query count fixed.
      */
     private function maySeeAnswers(Request $request): bool
     {

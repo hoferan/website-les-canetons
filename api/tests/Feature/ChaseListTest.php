@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * GET /api/v1/events/{event}/attendance — a chase list, not a report.
+ * GET /api/v1/events/{event}/attendance: a chase list, not a report.
  */
 class ChaseListTest extends TestCase
 {
@@ -40,7 +40,7 @@ class ChaseListTest extends TestCase
 
     public function test_a_player_cannot_see_who_has_not_replied(): void
     {
-        // Answering is every musician's; reading who has NOT answered is the
+        // Answering is every musician's; reading who has not answered is the
         // committee's.
         $this->actingAsMember(Member::factory()->inSection('Cloches')->musician()->create())
             ->getJson($this->url())
@@ -50,7 +50,7 @@ class ChaseListTest extends TestCase
 
     public function test_attendance_view_all_alone_is_enough(): void
     {
-        // PINS THE PERMISSION STRING. The organiser holds `direction`, which
+        // Pins the permission string. The organiser holds `direction`, which
         // the seed grants every permission, so any string in that middleware
         // separates them from a player with none.
         $viewer = Member::factory()
@@ -62,9 +62,9 @@ class ChaseListTest extends TestCase
 
     public function test_it_lists_every_answerable_member_including_the_silent_ones(): void
     {
-        // THE POINT OF THE SCREEN. Returning only the answers would push
-        // "who has not replied?" into a client-side diff against a
-        // separately-fetched roster — two requests that can disagree.
+        // Returning only the answers would push "who has not replied?" into a
+        // client-side diff against a separately fetched roster, two requests
+        // that can disagree.
         $answered = Member::factory()->named('Perrine', 'Player')->inSection('Cloches')->musician()->create();
         $silent = Member::factory()->named('Nadia', 'Sansconnexion')->inSection('Batteurs')->musician()->create();
 
@@ -83,10 +83,10 @@ class ChaseListTest extends TestCase
 
     public function test_a_member_without_attendance_respond_never_appears(): void
     {
-        // Dominique Direction organises, holds no musician, and is not
-        // answerable — so listing her would put a permanent "pas de réponse"
-        // on a screen whose whole job is to be emptied. A register without
-        // the role does not put anybody on it either: it only labels a row.
+        // The organiser holds no musician role, so listing her would put a
+        // permanent "pas de réponse" on a screen meant to be emptied. A
+        // register without the role does not put anybody on it either: it
+        // only labels a row.
         $registerOnly = Member::factory()->inSection('Cloches')->create();
 
         $response = $this->actingAsMember($this->organiser)->getJson($this->url())->assertOk();
@@ -98,9 +98,8 @@ class ChaseListTest extends TestCase
 
     public function test_a_musician_without_a_register_is_chased_all_the_same(): void
     {
-        // The other half of "the register does not decide": holding the
-        // permission is what puts somebody on the list, so a musician whose
-        // register was never set is still somebody to chase.
+        // The permission puts somebody on the list, not the register, so a
+        // musician with no register is still chased.
         $unplaced = Member::factory()->musician()->create();
 
         $entry = collect(
@@ -114,9 +113,8 @@ class ChaseListTest extends TestCase
 
     public function test_each_entry_carries_what_the_chase_list_renders(): void
     {
-        // assertSame on VALUES, not assertJsonStructure: key presence alone
-        // stayed green through a field swap once and had to be
-        // strengthened afterwards.
+        // assertSame on values, not assertJsonStructure: key presence alone
+        // stays green through a field swap.
         $player = Member::factory()->named('Perrine', 'Player')->inSection('Cloches')->musician()->create();
         Attendance::factory()->no()->recordedBy($this->organiser)->create([
             'event_id' => $this->event->id,
@@ -138,8 +136,7 @@ class ChaseListTest extends TestCase
 
     public function test_it_shows_only_this_events_answers(): void
     {
-        // An answer to last week's rehearsal must not appear against this
-        // one — the failure that would make the whole list quietly wrong.
+        // An answer to another event must not appear against this one.
         $player = Member::factory()->inSection('Cloches')->musician()->create();
         Attendance::factory()->create(['member_id' => $player->id]);
 
@@ -167,10 +164,9 @@ class ChaseListTest extends TestCase
 
     public function test_the_chase_list_costs_a_fixed_number_of_queries(): void
     {
-        // TWO QUERIES WHATEVER THE ROSTER SIZE — the players with their
-        // register, and this event's answers. The roster is ~45 people and
-        // this screen is read on a phone at a rehearsal; a hasMany per row
-        // is the N+1 it would otherwise grow.
+        // Two data queries whatever the roster size: the players with their
+        // register, and this event's answers. The screen is read on a phone
+        // at a rehearsal, and a hasMany per row would be an N+1.
         Member::factory()->count(15)->inSection('Cloches')->musician()->create()
             ->each(fn (Member $m) => Attendance::factory()->create([
                 'event_id' => $this->event->id,

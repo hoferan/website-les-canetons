@@ -10,13 +10,11 @@ use Dedoc\Scramble\Support\Type\Type;
 /**
  * Publishes App\Support\Iso8601 as `{"type": "string", "format": "date-time"}`.
  *
- * ONE MECHANISM FOR NINE FIELDS. `startsAt`, `endsAt`, `registrationOpensAt`,
- * `registrationClosesAt`, `opensAt`, `closesAt`, `recordedAt`, `createdAt` and
- * `lastLoginAt` all left their Resources as bare PHP strings, so the document
- * described them as `string` while the REQUEST schemas for the very same fields
- * carried `format: date-time` — the accepted and the returned spellings of one
- * value, documented differently. Naming the rendered form gives every one of
- * them the format at once, and gives the tenth it for free.
+ * Every rendered timestamp (`startsAt`, `endsAt`, `createdAt`, `lastLoginAt`
+ * and the rest) leaves its Resource as this type, so naming it here gives
+ * each one the `format: date-time` its request schema already carries,
+ * including any added later. A bare PHP string would be documented as a plain
+ * `string`.
  *
  * Scramble ships exactly this extension for CarbonInterface, which is not
  * usable here: a Resource returning a Carbon instance would serialise through

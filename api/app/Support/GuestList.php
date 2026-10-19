@@ -9,16 +9,15 @@ use App\Models\RegistrationOption;
 use Illuminate\Support\Collection;
 
 /**
- * The guest list, as rows — ONE definition, four formats.
+ * The guest list as rows: one definition for four formats.
  *
- * WHY THIS EXISTS RATHER THAN FOUR EXPORTERS. XLSX, CSV, Markdown and JSON
- * must not be able to disagree about what a guest list contains. Four
- * formatters each walking the models would drift the first time somebody
- * added a column to one of them, and the drift would be invisible: every
- * export would still open, and only the numbers would differ. Each formatter
- * here renders the same array and nothing else.
+ * XLSX, CSV, Markdown and JSON must not be able to disagree about what a guest
+ * list contains. Four formatters each walking the models would drift as soon
+ * as somebody added a column to one, and invisibly: every export would still
+ * open, and only the numbers would differ. Each formatter renders this array
+ * and nothing else.
  *
- * ONE COLUMN PER OPTION, because that is what the kitchen counts. A booking
+ * One column per option, because that is what the kitchen counts. A booking
  * of "3 x viande, 1 x enfant" is one row with a 3 under Viande and a 1 under
  * Enfant, and the totals row at the bottom is the order the committee gives
  * the caterer.
@@ -106,16 +105,14 @@ final class GuestList
     }
 
     /**
-     * The closing totals row — what the caterer is actually told.
+     * The closing totals row: what the caterer is told.
      *
      * @return list<string|int|float|null>
      */
     public function totals(): array
     {
-        // Tallied in ONE pass rather than searching every booking's choices
-        // once per option, which is O(bookings x options) — small today at
-        // ~100 bookings and three menus, and the kind of shape that is never
-        // revisited once it works.
+        // Tallied in one pass rather than searching every booking's choices
+        // once per option, which would be O(bookings x options).
         $tally = [];
         foreach ($this->registrations as $registration) {
             foreach ($registration->choices as $choice) {
@@ -144,7 +141,7 @@ final class GuestList
     }
 
     /**
-     * Centimes to francs, as a NUMBER so a spreadsheet can sum the column.
+     * Centimes to francs, as a number so a spreadsheet can sum the column.
      *
      * Null stays null: a booking of unpriced options owes an unknown amount,
      * not zero, and 0.00 in a money column would be read as "paid nothing".

@@ -32,27 +32,24 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
-    // The contract lives under /api/v1. The prefix is what makes a future v2
-    // possible without renaming every URL at the moment clients exist — see
-    // ADR 0013.
+    // The contract lives under /api/v1, so a v2 can come without renaming
+    // every URL (ADR 0013).
     //
-    // The site .htaccess needs no change for this: its dispatch matches
-    // `^api(/|$)`, which already covers /api/v1/..., and the substituted
-    // _api/public/index.php still cannot re-match that pattern.
+    // The site .htaccess dispatch matches `^api(/|$)`, which covers /api/v1/...,
+    // and the substituted _api/public/index.php cannot re-match that pattern.
     //
-    // Every `$request->is('api/*')` guard in withExceptions() below still
-    // matches, because Str::is()'s `*` crosses slashes.
+    // The `$request->is('api/*')` guards in withExceptions() below match
+    // /api/v1/... too, because Str::is()'s `*` crosses slashes.
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         apiPrefix: ApiVersion::PREFIX,
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        // routes/meta.php stays UNVERSIONED at /api/*: the reference and the
+        // routes/meta.php is unversioned at /api/*: the reference and the
         // migration trigger describe or operate the API rather than being part
-        // of it. Same `api` middleware group as routes/api.php, so
-        // RunPendingMigrations still sits in front of them exactly as it did
-        // when they lived in that file.
+        // of it. It shares the `api` middleware group, so RunPendingMigrations
+        // sits in front of it too.
         then: function (): void {
             Route::middleware('api')
                 ->prefix('api')
@@ -66,83 +63,66 @@ return Application::configure(basePath: dirname(__DIR__))
         // session cookie.
         $middleware->statefulApi();
 
-        // Laravel installs `redirectGuestsTo(fn () => route('login'))` by
-        // default (ApplicationBuilder::withMiddleware()), and the Authenticate
-        // middleware resolves it BEFORE throwing — before any exception
-        // renderer runs. An API-only app defines no `login` route, so a guest
-        // whose request does not expectsJson() got a RouteNotFoundException
-        // instead of a 401: an opaque 500 on PROD, where APP_DEBUG=false, for
-        // anyone who pastes an API URL into a browser. Returning null suppresses
-        // the redirect, so the AuthenticationException falls through to
-        // ApiError::unauthenticated() below whatever the client's Accept header
-        // says.
+        // Laravel's default `redirectGuestsTo(fn () => route('login'))` is
+        // resolved by Authenticate before any exception renderer runs. This
+        // app has no `login` route, so a guest request that does not
+        // expectsJson() (an API URL pasted into a browser) would get a
+        // RouteNotFoundException, an opaque 500. Returning null lets the
+        // AuthenticationException reach ApiError::unauthenticated() below
+        // whatever the Accept header says.
         $middleware->redirectGuestsTo(fn () => null);
 
-        // Self-healing schema. The deploy host firewalls the GitHub runner's IP,
-        // so CI cannot call POST /api/migrate after an FTP deploy — the request
-        // path is a deployed server's only migration trigger. See
-        // App\Http\Middleware\RunPendingMigrations for the full argument; it
-        // restores what the old app's App\AutoMigrator did before the cutover.
+        // Self-healing schema: CI cannot reach POST /api/migrate through the
+        // host's firewall, so the request path is a deployed server's only
+        // migration trigger (App\Http\Middleware\RunPendingMigrations, ADR 0008).
         //
-        // BOTH GROUPS, and `web` is not an afterthought. Laravel serves exactly
-        // two things here: routes/api.php on the `api` group, and Sanctum's
-        // GET /sanctum/csrf-cookie on the `web` group. The SPA's mutator
-        // (web/src/api/http.ts) primes that cookie route before its first
-        // mutating call on every page load, so on a
-        // never-migrated server the first Laravel request a real visitor makes
-        // — a login, a contact submit — is the `web` one. With
-        // SESSION_DRIVER=database, StartSession would read a `sessions` table
-        // that does not exist yet and 500 before the middleware that would have
-        // created it ever ran. Covering only `api` would have left the repair
-        // depending on some earlier page happening to fetch GET /api/v1/config
-        // first, which is likely but not guaranteed.
+        // Both groups. Laravel serves routes/api.php on `api` and Sanctum's
+        // GET /sanctum/csrf-cookie on `web`, and the SPA's mutator
+        // (web/src/api/http.ts) primes that cookie before its first write on
+        // every page load. On a never-migrated server that can be a visitor's
+        // first Laravel request, and with SESSION_DRIVER=database StartSession
+        // would read a missing `sessions` table and 500 before any migration
+        // ran.
         //
-        // FIRST IN EACH GROUP, which is load-bearing and is why these calls come
-        // AFTER statefulApi(). prependToGroup() array_unshifts, so the last
-        // prepend wins the front slot: on `api` that puts this ahead of
-        // EnsureFrontendRequestsAreStateful (and therefore ahead of the session
-        // pipeline it nests), on `web` ahead of EncryptCookies/StartSession.
+        // First in each group, which is why these calls come after
+        // statefulApi(): prependToGroup() array_unshifts, so the last prepend
+        // wins the front slot. On `api` that is ahead of
+        // EnsureFrontendRequestsAreStateful and the session pipeline it nests,
+        // on `web` ahead of EncryptCookies and StartSession.
         //
-        // Router::gatherRouteMiddleware()'s priority sort cannot displace it
-        // from index 0 in either group. SortedMiddleware only ever moves a
-        // priority-listed middleware
-        // to the index of a PREVIOUSLY SEEN priority-listed one, and index 0 is
-        // held here by a middleware that is not on that list — so $lastIndex is
-        // always >= 1 by the time any move can happen. Pinned by
-        // AutoMigrateTest's two placement tests, which assert the real gathered
-        // order rather than this reasoning.
+        // The router's priority sort cannot displace it from index 0:
+        // SortedMiddleware only moves a priority-listed middleware to the index
+        // of a previously seen priority-listed one, and index 0 holds one that
+        // is not on that list. AutoMigrateTest's two placement tests assert the
+        // real gathered order.
         //
-        // Running twice in one request is harmless and cannot happen anyway:
-        // SortedMiddleware::sortMiddleware() ends in Router::uniqueMiddleware(),
-        // and no route carries both groups. Even if one did, the second pass
-        // finds nothing pending and returns before touching the lock — and the
-        // first pass has already released it, since all the work happens BEFORE
-        // $next(), never around it. Pinned by
+        // It cannot run twice in one request: Router::uniqueMiddleware() dedupes
+        // and no route carries both groups. If it did, the second pass would
+        // find nothing pending and skip the lock, which the first pass released
+        // before $next(). Pinned by
         // test_traversing_both_groups_migrates_once_and_does_not_deadlock.
         $middleware->prependToGroup('api', RunPendingMigrations::class);
         $middleware->prependToGroup('web', RunPendingMigrations::class);
 
-        // GLOBAL, and ahead of everything: every response carries X-Request-Id,
+        // Global, ahead of everything: every response carries X-Request-Id,
         // and every log line written during the request carries the same value
         // through Illuminate's Context.
         //
-        // Global middleware is a separate stack from the groups, which is what
-        // makes this safe — prependToGroup() here would displace
-        // RunPendingMigrations from index 0 of the `api` group, and
-        // AutoMigrateTest asserts it is index 0 because anything ahead of it
-        // runs against a schema that may not exist yet.
+        // Global middleware is a separate stack from the groups. Prepending it
+        // to `api` instead would displace RunPendingMigrations from index 0,
+        // which AutoMigrateTest asserts, since anything ahead of it runs
+        // against a schema that may not exist yet.
         $middleware->prepend(RequestId::class);
 
-        // Also global, and for the same reason: it has to see the responses of
-        // routes/meta.php as well as the contract's, and neither group is a
-        // place it could sit without being listed twice.
+        // Also global: it has to see the responses of routes/meta.php as well
+        // as the contract's, and no single group covers both.
         $middleware->prepend(ReadableJson::class);
 
         $middleware->alias([
             'permission' => RequirePermission::class,
-            // `etag:<facet>` — hands out an ETag on a read and demands a
-            // matching If-Match on a write. See the ConditionalWrite class for
-            // which writes carry it, and why attendance deliberately does not.
+            // `etag:<facet>`: hands out an ETag on a read and demands a
+            // matching If-Match on a write. ConditionalWrite lists which writes
+            // carry it, and why attendance does not.
             'etag' => ConditionalWrite::class,
             // `event.published`: a draft event is a 404 to anybody without
             // events.manage. `event.published:everyone` for the public routes.
@@ -150,57 +130,48 @@ return Application::configure(basePath: dirname(__DIR__))
             'docs' => EnsureDocsEnabled::class,
             'no-store' => NoStoreResponse::class,
             'public-write' => PublicWriteGuard::class,
-            // `idempotent` — makes a retried public submission safe to send
-            // twice. See the IdempotentWrite class for why it sits behind the
-            // write guard rather than in front of it.
+            // `idempotent`: makes a retried public submission safe to send
+            // twice. IdempotentWrite explains why it sits behind the write
+            // guard.
             'idempotent' => IdempotentWrite::class,
         ]);
 
-        // APPENDED, not prepended: it needs the session started and the user
-        // resolved, so it must run after StartSession and Authenticate rather
-        // than in front of them like RunPendingMigrations.
+        // Appended: it needs the session started and the user resolved, so it
+        // runs after StartSession and Authenticate.
         $middleware->appendToGroup('api', EnforceAbsoluteSessionLifetime::class);
 
         // One envelope for every collection, `{data, meta}` plus a `Link`
-        // header. Appended rather than prepended because it works on the
-        // RESPONSE and needs the controller's to exist first.
+        // header. Appended, since it works on the controller's response.
         //
-        // WHERE IT SITS RELATIVE TO ApiVersion DOES MATTER, and an earlier
-        // version of this comment said it did not, on the grounds that nothing
-        // else here reads the body. That was the wrong test: ApiVersion does
-        // not read the body, it writes the same HEADER. Both emit `Link`, this
-        // one is appended first and therefore runs last on the way out, and
-        // until 2026-09-12 it replaced the successor-version link on every
-        // collection. It now appends — see the middleware.
+        // Its position relative to ApiVersion matters: both emit `Link`, and
+        // this one, appended first, runs last on the way out. It appends to
+        // the header so the successor-version link survives (see the
+        // middleware).
         //
-        // On the group rather than on eight routes: the condition is the shape
-        // of the answer, not a list of endpoints, so a collection added later
-        // is enveloped without anybody remembering to. See the class.
+        // On the group rather than on routes: the condition is the shape of
+        // the answer, so a new collection is enveloped without anybody
+        // remembering to.
         $middleware->appendToGroup('api', PaginatesCollections::class);
 
-        // Announces the contract version, and one day that it is retiring. It
-        // only ever sets response headers, so where it sits in the group does
-        // not matter; it skips routes/meta.php by checking the prefix itself,
-        // since that file shares this group.
+        // Announces the contract version, and its retirement when that comes.
+        // It only sets response headers, and it skips routes/meta.php by
+        // checking the prefix itself, since that file shares this group.
         $middleware->appendToGroup('api', ApiVersion::class);
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // This governs only Laravel's DEFAULT renderer — whether it falls back
-        // to JSON or an HTML error page. Render callbacks bypass it entirely,
-        // so it does not scope any of the closures below. That is why each one
-        // repeats $request->is('api/*'): those guards are what keep the routes
-        // outside /api/* (Sanctum's csrf-cookie route, the /up health check) on
-        // Laravel's default renderer, and deleting them as redundant would put
-        // the JSON contract on every non-api route too.
+        // This governs only Laravel's default renderer (JSON or an HTML error
+        // page). Render callbacks bypass it, so each closure below repeats
+        // $request->is('api/*'). Those guards keep the routes outside /api/*
+        // (Sanctum's csrf-cookie route, /up) on the default renderer; without
+        // them every non-api route would get the JSON contract.
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
 
         // Every /api/* failure is an RFC 9457 problem document whose `code` and
-        // `errors[].reason` tokens the SPA translates. See
-        // App\Exceptions\ApiError and ADR 0012. These renderers replace
-        // Laravel's native {message, errors:{}} for every /api/* response.
+        // `errors[].reason` tokens the SPA translates, in place of Laravel's
+        // native {message, errors:{}} (App\Exceptions\ApiError, ADR 0012).
         $exceptions->render(fn (ValidationException $e, Request $request) => $request->is('api/*')
             ? ApiError::validation($e)
             : null);
@@ -209,28 +180,22 @@ return Application::configure(basePath: dirname(__DIR__))
             ? ApiError::unauthenticated($e)
             : null);
 
-        // Typed on AccessDeniedHttpException, not on Laravel's
-        // AuthorizationException, and that is load-bearing: Handler::render()
-        // runs prepareException() BEFORE renderViaCallbacks(), and
-        // prepareException() rewrites an AuthorizationException into a Symfony
-        // AccessDeniedHttpException. A closure type-hinted on
-        // AuthorizationException therefore never matches anything and silently
-        // leaks Laravel's native {message, exception, trace} shape on a 403.
-        // Do not "simplify" this back. ValidationException and
-        // AuthenticationException above need no such treatment —
-        // prepareException() leaves both untouched.
+        // Typed on AccessDeniedHttpException, not AuthorizationException:
+        // Handler::render() runs prepareException() before the callbacks, and
+        // it rewrites an AuthorizationException into an
+        // AccessDeniedHttpException. A closure typed on AuthorizationException
+        // never matches and leaks Laravel's native {message, exception, trace}
+        // on a 403. prepareException() leaves ValidationException and
+        // AuthenticationException untouched.
         //
-        // This stays narrower than "any 403". Three other paths reach a 403
-        // WITHOUT becoming an AccessDeniedHttpException, and none is covered
-        // here — each yields a bare HttpException(403):
+        // Three other paths reach a 403 as a bare HttpException(403) and are
+        // not covered here:
         //   - abort(403);
         //   - Gate::denyWithStatus(403) / Response::denyWithStatus(403), i.e.
         //     an AuthorizationException that hasStatus();
         //   - OriginMismatchException.
-        // Gate::authorize() is the safe idiom, but only for status-less
-        // denials, which is the arm that becomes an
-        // AccessDeniedHttpException. Attach a status and it silently leaves the
-        // contract.
+        // Gate::authorize() stays in the contract only for status-less
+        // denials; attach a status and it silently leaves it.
         $exceptions->render(fn (AccessDeniedHttpException $e, Request $request) => $request->is('api/*')
             ? ApiError::forbidden($e)
             : null);
@@ -241,105 +206,70 @@ return Application::configure(basePath: dirname(__DIR__))
             ? ApiError::methodNotAllowed($e)
             : null);
 
-        // 503. App\Http\Middleware\RunPendingMigrations refused the request
-        // because the schema is not known to be current. Registered BEFORE the
-        // catch-all HttpException closure below — not that it has to be, since
-        // SchemaUnavailable is a plain RuntimeException that closure would never
-        // match, but keeping the specific-before-general order means the day
-        // someone widens either one, the wrong one cannot silently win.
+        // 503: App\Http\Middleware\RunPendingMigrations refused the request
+        // because the schema is not known to be current. SchemaUnavailable is
+        // a plain RuntimeException the catch-all HttpException closure would
+        // never match, but the specific renderers stay ahead of it so widening
+        // either one later cannot let the wrong one win.
         //
-        // Only /api/* gets the JSON contract. /sanctum/csrf-cookie now carries
-        // the middleware too, so it can raise this as well — it is not matched
-        // by is('api/*') and falls through to Laravel's default renderer (an
-        // HTML error page, since shouldRenderJsonWhen() above answers false for
-        // it). That is fine: nothing parses that route's body, only its status,
-        // and a 503 there stops the mutating request that was about to follow.
+        // /sanctum/csrf-cookie can raise this too and gets Laravel's HTML error
+        // page. Nothing parses that route's body, only its status, and a 503
+        // there stops the write that was about to follow.
         $exceptions->render(fn (SchemaUnavailable $e, Request $request) => $request->is('api/*')
             ? ApiError::serviceUnavailable($e)
             : null);
 
-        // 409. A write was refused because it would have broken an access
-        // invariant — see App\Support\AccessIntegrity. Registered before the
-        // catch-all HttpException closure below so the specific case wins.
+        // 409: a write would have broken an access invariant
+        // (App\Support\AccessIntegrity).
         $exceptions->render(fn (AccessIntegrityViolation $e, Request $request) => $request->is('api/*')
             ? ApiError::json(409, $e->errorCode, $e->getMessage())
             : null);
 
-        // 403 or 409. An answer was refused for a reason about the STATE of
-        // things rather than a missing grant — see App\Support\
-        // AttendanceIntegrity. The status travels on the exception because
-        // "you are in no register" is not a conflict while the closed
-        // five-minute undo window and the on-behalf route's refusal of its own
-        // caller are (ADR 0018); hard-coding either here would
-        // make one of the three lie.
+        // 403 or 409: an answer was refused for the state of things rather
+        // than a missing grant (App\Support\AttendanceIntegrity). The status
+        // travels on the exception because "you are in no register" is a 403,
+        // while the closed five-minute undo window and the on-behalf route
+        // refusing its own caller are conflicts (ADR 0018).
         $exceptions->render(fn (AttendanceRefused $e, Request $request) => $request->is('api/*')
             ? ApiError::json($e->status, $e->errorCode, $e->getMessage())
             : null);
 
-        // 403 or 429. A destructive privileged action was refused because the
-        // actor did not re-prove their identity — see App\Support\Reauthentication.
-        // The status travels on the exception because a wrong password and a
-        // throttled actor are different answers, and hard-coding 403 here would
-        // turn the throttle into a silent lie.
-        //
-        // Placed with the other specific renderers and BEFORE the catch-all
-        // HttpException one. Not strictly required — ReauthenticationFailed is
-        // a plain RuntimeException that closure would never see — but the
-        // SchemaUnavailable closure above carries the same comment for the same
-        // reason: keeping specific-before-general means widening either one
-        // later cannot silently pick the wrong winner.
+        // 403 or 429: the actor did not re-prove their identity
+        // (App\Support\Reauthentication). The status travels on the exception
+        // because a wrong password and a throttled actor are different answers.
         $exceptions->render(fn (ReauthenticationFailed $e, Request $request) => $request->is('api/*')
             ? ApiError::json($e->status, $e->errorCode, $e->getMessage())
             : null);
 
-        // 429 from the `throttle:` middleware. THE SAME HOLE AS THE 404 BELOW,
-        // and it survived that fix because only the 404 path was closed:
-        // ThrottleRequestsException is an HttpException, invalidSession()
-        // returns null for every status but 419, so it fell through to
-        // Laravel's default renderer — {"message":"Too Many Attempts.",
-        // "exception":…,"trace":[45 frames]}. On /api/v1/form-token and the two
-        // public writes, which are anonymous and internet-facing.
+        // 429 from the `throttle:` middleware. ThrottleRequestsException is an
+        // HttpException and invalidSession() returns null for every status but
+        // 419, so without this it reaches Laravel's default renderer: no
+        // `code`, and a stack trace whenever APP_DEBUG is on, on anonymous
+        // endpoints. The login lockout's 429 goes through ApiError directly.
         //
-        // Two defects in one: no `code` for a client to branch on, and a stack
-        // trace to an unauthenticated caller whenever APP_DEBUG is on. Found by
-        // a black-box review on 2026-09-11.
-        //
-        // Laravel's own 429 — the login lockout — was always correct, because
-        // that one is raised by our code through ApiError. Only the middleware's
-        // was escaping, which is exactly why nothing noticed.
-        //
-        // getHeaders() is preserved: ThrottleRequests puts Retry-After and the
-        // RateLimit-* family on the exception, and those are the headers a
-        // well-behaved client backs off with. Dropping them would answer the
-        // question "when may I retry" with silence.
+        // getHeaders() keeps Retry-After and the RateLimit-* headers that
+        // ThrottleRequests puts on the exception, which a client backs off with.
         $exceptions->render(fn (ThrottleRequestsException $e, Request $request) => $request->is('api/*')
             ? ApiError::json(429, 'rate_limited', 'Too many requests')
                 ->withHeaders($e->getHeaders())
             : null);
 
-        // 404. Registered BEFORE the catch-all HttpException closure below,
-        // which is what makes it reachable at all: NotFoundHttpException IS an
-        // HttpException, and invalidSession() returns null for every status but
-        // 419, so until this existed a 404 fell straight through to Laravel's
-        // default renderer and answered {"message": "..."} — a body with no
-        // `code`, which web/src/i18n/'s translateApiError() can only render as
-        // the generic French fallback. The one status in the whole API that
-        // escaped its own error contract.
+        // 404. NotFoundHttpException is an HttpException, and the catch-all
+        // below returns null for every status but 419, so without this a 404
+        // would answer Laravel's {"message": "..."} with no `code`, which
+        // translateApiError() can only show as the generic fallback.
         //
         // Route-model binding needs no separate renderer: prepareException()
-        // has already rewritten ModelNotFoundException into this by the time
-        // any callback runs, the same way it rewrites AuthorizationException
-        // into AccessDeniedHttpException above.
+        // has already rewritten ModelNotFoundException into this, as it
+        // rewrites AuthorizationException above.
         $exceptions->render(fn (NotFoundHttpException $e, Request $request) => $request->is('api/*')
             ? ApiError::notFound($e)
             : null);
 
-        // 419/CSRF. Same prepareException() trap as the 403 above, but worse:
-        // TokenMismatchException is rewritten into a BARE HttpException(419),
-        // not a dedicated subclass, so there is no precise type left to hint.
-        // Hence the base type plus a status check inside invalidSession(),
-        // which returns null for every other HttpException and falls through.
-        // Registered last so the specific subclasses above always win.
+        // 419/CSRF. prepareException() rewrites TokenMismatchException into a
+        // bare HttpException(419), so there is no precise type to hint: the
+        // base type plus a status check in invalidSession(), which returns null
+        // for every other status. Registered last so the subclasses above win.
         $exceptions->render(fn (HttpException $e, Request $request) => $request->is('api/*')
             ? ApiError::invalidSession($e)
             : null);

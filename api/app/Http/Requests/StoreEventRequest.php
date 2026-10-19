@@ -6,17 +6,15 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * A new entry on the planning: a rehearsal, a gig or a concert, created as a
- * DRAFT. Only the title is required, because "I do not know the venue yet" is
- * the reason a draft gets written. The full rules run when it is published.
+ * draft. Only the title is required, so a draft can be written before the
+ * venue is known. The full rules run when it is published.
  *
  * When both dates are sent the end must come strictly after the start. The end
  * may fall on a later day; a two-day event such as a carnival weekend is an
- * ordinary row here, not a special case.
+ * ordinary row.
  *
- * `isPublic` defaults to false, the safe direction: it only matters once the
- * event is published, and it is still a per-event choice somebody makes.
- * `attire` and `notes` are optional and stay empty for the many rows that need
- * neither.
+ * `isPublic` defaults to false; it only matters once the event is published.
+ * `attire` and `notes` are optional.
  *
  * The three `registration*` fields open the event to public bookings. Setting
  * `registrationClosesAt` is what switches registration on at all; leave it
@@ -27,37 +25,25 @@ class StoreEventRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // `endsAt` is REQUIRED and must come AFTER `startsAt`. Required
-        // because the column is (2026_09_09_000001): a nullable end is
-        // what would let the `weekend` boolean creep back, since without an
-        // end there is nothing to read "this runs over two days" off. After,
-        // because nothing else enforced it and a mistyped hour produces an
-        // event of negative length — it sorts and renders in ways nobody has
-        // designed for.
+        // `endsAt` must come after `startsAt`, or a mistyped hour makes an
+        // event of negative length. The rule is `after`, not same-day plus an
+        // hour comparison, because an event may span two days.
         //
-        // The rule is `after`, not `same day` plus an hour comparison:
-        // "Weekend musical, 3-4 October" is a real row on the live planning,
-        // and spanning two days is precisely the case a required end
-        // dissolved the flag for.
+        // `attire` and `notes` are nullable because most rows need neither,
+        // and requiring them is how "-" ends up on the screen.
         //
-        // `attire` and `notes` are nullable because half the planning has
-        // neither — a rehearsal in ordinary clothes with nothing to add is the
-        // common row, and requiring the committee to type something into both
-        // is how "-" ends up on the screen.
+        // App\Exceptions\ApiError echoes these field names into the error's
+        // field list, where web/src/i18n/fr.ts looks them up, so renaming one
+        // breaks its translated error message.
         //
-        // `isPublic` is required rather than defaulted, the same call
-        // StoreMemberRequest makes for `publicVisible`.
+        // Rule order matters: ApiError reports only the first failed rule per
+        // field, so `required` comes first (an empty title reports `required`,
+        // not `invalid_type`) and `date` precedes `after` on `endsAt`, so an
+        // unparseable end reports a format problem.
         //
-        // Field names are camelCase, matching what the SPA sends and what
-        // App\Exceptions\ApiError echoes into fields[].field, where
-        // web/src/i18n/fr.ts looks them up. Renaming one silently breaks its
-        // French error message.
-        //
-        // RULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed
-        // rule per field, so `required` comes first everywhere (an empty title
-        // reports `required`, not `invalid_type`) and `date` precedes `after`
-        // on `endsAt` — an unparseable end is a format problem, and comparing
-        // it to anything would report the wrong thing.
+        // Setting a registration close date is what enables public
+        // registration (ADR 0020), so the three `registration*` fields switch
+        // a souper on without touching the database.
         return [
             'title' => ['required', 'string', 'max:255'],
             /** ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. Optional on a draft, required to publish. */
@@ -73,9 +59,6 @@ class StoreEventRequest extends FormRequest
             /** Anything else members should read. Optional, up to 5000 characters. */
             'notes' => ['nullable', 'string', 'max:5000'],
 
-            // The registration window. Setting a close date is what enables
-            // public registration at all (ADR 0020), so these three are how a
-            // souper is switched on without touching the database.
             /** When public bookings start. Null means bookings are open as soon as `registrationClosesAt` is set. */
             'registrationOpensAt' => ['nullable', 'date'],
             /** When public bookings stop. Setting this is what opens the event to public registration at all; null means it takes no bookings. */

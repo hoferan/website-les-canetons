@@ -14,11 +14,10 @@ use Tests\TestCase;
  * The two destructive operations on a person: replacing their roles, and
  * deleting them.
  *
- * These are the first callers AccessIntegrity and SessionRevoker have had since
- * they were built. Neither re-authenticates — ADR 0017 trusts the session
- * cookie here, as this API already does for reading the whole roster and
- * editing anyone. Both still check the invariants before writing and revoke
- * sessions inside the same transaction as the change.
+ * Neither re-authenticates: ADR 0017 trusts the session cookie here, as the
+ * API does for reading the roster and editing anyone. Both check the
+ * AccessIntegrity invariants before writing and revoke sessions in the same
+ * transaction as the change.
  */
 class MemberRolesTest extends TestCase
 {
@@ -73,7 +72,7 @@ class MemberRolesTest extends TestCase
 
     public function test_it_replaces_a_members_roles(): void
     {
-        // PUT semantics: roleIds is the COMPLETE set the member is left with.
+        // PUT semantics: roleIds is the complete set the member is left with.
         $target = $this->player();
         $target->roles()->attach($this->committee);
 
@@ -101,10 +100,8 @@ class MemberRolesTest extends TestCase
 
     public function test_a_role_list_without_the_baseline_is_refused_and_changes_nothing(): void
     {
-        // An empty list used to remove every role, and a client written
-        // against that contract will still send one. It is refused rather than
-        // quietly topped up with the baseline, because the request asked for
-        // a state the API will not produce.
+        // Refused, not topped up with the baseline: the request asks for a
+        // state the API will not produce.
         $target = $this->player();
         $target->roles()->attach($this->committee);
 
@@ -195,7 +192,7 @@ class MemberRolesTest extends TestCase
         $this->acting()->withHeaders($this->ifMatch('member', $target))->deleteJson("/api/v1/members/{$target->id}")->assertOk();
 
         $this->assertDatabaseMissing('members', ['id' => $target->id]);
-        // `sessions` has NO foreign key to members, so without the explicit
+        // `sessions` has no foreign key to members, so without the explicit
         // revoke a deleted member stays logged in until their cookie expires.
         $this->assertSame(0, DB::table('sessions')->where('user_id', $target->id)->count());
         $this->assertDatabaseHas('sessions', ['id' => 'anonymous']);
@@ -203,8 +200,8 @@ class MemberRolesTest extends TestCase
 
     public function test_deleting_a_member_is_audited_with_the_name_they_had(): void
     {
-        // Captured BEFORE the delete, or the audit records an empty string —
-        // the row is gone by the time anyone reads it back.
+        // The name is captured before the delete, or the audit records an
+        // empty string.
         $target = $this->player();
 
         $this->acting()->withHeaders($this->ifMatch('member', $target))->deleteJson("/api/v1/members/{$target->id}")->assertOk();

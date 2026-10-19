@@ -10,9 +10,8 @@ use Tests\TestCase;
  * A role's names, typed by the committee in the editor (#194, ADR 0026).
  *
  * Both columns are nullable. A seeded role nobody has renamed has neither, and
- * the SPA shows the catalogue's translation of its key; that keeps French and
- * German out of the migrations, which is why 2026_09_07_000003 dropped the
- * first `label_fr`.
+ * the SPA shows the catalogue's translation of its key, which keeps French and
+ * German out of the migrations.
  */
 class RoleLabelsTest extends TestCase
 {

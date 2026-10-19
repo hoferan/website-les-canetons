@@ -53,7 +53,7 @@ class DevSeederTest extends TestCase
 
     public function test_one_member_both_organises_and_plays(): void
     {
-        // The case the old role matrix could not express.
+        // The case an either/or role model cannot express.
         $member = Member::where('username', 'demo.both')->sole();
 
         $this->assertTrue($member->hasPermission(Permission::EventsManage));
@@ -96,10 +96,9 @@ class DevSeederTest extends TestCase
 
     public function test_the_seeder_uses_the_real_registers_rather_than_inventing_any(): void
     {
-        // The register list belongs to the 2026_09_07_000001 migration now.
-        // What this pins is that the SEEDER did not add to it: a synthetic
-        // register in the dev stack means a local screenshot shows a list no
-        // server has.
+        // The register list belongs to the 2026_09_07_000001 migration; this
+        // pins that the seeder adds none. A synthetic register would make a
+        // local screenshot show a list no server has.
         $names = Section::orderBy('sort_order')->pluck('name')->all();
 
         $this->assertSame([

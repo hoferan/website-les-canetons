@@ -15,21 +15,19 @@ use Tests\TestCase;
 /**
  * #231: the If-Match check and the write it guards are one atomic step.
  *
- * Two requests carrying the same tag could both pass the check before either
- * wrote, and the second silently overwrote the first. ConditionalWrite now
- * locks the row before it compares, and holds the lock until the write
- * commits, so the second waits, re-reads, and is refused with a 412.
+ * Without a lock, two requests carrying the same tag could both pass the check
+ * before either wrote, and the second would overwrite the first. ConditionalWrite
+ * locks the row before it compares and holds the lock until the write commits,
+ * so the second waits, re-reads, and is refused with a 412.
  *
- * A single PHP process cannot send two requests at once, so the proof is a
- * second database connection that tries to lock the same row at the moment
- * the controller is about to write. It must be made to wait. Without the
- * lock it gets the row at once, which is exactly the window a second request
- * used to slip through.
+ * A single PHP process cannot send two requests at once, so a second database
+ * connection tries to lock the same row just as the controller is about to
+ * write, and must be made to wait.
  *
- * The row is the seeded `committee` role, for two reasons. The test's own
- * rows are uncommitted inside RefreshDatabase's transaction, and a second
- * connection waits on those whatever the code under test does. And no fixture
- * here attaches `committee`, whose foreign key would take a lock of its own.
+ * The row is the seeded `committee` role, for two reasons. The test's own rows
+ * are uncommitted inside RefreshDatabase's transaction, and a second connection
+ * waits on those whatever the code under test does. And no fixture here
+ * attaches `committee`, whose foreign key would take a lock of its own.
  */
 class ConditionalWriteLockTest extends TestCase
 {

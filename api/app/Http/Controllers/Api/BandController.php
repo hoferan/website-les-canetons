@@ -30,18 +30,14 @@ class BandController extends Controller
     #[Endpoint(operationId: 'band.index')]
     public function index(): AnonymousResourceCollection
     {
-        // `sort_order`, not the name: registers have a conventional order on
-        // this page — the sections migration exists partly to hold it, because
-        // the pre-rebuild front end hardcoded that order in TSX where it drifted
-        // from the table.
+        // Registers have a conventional order, held in `sort_order`, so this
+        // does not sort by name.
         //
-        // Both relations are eager-loaded, so this is three queries whatever the
-        // band's size rather than one per register. Each carries its own consent
-        // filter (see Section) — the controller cannot forget it, which is the
-        // point of them being relations.
+        // Eager-loading both relations keeps this at three queries whatever
+        // the band's size. Each relation carries its own consent filter (see
+        // Section), so the controller cannot forget it.
         //
-        // The assignment is what keeps this comment out of the published
-        // reference: Scramble serves a comment preceding a return as the 200
+        // Assigned first so Scramble does not publish this comment as the 200
         // description.
         $registers = Section::with(['publicMembers', 'publicInstructors'])
             ->orderBy('sort_order')

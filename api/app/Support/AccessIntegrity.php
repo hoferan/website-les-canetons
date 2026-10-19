@@ -19,14 +19,14 @@ use Illuminate\Support\Facades\DB;
  *   3. An account loses the baseline role, and with it the planning and its
  *      own password, or the baseline changes for every account at once.
  *
- * ONE RULE FOR EVERY PATH. Who holds a permission changes when a member's
- * roles are replaced, when a member is deleted, when a role's permissions are
- * replaced and when a role is deleted. Each public method below describes its
- * write as the state it would leave and hands that to
- * assertAdministrationSurvives(), so the four cannot drift into four rules.
+ * Who holds a permission changes when a member's roles are replaced, when a
+ * member is deleted, when a role's permissions are replaced and when a role is
+ * deleted. Each public method below describes its write as the state it would
+ * leave and hands that to assertAdministrationSurvives(), so the four paths
+ * share one rule.
  *
- * These are deliberately NOT permission checks — the caller has the permission.
- * They are state checks, which is why they raise 409 rather than 403.
+ * These are state checks, not permission checks (the caller has the
+ * permission), which is why they raise 409 rather than 403.
  */
 final class AccessIntegrity
 {
@@ -35,12 +35,10 @@ final class AccessIntegrity
 
     public static function assertMayDelete(Member $actor, Member $target): void
     {
-        // The orphan check runs FIRST, deliberately. When the actor is deleting
-        // themselves AND they are the last administrator, both conditions
-        // are true — and "you'd lock everyone out" is the more informative
-        // and more severe of the two, so it must win. Pinned by
-        // test_the_violation_carries_the_last_administrator_code, which
-        // exercises exactly that overlap.
+        // The orphan check runs first. When the actor is deleting themselves
+        // and is the last administrator, both conditions hold, and "you'd lock
+        // everyone out" is the more informative and more severe refusal.
+        // Pinned by test_the_violation_carries_the_last_administrator_code.
         self::assertAdministrationSurvives($actor, memberRoles: [$target->id => null]);
 
         if ($actor->id === $target->id) {
@@ -57,9 +55,7 @@ final class AccessIntegrity
     public static function assertMayReplaceRoles(Member $actor, Member $target, array $roleIds): void
     {
         // Adding the baseline back quietly would answer 200 to a request that
-        // did not do what it said. An empty list used to mean "remove every
-        // role", and a client still sending one is asking for a state this API
-        // no longer produces.
+        // did not do what it said.
         if (! in_array(Role::baseline()->id, $roleIds, true)) {
             self::refuseBaseline();
         }
@@ -114,7 +110,8 @@ final class AccessIntegrity
      *
      * Every orphan refusal outranks every self-demotion, for the reason
      * assertMayDelete() gives, and members.manage is checked before
-     * roles.manage, so a write that orphans both answers as it always did.
+     * roles.manage, so a write that orphans both answers with the
+     * members.manage code.
      *
      * @param  array<int, array<int, int>|null>  $memberRoles  member id => the roles they would hold, or null once deleted
      * @param  array<int, array<int, Permission>>  $rolePermissions  role id => what it would grant
@@ -131,11 +128,9 @@ final class AccessIntegrity
             $before[$permission->value] = self::holders($permission);
             $after[$permission->value] = self::holders($permission, $memberRoles, $rolePermissions);
 
-            // Only a write that TAKES the last holder away is refused. A
-            // permission nobody held is no reason to refuse a write that did
-            // not cause it: on a database where nobody holds roles.manage,
-            // refusing would freeze member administration as well, with no
-            // way out from the site.
+            // Only a write that takes the last holder away is refused. On a
+            // database where nobody holds roles.manage, refusing would freeze
+            // member administration as well, with no way out from the site.
             if ($before[$permission->value] !== [] && $after[$permission->value] === []) {
                 self::refuseOrphan($permission);
             }
@@ -181,13 +176,8 @@ final class AccessIntegrity
      * changes are applied over what is stored. With no changes, who holds it
      * now.
      *
-     * No credential filter, deliberately. It had one — members rows used to
-     * allow nullable credentials, so somebody could hold members.manage while
-     * being unable to log in, and counting such a row let this sequence lock
-     * the band out: two administrators, delete one, blank the other's
-     * username. 2026_09_08_000001 made credentials NOT NULL, so every holder
-     * can authenticate by construction and the filter became a branch no test
-     * could reach. The schema is the guard now — see
+     * No credential filter: member credentials are NOT NULL, so every holder
+     * can log in by construction. The schema is the guard; see
      * MemberIndexTest::test_every_member_has_an_account.
      *
      * @param  array<int, array<int, int>|null>  $memberRoles

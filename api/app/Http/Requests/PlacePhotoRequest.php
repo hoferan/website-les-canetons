@@ -13,9 +13,9 @@ class PlacePhotoRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
+        // `imageId` is `present`, not `required`: `required` rejects the null
+        // that empties the slot.
         return [
-            // `present` rather than `required`: `required` rejects the null
-            // that empties the slot.
             /** An id from `GET /api/v1/images`, or null to remove the photo. */
             'imageId' => ['present', 'nullable', 'integer', 'exists:images,id'],
             /** The page's name for the slot, which the library shows under "Utilisée sur". */

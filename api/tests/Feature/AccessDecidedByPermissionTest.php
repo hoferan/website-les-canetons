@@ -6,22 +6,21 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Access is decided by a permission and by nothing else (ADR 0014). This
- * reads app/ and fails on the two ways back to the model #189 retired:
+ * Access is decided by a permission and by nothing else (ADR 0014, #189).
+ * This reads app/ and fails on two other ways of deciding it:
  *
- * - THE REGISTER AS A GATE. Before #191 a member could answer an event
- *   because `section_id` was set (`Member::isPlayer()`), whatever their
- *   roles said. A register groups and displays, and grants nothing.
- * - A ROLE'S KEY AS A GATE. Roles are editable data that group permissions;
+ * - The register as a gate (#191). A register groups and displays, and
+ *   grants nothing; `section_id` being set must not let anybody answer.
+ * - A role's key as a gate. Roles are editable data that group permissions;
  *   a check on `'direction'` keeps passing after somebody moves the
  *   permission to another role, and then the role editor lies.
  *
- * Only app/ is scanned. Migrations and seeders have to name the seeded roles
- * to create them, and tests have to name them to build their personas.
- * Comments are stripped first, so explaining the old model stays allowed.
+ * Only app/ is scanned: migrations and seeders name the seeded roles to
+ * create them, and tests name them to build personas. Comments are stripped
+ * first, so they may still mention either.
  *
- * A pattern that matches nothing makes this green forever, so each one is
- * also run against a sample of the code it exists to catch; see
+ * A pattern that matches nothing stays green forever, so each one also runs
+ * against a sample of the code it exists to catch; see
  * test_each_pattern_catches_what_it_names().
  *
  * It extends PHPUnit's TestCase rather than Tests\TestCase: it reads source
@@ -37,7 +36,7 @@ class AccessDecidedByPermissionTest extends TestCase
      *
      * Controllers are not on the list, because several load `section` to show
      * it (the chase list names each member's register). For them the rule is
-     * narrower, the CALLER's register below, which is what a gate would read.
+     * narrower, the caller's register below, which is what a gate would read.
      */
     private const DECISION_FILES = [
         'Support/AccessIntegrity.php',
@@ -72,7 +71,7 @@ class AccessDecidedByPermissionTest extends TestCase
     ];
 
     /**
-     * The caller's own register, or the helper that used to wrap it, read
+     * The caller's own register, or an isPlayer() helper wrapping it, read
      * anywhere in app/.
      *
      * @var array<string, string>
@@ -148,8 +147,8 @@ class AccessDecidedByPermissionTest extends TestCase
     }
 
     /**
-     * The proof each pattern is alive. Without it a typo in a regex would
-     * leave the scan above passing over exactly the code it was written for.
+     * Proves each pattern is alive: a typo in a regex would otherwise let the
+     * scan pass over exactly the code it was written for.
      */
     #[DataProvider('offendingSamples')]
     public function test_each_pattern_catches_what_it_names(string $set, string $sample): void
@@ -196,9 +195,9 @@ class AccessDecidedByPermissionTest extends TestCase
     }
 
     /**
-     * Every PHP file under app/, keyed by its path relative to app/. There
-     * is no exemption list: nothing in app/ needs one today, and a file that
-     * does should have to argue for it in this test, where review sees it.
+     * Every PHP file under app/, keyed by its path relative to app/. There is
+     * no exemption list; a file that needs one should argue for it in this
+     * test, where review sees it.
      *
      * @return array<string, string>
      */

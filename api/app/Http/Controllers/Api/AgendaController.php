@@ -19,12 +19,11 @@ class AgendaController extends Controller
      * List what the band is doing next, for a visitor.
      *
      * Anonymous. Returns the upcoming events the committee has marked public,
-     * soonest first — the appearances anybody may come and watch.
+     * soonest first: the appearances anybody may come and watch.
      *
      * **A rehearsal is not on this list.** `isPublic` is set per event and
      * defaults to off, so the planning stays private and a public appearance
-     * is a decision somebody made about that event rather than the default for
-     * everything in the diary.
+     * is a decision made about that event.
      *
      * Four fields per event, each one a fact already on a poster. Nothing here
      * says who is coming: attendance is the members' business.
@@ -32,19 +31,16 @@ class AgendaController extends Controller
     #[Endpoint(operationId: 'agenda.index')]
     public function index(): AnonymousResourceCollection
     {
-        // startOfToday(), not now() — the same split EventController::index()
-        // makes and for the same reason: a concert that began an hour ago is
-        // still tonight's concert to somebody checking the address on their
-        // phone on the way there. Moving it off the page at its start time is
-        // how a visitor concludes it was cancelled.
+        // startOfToday(), as in EventController::index(): a concert that began
+        // an hour ago is still tonight's concert to somebody on the way there,
+        // and dropping it at its start time reads as a cancellation.
         //
-        // The assignment is what keeps this comment out of the published
-        // reference: Scramble serves a comment preceding a return as the 200
+        // Assigned first so Scramble does not publish this comment as the 200
         // description.
         $upcoming = Event::query()
-            // BOTH FILTERS: is_public says whether strangers may see a published
-            // event, published says whether anybody but the committee may see it
-            // at all. A draft marked public appears nowhere.
+            // Both filters: published says whether anybody but the committee
+            // may see the event, is_public whether strangers may. A draft
+            // marked public appears nowhere.
             ->published()
             ->where('is_public', true)
             ->where('starts_at', '>=', BandTime::startOfToday())

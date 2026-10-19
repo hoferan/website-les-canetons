@@ -11,12 +11,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * One row of the chase list: a member who holds attendance.respond, and what
  * they said if anything.
  *
- * `attendance` is NULL for somebody who has not replied, and that null is the
- * whole point of the screen — the list exists to be scanned for it.
- *
- * The register travels as a NAME, not an id: this screen is read to work out
- * who to nudge, and grouping by register is how a Guggenmusik thinks about
- * its own roster.
+ * `attendance` is null for somebody who has not replied; the list is read to
+ * find those. The register travels as a name, not an id, because the screen
+ * groups people by register.
  *
  * @mixin Member
  */
@@ -40,10 +37,9 @@ class ChaseListEntryResource extends JsonResource
     }
 
     /**
-     * A typed private method rather than an inline expression, for the reason
-     * MemberResource and EventResource both record: Scramble types an inline
-     * relation read as an untyped object in the OpenAPI document, and the
-     * docblock is what makes it a nullable string.
+     * Typed method rather than an inline expression: Scramble types an inline
+     * relation read as an untyped object, and the return type makes it a
+     * nullable string.
      */
     private function sectionName(): ?string
     {
@@ -59,12 +55,10 @@ class ChaseListEntryResource extends JsonResource
     /**
      * Typed for the same reason as sectionName().
      *
-     * Read through getRelation() rather than as `$this->attendance`, because
-     * there is no such relation ON Member to read: AttendanceController
-     * fetches one event's answers in a single query and setRelation()s each
-     * onto its member, precisely so this Resource cannot issue a query per
-     * row. Larastan is right that the property does not exist — the value is
-     * put there by hand, and this is the honest way to take it back out.
+     * Read through getRelation() because Member has no `attendance` relation:
+     * AttendanceController fetches one event's answers in a single query and
+     * setRelation()s each onto its member, so this Resource never queries per
+     * row.
      */
     private function answer(): ?AttendanceResource
     {

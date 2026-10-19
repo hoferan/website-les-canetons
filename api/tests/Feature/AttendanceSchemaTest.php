@@ -60,9 +60,8 @@ class AttendanceSchemaTest extends TestCase
 
     public function test_losing_the_recorder_keeps_the_answer(): void
     {
-        // ON DELETE SET NULL, not CASCADE, and the difference matters: the
-        // answer is what the cook counts. Deleting the committee member who
-        // typed it must not un-invite the player.
+        // ON DELETE SET NULL, not CASCADE: the answer is what the cook counts,
+        // so deleting the member who typed it must not remove the player's.
         $recorder = Member::factory()->administrator()->create();
         $answer = Attendance::factory()->recordedBy($recorder)->create();
 
@@ -84,9 +83,8 @@ class AttendanceSchemaTest extends TestCase
 
     public function test_the_status_is_stored_in_english(): void
     {
-        // The project rule: machine values are English and French exists only
-        // in web/src/i18n/. A cast that quietly stored "oui" would be
-        // invisible from PHP and wrong in every export.
+        // Stored values are English; French exists only in web/src/i18n/. A
+        // cast that stored "oui" would be invisible from PHP.
         Attendance::factory()->no()->create();
 
         $this->assertSame('no', DB::table('attendance')->value('status'));
@@ -94,21 +92,18 @@ class AttendanceSchemaTest extends TestCase
 
     public function test_the_accepted_values_come_from_the_enum(): void
     {
-        // The `in:` rule body is derived rather than retyped, so adding a
-        // third status could not silently pass validation while the UI knew
-        // nothing about it.
+        // The `in:` rule is derived from the enum, so a third status cannot
+        // pass validation while the UI knows nothing about it.
         $this->assertSame(['yes', 'no'], AttendanceStatus::values());
     }
 
     public function test_the_undo_window_is_five_minutes(): void
     {
-        // PINNED TO THE LITERAL, deliberately. Every other test in this
-        // suite builds its fixture from UNDO_WINDOW_MINUTES itself, so it
-        // pins the comparison operator and not the policy: found by
-        // mutation on 2026-09-10, widening the window to 24 hours left 25
-        // tests green. The reason-for-a-withdrawal rule is decorative the
-        // moment this number gets large, because a member can erase a yes
-        // and re-answer no for free.
+        // Pinned to the literal on purpose. Every other test builds its
+        // fixture from UNDO_WINDOW_MINUTES, so they pin the comparison and not
+        // the policy: widening the window to 24 hours leaves them green. A
+        // large window makes the reason-for-a-withdrawal rule decorative,
+        // because a member can erase a yes and re-answer no for free.
         $this->assertSame(5, AttendanceIntegrity::UNDO_WINDOW_MINUTES);
         $this->assertSame('in:yes,no', AttendanceStatus::rule());
     }

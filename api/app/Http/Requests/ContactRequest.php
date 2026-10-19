@@ -21,27 +21,24 @@ class ContactRequest extends FormRequest
      */
     public function rules(): array
     {
-        // Field names are camelCase because contact.js posts the form via
-        // FormData with those input names, and App\Exceptions\ApiError echoes
-        // them straight into fields[].field, where i18n.js looks them up.
-        // Renaming them silently breaks the French error messages. (The signup
-        // form uses snake_case — the two forms genuinely differ; do not
-        // normalise.)
+        // App\Exceptions\ApiError echoes these field names into the error's
+        // field list, where the SPA looks them up, so renaming one breaks its
+        // translated error message.
         //
-        // Rule ORDER is load-bearing: ApiError reports only the first failed
-        // rule per field, so `required` must come first (an empty field reports
-        // `required`, not `invalid_format`) and `max` must precede `email` (an
-        // over-long address reports `too_long`). This mirrors
-        // App\Dto\ContactInput's attribute order.
+        // Rule order matters: ApiError reports only the first failed rule per
+        // field, so `required` comes first (an empty field reports `required`,
+        // not `invalid_format`) and `max` precedes `email` (an over-long address
+        // reports `too_long`).
+        //
+        // `message` is capped at max:5000 because it goes into a TEXT column
+        // of 65535 bytes; a body of about 70 KB would overflow in MySQL strict
+        // mode and answer 500 to an anonymous caller.
         return [
             'lastName' => ['required', 'string', 'max:255'],
             'firstName' => ['required', 'string', 'max:255'],
             /** Where the committee will reply. Nothing is sent to it automatically. */
             'email' => ['required', 'string', 'max:255', 'email'],
             'subject' => ['required', 'string', 'max:255'],
-            // max:5000 against a TEXT column of 65535 BYTES. Without it a
-            // ~70 KB body overflows in MySQL strict mode and answers 500 to
-            // an anonymous caller. 5000 characters is a long letter.
             /** The message body, up to 5000 characters. Plain text; no markup is rendered. */
             'message' => ['required', 'string', 'max:5000'],
         ];

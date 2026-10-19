@@ -9,15 +9,12 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Hides the API reference unless this environment enables it.
  *
- * 404, NOT 403. A 403 tells an anonymous caller that the feature exists on
- * this host and is merely switched off, which is an invitation; a 404 says
- * nothing at all. The route is not "forbidden", it is not there.
+ * 404 and not 403, which would tell an anonymous caller that the feature exists
+ * on this host and is only switched off.
  *
- * abort(404) raises a bare HttpException, which App\Exceptions\ApiError
- * deliberately does not claim — so this renders through Laravel's default JSON
- * rather than the {error, code, fields[]} contract. That is fine and
- * deliberate: nothing in the SPA calls these routes, so no French copy is owed
- * for a token no display layer will ever see.
+ * abort(404) raises a bare HttpException, which App\Exceptions\ApiError does
+ * not claim, so this renders as Laravel's default JSON. Nothing in the SPA
+ * calls these routes, so no translated copy is needed.
  */
 class EnsureDocsEnabled
 {

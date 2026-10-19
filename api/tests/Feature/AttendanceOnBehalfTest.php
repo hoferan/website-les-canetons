@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * PUT /api/v1/events/{event}/attendance/{member} — the phone call to the
+ * PUT /api/v1/events/{event}/attendance/{member}: the phone call to the
  * committee (ADR 0018).
  */
 class AttendanceOnBehalfTest extends TestCase
@@ -58,9 +58,9 @@ class AttendanceOnBehalfTest extends TestCase
 
     public function test_record_for_others_alone_is_enough(): void
     {
-        // PINS THE PERMISSION STRING, which the organiser fixture cannot:
-        // `direction` holds every permission, so any string would separate
-        // it from a player holding none.
+        // Pins the permission string, which the organiser fixture cannot:
+        // `direction` holds every permission, so any string would separate it
+        // from a player holding none.
         $recorder = Member::factory()
             ->withRole(Role::factory()->granting(Permission::AttendanceRecordForOthers)->create())
             ->create();
@@ -98,8 +98,8 @@ class AttendanceOnBehalfTest extends TestCase
 
     public function test_it_is_audited(): void
     {
-        // Unlike a self-answer. This is one person acting for another, and
-        // "who said I was not coming?" needs an answer later.
+        // Unlike a self-answer: one person acts for another, and "who said I
+        // was not coming?" needs an answer later.
         $this->actingAsMember($this->organiser)->putJson($this->url(), ['status' => 'no']);
 
         $this->assertDatabaseHas('audit_log', [
@@ -112,10 +112,9 @@ class AttendanceOnBehalfTest extends TestCase
 
     public function test_recording_for_a_member_without_attendance_respond_is_refused(): void
     {
-        // A register and no musician: the register used to make this member
-        // answerable, and must no longer. not_answerable, not access_denied:
-        // the organiser holds the permission this route needs, and what is
-        // missing is the target's.
+        // A register without the musician role grants nothing. not_answerable,
+        // not access_denied: the organiser holds the permission this route
+        // needs, and what is missing is the target's.
         $registerOnly = Member::factory()->inSection('Cloches')->create();
 
         $this->actingAsMember($this->organiser)
@@ -130,9 +129,8 @@ class AttendanceOnBehalfTest extends TestCase
 
     public function test_the_committee_may_withdraw_a_yes_without_a_reason(): void
     {
-        // The member phoned to say they cannot come; making the
-        // committee invent a written reason on their behalf would put words
-        // in their mouth.
+        // The member phoned to say they cannot come; making the committee
+        // invent a written reason would put words in their mouth.
         Attendance::factory()->create([
             'event_id' => $this->event->id,
             'member_id' => $this->player->id,
@@ -150,11 +148,10 @@ class AttendanceOnBehalfTest extends TestCase
 
     public function test_it_refuses_its_own_caller(): void
     {
-        // THE BYPASS THIS CLOSES. demo.both plays AND holds
-        // attendance.record_for_others. Without this he could take back his
-        // own yes through the exempt endpoint and never supply the reason
-        // a withdrawn yes must carry. 409, not 403: he HAS the permission — the
-        // request conflicts with the state of things.
+        // demo.both plays and holds attendance.record_for_others. Without this
+        // refusal he could take back his own yes through the exempt endpoint
+        // and skip the reason a withdrawn yes must carry. 409, not 403: he has
+        // the permission, and the request conflicts with the state of things.
         $both = Member::factory()->inSection('Trompettes')->musician()->administrator()->create();
 
         Attendance::factory()->create([
@@ -174,11 +171,10 @@ class AttendanceOnBehalfTest extends TestCase
 
     public function test_the_self_refusal_outranks_being_unanswerable(): void
     {
-        // An organiser who plays in nothing, aiming at themselves, is BOTH
-        // self-targeting and unanswerable. cannot_record_for_self is the
-        // more useful answer — it names the endpoint they should be using —
-        // so it must win. Same priority reasoning AccessIntegrity applies to
-        // its own overlapping refusals.
+        // An organiser who plays in nothing, aiming at themselves, is both
+        // self-targeting and unanswerable. cannot_record_for_self wins because
+        // it names the endpoint they should use, the same priority reasoning
+        // AccessIntegrity applies to its overlapping refusals.
         $this->actingAsMember($this->organiser)
             ->putJson($this->url($this->organiser), ['status' => 'yes'])
             ->assertStatus(409)

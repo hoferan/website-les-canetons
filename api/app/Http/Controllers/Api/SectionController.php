@@ -34,21 +34,16 @@ class SectionController extends Controller
      */
     public function index(): AnonymousResourceCollection
     {
-        // The return type is AnonymousResourceCollection rather than
-        // JsonResponse deliberately: it is what lets Scramble emit a $ref to
-        // a named schema. Wrapping this in response()->json() would erase the
-        // type and generate `string[]` in the client — measured, not
-        // inferred.
+        // Returning AnonymousResourceCollection lets Scramble emit a $ref to
+        // a named schema. Wrapping it in response()->json() erases the type
+        // and generates `string[]` in the client.
         //
         // `index()` rather than `__invoke()`: Scramble names the operation
-        // after controller + method and drops the method for a single-action
-        // controller, which is how this one started. `index` gives
-        // `useSectionIndex`.
+        // after controller and method, and drops the method for a
+        // single-action controller. `index` gives `useSectionIndex`.
         //
-        // The assignment below is what keeps this block out of the published
-        // reference: Scramble serves the comment preceding a return as the
-        // 200 response description, and a blank line is not enough to break
-        // the association.
+        // Assigned first so Scramble does not publish this comment as the 200
+        // description; a blank line alone does not break the association.
         $registers = Section::withCount(['members', 'instructors'])->orderBy('sort_order')->orderBy('id')->get();
 
         return SectionResource::collection($registers);
@@ -160,10 +155,9 @@ class SectionController extends Controller
     #[Emits('register_in_use')]
     public function destroy(Request $request, Section $section): JsonResponse
     {
-        // ONE STATEMENT, NOT A COUNT AND THEN A DELETE. Both foreign keys
-        // are nullOnDelete, so a roster edit that put somebody in this
-        // register between a count and the delete would lose it silently.
-        // The NOT EXISTS is evaluated by the DELETE itself.
+        // One statement, so the DELETE evaluates the NOT EXISTS itself. Both
+        // foreign keys are nullOnDelete, so a roster edit between a separate
+        // count and the delete would lose its register silently.
         $deleted = Section::query()->whereKey($section->id)
             ->whereNotExists(fn ($members) => $members->from('members')
                 ->whereColumn('members.section_id', 'sections.id')
