@@ -19,5 +19,12 @@
       "@/*": ["./web/src/*"]
     }
   },
-  "include": ["web/src", "web/e2e", "orval.config.ts", "playwright.config.ts"]
+  "include": [
+    "web/src",
+    "web/e2e",
+    "web/screenshots",
+    "orval.config.ts",
+    "playwright.config.ts",
+    "playwright.screenshots.config.ts"
+  ]
 }

@@ -1,0 +1,226 @@
+[
+  {
+    "route": "/",
+    "path": "/",
+    "as": null,
+    "name": "home",
+    "heading": "La guggen d’enfants de Fribourg, depuis 2002."
+  },
+  {
+    "route": "/",
+    "path": "/de/",
+    "as": null,
+    "name": "home-de",
+    "heading": "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+  },
+  {
+    "route": "/agenda",
+    "path": "/agenda",
+    "as": null,
+    "name": "agenda",
+    "heading": "Où nous voir"
+  },
+  {
+    "route": "/band",
+    "path": "/band",
+    "as": null,
+    "name": "band",
+    "heading": "Nos Canetons"
+  },
+  {
+    "route": "/committee",
+    "path": "/committee",
+    "as": null,
+    "name": "committee",
+    "heading": "Le comité"
+  },
+  {
+    "route": "/history",
+    "path": "/history",
+    "as": null,
+    "name": "history",
+    "heading": "L’Histoire des Canetons"
+  },
+  {
+    "route": "/join",
+    "path": "/join",
+    "as": null,
+    "name": "join",
+    "heading": "Tu veux commencer la guggen ?"
+  },
+  {
+    "route": "/contact",
+    "path": "/contact",
+    "as": null,
+    "name": "contact",
+    "heading": "Contact"
+  },
+  {
+    "route": "/events/:id/book",
+    "path": "/events/7/book",
+    "as": null,
+    "name": "booking",
+    "heading": "Souper de soutien"
+  },
+  {
+    "route": "/login",
+    "path": "/login",
+    "as": null,
+    "name": "login",
+    "heading": "Connexion"
+  },
+  {
+    "route": "*",
+    "path": "/no-such-page",
+    "as": null,
+    "name": "not-found",
+    "heading": "Page introuvable"
+  },
+  {
+    "route": "/events",
+    "path": "/events",
+    "as": "demo.player",
+    "name": "events",
+    "heading": "Planning"
+  },
+  {
+    "route": "/account",
+    "path": "/account",
+    "as": "demo.player",
+    "name": "account",
+    "heading": "Mon compte"
+  },
+  {
+    "route": "/account/password",
+    "path": "/account/password",
+    "as": "demo.player",
+    "name": "account-password",
+    "heading": "Mot de passe"
+  },
+  {
+    "route": "/events",
+    "path": "/events",
+    "as": "demo.both",
+    "name": "events",
+    "heading": "Planning"
+  },
+  {
+    "route": "/events",
+    "path": "/events",
+    "as": "demo.direction",
+    "name": "events",
+    "heading": "Planning"
+  },
+  {
+    "route": "/events/new",
+    "path": "/events/new",
+    "as": "demo.direction",
+    "name": "event-new",
+    "heading": "Nouvel événement"
+  },
+  {
+    "route": "/events/new/series",
+    "path": "/events/new/series",
+    "as": "demo.direction",
+    "name": "event-series-new",
+    "heading": "Nouvelle série"
+  },
+  {
+    "route": "/events/:id/edit",
+    "path": "/events/7/edit",
+    "as": "demo.direction",
+    "name": "event-edit",
+    "heading": "Modifier l’événement"
+  },
+  {
+    "route": "/events/:id/registration-options",
+    "path": "/events/7/registration-options",
+    "as": "demo.direction",
+    "name": "registration-options",
+    "heading": "Ce qu’on réserve"
+  },
+  {
+    "route": "/event-tags",
+    "path": "/event-tags",
+    "as": "demo.direction",
+    "name": "event-tags",
+    "heading": "Catégories"
+  },
+  {
+    "route": "/events/:id/attendance",
+    "path": "/events/1/attendance",
+    "as": "demo.direction",
+    "name": "attendance",
+    "heading": "Qui vient ?"
+  },
+  {
+    "route": "/members",
+    "path": "/members",
+    "as": "demo.direction",
+    "name": "members",
+    "heading": "Membres"
+  },
+  {
+    "route": "/registers",
+    "path": "/registers",
+    "as": "demo.direction",
+    "name": "registers",
+    "heading": "Pupitres"
+  },
+  {
+    "route": "/roles",
+    "path": "/roles",
+    "as": "demo.direction",
+    "name": "roles",
+    "heading": "Rôles"
+  },
+  {
+    "route": "/history/new",
+    "path": "/history/new",
+    "as": "demo.direction",
+    "name": "history-new",
+    "heading": "Nouvelle entrée"
+  },
+  {
+    "route": "/history/:id/edit",
+    "path": "/history/1/edit",
+    "as": "demo.direction",
+    "name": "history-edit",
+    "heading": "Modifier l’entrée"
+  },
+  {
+    "route": "/media",
+    "path": "/media",
+    "as": "demo.direction",
+    "name": "media",
+    "heading": "Médias"
+  },
+  {
+    "route": "/media/:id",
+    "path": "/media/1",
+    "as": "demo.direction",
+    "name": "media-detail",
+    "heading": "Le groupe au Carnaval 2026"
+  },
+  {
+    "route": "/events/:id/registrations",
+    "path": "/events/7/registrations",
+    "as": "demo.committee",
+    "name": "registrations",
+    "heading": "Inscriptions"
+  },
+  {
+    "route": "/inbox",
+    "path": "/inbox",
+    "as": "demo.committee",
+    "name": "inbox",
+    "heading": "Boîte de réception"
+  },
+  {
+    "route": "/contact-messages",
+    "path": "/contact-messages",
+    "as": "demo.committee",
+    "name": "contact-messages",
+    "heading": "Messages"
+  }
+]
