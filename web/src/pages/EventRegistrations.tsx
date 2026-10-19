@@ -33,8 +33,8 @@ import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * The four downloads, in the order the committee reaches for them. Markdown
- * and JSON are developer formats on a committee screen, so they sit behind
- * `registrations.moreFormats` (#115).
+ * and JSON are developer formats, so they sit behind
+ * `registrations.moreFormats`.
  */
 const FORMATS: { format: ExportFormat; label: string }[] = [
   { format: "xlsx", label: "Excel" },
@@ -46,14 +46,11 @@ const MORE_FORMATS: { format: ExportFormat; label: string }[] = [
 ];
 
 /**
- * `labelKey`, NEVER `label` — a module-level `label: t(...)` freezes in
+ * `labelKey`, never `label`: a module-level `label: t(...)` freezes in
  * whatever locale was active at import.
  *
- * THE KEYS ARE booking.fields.*, NOT A SECOND SET. This form amends the very
- * booking the public form created: same record, same fields, same words. That
- * is the one case where sharing a label across screens is right, and it is
- * not the case #166 ruled on — there the question was a control's label
- * against an API field's NOUN, which are different things.
+ * The keys are booking.fields.*, not a second set: this form amends the
+ * booking the public form created, so the same fields take the same words.
  */
 const AMENDABLE: {
   name: keyof UpdateRegistrationRequest;
@@ -74,33 +71,22 @@ const AMENDABLE: {
 /**
  * Who has booked a place, and what they ordered.
  *
- * TWO PERMISSIONS ON ONE SCREEN, and the split is the point.
- * `registrations.view` is what the route is guarded on and is all the
- * `committee` role holds — somebody whose entire job is reading this list.
+ * Two permissions on one screen. The route is guarded on
+ * `registrations.view`, which the `committee` role holds to read this list.
  * Correcting a name and cancelling a booking are `registrations.manage`, a
- * different act on somebody else's personal data, so those controls are absent
- * for a viewer rather than present and refused. The server enforces both; this
- * mirrors it for the screen.
+ * different act on somebody else's personal data, so those controls are
+ * absent for a viewer. The server enforces both; this mirrors it.
  *
- * THE COUNTS ARE THE SERVER'S. `guestCount` and `totalCents` come per booking
- * from the API precisely so the screen, the four downloads and the
- * confirmation mail cannot disagree about what a booking comes to. The totals
- * row here sums those, and nothing on this page multiplies a price by a
- * quantity.
+ * The counts are the server's: `guestCount` and `totalCents` come per booking
+ * so the screen, the downloads and the confirmation mail cannot disagree. The
+ * totals row sums them, and nothing here multiplies a price by a quantity.
  *
- * ONE LAYOUT: CARDS, AT EVERY WIDTH, laid out in a grid that widens (#130).
- * There was a table from `md` up as well until 2026-09-18, hand-maintained
- * beside the cards with nothing forcing the two to agree — and they did not,
- * for the whole life of the screen: the guest's postal address was on the card
- * and in no column at all (#98). A test that queries globally used to find
- * every guest twice; it no longer does, so scoping to `guest-cards` is now
- * about saying which list you mean rather than about avoiding a duplicate.
+ * One layout, cards at every width in a grid that widens.
  *
- * AMENDING STARTS BY READING THE ONE BOOKING, and the tag that read hands out
- * is what the PATCH quotes. The list hands out none — one tag cannot validate
- * a hundred bookings — and that read is also the right concurrency window:
- * "while this form was open". Fetching a fresh tag at save time would satisfy
- * the server and protect nobody.
+ * Amending starts by reading the one booking, and the PATCH quotes that
+ * read's tag. The list hands out none, and the read opens the right
+ * concurrency window: a fresh tag fetched at save time would satisfy the
+ * server and protect nobody.
  */
 export function EventRegistrations() {
   const { id } = useParams();
@@ -125,16 +111,14 @@ export function EventRegistrations() {
   const [opening, setOpening] = useState<number | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<ExportFormat | null>(null);
-  // NOT A TOAST. A refused download is read beside the button that was
-  // pressed, and it is the one refusal on that endpoint an operator can act
-  // on — `xlsx_unavailable` means asking the host for ext-zip, or using CSV.
-  // A toast would also be invisible to a component test, since the Toaster
-  // lives in the layout.
+  // Not a toast: a refused download is read beside the button that was
+  // pressed, and `xlsx_unavailable` is something an operator can act on
+  // (ask the host for ext-zip, or use CSV).
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Both writes are conditional, so both are built by hand over the generated
-  // FUNCTIONS: orval's mutation hooks fix their request options when the hook
-  // is created, and the tag differs per call. See web/src/api/ifMatch.ts.
+  // functions: orval's mutation hooks fix their request options at creation,
+  // and the tag differs per call. See web/src/api/ifMatch.ts.
   const amend = useMutation({
     mutationFn: ({
       booking,
@@ -176,8 +160,8 @@ export function EventRegistrations() {
     try {
       const response = await registrationShow(booking.id);
       if (response.status !== 200) {
-        // Unreachable: the mutator throws on every non-2xx. The declared union
-        // says otherwise and tsc is right that it does.
+        // Unreachable, since the mutator throws on every non-2xx, but the
+        // declared union includes it.
         setReadError(t("registrations.loadFailed"));
         return null;
       }
@@ -212,7 +196,7 @@ export function EventRegistrations() {
     }
     if (amending.etag === null) {
       // No tag means the write would be refused 428, which reads as a broken
-      // screen. Saying so and stopping is the honest answer.
+      // screen, so say so and stop.
       setReadError(t("registrations.loadFailedReload"));
       return;
     }
@@ -221,8 +205,8 @@ export function EventRegistrations() {
     try {
       await amend.mutateAsync({ booking: amending.booking.id, data, etag: amending.etag });
     } catch (thrown) {
-      // The panel stays OPEN: a rejected e-mail has to be corrected where it
-      // was typed.
+      // The panel stays open, so a rejected e-mail is corrected where it was
+      // typed.
       form.setFromThrown(thrown);
       return;
     }
@@ -240,8 +224,7 @@ export function EventRegistrations() {
     try {
       await cancel.mutateAsync({ booking: cancelling.booking.id, etag: cancelling.etag });
     } catch (thrown) {
-      // Dialog stays open, so a 412 is read where the action was taken rather
-      // than behind a dialog that has vanished.
+      // The dialog stays open, so a 412 is read where the action was taken.
       destructive.setFromThrown(thrown);
       return;
     }
@@ -254,22 +237,21 @@ export function EventRegistrations() {
    * Records the payment, or takes it back, the moment the switch is flipped.
    * No dialog: flipping it back undoes it, and at the door there is a queue.
    *
-   * Read-then-write like the amend form, because the PATCH is conditional.
-   * The concurrency window is only as wide as the flip, which is enough for a
-   * switch. It SENDS WHAT THE SWITCH SAYS. Flipping the fresh read instead
-   * would mean that if somebody else recorded the payment a second ago,
-   * turning the switch on would take it back. The server keeps the first
-   * stamp.
+   * Read-then-write like the amend form, because the PATCH is conditional;
+   * the concurrency window is only as wide as the flip. It sends what the
+   * switch says, not the inverse of the fresh read, so turning it on never
+   * takes back a payment somebody else just recorded. The server keeps the
+   * first stamp.
    *
-   * It throws, and the card shows the refusal: with one switch per card, the
-   * message belongs beside the switch that was flipped.
+   * It throws, and the card shows the refusal beside the switch that was
+   * flipped.
    */
   async function savePaid(row: RegistrationResource, paid: boolean) {
     const loaded = await registrationShow(row.id);
     const etag = loaded.status === 200 ? entityTagOf(loaded) : null;
     if (etag === null) {
-      // No tag means the write would be refused 428. The card says the save
-      // failed rather than sending it.
+      // No tag means the write would be refused 428, so the card says the
+      // save failed without sending it.
       throw new Error("The booking was read without an ETag.");
     }
     await registrationUpdate(row.id, { paid }, ifMatch(etag));
@@ -298,7 +280,7 @@ export function EventRegistrations() {
         {t("common.backToPlanning")}
       </Link>
 
-      {/* THE SAME KEY AS THE LINK THAT OPENS THIS, on the planning. */}
+      {/* The same key as the planning's link to this screen. */}
       <h1 className="mt-tight font-display text-3xl">{t("events.registrations")}</h1>
 
       {title ? (
@@ -317,14 +299,13 @@ export function EventRegistrations() {
 
       {!list.isPending && !list.isError ? (
         <p data-testid="guest-counts" className="mt-block text-lg">
-          {/* TWO COUNTS, EACH PLURALISED BY ITS OWN LOCALE. Both were
-              `> 1 ? "s" : ""` — the French rule, right in French and wrong
-              in German, where zero is plural. */}
+          {/* Both counts are pluralised by the catalogue: a `> 1` rule is
+              French, and wrong in German, where zero is plural. */}
           {t("registrations.bookings", { count: bookingCount ?? bookings.length })}
           {t("registrations.countsSeparator")}
           {t("common.guests", { count: guests })}
-          {/* Nothing when no booking carries a price: a total of CHF 0.00 over
-              a list of unpriced options is a claim the data does not make. */}
+          {/* Nothing when no booking carries a price, instead of CHF 0.00 over
+              unpriced options. */}
           {priced.length === 0 ? null : <> · {formatCents(total)}</>}
           {priced.length === 0 ? null : (
             <>
@@ -335,17 +316,16 @@ export function EventRegistrations() {
         </p>
       ) : null}
 
-      {/* WHAT THE KITCHEN IS TOLD (#115), and it is a sum of quantities the
-          server already sent per booking: nothing here multiplies a price.
-          The same numbers are the totals row of every download. */}
+      {/* What the kitchen is told: a sum of the quantities the server sent
+          per booking, the same numbers as every download's totals row. */}
       {perOption.length > 0 ? (
         <div
           data-testid="option-totals"
           className="mt-tight flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-related"
         >
           <span className="text-ink-muted">{t("registrations.optionTotalsLabel")}</span>
-          {/* One per line on a phone, where a wrapped row put two options on
-              the first line and one on the second and read as two groups. */}
+          {/* One per line on a phone, where a wrapped row reads as two
+              groups. */}
           <ul className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-related">
             {perOption.map((option) => (
               <li key={option.optionId} className="font-semibold">
@@ -371,10 +351,9 @@ export function EventRegistrations() {
           />
         ))}
       </div>
-      {/* A disclosure rather than a menu: it opens in place, at 390px as on a
-          desktop, and needs no floating layer for two buttons. It sits in its
-          own block below the row: inside the row, an open one wrapped its
-          buttons in beside Excel at a different height. */}
+      {/* A disclosure, not a menu: it opens in place and needs no floating
+          layer for two buttons. It sits below the row, because inside it the
+          open buttons wrap in beside Excel at a different height. */}
       <details className="mt-tight">
         <summary className="cursor-pointer text-sm text-ink-muted underline">
           {t("registrations.moreFormats")}
@@ -431,13 +410,9 @@ export function EventRegistrations() {
 
       {bookings.length > 0 ? (
         <>
-          {/* THE CARD IS THE ONLY LAYOUT (#130). There used to be a table from
-              md up as well, hand-maintained beside this, and nothing forced the
-              two to agree: the address below lived on the card and in no column
-              at all, for the whole life of the screen. The grid is what makes
-              one layout serve both — one column at 390px, and from sm up as
-              many as fit, so a desktop reader gets a wall of bookings rather
-              than an 80-row ribbon. */}
+          {/* The grid lets one layout serve both widths: one column at
+              390px, and from sm up as many as fit, so a desktop does not get
+              an 80-row ribbon. */}
           <ul
             data-testid="guest-cards"
             className="mt-block grid gap-tight sm:grid-cols-2 xl:grid-cols-3"
@@ -447,16 +422,13 @@ export function EventRegistrations() {
                 <p className="text-ink">
                   {booking.lastName} {booking.firstName}
                 </p>
-                {/* The address stays TEXT. No geo: link and no maps URL: this
-                    is a `max:255` free-text field that may read "c/o Famille
-                    X", so a pin built from it is confidently wrong -- the
-                    failure the 2026-08-31 audit caught in Join.tsx, by another
-                    route. The committee's use here is posting an invitation,
-                    not navigating. */}
-                {/* THREE SIBLINGS, NOT A `<br>` RUN, so each fact is its own
-                    element and a screen reader gets three stops rather than one
-                    long string. `items-start` stops the column flex stretching
-                    each link's tap target across the whole card. */}
+                {/* The address stays text, with no geo: link or maps URL: it is
+                    free text that may read "c/o Famille X", so a pin built from
+                    it would be wrong. The committee uses it to post an
+                    invitation. */}
+                {/* Three siblings, not a `<br>` run, so a screen reader gets
+                    three stops. `items-start` stops the column flex stretching
+                    each link's tap target across the card. */}
                 <div data-testid="guest-contact" className="flex flex-col items-start gap-tight">
                   <ContactLink kind="email" value={booking.email} />
                   <ContactLink kind="phone" value={booking.phone} e164={booking.phoneE164} />
@@ -474,9 +446,9 @@ export function EventRegistrations() {
                   {t("common.guests", { count: booking.guestCount })}
                   {booking.totalCents === null ? null : <> — {formatCents(booking.totalCents)}</>}
                 </p>
-                {/* Only a booking that owes something has a payment to record.
-                    An unpriced one owes an unknown amount, and "Non payé" on it
-                    would chase money nobody named. */}
+                {/* Only a booking that owes something has a payment to record:
+                    "Non payé" on an unpriced one would chase money nobody
+                    named. */}
                 {booking.totalCents === null ? null : (
                   <PaymentLine
                     booking={booking}
@@ -498,9 +470,9 @@ export function EventRegistrations() {
         </>
       ) : null}
 
-      {/* THE GUEST IS NOT NOTIFIED, which is what makes this worth typing a
-          name for. Somebody outside the band loses their place and hears
-          nothing about it, and cannot re-book once the window has shut. */}
+      {/* The guest is not notified, which is why this asks for a typed name:
+          they lose their place without hearing about it, and cannot re-book
+          once the window has shut. */}
       <ConfirmByTypingName
         open={cancelling !== null}
         title={t("registrations.cancelTitle", {
@@ -574,14 +546,14 @@ function DownloadButton({
  * the same state as a pill, because a switch they cannot move would look
  * broken rather than read-only.
  *
- * THE PILL WRITES THE STATE OUT as well as colouring it, so it survives a
- * greyscale printout and a screen reader. The switch carries the guest's name
- * in its accessible name, because there is one per card, and that name starts
- * with the visible "Payé" so voice control reaches it by the word on screen.
+ * The pill writes the state out as well as colouring it, for a greyscale
+ * printout and a screen reader. The switch's accessible name carries the
+ * guest's name, since there is one per card, and starts with the visible
+ * "Payé" so voice control reaches it by the word on screen.
  *
  * aria-disabled and an early return while the write is in flight, never
- * `disabled`: Radix renders the switch as a button, and the docblock in
- * ui/button.tsx says what `disabled` does to its focus.
+ * `disabled`: Radix renders the switch as a button, and ui/button.tsx says
+ * what `disabled` does to its focus.
  */
 function PaymentLine({
   booking,
@@ -657,18 +629,13 @@ function PaymentLine({
 }
 
 /**
- * This screen has exactly two actions, so `RowActions`' own rule — a menu
- * needs at least two items left over once one is pulled inline — never has
- * two to work with: both render inline and no "..." trigger is drawn. The
- * visible result is unchanged from before this screen used the shared
- * component; the point is that it no longer carries its own copy of the
- * pattern, so a third action gets the menu for free instead of growing a
- * third ragged row.
+ * Two actions, so both render inline: `RowActions` draws a menu only for two
+ * or more items left over once one is pulled inline. Using the shared
+ * component means a third action gets the menu for free.
  *
- * `destructive: true` ON THE CANCEL ACTION IS DORMANT, NOT DEAD: only the
- * menu path reads it (the separator rule in `ItemFor`), and this screen never
- * draws a menu — so it does nothing today. It starts mattering the day a
- * third action arrives here and the cancel item lands behind the "...".
+ * `destructive: true` on the cancel action is dormant, not dead: only the
+ * menu path reads it (the separator rule in `ItemFor`), so it matters once a
+ * third action puts the cancel item behind the "...".
  */
 function BookingActions({
   booking,
@@ -693,9 +660,9 @@ function BookingActions({
     },
     {
       key: "cancel",
-      // registrations.cancel, NOT common.cancel: this one cancels a BOOKING
-      // ("stornieren"), the other closes a form without doing anything
-      // ("abbrechen"). One French word, two German ones.
+      // registrations.cancel, not common.cancel: this one cancels a booking
+      // ("stornieren"), the other closes a form ("abbrechen"). One French
+      // word, two German ones.
       label: t("registrations.cancel"),
       ariaLabel: t("registrations.cancelAria", { name: who }),
       disabled: busy,
@@ -704,9 +671,7 @@ function BookingActions({
     },
   ];
 
-  // `mt-tight` moved here: RowActions renders its own flex/gap wrapper, so
-  // the top margin that used to live on that same element now lives on the
-  // element that contains it instead of being dropped.
+  // The margin sits on this wrapper because RowActions renders its own.
   return (
     <div data-testid="booking-actions" className="mt-tight">
       <RowActions actions={actions} inlineKey="amend" rowName={who} />
@@ -717,12 +682,10 @@ function BookingActions({
 /**
  * Correcting a booking's contact details.
  *
- * WHAT WAS ORDERED IS NOT HERE, matching the API, which has no `choices` field
- * on its PATCH. Changing an order would need the per-booking cap re-checked
- * and arguably the confirmation re-sent; a wrong order is cancelled and
- * re-booked, which is two clicks for the committee and leaves an honest audit
- * trail. The panel says so, because a form that silently omits the thing
- * somebody came to change is a form they will look for twice.
+ * What was ordered is not here, matching the API, whose PATCH has no
+ * `choices`: changing an order would need the per-booking cap re-checked and
+ * arguably the confirmation re-sent. A wrong order is cancelled and re-booked.
+ * The panel says so, so nobody hunts for the field.
  */
 function AmendForm({
   booking,
@@ -762,9 +725,8 @@ function AmendForm({
           firstName: draft.firstName,
           email: draft.email,
           phone: draft.phone,
-          // An explicit null CLEARS an optional field; an empty string would
-          // store one. The API reads the two differently on purpose, and this
-          // is the form that can send either.
+          // An explicit null clears an optional field; an empty string would
+          // store one. The API reads the two differently on purpose.
           address: draft.address.trim() === "" ? null : draft.address,
           tableName: draft.tableName.trim() === "" ? null : draft.tableName,
         });

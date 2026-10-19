@@ -7,9 +7,8 @@ import { renderWithSession } from "../test/renderWithSession";
 import { RequirePermission } from "./guards";
 
 /**
- * Stands in for the login page, and reports the router STATE it was handed.
- * `from` never appears in a URL — it is state, so nobody can craft it — which
- * also means it is not observable from the path alone.
+ * Stands in for the login page and reports the router state it was handed,
+ * since `from` is not observable from the path.
  */
 function Whereabouts() {
   const { state } = useLocation();
@@ -17,8 +16,8 @@ function Whereabouts() {
 }
 
 /**
- * A miniature route table. The guard is a layout route, so what it does is
- * decide which of its children renders — not observable without one.
+ * A miniature route table: the guard is a layout route, so it needs children
+ * to decide between.
  */
 function tree() {
   return (
@@ -48,9 +47,6 @@ test("refuses a logged-in member IN PLACE rather than bouncing them to login", a
   setMockUser("demo.player");
   await renderWithSession(tree(), { route: "/members" });
 
-  // Bouncing somebody who is already logged in to a login form reads as "your
-  // session expired" and invites them to log in again, repeatedly, at
-  // something they will never be allowed to see.
   expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
   expect(screen.queryByRole("heading", { name: "Connexion" })).toBeNull();
 });
@@ -59,19 +55,13 @@ test("gives the refusal a heading, a gutter and a way out", async () => {
   setMockUser("demo.player");
   const { container } = await renderWithSession(tree(), { route: "/members" });
 
-  // A refusal is a real page. This assertion exists because the previous
-  // version of this guard rendered a bare <p role="alert"> with no heading — an
-  // empty document to anyone navigating by heading — outside PageSection, so at
-  // 390px the words sat flush against the left edge. Four tests passed over it
-  // for weeks because they only checked the string was in the DOM.
+  // A refusal is a real page, so checking the string is in the DOM is not
+  // enough: it needs a heading for anyone navigating by heading.
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Accès refusé");
 
-  // The refusal is ANNOUNCED: the route changed without a navigation, and a
-  // screen-reader user who hears nothing has no idea why the page they asked
-  // for is not there.
+  // Announced, since the route changed without a navigation.
   expect(screen.getByRole("alert")).toBeInTheDocument();
 
-  // A way out, not a dead end.
   expect(screen.getByRole("link", { name: /accueil/i })).toHaveAttribute("href", "/");
 
   // The shell, which is what carries the gutter.
@@ -95,10 +85,9 @@ test("remembers where an anonymous visitor was going", async () => {
 /**
  * The refusal in German.
  *
- * This is a whole SCREEN, not the `access_denied` error token translateApiError
- * renders inside a form — heading, explanation and a way out, each its own key
- * under `guards`. All three are asserted because a member who cannot read the
- * refusal cannot tell it apart from the site being broken.
+ * This is a whole screen, not the `access_denied` error token translateApiError
+ * renders inside a form: heading, explanation and a way out, each its own key.
+ * A member who cannot read the refusal cannot tell it from a broken site.
  */
 test("refuses in German, with the same heading, alert and way out", async () => {
   setMockUser("demo.player");
@@ -116,6 +105,6 @@ test("refuses in German, with the same heading, alert and way out", async () => 
   expect(screen.getByRole("alert")).toHaveTextContent(
     "Diese Seite ist anderen Mitgliedern vorbehalten.",
   );
-  // common.backHome, shared with NotFound — the site's other dead end.
+  // common.backHome, shared with NotFound.
   expect(screen.getByRole("link", { name: "Zurück zur Startseite" })).toHaveAttribute("href", "/");
 });

@@ -4,13 +4,13 @@ import { t } from "../i18n";
 import { Photo, PHOTO_SIZES, type PhotoData } from "../images/Photo";
 
 /**
- * An event's poster on its card (#228), opening at full size in a tab of its
- * own, where a phone can zoom it, save it or share it.
+ * An event's poster on its card, opening at full size in a tab of its own,
+ * where a phone can zoom it, save it or share it.
  *
- * ACROSS THE CARD ON A PHONE, A THUMBNAIL FROM `md` UP. The caller places it:
- * on a phone it takes the card's first row at the poster's own shape, and from
- * `md` it moves to the card's right edge at 96 px, where the list stays easy
- * to scan. Never cropped, because a poster is read, and a crop cuts its date.
+ * The caller places it: on a phone it takes the card's first row at the
+ * poster's own shape, and from `md` it is a 96px thumbnail at the card's
+ * right edge, so the list stays easy to scan. Never cropped, because a poster
+ * is read and a crop cuts its date.
  *
  * Last in the card's markup, after the details it illustrates, so a screen
  * reader meets the title first.

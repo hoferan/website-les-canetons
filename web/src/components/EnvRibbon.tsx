@@ -3,10 +3,9 @@ const NON_PROD = ["dev", "test", "qa"];
 /**
  * The non-prod corner ribbon.
  *
- * An unknown or missing env is treated as PROD — i.e. no ribbon — so the live
- * site stays clean BY DEFAULT rather than by configuration. That was
- * App\Env's behaviour and it is kept: the failure mode of the other default is
- * a ribbon on the real site, which teaches everyone to ignore ribbons.
+ * An unknown or missing env is treated as PROD, with no ribbon, so the live
+ * site stays clean by default. The other default would put a ribbon on the
+ * real site, which teaches everyone to ignore ribbons.
  */
 export function EnvRibbon({ env }: { env: string }) {
   if (!NON_PROD.includes(env)) return null;
@@ -14,17 +13,11 @@ export function EnvRibbon({ env }: { env: string }) {
   return (
     <div
       aria-hidden="true"
-      /* A corner TAB, not the old rotated banner. The 45-degree version was
-         translated a quarter of its own width to the right, so most of the
-         label sat outside the viewport and could only be read by guessing —
-         which defeats the entire point of a ribbon that exists to stop someone
-         mistaking TEST for the live site.
+      /* A corner tab rather than a rotated banner, so the whole label stays
+         inside the viewport and readable.
 
-         z-20, UNDER THE NAV (z-30) AND THE PHONE MENU (z-40). At the top of a
-         page it sits over the black header band. Once the phone's Menu bar
-         sticks to the top, the ribbon slides under it; above the bar it
-         covered the "DE" of the language switch, and in the menu layer the
-         close button. */
+         z-20, under the nav (z-30) and the phone menu (z-40), so it never
+         covers the language switch or the menu's close button. */
       className="pointer-events-none fixed top-0 right-0 z-20 rounded-bl bg-danger px-3 py-1 text-xs font-bold tracking-widest text-white shadow-lg"
     >
       {env.toUpperCase()}

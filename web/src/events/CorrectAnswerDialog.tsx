@@ -15,27 +15,21 @@ import { FormError, FormField } from "../components/FormField";
 import { t, type TranslatedError } from "../i18n";
 
 /**
- * Correcting an answer the committee already wrote down.
+ * Correcting an answer the committee already wrote down, for somebody who
+ * said "non, malade" and then telephoned to say they could come. The endpoint
+ * behind it is an upsert.
  *
- * The chase list handled the first answer and nothing after it: somebody who
- * said "non, malade" and then telephoned to say they could come had no way
- * back, and the Raison column was read-only. The endpoint behind this has
- * always been an upsert, so what was missing was a control (#96).
+ * A dialog, because each answered card already carries four facts, and answer
+ * buttons plus a reason field on every one would be a wall to scroll through.
+ * One button per card opens this.
  *
- * A DIALOG RATHER THAN INLINE BUTTONS. The answered rows already carry four
- * facts each, and the phone layout renders them as cards a thumb scrolls
- * through; a pair of answer buttons plus a reason field on every one of them
- * is a wall. One button per row opens this, and the same control serves both
- * layouts — which is also the only way the two cannot drift apart.
+ * No reason is required, withdrawal included (ADR 0018): the committee is
+ * writing down what somebody told them, and demanding a reason on another
+ * person's behalf puts words in their mouth.
  *
- * NO REASON IS REQUIRED, withdrawal included (ADR 0018): this is the
- * committee writing down what somebody told them, and demanding a reason on
- * another person's behalf puts words in their mouth. The withdrawal reason is
- * for a member taking back their own yes, and this is not that route.
- *
- * Like WithdrawDialog, the action is a plain Button rather than Radix's
+ * Like WithdrawDialog, the action is a plain Button, not Radix's
  * AlertDialogAction, which closes the dialog on click: the request can be
- * refused and the message has to stay readable beside the field it is about.
+ * refused and the message has to stay readable beside its field.
  */
 export function CorrectAnswerDialog({
   name,
@@ -63,11 +57,10 @@ export function CorrectAnswerDialog({
   /**
    * Picking an answer, and what happens to the reason underneath it.
    *
-   * A REASON BELONGS TO THE ANSWER IT WAS GIVEN FOR. Leaving "malade" in the
-   * field while the answer above it flips to `oui` is how the committee ends
-   * up reading a yes that is apparently ill — so changing the answer empties
-   * it, and changing back to the stored one puts the stored reason back. The
-   * field stays editable either way; this only decides what it starts from.
+   * A reason belongs to the answer it was given for, or the committee reads a
+   * yes that is apparently ill. Changing the answer empties the field, and
+   * changing back to the stored one restores the stored reason. The field
+   * stays editable; this only decides what it starts from.
    */
   function choose(next: "yes" | "no") {
     setStatus(next);
@@ -85,15 +78,15 @@ export function CorrectAnswerDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          {/* THE SAME STRING AS THE BUTTON THAT OPENED THIS, so the dialog
-              confirms what was clicked rather than paraphrasing it. */}
+          {/* The same string as the button that opened this, so the dialog
+              confirms what was clicked. */}
           <AlertDialogTitle>{t("attendance.correctFor", { name })}</AlertDialogTitle>
           <AlertDialogDescription>
             {t("attendance.correctDescription", { name })}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {/* BOTH ANSWERS VISIBLE, the current one pressed — the same control as
+        {/* Both answers visible, the current one pressed: the same control as
             the planning, so the committee reads it the way the band does. */}
         <div className="flex flex-wrap gap-tight">
           <Button

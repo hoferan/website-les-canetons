@@ -35,8 +35,8 @@ test("the picker lists the library newest first and hands back the picked image"
 });
 
 /**
- * MUTATION TEST: drop the effect that picks the added photo and onPick is
- * never called, which is the extra tap a phone user did not know to make.
+ * Drop the effect that picks the added photo and onPick is never called,
+ * leaving a phone user an extra tap they would not know to make.
  */
 test("a photo added in the picker is the one picked, as soon as the library lists it", async () => {
   setMockUser("demo.direction");

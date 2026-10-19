@@ -33,9 +33,9 @@ test("keeps every piece out of the boxes it is told to avoid", () => {
 
 /**
  * The centre is not enough: a squiggle is 28 units long and drawn at up to
- * 2.1 times that, so one placed just outside a centre-only margin still lay
- * across the first letters of a heading. Every piece's whole reach has to stay
- * clear, over enough seeds to draw each kind at a large scale.
+ * 2.1 times that, so one placed just outside a centre-only margin can still
+ * lie across a heading. Every piece's whole reach has to stay clear, over
+ * enough seeds to draw each kind at a large scale.
  */
 test("keeps the whole of every shape out of the boxes it avoids", () => {
   const headline = { left: 80, top: 120, right: 640, bottom: 360 };

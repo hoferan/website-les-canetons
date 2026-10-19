@@ -4,19 +4,16 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /**
- * VENDORED from shadcn/ui, plus an `asChild` prop, and with every `dark:`
+ * Vendored from shadcn/ui, plus an `asChild` prop, and with every `dark:`
  * utility stripped for the reason button.tsx records.
  *
- * shadcn's Card is a hard-coded div. Two of the panel surfaces it replaces here
- * are LIST ITEMS -- the events list and the admin summary list are both a named
- * <ul>, where a div is invalid markup and breaks the listitem role query those
- * pages' tests rely on. asChild lets the card BE the <li> instead of wrapping
- * one, using the same Radix Slot that Button already pulls in.
+ * shadcn's Card is a hard-coded div. `asChild` lets the card be an <li>, a
+ * <form> or a link instead of wrapping one: a div inside a <ul> is invalid
+ * markup and breaks the listitem role.
  *
  * The base `gap-6 py-6` rhythm is meant for the CardHeader/CardContent/
- * CardFooter composition. A compact tile overrides it by passing its own
- * spacing -- `cn()` is tailwind-merge, so the caller's class wins rather than
- * both landing in the class list.
+ * CardFooter composition. A compact tile passes its own spacing, and `cn()`
+ * (tailwind-merge) lets the caller's class win.
  */
 function Card({
   className,

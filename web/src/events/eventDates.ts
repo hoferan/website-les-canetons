@@ -1,15 +1,13 @@
 /**
  * The calendar arithmetic behind the series generator.
  *
- * PURE, AND DELIBERATELY IGNORANT OF TIMEZONES. It manipulates calendar dates
- * as `Y-m-d` strings, and the server turns each of them into an instant using
- * the band's own zone. That split is what keeps this testable as arithmetic:
- * "every Saturday from 5 September to 31 October" is a question about a
- * calendar, and the answer does not change with where anybody is standing.
+ * Pure, and ignorant of timezones. It works on calendar dates as `Y-m-d`
+ * strings, and the server turns each into an instant in the band's zone, so
+ * "every Saturday from 5 September to 31 October" stays testable as
+ * arithmetic.
  *
- * It is its own module rather than a closure inside the generator for the same
- * reason `formatEventWhen` is: this is where the date bugs will be, and a
- * function is far easier to argue with than a rendered screen.
+ * Its own module, like `formatEventWhen`, because this is where date bugs
+ * live and a function is easier to test than a rendered screen.
  */
 
 /**
@@ -17,18 +15,13 @@
  *
  * `weekday` is `Date.getDay()`: 0 is Sunday, 6 is Saturday.
  *
- * WHOLE DAYS, NOT MILLISECONDS. Adding `7 * 24 * 60 * 60 * 1000` is the
- * obvious implementation and it is wrong: the band's season runs across the
- * October clock change, so a week measured in milliseconds drifts by an hour
- * and the season eventually lands on a Friday. Stepping the date component
- * inside UTC — where no clock ever changes — cannot drift.
+ * Whole days, not milliseconds. The season runs across the October clock
+ * change, so a week of `7 * 24 * 60 * 60 * 1000` drifts by an hour. Stepping
+ * the date component in UTC, where no clock changes, cannot drift.
  *
- * THE LOOP IS GUARDED, and the guard is the point rather than defensive
- * habit. The generator recomputes on every keystroke, so it is asked about a
- * half-typed range constantly: an unparseable or backwards range makes every
- * comparison false, the loop never terminates, and the tab locks up while
- * somebody is typing a date. An empty list is the right answer to "which
- * Saturdays fall in no range".
+ * The guard matters. The generator recomputes on every keystroke, so it is
+ * asked about half-typed ranges constantly, and an unparseable or backwards
+ * range would otherwise loop forever and lock the tab.
  */
 export function weekdayDatesBetween(from: string, to: string, weekday: number): string[] {
   const first = new Date(`${from}T00:00:00Z`);
@@ -38,9 +31,8 @@ export function weekdayDatesBetween(from: string, to: string, weekday: number): 
     return [];
   }
 
-  // Forward to the first matching weekday on or after the start. The modulo
-  // keeps it forward: a range starting the day after the weekday waits for
-  // next week rather than reaching back before its own start.
+  // Forward to the first matching weekday on or after the start; the modulo
+  // never reaches back before it.
   first.setUTCDate(first.getUTCDate() + ((weekday - first.getUTCDay() + 7) % 7));
 
   const dates: string[] = [];
@@ -54,8 +46,8 @@ export function weekdayDatesBetween(from: string, to: string, weekday: number): 
 
 /**
  * Whether an event is still a draft: written down, editable, and visible only
- * to people who can manage events. `publishedAt` is the whole state, so there
- * is no second flag to keep in step with it.
+ * to people who can manage events. `publishedAt` is the whole state; there is
+ * no second flag.
  */
 export function isDraft(event: { publishedAt: string | null }): boolean {
   return event.publishedAt === null;

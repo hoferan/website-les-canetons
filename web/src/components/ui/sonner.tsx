@@ -1,21 +1,15 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
 /**
- * VENDORED from shadcn/ui and rewritten.
+ * Vendored from shadcn/ui and rewritten.
  *
- * The registry version imports useTheme from `next-themes` and declares it as a
- * dependency. That is a Next.js package, this is a Vite app, and Scène commits
- * to a single light look -- so the import is gone, next-themes is not
- * installed, and the theme is fixed.
+ * The registry version imports useTheme from `next-themes`, a Next.js package.
+ * This app has a single light look (ADR 0022), so next-themes is not installed
+ * and the theme is fixed. The registry's icon map is dropped too: a toast of
+ * one short sentence needs no glyph.
  *
- * Its lucide icon set went with it too. lucide-react stays installed -- Layout
- * and EventActions already draw from it -- but a toast whose whole content is
- * one short French sentence does not need a glyph to be understood, and the
- * registry's five-icon map is five imports for nothing.
- *
- * Colours come through the shadcn token aliases in styles.css, which are
- * one-directional aliases of the Scène palette, so a toast matches the rest of
- * the app without naming a colour here.
+ * Colours come through the shadcn token aliases in styles.css, so a toast
+ * matches the rest of the app without naming a colour here.
  */
 export function Toaster(props: ToasterProps) {
   return (

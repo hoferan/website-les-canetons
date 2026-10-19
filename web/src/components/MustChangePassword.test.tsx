@@ -7,8 +7,8 @@ import { renderWithSession } from "../test/renderWithSession";
 import { MustChangePassword } from "./MustChangePassword";
 
 /**
- * A miniature route table, because this gate is a layout route: what it does is
- * decide which of its children renders, and that is not observable without one.
+ * A miniature route table: the gate is a layout route, so it needs children to
+ * decide between.
  */
 function tree() {
   return (
@@ -30,8 +30,7 @@ test("lets an ordinary member through", async () => {
 });
 
 test("lets an anonymous visitor through", async () => {
-  // It is NOT an auth guard. A public page must not depend on being logged in,
-  // and there are several.
+  // Not an auth guard: a public page must not depend on being logged in.
   await renderWithSession(tree(), { route: "/" });
 
   expect(await screen.findByRole("heading", { name: "Accueil" })).toBeInTheDocument();
@@ -46,15 +45,13 @@ test("sends a member who must change their password to /account/password", async
 
 test("does not redirect /account/password to itself", async () => {
   setMockUser("demo.mustchange");
-  // The loop this prevents: a gate that redirects unconditionally sends the
-  // password page to itself forever and the page never renders at all.
+  // An unconditional redirect would send the page to itself and render nothing.
   await renderWithSession(tree(), { route: "/account/password" });
 
   expect(await screen.findByRole("heading", { name: "Mot de passe" })).toBeInTheDocument();
 });
 
-// #125 narrowed the exemption to the password page. The rest of /account is a
-// profile, and reading it is not what a committee-issued password is for.
+// #125: only the password page is exempt; the rest of /account is a profile.
 test("does not exempt the rest of /account", async () => {
   setMockUser("demo.mustchange");
   await renderWithSession(tree(), { route: "/account" });

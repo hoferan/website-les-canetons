@@ -34,8 +34,7 @@ test("renders a textarea when asked for one", () => {
   expect(screen.getByLabelText("Message :").tagName).toBe("TEXTAREA");
 });
 
-// The whole reason this component exists: three attributes that must agree,
-// copy-pasted per input, and silently useless if the ids drift apart.
+// The three attributes must agree, or the message is silently never read.
 test("a problem marks the control invalid and points it at the message", () => {
   render(
     <FormField
@@ -67,8 +66,8 @@ test("onChange receives the value, not the event", async () => {
   expect(seen).toEqual(["a", "b"]);
 });
 
-// #101: a committee-issued password is read down a phone and typed into a
-// phone, which is exactly where a field you cannot see costs the most.
+// #101: a committee-issued password is read out over the phone and typed into
+// one, where a field you cannot see costs the most.
 test("a password field can be revealed and hidden again", async () => {
   const user = userEvent.setup();
   render(<FormField id="demo-pw" label="Mot de passe" type="password" value="x" onChange={noop} />);
@@ -136,10 +135,9 @@ test("a hint is announced with the field, before any problem", () => {
   expect(screen.getByText("Au moins 8 caractères")).toHaveAttribute("id", "demo-pw-hint");
 });
 
-// The whole point of FormError: the live region is resident, so an error that
-// appears later is a CONTENT change inside an existing alert rather than a
-// freshly-inserted one. Rendering it conditionally again would pass every form
-// test in the suite and silently undo the fix, so it is pinned here.
+// The live region is resident, so a later error is a content change inside an
+// existing alert. Rendering it conditionally would pass every other form test,
+// so it is pinned here.
 test("the error region is in the tree even with no error", () => {
   render(<FormError error={null} />);
   expect(screen.getByRole("alert")).toBeEmptyDOMElement();
@@ -153,9 +151,7 @@ test("an error fills the same region rather than adding one", () => {
   expect(region).toHaveTextContent("Le formulaire contient des erreurs.");
 });
 
-// #102. The star is beside the label, not inside it, so the label's text and
-// the control's accessible name stay "Nom". A screen reader already hears
-// "required" from the attribute, and "astérisque" read out would add nothing.
+// #102. The star is beside the label, so the accessible name stays "Nom".
 test("a required field carries a star that stays out of its name", () => {
   render(<FormField id="demo-name" label="Nom" value="" onChange={noop} required />);
   expect(screen.getByRole("textbox", { name: "Nom" })).toBeRequired();
@@ -191,10 +187,8 @@ function Validated({ value, type, problem }: { value: string; type?: string; pro
   );
 }
 
-// THE BROWSER'S BUBBLE SPEAKS THE BROWSER'S LANGUAGE, which on an English
-// browser is "Please fill out this field." on a French page. The message has
-// to come from the catalogue, composed the same way translateApiError composes
-// a server refusal, so the two cannot read differently.
+// The message comes from the catalogue, composed like translateApiError
+// composes a server refusal, never from the browser's own bubble.
 test("an empty required field says so in French, and points the control at it", async () => {
   const user = userEvent.setup();
   render(<Validated value="" />);
@@ -257,9 +251,8 @@ test("formIsValid answers true, and focuses nothing, for a valid form", () => {
 });
 
 /**
- * A DESCRIPTION SHARED BY SEVERAL FIELDS, such as a rule or an error about a
- * group of them, reaches each field through `describedBy`, ahead of the
- * field's own hint and problem.
+ * A description shared by several fields, such as a rule or an error about a
+ * group of them, reaches each field through `describedBy`.
  */
 test("describedBy, invalid and maxLength reach the control", () => {
   render(

@@ -26,17 +26,11 @@ import { OUTLINED_CARD } from "../carnival/raised";
 /**
  * Who still has to be chased about an event.
  *
- * IT IS NOT A REPORT OF WHO SAID YES, and the layout is the argument. The
- * people who have not replied come first; the answers sit below. The old site had this the
- * other way round — a table of everybody, scrolling sideways at 390px,
- * answering "who is coming?" when the question the committee actually has on a
- * Thursday evening is "who must I still chase?".
+ * The question is "who must I still chase?", not "who is coming?", so the
+ * people who have not replied come first and the answers sit below.
  *
- * ONE LAYOUT: CARDS, AT EVERY WIDTH, in a grid that widens (#130). A table
- * from `md` up used to sit beside them, hand-maintained, and the answer it
- * spread across three columns is one sentence here — `answerLine`, where the
- * reason travels WITH the name, which is the whole difference between a chase
- * list and a headcount.
+ * One layout, cards at every width in a grid that widens. Each answer is one
+ * sentence (`answerLine`), so the reason travels with the name.
  */
 export function EventAttendance() {
   const { id } = useParams();
@@ -74,10 +68,9 @@ export function EventAttendance() {
   /**
    * Write an answer down for somebody, first or corrected.
    *
-   * ONE PATH FOR BOTH, because the endpoint makes no distinction: it is an
-   * upsert, and a correction is the same request with the member already
-   * having an answer. Reporting whether it landed is what the dialog needs —
-   * it stays open on a refusal, so the typed reason is not thrown away.
+   * One path for both, because the endpoint is an upsert. It reports whether
+   * the write landed, because the dialog stays open on a refusal so the typed
+   * reason is not thrown away.
    */
   async function recordFor(
     entry: ChaseListEntryResource,
@@ -89,10 +82,9 @@ export function EventAttendance() {
       await record.mutateAsync({ member: entry.memberId, status, note });
       await queryClient.invalidateQueries({ queryKey: getAttendanceIndexQueryKey(eventId) });
       refusal.clear();
-      // TWO SENTENCES, ONE PER ANSWER, rather than one with the answer
-      // lowercased into it: see the note on attendance.answer in fr.ts. The
-      // French space before the colon is part of the string for the same
-      // reason — German takes none.
+      // One sentence per answer instead of the answer lowercased into one:
+      // see the note on attendance.answer in fr.ts. The French space before
+      // the colon is part of the string because German takes none.
       toast.success(
         t(status === "yes" ? "attendance.recordedYes" : "attendance.recordedNo", {
           name: nameOf(entry),
@@ -101,9 +93,8 @@ export function EventAttendance() {
       return true;
     } catch (thrown) {
       refusal.setFromThrown(thrown);
-      // The dialog owns the message while it is open — a refused note lands
-      // against its own field there, and a toast over it would say the same
-      // thing twice in the place it is hardest to read.
+      // While the dialog is open it shows the refusal against its own field,
+      // so a toast would say the same thing twice.
       if (!correcting) {
         toast.error(
           thrown instanceof ApiError
@@ -141,9 +132,8 @@ export function EventAttendance() {
         </p>
       ) : null}
 
-      {/* THE COUNTS FIRST, and the three of them together: a screen that shows
-          only "24 oui" is answering the wrong question, because the number the
-          committee acts on is the third one. */}
+      {/* The three counts first and together: the number the committee acts
+          on is the third one. */}
       {!list.isPending && !list.isError ? (
         <p data-testid="chase-counts" className="mt-block text-lg">
           {t("attendance.counts", {
@@ -166,12 +156,10 @@ export function EventAttendance() {
                 key={entry.memberId}
                 className={`${OUTLINED_CARD} flex items-center justify-between gap-tight p-3`}
               >
-                {/* THE BUTTONS STAY IN ONE COLUMN (#212). The name takes the
-                    spare width and wraps inside its own column, with the register
-                    on a muted line under it, and the buttons never shrink or
-                    wrap. A row that let them wrap put Oui / Non on a line of
-                    their own only under a long name, so at 390px a thumb working
-                    down the list had to find them again on every row. */}
+                {/* The buttons stay in one column (#212): the name wraps in its
+                    own column and the buttons never shrink or wrap, so at 390px
+                    a thumb working down the list finds them in the same place
+                    on every row. */}
                 <span className="min-w-0 flex-1">
                   <span className="block">{nameOf(entry)}</span>
                   {entry.sectionName ? (
@@ -181,11 +169,10 @@ export function EventAttendance() {
                   ) : null}
                 </span>
 
-                {/* THE CALLER'S OWN ROW. The on-behalf endpoint refuses its own
-                    caller, so Bastien — who plays and holds the permission —
-                    must not be offered buttons here that would 409. His own
-                    answer belongs on the planning, which is also where the
-                    reason rule he would otherwise walk around lives. */}
+                {/* The caller's own row. The on-behalf endpoint refuses its own
+                    caller with 409, so somebody who plays and holds the
+                    permission answers on the planning, where the reason rule
+                    applies. */}
                 {mayRecord && entry.memberId === user?.id ? (
                   <span className="max-w-[50%] text-right text-sm text-ink-muted">
                     {t("attendance.answerFromPlanning")}
@@ -232,19 +219,16 @@ export function EventAttendance() {
         </section>
       ) : null}
 
-      {/* Everybody who did answer, and what they said. Below the chase, which
-          is the ordering the screen exists to impose. */}
+      {/* Everybody who did answer, below the chase. */}
       {yes.length + no.length > 0 ? (
         <section className="mt-block" aria-labelledby="answers-heading">
           <h2 id="answers-heading" className="font-display text-xl">
             {t("attendance.answersHeading")}
           </h2>
 
-          {/* THE CARD IS THE ONLY LAYOUT (#130). A table from md up used to sit
-              beside this, and the two were hand-maintained copies of one row.
-              The "non" answers come first here: they are the ones with
-              something to read beside them, and a grid flows row-major, so
-              they still read first at every width. */}
+          {/* The "non" answers come first: they are the ones with a reason to
+              read, and a grid flows row-major, so they read first at every
+              width. */}
           <ul
             data-testid="chase-cards"
             className="mt-related grid gap-tight sm:grid-cols-2 xl:grid-cols-3"
@@ -252,9 +236,8 @@ export function EventAttendance() {
             {[...no, ...yes].map((entry) => (
               <li key={entry.memberId} className={`${OUTLINED_CARD} p-3 text-sm`}>
                 <p className="text-ink">{answerLine(entry)}</p>
-                {/* LABELLED, because the column head that used to say what this
-                    is went with the table. A bare "Trompettes" under a name is
-                    a word, not a fact. */}
+                {/* Labelled, since a bare "Trompettes" under a name does not
+                    say what it is. */}
                 {entry.sectionName ? (
                   <p className="text-ink-muted">
                     {t("attendance.sectionLabel", {
@@ -284,10 +267,8 @@ export function EventAttendance() {
         <p className="mt-block text-ink-muted">{t("attendance.nobodyAnswerable")}</p>
       ) : null}
 
-      {/* MOUNTED PER ROW, and keyed by the member, so the form starts from the
-          answer it is correcting rather than from whichever row was opened
-          first — a `useState` initialiser runs once per mount and nothing else
-          would reset it. */}
+      {/* Keyed by the member, so the form starts from the answer it is
+          correcting: a `useState` initialiser runs once per mount. */}
       {correcting?.attendance ? (
         <CorrectAnswerDialog
           key={correcting.memberId}
@@ -317,18 +298,12 @@ export function EventAttendance() {
 /**
  * The one control that corrects an answer.
  *
- * WRITTEN ONCE because two copies is where the phone layout loses the next
- * thing added to the other one. It was extracted while this screen still had
- * two layouts to keep them honest; #130 removed the second, and it stays a
- * component because the correction is worth reading in one place. The
- * accessible name carries the person, so a screen-reader user hears whose
- * answer they are about to change rather than the eleventh "Corriger" on the
- * page.
+ * The accessible name carries the person, so a screen-reader user hears whose
+ * answer they are about to change, not one more "Corriger".
  *
- * THE CALLER'S OWN ROW, here as in the Sans réponse block above: the on-behalf
- * endpoint refuses its own caller, so Bastien — who plays and holds the
- * permission — is told where his own answer lives instead of being offered a
- * button that would 409.
+ * The caller's own row, as in the Sans réponse block above: the on-behalf
+ * endpoint refuses its own caller with 409, so the caller is told where their
+ * own answer lives.
  */
 function CorrectionAction({
   entry,

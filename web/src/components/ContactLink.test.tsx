@@ -6,8 +6,8 @@ import { ContactLink } from "./ContactLink";
 test("an e-mail renders as a link whose accessible name is the address itself", () => {
   render(<ContactLink kind="email" value="jeanne@example.ch" />);
 
-  // Add an aria-label and this fails, which is the point: the accessible name
-  // must stay the visible address (WCAG 2.5.3, and speech input).
+  // The accessible name must stay the visible address (WCAG 2.5.3), so an
+  // added aria-label fails this.
   expect(screen.getByRole("link", { name: "jeanne@example.ch" })).toHaveAttribute(
     "href",
     "mailto:jeanne@example.ch",
@@ -17,8 +17,7 @@ test("an e-mail renders as a link whose accessible name is the address itself", 
 test("a phone shows what was stored and dials what was sanitised", () => {
   render(<ContactLink kind="phone" value="079 123 45 67" />);
 
-  // Both halves of the contract in one assertion: displayed verbatim, linked
-  // sanitised.
+  // Displayed verbatim, linked sanitised.
   expect(screen.getByRole("link", { name: "079 123 45 67" })).toHaveAttribute(
     "href",
     "tel:0791234567",
@@ -38,8 +37,7 @@ test("a phone the API read in E.164 dials that, and still shows what the guest t
 test("a value that cannot be linked is still shown, as text", () => {
   render(<ContactLink kind="phone" value="à demander" />);
 
-  // The presence half is what makes this honest -- the absence half alone
-  // passes against a component that renders nothing at all.
+  // Without the presence check, a component rendering nothing would pass.
   expect(screen.getByText("à demander")).toBeInTheDocument();
   expect(screen.queryByRole("link")).toBeNull();
 });

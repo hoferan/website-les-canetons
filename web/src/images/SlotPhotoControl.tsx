@@ -57,7 +57,7 @@ type Props = {
 };
 
 /**
- * One photo slot as an editor sees it (#105). `SlotPhoto` renders this only
+ * One photo slot as an editor sees it. `SlotPhoto` renders this only
  * for whoever holds `images.manage`.
  *
  * An empty slot is a single button the size of the photo it waits for, so the
@@ -75,7 +75,7 @@ type Props = {
  * write also sends the slot's label and the page's path, which is how the
  * library says where a photo is shown: the server knows a slot only by name.
  *
- * FOCUS STAYS ON THE SLOT. The button that opened the picker is replaced when
+ * Focus stays on the slot. The button that opened the picker is replaced when
  * the slot fills or empties (the add frame becomes a pencil, or back), so the
  * dialog hands focus back to a button that is about to go. Once the page shows
  * the new state, focus moves to the slot's new button, and the status line

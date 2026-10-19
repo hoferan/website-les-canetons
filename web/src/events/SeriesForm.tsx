@@ -11,21 +11,18 @@ import { TagPicker } from "./TagPicker";
 import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
- * The most dates one request may generate. The SERVER is the enforcement
- * point — `dates` is `max:60` there — and this is here only so a committee
- * entering two seasons at once is told before pressing rather than by a
- * refusal afterwards.
+ * The most dates one request may generate. The server enforces it (`dates` is
+ * `max:60`); this copy only tells a committee entering two seasons at once
+ * before pressing.
  */
 const CAP = 60;
 
 /**
  * `Date.getDay()` values, as the select offers them.
  *
- * `labelKey`, NEVER `label` — the rule Layout.tsx's NAV already follows and
- * this file did not. A module-level `label: t(...)` is evaluated when the
- * module is first imported and frozen in whatever locale was active then, so
- * these seven read French forever on a German page. The key is resolved at
- * render instead.
+ * `labelKey`, never `label`, as in Layout.tsx's NAV: a module-level
+ * `label: t(...)` is frozen in the locale active when the module was first
+ * imported. The key is resolved at render.
  */
 const WEEKDAYS = [
   { value: 1, labelKey: "seriesForm.weekdays.monday" },
@@ -40,18 +37,14 @@ const WEEKDAYS = [
 /**
  * One generated date, as a member reads it.
  *
- * IN UTC, which looks wrong beside `formatEventWhen`'s Europe/Zurich and is
- * not. What is being rendered here is a bare calendar date, built by
- * `weekdayDatesBetween` as a `Y-m-d` string; reading it back at UTC midnight
- * and formatting in the same zone returns the day it names. Formatting it in
- * Fribourg would shift the earlier half of the year back to the previous day.
+ * In UTC, unlike `formatEventWhen`'s Europe/Zurich, because this is a bare
+ * calendar date from `weekdayDatesBetween`. Read back at UTC midnight and
+ * formatted in the same zone, it returns the day it names; in a zone behind
+ * UTC it would show the previous day.
  */
 const previewCache = new Map<string, Intl.DateTimeFormat>();
 
 function previewDate(): Intl.DateTimeFormat {
-  // This formatter has always been `fr-CH`, and since #161 that is the only
-  // French tag intlTag hands out — see its docblock for the fr-FR long-date
-  // form it used to have to choose against.
   const tag = intlTag(currentLocale());
 
   let found = previewCache.get(tag);
@@ -84,9 +77,8 @@ type SeriesDraft = {
 };
 
 /**
- * Saturday, 10:00 to 12:00 — the band's actual rehearsal, which is what this
- * screen is for. A generator whose defaults are empty is one where thirteen
- * rehearsals still cost thirteen decisions.
+ * Saturday, 10:00 to 12:00: the band's actual rehearsal, which is what this
+ * screen is for.
  */
 const EMPTY: SeriesDraft = {
   title: "",
@@ -105,26 +97,20 @@ const EMPTY: SeriesDraft = {
 /**
  * Thirteen rehearsals as one form and a few unticks.
  *
- * THE PREVIEW IS THE FEATURE, not decoration on a generate button. Measured
- * against the band's real planning: thirteen Saturday rehearsals, of which
- * four are skipped for school holidays. A straight generate would create four
- * events nobody wants and leave the committee deleting them one at a time,
- * which is worse than entering them by hand.
+ * The preview is the feature. A season has some rehearsals skipped for school
+ * holidays, and a straight generate would leave the committee deleting those
+ * one at a time.
  *
- * EVERY DATE STARTS TICKED because the common case is all of them, and the
- * ticks RESET whenever the range or the weekday changes. A tick state that
- * survived would be applied to whichever dates now sit at those positions, and
- * the season would be quietly missing a rehearsal nobody chose to skip.
+ * Every date starts ticked, because the common case is all of them, and the
+ * ticks reset whenever the range or the weekday changes. Otherwise a skip
+ * would land on whichever date now sits in that position.
  *
- * THE BUTTON NAMES THE COUNT. A generator whose button says only "Créer" is
- * one nobody checks before pressing, and this one writes up to sixty rows.
- * Until a date is chosen there is no count, and the button is inert.
+ * The button names the count, because this writes up to sixty rows. Until a
+ * date is chosen there is no count, and the button is inert.
  *
- * What it generates are INDEPENDENT EVENTS. Nothing links them: there is
- * no series row, no recurrence rule and no `series_id`, so "how does a player
- * attend one occurrence?" is not a question anybody has to answer. This form
- * is the only thing that ever knows they arrived together, and it forgets as
- * soon as it has posted them.
+ * The generated events are independent: no series row, no recurrence rule, no
+ * `series_id`. Only this form knows they arrived together, and it forgets once
+ * it has posted them.
  */
 export function SeriesForm({
   busy,
@@ -161,9 +147,9 @@ export function SeriesForm({
 
   const tooMany = chosen.length > CAP;
 
-  // WHY THE BUTTON CANNOT BE PRESSED YET, as the id of the line that says so.
-  // Null when it can. The button is described by that line, so a screen
-  // reader hears the reason with the button rather than a bare "unavailable".
+  // Why the button cannot be pressed yet, as the id of the line that says so,
+  // or null when it can. The button is described by that line, so a screen
+  // reader hears the reason with it.
   const blockedBy =
     dates.length === 0
       ? "series-no-dates"
@@ -334,7 +320,7 @@ export function SeriesForm({
 
       {tooMany ? (
         <p id="series-too-many" role="alert" className="text-danger">
-          {/* {{n}}, not {{count}}: this line only appears ABOVE the cap, so
+          {/* {{n}}, not {{count}}: this line only appears above the cap, so
               it has no singular form for a `count` option to select. */}
           {t("seriesForm.tooMany", { n: chosen.length, cap: CAP })}
         </p>
@@ -349,10 +335,9 @@ export function SeriesForm({
       <FormError error={error} />
 
       <div className="flex flex-wrap gap-related">
-        {/* PRESENT FROM THE START, inert until there is something to create
-            (#103). Hiding it left "Annuler" as the page's only action, which
-            reads as a broken form. With no count to name, it says what it
-            will do instead of offering to create zero events. */}
+        {/* Present from the start, inert until there is something to create:
+            with "Annuler" as the only action the form reads as broken. With
+            no count to name, it says what it will do. */}
         <Button
           type="submit"
           aria-disabled={busy || blockedBy !== null}

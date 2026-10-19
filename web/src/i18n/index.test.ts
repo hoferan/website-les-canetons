@@ -41,27 +41,21 @@ test("an unknown field name keeps the raw field but still falls back on the reas
 });
 
 test("resolves an indexed array field to its label rather than leaking the identifier", () => {
-  // Laravel reports an array element as `roleIds.0`. Before the index was
-  // stripped, the lookup missed and the fallback printed the raw English
-  // `roleIds.0` onto a French screen. ApiErrorVocabularyTest caught it; this
-  // pins the behaviour from the display side.
+  // Laravel reports an array element as `roleIds.0`. ApiErrorVocabularyTest
+  // covers the copy; this pins the lookup from the display side.
   const translated = translateApiError({
     code: "validation_failed",
     fields: [{ field: "roleIds.0", reason: "invalid_type" }],
   });
 
-  // The precise path survives, so the UI can still highlight the right input,
-  // while the message a human reads carries the French label.
+  // The precise path survives for highlighting; the message carries the label.
   expect(translated.fields).toEqual([{ field: "roleIds.0", message: "Rôles a un type invalide" }]);
 });
 
 test("resolves a nested field to its last segment rather than leaking the identifier", () => {
-  // POST /api/events/series nests the event under a `template` object, so
-  // Laravel reports `template.endTime`. There is deliberately no
-  // `fields.template.endTime` in the catalogue — the French for it is the
-  // same words as for a bare `endTime`, and spelling every nested field out
-  // twice is how one of them eventually gets missed. Without the fallback
-  // this prints the raw English `template.endTime` on a French screen.
+  // POST /events/series nests the event under `template`. The catalogue has
+  // no `fields.template.endTime`, since the words are those of a bare
+  // `endTime`.
   const translated = translateApiError({
     code: "validation_failed",
     fields: [{ field: "template.endTime", reason: "must_be_after" }],
@@ -72,9 +66,7 @@ test("resolves a nested field to its last segment rather than leaking the identi
   ]);
 });
 
-// Every test in this file below runs in French unless it says otherwise, and
-// the app's default is French, so the reset restores the shared default rather
-// than a value this file chose.
+// The reset restores the app's default, French.
 afterEach(async () => {
   await setLocale("fr");
 });
@@ -118,12 +110,9 @@ test("roleLabel and roleHint follow the active locale", async () => {
 test("the generic fallback is translated, so a German reader never meets French", async () => {
   await setLocale("de-CH");
 
-  // THE REGRESSION THIS PINS. `unknown_error` is minted CLIENT-SIDE by
-  // web/src/api/http.ts for any non-JSON error response — a 502 from the
-  // shared host, or TEST/QA's HTML Basic-Auth 401 — so no server-side guard
-  // can require copy for it, and ApiErrorVocabularyTest cannot see it at all.
-  // The fallback sentence used to be a module-scope French string literal,
-  // which meant this rendered French on a German page.
+  // `unknown_error` is minted client-side by web/src/api/http.ts for any
+  // non-JSON error response (a 502 from the host, TEST/QA's HTML Basic-Auth
+  // 401), so ApiErrorVocabularyTest cannot see it.
   expect(translateApiError({ code: "unknown_error", fields: [] }).message).toBe(
     "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
   );

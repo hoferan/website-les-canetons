@@ -3,9 +3,8 @@ import { expect, test } from "vitest";
 import { mailtoHref, telHref } from "./contactHref";
 
 /**
- * A hostile-input list in the `returnTo.test.ts` spirit. Both invariant tests
- * below map the whole list, so a value added here is covered by both without
- * anyone remembering to.
+ * Hostile inputs, as in `returnTo.test.ts`. Both invariant tests below map
+ * the whole list, so a value added here is covered by both.
  */
 const HOSTILE = [
   "",
@@ -91,16 +90,15 @@ test("non-ASCII digits are refused rather than transliterated", () => {
 });
 
 test("length is not a criterion; the digit ceiling is", () => {
-  // EXISTS TO STOP a `max:64` mirror of the column being added here. A long
-  // value holding one number is still that number.
+  // A `max:64` mirror of the column would fail this. A long value holding one
+  // number is still that number.
   expect(telHref(`079${"-".repeat(200)}1234567`)).toBe("tel:0791234567");
 });
 
 test("a trunk prefix in brackets is left in, and that is a known limitation", () => {
-  // `(0)` should be DROPPED when dialling internationally. Doing that is E.164
-  // normalisation, which is a separate issue; this pins today's behaviour so
-  // that issue changes it deliberately rather than discovering it. The number
-  // fails to connect rather than reaching a stranger.
+  // `(0)` should be dropped when dialling internationally, which is E.164
+  // normalisation and the API's `phoneE164`. Pinned so a change is
+  // deliberate; the number fails to connect rather than reaching a stranger.
   expect(telHref("+41 (0)79 123 45 67")).toBe("tel:+410791234567");
 });
 

@@ -31,9 +31,8 @@ test("labels every field", async () => {
 });
 
 test("the end date defaults to the start date as it is typed", async () => {
-  // Almost every event is one day. Making the committee type the same date
-  // twice, forty times a season, is the friction that stops a planning being
-  // entered at all — and a two-day event is still one field away.
+  // Almost every event is one day, so the committee should not type the same
+  // date twice. A two-day event is still one field away.
   await renderForm();
   await userEvent.type(screen.getByLabelText("Date de début"), "2026-09-05");
 
@@ -68,10 +67,8 @@ test("shows the submit as busy without disabling it", async () => {
  * -------------------------------------------------------------------------- */
 
 test("offers the registration window, and says which field is the switch", async () => {
-  // THE CONTROL, not the label in fr.ts. `registrationClosesAt` had a French
-  // label from the day the registration API shipped and no input rendering
-  // it — the same shape as `instructor_of_section_id`, which sat in a draft, was sent
-  // on every write, and could only ever be null.
+  // Asserts the rendered controls: a label in fr.ts proves nothing about an
+  // input existing.
   await renderForm();
 
   expect(screen.getByLabelText("Clôture des inscriptions")).toBeInTheDocument();
@@ -80,8 +77,7 @@ test("offers the registration window, and says which field is the switch", async
   expect(screen.getByLabelText("Heure d’ouverture")).toBeInTheDocument();
   expect(screen.getByLabelText("Personnes par inscription")).toBeInTheDocument();
 
-  // A date field is not self-evidently a switch, so the copy beside it is
-  // load-bearing rather than decorative.
+  // A date field is not obviously a switch, so the copy beside it matters.
   expect(
     screen.getByText(/date de clôture pour ouvrir cet événement aux inscriptions/),
   ).toBeInTheDocument();
@@ -90,10 +86,9 @@ test("offers the registration window, and says which field is the switch", async
 /**
  * An event the form has just created, read back out of the mocked backend.
  *
- * Through the API rather than off the screen, because what these two tests are
- * about is the BODY the form sends: `registrationClosesAt` and the flag
- * derived from it are not rendered on a card, so a screen assertion could not
- * tell a null from an instant.
+ * Through the API, not off the screen, because these tests are about the body
+ * the form sends: `registrationClosesAt` and the flag derived from it are not
+ * rendered on a card.
  */
 async function createdEvent(title: string) {
   const planning = await eventIndex({ limit: 1000 });
@@ -108,9 +103,9 @@ async function createdEvent(title: string) {
 }
 
 /**
- * Pastes rather than types: a key at a time re-renders the form per key, and
- * a whole event took a third of the 5 s test timeout before anything was
- * sent. The test that is about typing a date types it.
+ * Pastes instead of typing: a key at a time re-renders the form per key, and
+ * a whole event eats into the 5 s test timeout. The test about typing a date
+ * types it.
  */
 async function fillIn(fields: Record<string, string>) {
   for (const [label, value] of Object.entries(fields)) {
@@ -122,9 +117,8 @@ async function fillIn(fields: Record<string, string>) {
 }
 
 test("a new event takes no bookings until a closing date is typed", async () => {
-  // MUTATION TEST: make eventBodyFrom compose the closing instant
-  // unconditionally and this fails — every rehearsal in the planning would
-  // open itself to the public.
+  // Mutation test: make eventBodyFrom compose the closing instant
+  // unconditionally and this fails.
   await renderForm();
 
   await fillIn({
@@ -155,17 +149,15 @@ test("typing a closing date is what opens an event to the public", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
 
   const created = await createdEvent("Souper de novembre");
-  // November, so +01:00 — the season runs through both offsets, which is why
-  // bandTime exists at all. 23:59 is the default beside the date field, so a
-  // closing DAY means the whole of it.
+  // November, so +01:00: the season runs through both offsets. 23:59 is the
+  // default beside the date field, so a closing day means the whole of it.
   expect(created.registrationClosesAt).toBe("2026-11-14T23:59:00+01:00");
   expect(created.takesRegistrations).toBe(true);
 });
 
 test("an empty guest cap is no cap, not a cap of zero", async () => {
-  // MUTATION TEST: pass the field through `Number()` unguarded and this fails.
-  // `Number("")` is 0, and an event nobody may book is not an event with no
-  // limit.
+  // Mutation test: pass the field through `Number()` unguarded and this fails,
+  // because `Number("")` is 0.
   await renderForm();
 
   await fillIn({
@@ -182,7 +174,7 @@ test("an empty guest cap is no cap, not a cap of zero", async () => {
 });
 
 /* ---------------------------------------------------------------------------
- * The form in German (#166)
+ * The form in German
  * -------------------------------------------------------------------------- */
 
 test("every control is German", async () => {
@@ -201,26 +193,20 @@ test("every control is German", async () => {
   expect(screen.getByRole("button", { name: "Entwurf speichern" })).toBeInTheDocument();
 });
 
-test("A CONTROL'S LABEL IS NOT THE FIELD'S NOUN, which is why they are separate keys", async () => {
-  // THE TEST #166 EXISTS TO SETTLE. The box is labelled "Endzeit", and the
-  // refusal under it names the API field `endsAt`, whose noun is "Ende":
+test("a control's label is not the field's noun, so they are separate keys", async () => {
+  // The box is labelled "Endzeit", and the refusal under it names the API
+  // field `endsAt`, whose noun is "Ende":
   //
   //     Endzeit  [ 10:00 ]
   //     Ende muss nach dem Beginn liegen
   //
-  // One instant is edited by two boxes, so the control cannot be called by
-  // the field's name without lying about which box it is; and the message
-  // must name the thing, not the box, or it reads "Endzeit muss nach dem
-  // Beginn liegen" — which is about a time-of-day input rather than about the
-  // end of the event.
+  // One instant is edited by two boxes, so the control cannot take the
+  // field's name, and the message names the end of the event, not the
+  // time-of-day box. The French half asserts /Fin .*après/ against "Heure de
+  // fin" in "an end before the start is reported against its own field".
   //
-  // The French half of this is four tests above and is UNCHANGED: it asserts
-  // /Fin .*après/ against a box labelled "Heure de fin". Both languages, same
-  // split.
-  //
-  // MUTATION TEST: point EventForm's labels at fields.* and this still passes
-  // — but "Endzeit" disappears from the screen and the test above fails,
-  // because the box would then be called "Ende".
+  // Mutation test: point EventForm's labels at fields.* and "Endzeit"
+  // disappears, failing "every control is German".
   await renderForm("de-CH");
 
   await userEvent.type(screen.getByLabelText("Titel"), "Probe");
@@ -236,10 +222,9 @@ test("A CONTROL'S LABEL IS NOT THE FIELD'S NOUN, which is why they are separate 
 });
 
 test("the attire hint quotes the card's own words, in both languages", async () => {
-  // THE HINT AND THE CARD MUST NOT DISAGREE about what an empty field looks
-  // like, so the quoted words are events.card.attireUnset rather than a second
-  // copy typed into this sentence. The guillemets travel with it: French
-  // spaces them, German sets them tight.
+  // The quoted words are events.card.attireUnset, not a second copy, so the
+  // hint and the card cannot disagree. The guillemets travel with the string:
+  // French spaces them, German sets them tight.
   await renderForm();
   expect(screen.getByText(/la carte affichera « Non précisée »/)).toBeInTheDocument();
 
@@ -301,9 +286,8 @@ test("publishing an incomplete form keeps the draft and names what is missing", 
   await userEvent.type(screen.getByLabelText("Titre"), "Sortie à définir");
   await userEvent.click(screen.getByRole("button", { name: "Publier" }));
 
-  // Sent to the saved draft's own edit screen, with the refusal carried along
-  // and the form filled from what was saved. Staying on the create screen
-  // would offer a second save that makes a second event.
+  // Sent to the saved draft's edit screen, with the refusal carried along and
+  // the form filled from what was saved.
   expect(
     await screen.findByText("Complétez ou corrigez les champs avant de publier."),
   ).toBeInTheDocument();
@@ -395,9 +379,8 @@ test("a published event's form still requires its date and place", async () => {
 });
 
 test("the form stays busy from the create through the publish, so a second tap makes no second event", async () => {
-  // The create finishes before the publish starts. The form used to be busy
-  // only for the create, so a tap in the gap saved a second event. The publish
-  // is held open here so that the gap can be looked at.
+  // The create finishes before the publish starts, and a tap in that gap must
+  // not save a second event. The publish is held open to look at the gap.
   server.use(
     http.post("/api/v1/events/:id/publish", async () => {
       await delay(400);

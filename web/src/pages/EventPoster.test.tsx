@@ -15,7 +15,7 @@ import { EventEdit } from "./EventEdit";
 import { EventNew } from "./EventNew";
 
 /**
- * An event's poster (#228): picked in the event's form, saved into the photo
+ * An event's poster: picked in the event's form, saved into the photo
  * slot `event-{id}` by a write of its own after the event's, and shown on the
  * agenda and the planning straight from the event.
  */
@@ -148,8 +148,8 @@ test("an untouched poster is not written at all", async () => {
 });
 
 /**
- * MUTATION TEST: navigate to the planning when the poster's write fails, and
- * the organiser never learns the poster is missing.
+ * Mutation test: navigate to the planning when the poster's write fails, and
+ * this fails, because the organiser never learns the poster is missing.
  */
 test("a poster that fails after its new event saved opens the saved event and says so", async () => {
   const writes = recordWrites();

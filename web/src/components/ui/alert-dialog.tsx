@@ -35,14 +35,12 @@ function AlertDialogOverlay({
 }
 
 /**
- * LOCAL CHANGE: focus goes back to whatever had it when the dialog opened.
+ * Local change: focus goes back to whatever had it when the dialog opened.
  *
  * Radix returns focus to an AlertDialogTrigger, and no dialog in this app has
- * one: each is opened from state, so on closing focus fell to <body> and a
- * keyboard user started again from the top of the page. The element is taken
- * as the dialog opens, just before Radix moves focus into it. When that
- * element is gone (the row it belonged to was just deleted), focus is left
- * alone, so the screen can put it somewhere sensible itself.
+ * one: each is opened from state, so focus would fall to <body>. When the
+ * opener is gone (its row was just deleted), focus is left alone so the screen
+ * can place it itself.
  */
 function AlertDialogContent({
   className,

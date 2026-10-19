@@ -1,26 +1,19 @@
 /**
- * The French vocabulary for the API's machine tokens.
+ * The French catalogue, and the shape de.ts mirrors.
  *
- * Every key here must stay a BARE IDENTIFIER and this object must stay free of
- * TypeScript-only syntax. `api/tests/Feature/ApiErrorVocabularyTest.php` reads
- * this file, finds each section with a regex and then brace-walks it, asserting
- * that every `code` and `fields[].reason` the API can emit has French copy. A
- * quoted key would hide a token from that guard; TS syntax inside the literal
- * could confuse the walk.
- *
- * Ported unchanged from the old front end's app/assets/js/i18n.js.
+ * Every key stays a bare identifier and this object stays free of
+ * TypeScript-only syntax. `api/tests/Feature/ApiErrorVocabularyTest.php` finds
+ * each section with a regex and brace-walks it, asserting that every `code`
+ * and `fields[].reason` the API can emit has copy. A quoted key would hide a
+ * token from that guard; TS syntax inside the literal could confuse the walk.
  */
 export const fr = {
   /**
-   * Role names and help text, keyed by the role's `key` from the API.
+   * Seeded role names and help text, keyed by the role's `key`.
    *
-   * The API carries no display name: it is English without exception, and a
-   * seeded role's name is system text a developer chose in a migration, not
-   * something a user typed. `key` is the fixed identifier this maps from.
-   *
-   * When roles become editable, a committee-typed name is user input and
-   * arrives on the role itself; the render then prefers it and falls back
-   * here for rows nobody has renamed.
+   * A seeded role's name is system text a developer chose. A name the
+   * committee typed arrives on the role itself and wins (roleName in
+   * ./index.ts, ADR 0026); this covers the roles nobody has renamed.
    */
   roles: {
     direction: {
@@ -108,12 +101,9 @@ export const fr = {
 
   errors: {
     // The sentence translateApiError falls back to when a code or reason has
-    // no copy. It is NOT an API token, so no server-side guard can see it:
-    // web/src/api/http.ts mints `unknown_error` client-side for any non-JSON
-    // error response (a 502, or TEST/QA's HTML Basic-Auth 401). The fallback
-    // itself therefore has to be translatable, or a German reader gets this
-    // sentence in French -- the exact failure the vocabulary guard exists to
-    // prevent, arriving by the one route that guard cannot watch.
+    // no copy. Not an API token, so no server-side guard sees it, and
+    // http.ts mints `unknown_error` client-side for any non-JSON error
+    // response (a 502, TEST/QA's HTML Basic-Auth 401).
     generic: "Une erreur est survenue. Veuillez réessayer.",
     validation_failed: "Le formulaire contient des erreurs.",
     method_not_allowed: "Méthode non autorisée",
@@ -129,50 +119,44 @@ export const fr = {
     cannot_remove_last_role_administrator: "C'est la dernière personne pouvant gérer les rôles.",
     baseline_role_is_fixed:
       "Le rôle « Membre » ne peut être ni retiré, ni modifié, ni supprimé. Tous les comptes le gardent.",
-    // Dit quoi faire, sans expliquer pourquoi la règle existe : un mot de passe
-    // transmis par le comité a été dicté de vive voix, donc le « changer » pour
-    // lui-même laisserait le compte sur un mot de passe déjà entendu.
+    // Says what to do without explaining the rule: a committee-issued
+    // password was read out loud, so "changing" to the same one would leave
+    // the account on a password somebody else has heard.
     password_unchanged: "Ce mot de passe est déjà le vôtre. Choisissez-en un autre.",
 
     invalid_session: "Session invalide",
-    // Une requête qui ne peut pas ouvrir de session : réessayer ne sert
-    // à rien, contrairement à invalid_session.
+    // A request that cannot open a session: unlike invalid_session, a retry
+    // does not help.
     stateful_request_required: "Cette requête ne peut pas ouvrir de session.",
     rate_limited: "Trop de requêtes. Veuillez patienter avant de réessayer.",
     service_unavailable: "Service indisponible",
 
-    // Idempotency. All three are bugs in the client — a real form mints a key
-    // when it renders and keeps it — so a member should never read any of
-    // them. They exist because every code needs French, and because a token
-    // with no copy prints the generic fallback.
+    // Idempotency. The first two are client bugs (a real form mints a key
+    // when it renders and keeps it), so a member should never read them.
     idempotency_key_required: "Ce formulaire n'a pas pu être envoyé. Rechargez la page.",
     idempotency_key_invalid: "Ce formulaire n'a pas pu être envoyé. Rechargez la page.",
-    // The one a person can actually cause, by double-tapping Envoyer: the
-    // first attempt is still running. It says to wait, not to try again.
+    // A double tap on Envoyer while the first attempt still runs, so it says
+    // to wait.
     idempotency_key_reuse: "Envoi déjà en cours. Patientez quelques instants avant de réessayer.",
 
-    // Conditional writes. `if_match_required` is a bug in the client, never
-    // something the person at the screen did — so it says what it says without
-    // blaming them, and the SPA should never let them see it.
+    // Conditional writes. `if_match_required` is a client bug, so it blames
+    // nobody.
     if_match_required: "Cette modification n'a pas pu être vérifiée. Rechargez la page.",
-    // `if_match_failed` is the one a member really does meet: somebody else
-    // changed the same thing while their form was open. It says what happened
-    // and what to do, and deliberately does not offer to force the write.
+    // Somebody else changed the same thing while the form was open. It says
+    // what to do and does not offer to force the write.
     if_match_failed:
       "Quelqu'un a modifié cet élément entre-temps. Rechargez pour voir les changements, puis réessayez.",
 
-    // Attendance. `not_answerable` refuses an answer entered FOR somebody who
+    // Attendance. `not_answerable` refuses an answer entered for somebody who
     // is not asked to answer. The reader holds the right they used, so it
-    // must not read like a missing one, or they go looking for a grant of
-    // their own.
+    // must not read like a missing one.
     not_answerable:
       "Aucune réponse n'est attendue de ce membre : on ne peut pas en saisir une à sa place.",
     cannot_record_for_self:
       "Pour vous-même, répondez depuis le planning : une réponse retirée demande une raison.",
     answer_already_settled: "Ce délai est passé. Modifiez votre réponse plutôt que de l'annuler.",
-    // Registration. `spam_suspected` is deliberately vague to the reader as
-    // well as to a bot: naming which check failed tells a script how to pass
-    // next time, and a real person only needs to know to try again.
+    // Registration. `spam_suspected` is vague on purpose: naming the failed
+    // check tells a script how to pass, and a person only needs to retry.
     spam_suspected: "Envoi refusé. Rechargez la page et réessayez.",
     registration_not_open: "Les inscriptions ne sont pas encore ouvertes.",
     registration_closed: "Les inscriptions sont closes.",
@@ -199,8 +183,8 @@ export const fr = {
     not_found: "Introuvable",
   },
   validation: {
-    // "obligatoire", not "requis": it reads the same for a feminine label,
-    // where "requis" gave "Année est requis".
+    // "obligatoire", not "requis": it agrees with a feminine label too,
+    // where "requis" would give "Année est requis".
     required: "est obligatoire",
     too_long: "est trop long (maximum {{max}} caractères)",
     invalid_format: "n'est pas dans un format valide",
@@ -209,23 +193,18 @@ export const fr = {
     already_taken: "est déjà utilisé",
     too_short: "est trop court (minimum {{min}} caractères)",
     invalid_number: "n'est pas un nombre valide",
-    // FIELD-PAIR-SPECIFIC, unlike every other line here: it names the start
-    // because `after:startsAt` on the event form is the only `after:` rule in
-    // the system. A second one against a different pair — the registration
-    // window is the obvious candidate — cannot reuse this sentence, and the
-    // reason token carries no parameters to fill in the other field's name
-    // (see App\Exceptions\ApiError's REASONS map for why it must not). That
-    // rule needs its own token and its own copy.
+    // Specific to one field pair: it names the start because `after:startsAt`
+    // on the event form is the only `after:` rule. The token carries no
+    // parameters (App\Exceptions\ApiError's REASONS map says why), so a rule
+    // on another pair needs its own token and copy.
     must_be_after: "doit être après le début",
-    // PARAMLESS, and it has to be: the per-booking cap is raised from a
-    // closure validator, and App\Exceptions\ApiError's closure-added branch
-    // emits `field` and `reason` only — a token whose French interpolated
-    // would print a literal {{max}} on a guest's screen.
+    // No parameter: the per-booking cap comes from a closure validator, and
+    // App\Exceptions\ApiError's closure-added branch emits `field` and
+    // `reason` only, so a {{max}} would print as is.
     too_many_guests: "dépasse le nombre de personnes autorisé par inscription",
-    // The photo checks, on each size and on the set of sizes. Paramless for
-    // the same reason as too_many_guests, and rare on screen: the browser
-    // shrinks and re-encodes a photo before sending it, so only a failed or
-    // bypassed shrink reaches them.
+    // The photo checks, on each size and on the set. No parameters, as with
+    // too_many_guests. The browser shrinks and re-encodes a photo before
+    // sending it, so only a failed or bypassed shrink reaches these.
     image_not_jpeg: "doit être une image JPEG",
     image_too_large: "est trop grand en pixels",
     image_too_heavy: "est trop lourd",
@@ -304,23 +283,19 @@ export const fr = {
     password: "Mot de passe",
     eventId: "Événement",
     participation: "Participation",
-    // POST /api/events/series: the list of dates a season is generated from,
-    // and the event those dates all share. `template`'s own SUB-fields need no
-    // entries — Laravel reports them as `template.endTime` and
-    // translateApiError falls back to the last segment, which is already
-    // here. This entry is for the parent itself, reachable only if the SPA
-    // sends no template at all or sends something that is not an object.
+    // POST /events/series: the dates a season is generated from, and the
+    // event they share. `template`'s sub-fields need no entries, because
+    // translateApiError falls back to the last segment; this one is for a
+    // missing or malformed template.
     dates: "Dates",
     template: "Modèle",
     // Attendance. `note` carries the reason a member owes when they take
-    // back a yes (ADR 0018), so it is the field a validation failure lands on in
-    // that dialog.
+    // back a yes (ADR 0018).
     status: "Réponse",
     note: "Raison",
-    // Registration. The nested paths cost one entry each rather than one
-    // per level: translateApiError falls back to a path's last segment, so
-    // `choices.0.optionId` resolves to `optionId` and
-    // `options.2.priceCents` to `priceCents`.
+    // Registration. Nested paths resolve to their last segment:
+    // `choices.0.optionId` to `optionId`, `options.2.priceCents` to
+    // `priceCents`.
     tableName: "Table",
     choices: "Choix",
     optionId: "Option",
@@ -333,95 +308,68 @@ export const fr = {
   },
 
   /**
-   * Chrome that belongs to no one screen.
+   * Chrome that belongs to no one screen, so a fix to a shared string is a
+   * fix everywhere.
    *
-   * "Chargement…" is written out on seven screens and "← Retour au planning"
-   * on three. They are here so that the slices still to come (#154, #157)
-   * reuse one string rather than adding a seventh copy of it, and so that a
-   * fix to one of them is a fix to all.
-   *
-   * `cancel` IS THE DIALOG'S CANCEL AND NOTHING ELSE. French says "Annuler"
-   * for closing a dialog and for undoing something already done; German does
-   * not — "Abbrechen" against "Rückgängig". The undo that lives in a toast is
-   * `attendance.undo`, deliberately not this key, and merging the two is a
-   * mistake that is invisible in French.
+   * `cancel` is the dialog's cancel and nothing else. French says "Annuler"
+   * for closing a dialog and for undoing something done; German says
+   * "Abbrechen" and "Rückgängig". The undo in a toast is `attendance.undo`,
+   * and merging the two is a mistake invisible in French.
    */
   common: {
     loading: "Chargement…",
-    // The key to the star beside a required label (#102). Rendered after the
-    // star itself, so it reads "* champ obligatoire".
+    // The key to the star beside a required label, rendered after the star:
+    // "* champ obligatoire".
     requiredLegend: "champ obligatoire",
     backToPlanning: "← Retour au planning",
     cancel: "Annuler",
     save: "Enregistrer",
     busy: "En cours…",
-    // The two per-row actions that recur on every list screen — the planning
-    // here, the roster and the message archive in #156 and #158. The
-    // accessible name that carries WHICH row is per screen and belongs with
-    // it; only the visible word is shared.
+    // The per-row actions on every list screen. The accessible name that says
+    // which row is per screen; only the visible word is shared.
     edit: "Modifier",
     delete: "Supprimer",
-    // "N personne(s)", counted, on the public booking form and on the
-    // committee's guest list. events.meta.guests says the same words as a
-    // CHIP on an event card and keeps its own key: if a chip ever wants to
-    // read "6 Gäste" while a sentence still says "6 Personen", this is the
-    // seam that lets it.
+    // "N personne(s)" on the public booking form and the committee's guest
+    // list. events.meta.guests says the same words as a chip on an event card
+    // and keeps its own key, so the two can diverge.
     guests_one: "{{count}} personne",
     guests_other: "{{count}} personnes",
-    // THE WAY OUT OF A DEAD END, shared by the two screens that are one shape:
-    // NotFound and guards.tsx's AccessDenied. It was notFound.backHome until
-    // #153, when AccessDenied turned out to have the same link hardcoded —
-    // same words, same destination, same job.
+    // The way out of a dead end, shared by NotFound and guards.tsx's
+    // AccessDenied.
     backHome: "Retour à l’accueil",
-    // The app failing to start, from SessionProvider's boot gate. i18next is
-    // initialised at module scope, so this resolves even though nothing else
-    // has rendered yet — see the note at the top of ./index.ts.
+    // SessionProvider's boot gate. It resolves before anything has rendered
+    // because i18next is initialised at module scope (./index.ts).
     bootFailed: "Le site n’a pas pu démarrer. Veuillez réessayer dans quelques instants.",
-    // ConfirmByTypingName's field, which only the roster arms today. Whole
-    // sentence, guillemets included, for the reason the whole file repeats.
+    // ConfirmByTypingName's field. A whole sentence, guillemets included,
+    // because punctuation differs per language.
     typeToConfirm: "Tapez «\u00a0{{phrase}}\u00a0» pour confirmer",
-    // SearchField's clear button (#97), on the roster and on the planning.
+    // SearchField's clear button.
     clearSearch: "Effacer la recherche",
-    // RowActions' own trigger label, shared by the three screens that
-    // compose with it. Moved out of events.* (was events.moreActionsAria)
-    // because the roster and the guest list hand it a PERSON's name, not an
-    // event's -- a key that read "more actions for {{title}}" while living
-    // in the events namespace was never right for those two call sites.
-    // See #118's whole-branch review, M4/M5.
+    // RowActions' trigger label. {{name}} is an event's title or a person's
+    // name, depending on the screen.
     moreActionsAria: "Autres actions pour {{name}}",
-    // FormField's reveal toggle, on every password field (#101). One fixed
-    // name, with aria-pressed carrying the state. A toggle that renames
-    // itself between "show" and "hide" announces as a different control each
-    // time it is pressed.
+    // FormField's reveal toggle on every password field. One fixed name, with
+    // aria-pressed carrying the state: a toggle that renames itself announces
+    // as a different control each time it is pressed.
     showPassword: "Afficher le mot de passe",
   },
 
   /**
-   * THE DOCUMENT ITSELF: what the browser tab says, and what a search result
-   * shows. Applied by ./documentMeta.ts at boot, not rendered by any component.
+   * The document itself: what the browser tab and a search result show,
+   * applied by ./documentMeta.ts at boot.
    *
-   * THESE TWO STRINGS ALSO EXIST IN web/index.html, and have to. The shell is
-   * one static document serving every path, so it ships a title and a
-   * description before any JavaScript runs; this section is what corrects them
-   * for the German mount. ./documentMeta.test.ts reads the shell and fails if
-   * the French values here and the ones it ships ever drift — without that, a
-   * French visitor gets a flash of one title being replaced by a different one
-   * and nothing else in the suite notices, because both values are separately
-   * valid.
-   *
-   * WHAT IS *NOT* CORRECTED AT RUNTIME, and why, is written up in the comment
-   * block in web/index.html. The short version: og:* is read by crawlers that
-   * execute no JavaScript, so rewriting it here would read as fixed without
-   * being fixed.
+   * Both strings also exist in web/index.html, which ships them before any
+   * JavaScript runs; this section corrects them for the German mount.
+   * ./documentMeta.test.ts fails if the French values here and the shell's
+   * drift. What is not corrected at runtime (og:*), and why, is in
+   * web/index.html.
    */
   meta: {
-    // DELIBERATELY IDENTICAL IN BOTH CATALOGUES, and this comment is the reason
-    // it must not be "translated" later. "Les Canetons de Fribourg" is the
-    // band's name — the rest of this file keeps it untouched in German too
-    // (band: "Die Canetons", never "Die Entlein") — and "Guggenmusik" is
-    // already a German word. There is nothing French left in it to render.
+    // Identical in both catalogues on purpose: "Les Canetons de Fribourg" is
+    // the band's name, kept in German too ("Die Canetons", never "Die
+    // Entlein"), and "Guggenmusik" is already German.
     title: "Guggenmusik Les Canetons de Fribourg",
-    // This one does translate, and it is the string a search result shows.
+    // This one translates; it is what a search result shows.
     description:
       "La guggenmusik des enfants de Fribourg, fondée en 2002. De 7 à 18 ans, sans savoir lire la musique — répétitions en général le samedi matin.",
   },
@@ -430,9 +378,8 @@ export const fr = {
    * The chrome: the nav, its accessible names, and the footer.
    *
    * The nav arrays in Layout.tsx carry a `labelKey` into this section rather
-   * than a label. A module-level `label: t(...)` would be frozen in whatever
-   * locale was active when that module was imported — see the initialisation
-   * note in ./index.ts.
+   * than a label, since a module-level `label: t(...)` would be frozen in the
+   * locale active at import (./index.ts).
    */
   nav: {
     primary: "Navigation principale",
@@ -454,9 +401,9 @@ export const fr = {
     registers: "Pupitres",
     roles: "Rôles",
     gallery: "Galerie",
-    // THE EXTERNAL LINKS' WHOLE NAMES. Each says it opens a new tab, and each
+    // The external links' whole names. Each says it opens a new tab and
     // begins with the words on screen, so voice control still finds it. The
-    // networks' own names are brands and stay untranslated in the code.
+    // networks' names are brands and stay untranslated.
     galleryLabel: "Galerie sur Flickr (nouvel onglet)",
     instagramLabel: "Instagram des Canetons (nouvel onglet)",
     facebookLabel: "Facebook des Canetons (nouvel onglet)",
@@ -479,18 +426,13 @@ export const fr = {
     groupBand: "Le groupe",
     // The accessible name of the FR / DE pair in the header.
     language: "Langue",
-    // The inbox badge's accessible name. {{n}} is i18next interpolation,
-    // unlike contactMessages' {name}, which the component replaces by hand.
-    //
-    // `n` RATHER THAN `count`, and that is not a style choice: i18next treats a
-    // `count` option as a PLURAL SELECTOR and looks for `pending_one` /
-    // `pending_other` before falling back. Naming the variable anything else
-    // keeps it a plain interpolation.
+    // The inbox badge's accessible name. `n` rather than `count`: i18next
+    // treats a `count` option as a plural selector and looks for
+    // `pending_one` / `pending_other` first.
     pending: "{{n}} en attente",
-    // THE SWITCHER'S ACCESSIBLE NAMES, and both catalogues carry the SAME
-    // value for each. The control always names its target in the TARGET's
-    // language, so that somebody who cannot read the current page recognises
-    // the way out — which means neither string changes with the page.
+    // The switcher's accessible names, the same in both catalogues: the
+    // control names its target in the target's language, so somebody who
+    // cannot read the current page recognises the way out.
     switchToGerman: "Auf Deutsch wechseln",
     switchToFrench: "Passer en français",
     rights: "Tous droits réservés.",
@@ -499,23 +441,18 @@ export const fr = {
   /**
    * The contact messages archive (/contact-messages).
    *
-   * Chrome for the screen the committee reads the public's messages on — not
-   * looked up through translateApiError(), so these are read as plain
-   * `fr.contactMessages.*` values rather than i18next keys. `handledBy` and
-   * `deleteConfirmDescription` carry `{name}`/`{date}` placeholders the
-   * component fills in with a plain string replace.
+   * `countFiltered`, `handledBy` and `deleteConfirmDescription` carry
+   * single-brace placeholders that ContactMessages.tsx fills in with a plain
+   * string replace, not i18next interpolation.
    */
   contactMessages: {
     heading: "Messages",
-    // A PLURAL FAMILY, not two keys chosen by a ternary. This was
-    // `total > 1 ? messagesWord : messageWord` in ContactMessages.tsx — the
-    // French rule, which gives the right "0 message" here and the wrong
-    // "0 Nachricht" in German. Eighth of these; see events.owedCount.
+    // A plural family, so each language applies its own rule to zero
+    // ("0 message", "0 Nachrichten").
     word_one: "message",
     word_other: "messages",
-    // {visible} and {total}, filled in by the component. Used once a filter
-    // button other than "Tous" is active, so the heading's count never claims
-    // more than the rows shown beneath it.
+    // Used once a filter other than "Tous" is active, so the heading's count
+    // never claims more than the rows shown.
     countFiltered: "{visible} sur {total} {word}",
     filterAll: "Tous",
     filterOpen: "Ouverts",
@@ -530,10 +467,8 @@ export const fr = {
     deleteConfirmTitle: "Supprimer ce message ?",
     deleteConfirmDescription:
       "Le message de {name} sera définitivement supprimé. Cette action est irréversible.",
-    // {name} and {date}, filled in by the component — the only member the
-    // resource itself carries who handled a message and when.
     handledBy: "Traité par {name}, le {date}",
-    // THE NORMAL CASE, NOT AN ERROR: an inbox with nothing in it is good news.
+    // The normal case, not an error: an empty inbox is good news.
     empty: "Aucun message pour l’instant. Le formulaire de contact est prêt à en recevoir.",
     emptyFiltered: "Aucun message ne correspond à ce filtre.",
     loadError: "La liste des messages n’a pas pu être chargée.",
@@ -543,9 +478,8 @@ export const fr = {
   /**
    * The inbox worklist (/inbox) and its nav badge.
    *
-   * `kinds` maps the API's machine `kind` token to what a committee member
-   * reads — never render the token itself. Today there is one source,
-   * `contactMessage`; a second source adds a key here, not a branch in the
+   * `kinds` maps the API's `kind` token to what a committee member reads;
+   * never render the token. A new source adds a key here, not a branch in the
    * page.
    */
   inbox: {
@@ -553,10 +487,8 @@ export const fr = {
     kinds: {
       contactMessage: "Message du site",
     },
-    // THE NORMAL CASE, NOT AN ERROR: nothing waiting means the committee is
-    // caught up. Distinct wording from contactMessages.empty on purpose — that
-    // one describes an archive with nothing in it yet, this one a worklist
-    // that has been cleared.
+    // The normal case: a cleared worklist, unlike contactMessages.empty, an
+    // archive with nothing in it yet.
     empty: "Rien n’attend de réponse. La boîte de réception est à jour.",
     loadError: "La boîte de réception n’a pas pu être chargée.",
   },
@@ -564,30 +496,21 @@ export const fr = {
   /**
    * Answering for an event, and chasing the people who have not.
    *
-   * ONE SECTION FOR TWO SCREENS, because they are two halves of one fact: a
-   * member answers from the planning (AttendanceControls) and the committee
-   * reads and corrects those answers on the chase list (EventAttendance).
-   * `answer.yes` is the same word on both, and a second section is where the
-   * two would drift apart.
+   * One section for two screens, two halves of one fact: a member answers
+   * from the planning (AttendanceControls) and the committee reads and
+   * corrects the answers on the chase list (EventAttendance).
    *
-   * THREE THINGS HERE USED TO LIVE IN THE COMPONENTS, and all three are the
-   * lesson placeholders.tbdWhat already carries: grammar and punctuation
-   * composed in JSX cannot be translated.
+   * Grammar and punctuation composed in JSX cannot be translated, so:
    *
-   * 1. `answerInline` exists because the chase list used to lowercase the
-   *    button label — `answerLabel(status).toLowerCase()` — to drop it into a
-   *    sentence. That is right in French, where "oui" is lowercase
-   *    mid-sentence, and wrong in German, where the answer reads as a value
-   *    and stays "Ja". Casing is a property of a language, so a locale has to
-   *    be able to decide it; a .toLowerCase() in a component decides it for
-   *    every locale at once.
+   * 1. The inline answers (`yesInline`, `noInline`) are their own strings.
+   *    French lowercases "oui" mid-sentence; German keeps "Ja" as a value.
+   *    A .toLowerCase() in a component would decide casing for every locale.
    *
-   * 2. The guillemets around a reason are PART of the string rather than
-   *    wrapped around it. French sets them with a space inside, « comme ça » ;
-   *    Swiss Standard German sets them tight, «so». The French form was
-   *    hardcoded, so a German reader got French spacing.
+   * 2. The guillemets around a reason are part of the string. French sets
+   *    them with a space inside, « comme ça » ; Swiss Standard German sets
+   *    them tight, «so».
    *
-   * 3. Every space before a colon or a question mark is a NO-BREAK SPACE
+   * 3. Every space before a colon or a question mark is a no-break space
    *    (\u00a0), written as an escape because it is invisible in a diff. It is
    *    French typography and German takes none, which is why "Pupitre : {{x}}"
    *    is one string here and not a label plus ": " in the component.
@@ -596,9 +519,8 @@ export const fr = {
     /**
      * The two answers, twice: as a button, and inside a sentence.
      *
-     * See note 1 above. French differs between the two forms and German does
-     * not, which is precisely why neither language may derive one from the
-     * other.
+     * See note 1 above: French differs between the two forms and German does
+     * not.
      */
     answer: {
       yes: "Oui",
@@ -628,17 +550,14 @@ export const fr = {
     correctDescription:
       "Ce que {{name}} vous a dit. La raison est facultative, et la réponse restera marquée comme saisie par le comité.",
     recordFailed: "La réponse n’a pas pu être enregistrée.",
-    // WHOLE SENTENCES, one per answer, rather than one with the answer
-    // interpolated: see note 1. The French space before the colon is note 3.
+    // Whole sentences, one per answer (note 1), with note 3's space.
     recordedYes: "{{name}}\u00a0: oui.",
     recordedNo: "{{name}}\u00a0: non.",
 
     /**
-     * One person's answer as one line — the chase list's whole argument.
-     *
-     * The reason travels WITH the name, which is the difference between a
-     * chase list and a headcount. {{note}} is what a member typed: content,
-     * rendered verbatim in both locales, and only the quotes around it move.
+     * One person's answer as one line, the reason travelling with the name.
+     * {{note}} is what a member typed: content, rendered verbatim in both
+     * locales; only the quotes around it change.
      */
     line: "{{name}} — {{answer}}",
     lineWithNote: "{{name}} — {{answer}} — «\u00a0{{note}}\u00a0»",
@@ -646,9 +565,9 @@ export const fr = {
 
     // AttendanceControls, on the planning: answering for oneself.
     yesComing: "Oui, je viens",
-    // {{title}} is the event's own title — content, not translated. Named on
-    // purpose: "Je viens" alone is the same accessible name on every card, so
-    // a mis-tap sounds exactly like the intended one.
+    // {{title}} is the event's own title, not translated. "Je viens" alone
+    // would be the same accessible name on every card, so a mis-tap would
+    // sound like the intended one.
     comingToAria: "Je viens à {{title}}",
     notComingToAria: "Je ne viens pas à {{title}}",
     answered: "Répondu",
@@ -657,12 +576,12 @@ export const fr = {
     ownRecordFailed: "Votre réponse n’a pas pu être enregistrée.",
     toastYes: "Vous venez — {{title}}.",
     toastNo: "Vous ne venez pas — {{title}}.",
-    // NOT common.cancel: this one takes back an answer already recorded. Both
-    // are "Annuler" in French and they are two different German words.
+    // Not common.cancel: this takes back a recorded answer. Both are
+    // "Annuler" in French and two different words in German.
     undo: "Annuler",
     undoFailed: "L’annulation a échoué. Réessayez.",
 
-    // WithdrawDialog — the one answer that is not a single tap (ADR 0018).
+    // WithdrawDialog, the one answer that is not a single tap (ADR 0018).
     reason: "Raison",
     withdrawTitle: "Vous ne venez plus à «\u00a0{{title}}\u00a0»\u00a0?",
     withdrawDescription:
@@ -671,35 +590,28 @@ export const fr = {
   },
 
   /**
-   * The planning (/events) — the members' area's front door.
+   * The planning (/events), the members' area's front door.
    *
-   * THREE PLURALS HERE ARE THE POINT OF THE SLICE, not decoration. Each was a
-   * `n === 1 ? a : b` in a component, which is a plural RULE written in
-   * JavaScript, and the two languages do not share one:
+   * Plurals are `_one`/`_other` families, never `n === 1 ? a : b` in a
+   * component, because the languages do not share a rule:
    *
-   *   - `meta.answersAria` was `answered === 0 || answered === 1`, which is
-   *     the FRENCH rule exactly. French counts zero as singular, "0 réponse";
-   *     German does not, "0 Rückmeldungen". That ternary renders correct
-   *     French and wrong German, and the obvious "fix" of `=== 1` renders
-   *     correct German and wrong French.
-   *   - `owedCount` changes the VERB in German — "Es fehlt" against "Es
-   *     fehlen" — which no suffix-splicing in a component could reach.
-   *   - `calendarGrid.dayAria` and `meta.guests` are the ordinary case, and
-   *     they are here rather than in JSX so all four read the same way.
+   *   - French counts zero as singular, "0 réponse"; German does not,
+   *     "0 Rückmeldungen" (`meta.answersAria`).
+   *   - `owedCount` changes the verb in German, "Es fehlt" against "Es
+   *     fehlen", which no suffix in a component could reach.
    *
-   * i18next resolves `_one`/`_other` from `count` using the ACTIVE language's
-   * CLDR rule, so each locale gets its own. See `Unplural` in ./index.ts for
-   * why `t()` takes the bare key and refuses the suffixed ones.
+   * i18next picks the form by the active language's CLDR rule; see
+   * `Unplural` in ./index.ts for why `t()` takes only the bare key.
    *
-   * ZERO IS NOT A PLURAL FORM in either language, so where zero says something
-   * ELSE — `allAnswered`, `meta.noGuests` — it is a separate key and the
-   * component branches on it. That is not the same as branching on one.
+   * Where zero says something else (`allAnswered`, `meta.noGuests`), it is a
+   * separate key and the component branches on zero, which is not branching
+   * on one.
    */
   events: {
     heading: "Planning",
-    // Un brouillon peut ne pas avoir encore de date.
+    // A draft may have no date yet.
     dateMissing: "Date à fixer",
-    // Les brouillons : écrits, modifiables, visibles de la direction seule.
+    // Drafts: written and editable, visible to the direction only.
     draftsHeading: "Brouillons",
     draftBadge: "Brouillon",
     publish: "Publier",
@@ -709,22 +621,18 @@ export const fr = {
     publishFailed: "La publication a échoué.",
     add: "Ajouter un événement",
     addSeries: "Ajouter une série",
-    // THE TRIGGER, whose menu holds `add` and `addSeries` above. One word,
-    // because at 103px it fits beside the 170px heading and the full label at
-    // 175px does not — and that adjacency is the whole of #182's saving.
-    // Its accessible name STARTS with this visible word (WCAG 2.5.3).
+    // The trigger whose menu holds `add` and `addSeries`. One word, because at
+    // 103px it fits beside the 170px heading and the full label at 175px does
+    // not (the #182 phone budget). Its accessible name starts with this
+    // visible word (WCAG 2.5.3).
     addTrigger: "Ajouter",
     addTriggerAria: "Ajouter au planning",
-    // THE TWO HALVES OF THE LIST AS NAMES, not as instructions. These replaced
-    // showPast/showPlanning ("Voir les événements passés", "Voir le planning")
-    // when the button became a two-option switch: a segment is labelled with
-    // what it shows, and an imperative sentence 213px wide was what made the
-    // control read as a third thing to do. #182.
+    // The two halves of the list as names, not instructions: a segment of a
+    // two-option switch is labelled with what it shows (#182).
     viewPlanning: "Planning",
     viewPast: "Passés",
-    // THE RADIOGROUP'S OWN NAME, and it is required rather than polish: Radix's
-    // type="single" renders role="radiogroup", which without a name announces
-    // two radios belonging to nothing.
+    // Required: Radix's type="single" renders role="radiogroup", which without
+    // a name announces two radios belonging to nothing.
     viewSwitchAria: "Vue du planning",
     tagFilterAria: "Filtrer par catégorie",
     tagAll: "Tous",
@@ -734,18 +642,17 @@ export const fr = {
     showAll: "Voir tout le planning",
     loadFailed: "Le planning n’a pas pu être chargé.",
     empty: "Aucun événement au planning.",
-    // A search that found nothing is not an empty planning (#97), and must
-    // not bring the committee's "add a series" hint with it.
+    // A search that found nothing is not an empty planning, and must not
+    // bring the committee's "add a series" hint with it.
     searchLabel: "Rechercher un événement",
-    // The visible placeholder only, beside the switch on a phone (#97).
+    // The visible placeholder only, beside the switch on a phone.
     searchPlaceholder: "Rechercher",
     noMatch: "Aucun événement ne correspond à cette recherche.",
     noTagMatch: "Aucun événement dans cette catégorie.",
     emptyPast: "Aucun événement passé.",
-    // {{action}} IS ANOTHER KEY'S VALUE, not this sentence's own copy of it.
-    // The hint quotes the button beside it, so spelling the label out twice
-    // is how the two come to disagree — and the guillemets are French
-    // typography, which German does not take.
+    // {{action}} is another key's value: the hint quotes the button beside
+    // it, so the label is not spelled out twice. The spaced guillemets are
+    // French typography, which German does not take.
     emptyHint:
       "Ajoutez un événement, ou générez toute une saison d’un coup avec «\u00a0{{action}}\u00a0».",
     owedHeading: "À répondre",
@@ -755,9 +662,8 @@ export const fr = {
     pastHeading: "Événements passés",
     restHeading: "Le reste du planning",
 
-    // The per-row actions. Each visible word is paired with an accessible
-    // name carrying the event, so a screen-reader user hears which row they
-    // are on rather than the eleventh "Modifier" of the page.
+    // The per-row actions. Each accessible name carries the event, so a
+    // screen-reader user hears which row they are on.
     registrations: "Inscriptions",
     registrationsAria: "Inscriptions à {{title}}",
     options: "Ce qu’on réserve",
@@ -771,7 +677,7 @@ export const fr = {
       "L’événement sera retiré du planning. Les réponses de présence et les inscriptions liées seront supprimées avec lui. Cette action est définitive.",
     deleteFailed: "La suppression a échoué.",
 
-    /** EventCard's detail list. `attireUnset` is also quoted by #166's form. */
+    /** EventCard's detail list. `attireUnset` is also quoted by eventForm. */
     card: {
       location: "Lieu\u00a0:",
       locationMissing: "Lieu à fixer",
@@ -779,11 +685,11 @@ export const fr = {
       attireUnset: "Non précisée",
     },
 
-    /** EventMeta's chips — what the committee sees and a player does not. */
+    /** EventMeta's chips: what the committee sees and a player does not. */
     meta: {
       public: "Public",
-      // Always the plural word: it is a RATIO, "3/12 réponses", not a count
-      // of one thing. The accessible name below is the counted sentence.
+      // Always the plural word: a ratio, "3/12 réponses", not a count. The
+      // accessible name below is the counted sentence.
       answers: "{{answered}}/{{answerable}} réponses",
       answersAria_one: "{{count}} réponse sur {{total}}",
       answersAria_other: "{{count}} réponses sur {{total}}",
@@ -795,8 +701,8 @@ export const fr = {
     /**
      * The month grid: an overview at a desk, never the phone's list.
      *
-     * `dayAria` takes the date ALREADY FORMATTED, because the formatter is
-     * locale-aware and lives in the component — see EventCalendar.tsx.
+     * `dayAria` takes the date already formatted by the component's
+     * locale-aware formatter (EventCalendar.tsx).
      */
     calendarGrid: {
       previousMonth: "Mois précédent",
@@ -807,36 +713,27 @@ export const fr = {
   },
 
   /**
-   * The event forms, and the three pages that mount them (#166).
+   * The event forms, and the three pages that mount them.
    *
-   * THESE ARE CONTROL LABELS AND THEY ARE NOT `fields.*`. That section exists
-   * for translateApiError: it turns the API's `errors[].field` token into a
-   * noun so a refusal reads "Début doit être après la fin". The labels here
-   * name CONTROLS, and the code already proves the two must be free to
-   * differ:
+   * These are control labels, not `fields.*`, which translateApiError uses to
+   * turn the API's `errors[].field` token into a noun. The two must be free
+   * to differ:
    *
-   *   - `startDate` is labelled "Date de début" and carries the problem for
-   *     `startsAt`, whose field noun is "Début". One instant is edited by two
-   *     boxes, so no label can be the field's own name without lying about
-   *     which box it is.
-   *   - `endTime` is labelled "Heure de fin" and carries `endsAt`'s refusal,
-   *     deliberately — see the comment at that field in EventForm.tsx. Under
-   *     a shared key that message would become "Heure de fin doit être après
-   *     le début", which names the box rather than the thing.
-   *   - `seriesForm.from`/`to` ("Du"/"Au") are not fields at all: they drive
-   *     the generator and are never sent.
+   *   - `startDate` ("Date de début") carries the problem for `startsAt`,
+   *     whose noun is "Début": one instant is edited by two boxes.
+   *   - `endTime` ("Heure de fin") carries `endsAt`'s refusal (see that field
+   *     in EventForm.tsx); a shared key would name the box, not the thing.
+   *   - `seriesForm.from`/`to` ("Du"/"Au") drive the generator and are never
+   *     sent.
    *
-   * So the rule, which #156, #157 and #153 all meet again: A CONTROL'S LABEL
-   * LIVES WITH ITS SCREEN, a field's noun lives in `fields`. Where the two
-   * happen to be the same word today — "Titre", "Lieu" — that is a
-   * coincidence of French, not a shared meaning, and coupling them buys
-   * nothing a rename would not take back.
+   * So a control's label lives with its screen and a field's noun lives in
+   * `fields`, even where they are the same French word ("Titre", "Lieu").
    */
   eventForm: {
     newHeading: "Nouvel événement",
     editHeading: "Modifier l’événement",
     saveFailed: "L’enregistrement a échoué.",
-    // Un brouillon s’enregistre tel quel ; la publication est un second geste.
+    // A draft is saved as it is; publishing is a second step.
     saveDraft: "Enregistrer le brouillon",
     publish: "Publier",
     draftHint:
@@ -844,15 +741,15 @@ export const fr = {
     loadFailed: "Cet événement n’a pas pu être chargé.",
     loadFailedReload: "Cet événement n’a pas pu être chargé. Rechargez la page.",
     poster: "Affiche",
-    // L’événement est enregistré et son affiche non : le formulaire reste
-    // ouvert sur l’événement enregistré, pour la choisir à nouveau.
+    // The event is saved and its poster is not: the form stays open on the
+    // saved event so the poster can be chosen again.
     posterFailed:
       "L’événement est enregistré, mais pas son affiche. Choisissez-la à nouveau, puis enregistrez.",
 
     addTitle: "Ajouter un événement",
     editTitle: "Modifier {{title}}",
-    // NOT common.busy. French says "Enregistrement…" here and "En cours…" in
-    // a dialog, and keeping one key would change the other screen's wording.
+    // Not common.busy: French says "Enregistrement…" here and "En cours…" in
+    // a dialog.
     saving: "Enregistrement…",
 
     title: "Titre",
@@ -862,10 +759,9 @@ export const fr = {
     endTime: "Heure de fin",
     location: "Lieu",
     attire: "Tenue",
-    // {{unset}} IS events.card.attireUnset, the very string the card renders.
-    // Spelled out here as well, the hint and the card could come to disagree
-    // about what an empty field looks like — and the guillemets are French
-    // typography, which German does not take.
+    // {{unset}} is events.card.attireUnset, the string the card renders, so
+    // the hint and the card cannot disagree. The spaced guillemets are French
+    // typography.
     attireHint:
       "Laissez vide si la tenue n’est pas encore décidée\u00a0: la carte affichera «\u00a0{{unset}}\u00a0».",
     isPublic: "Visible sur le site public",
@@ -889,12 +785,9 @@ export const fr = {
   /**
    * The season generator (/events/new/series).
    *
-   * `weekdays` REPLACES A MODULE-SCOPE ARRAY OF FRENCH LABELS in
-   * SeriesForm.tsx — the `labelKey`-not-`label` rule, which Layout.tsx's NAV
-   * already follows and this file did not. They are spelled out rather than
-   * asked of Intl because `Intl.DateTimeFormat("fr-CH", { weekday: "long" })`
-   * answers "lundi", lowercase, and the select has always read "Lundi";
-   * deriving them would change French output to fix a German bug.
+   * `weekdays` are spelled out rather than asked of Intl, because
+   * `Intl.DateTimeFormat("fr-CH", { weekday: "long" })` answers "lundi",
+   * lowercase, and the select reads "Lundi".
    */
   seriesForm: {
     newHeading: "Nouvelle série",
@@ -920,9 +813,8 @@ export const fr = {
 
     noDates: "Choisissez un jour et une période pour voir les dates qui seront créées.",
     datesLegend: "Dates à créer",
-    // {{n}}, NOT {{count}}: a `count` option makes i18next look for a plural
-    // form, and this sentence has none to find — it is shown only above the
-    // cap, so it is always plural. Same reason nav.pending uses {{n}}.
+    // {{n}}, not {{count}}, as in nav.pending: shown only above the cap, so
+    // always plural, and a `count` option would make i18next look for forms.
     tooMany:
       "{{n}} dates sélectionnées\u00a0: {{cap}} au maximum par série. Décochez-en ou raccourcissez la période.",
 
@@ -933,9 +825,9 @@ export const fr = {
     // to name. It is inert then, and described by noDates or noneChosen.
     createNone: "Créer les événements",
     noneChosen: "Cochez au moins une date.",
-    // Shown on the planning, where the generator lands after saving.
-    // Une série est créée en brouillons : une règle de récurrence fausse ne
-    // doit pas tomber d’un coup sur le planning de tout le monde.
+    // Shown on the planning, where the generator lands after saving. A series
+    // is created as drafts, so a wrong repetition does not land in
+    // everybody's planning at once.
     draftsNote:
       "Les événements sont créés comme brouillons : relisez-les sur le planning, puis publiez-les.",
     createdCount_one: "{{count}} brouillon créé.",
@@ -947,27 +839,19 @@ export const fr = {
   /**
    * The roster (/members) and the three dialogs it opens.
    *
-   * EVERY ACCESSIBLE NAME CARRIES THE PERSON. `deleteTitle` and `resetTitle`
-   * are each used TWICE — once as a button's screen-reader text and once as
-   * the title of the dialog it opens — so the two cannot come to disagree,
-   * and a screen-reader user hears which row they are on rather than the
-   * twelfth bare "Supprimer" on the page. Members.tsx's MemberActions
-   * docblock is where that requirement is argued.
+   * Every accessible name carries the person. `deleteTitle` and `resetTitle`
+   * each serve as a button's screen-reader text and as the title of the
+   * dialog it opens, so the two cannot disagree.
    *
-   * "CETTE PERSONNE", NOT THE NAME, in both descriptions. The French reason is
-   * grammatical and recorded at the delete dialog in Members.tsx (#91): an
+   * "Cette personne", not the name, in both descriptions. In French an
    * interpolated name drags a participle that must agree with it, and the
-   * roster holds no gender field to agree from. German inflects no participle
-   * here, so it could have interpolated the name — it does not, because the
-   * title already names the person and saying it twice in one dialog is worse
-   * in both languages. Same sentence, same shape, two different reasons.
+   * roster holds no gender field (see the delete dialog in Members.tsx). In
+   * German the title already names the person.
    */
   members: {
     heading: "Membres",
-    // The count beside the heading, off the server's `meta.total`. It was
-    // `rosterCount > 1 ? "s" : ""` in the component — the FRENCH plural rule
-    // again, which gives the correct "0 membre" here and the wrong
-    // "0 Mitglied" in German. Fourth one of these; see events.owedCount.
+    // The count beside the heading, off the server's `meta.total`. A plural
+    // family: "0 membre" in French, "0 Mitglieder" in German.
     count_one: "{{count}} membre",
     count_other: "{{count}} membres",
     add: "Ajouter une personne",
@@ -979,9 +863,8 @@ export const fr = {
     incompleteSave: "L’enregistrement est incomplet\u00a0: rechargez la page.",
     rosterLoadFailed: "La liste des membres n’a pas pu être chargée.",
 
-    // The card's labelled fields. The label is what the column head used to
-    // do before #130 made the card the only layout, so it is part of the
-    // sentence rather than chrome — and its colon is spaced in French only.
+    // The card's labelled fields. The label is part of the sentence, since
+    // its colon is spaced in French only.
     usernameLabel: "Identifiant\u00a0: {{value}}",
     sectionLabel: "Pupitre\u00a0: {{value}}",
     rolesLabel: "Rôles\u00a0: {{value}}",
@@ -993,16 +876,15 @@ export const fr = {
     notAnswering: "Ne répond pas aux événements",
     notAnsweringName: "Dans un pupitre, mais ne répond pas aux événements",
 
-    // Searching the roster (#97). The label is the field's accessible name
-    // and its placeholder; the two selects default to "all".
+    // Searching the roster. The label is the field's accessible name and its
+    // placeholder; the two selects default to "all".
     searchLabel: "Rechercher un membre",
     sectionFilter: "Pupitre",
     roleFilter: "Rôle",
     allSections: "Tous les pupitres",
     allRoles: "Tous les rôles",
-    // The matches out of the whole roster. PLURAL ON THE ROSTER, not on the
-    // matches: the noun is what `count` is, so "1 sur 45 membres" and never
-    // "1 sur 45 membre".
+    // The matches out of the whole roster. The plural follows the roster, not
+    // the matches: "1 sur 45 membres".
     filteredCount_one: "{{matches}} sur {{count}} membre",
     filteredCount_other: "{{matches}} sur {{count}} membres",
     noMatch: "Aucun membre ne correspond à cette recherche.",
@@ -1026,23 +908,21 @@ export const fr = {
     generatedAck: "J’ai noté le mot de passe",
 
     /**
-     * The account-state pills (#94), and the date beneath them.
+     * The account-state pills, and the date beneath them.
      *
      * `neverUsedName` and `provisionalName` are the accessible names: a screen
      * reader reaches "Provisoire" with no card around it to supply the noun.
      *
-     * THE FRENCH LABEL AVOIDS A PARTICIPLE THAT WOULD HAVE TO AGREE — "jamais
-     * utilisé" agrees with `le compte`, where "jamais connecté" would have to
-     * agree with the member. German has no such constraint, which is worth
-     * knowing before somebody "simplifies" the French to match it.
+     * The French label avoids a participle agreeing with the member: "jamais
+     * utilisé" agrees with `le compte`, where "jamais connecté" would need the
+     * member's gender. German has no such constraint.
      */
     neverUsed: "Jamais utilisé",
     neverUsedName: "Compte jamais utilisé",
     provisional: "Provisoire",
     provisionalName: "Mot de passe provisoire",
-    // {{date}} comes from formatLastLogin, which is already locale-aware
-    // (#151). The preposition around it is not, which is why the whole
-    // sentence is here and not glued together in loginStatus.ts.
+    // {{date}} comes from the locale-aware formatLastLogin; the preposition
+    // around it is language, so the whole sentence lives here.
     lastLogin: "Dernière connexion le {{date}}",
   },
 
@@ -1060,10 +940,8 @@ export const fr = {
     noFunction: "Aucune fonction",
     instructorOf: "Moniteur du pupitre",
     notInstructor: "Pas moniteur",
-    // ITS OWN KEY, not eventForm.isPublic, though the French is word for word
-    // the same. There it is an EVENT appearing on the public agenda; here it
-    // is a PERSON appearing on /band. Two facts that share a sentence in
-    // French today and have no reason to stay married.
+    // Its own key, not eventForm.isPublic, though the French is the same:
+    // there an event appears on the public agenda, here a person on /band.
     publicVisible: "Visible sur le site public",
     rolesLegend: "Rôles",
     rolesAfterSave:
@@ -1072,16 +950,8 @@ export const fr = {
   },
 
   /**
-   * The PUBLIC booking form (/events/:id/book).
-   *
-   * THE ONE SCREEN IN THIS SLICE A STRANGER REACHES, and the reason the whole
-   * effort exists: a German speaker in Fribourg booking a seat at the souper,
-   * on a phone, at the hall. It carries the same weight as the slice-2 public
-   * pages.
-   *
-   * `fields` REPLACES A MODULE-SCOPE ARRAY OF FRENCH LABELS in
-   * EventBooking.tsx — `label`, not `labelKey`, frozen at import. Third time:
-   * Layout's NAV (#151), SeriesForm's WEEKDAYS (#166), this.
+   * The public booking form (/events/:id/book), which a stranger reaches:
+   * a German speaker booking a seat at the souper, on a phone, at the hall.
    */
   booking: {
     fields: {
@@ -1094,8 +964,8 @@ export const fr = {
     },
 
     submitFailed: "L’inscription n’a pas pu être enregistrée. Veuillez réessayer.",
-    // DELIBERATELY VAGUE, as the French is: a closed event and a mistyped id
-    // answer the same way, so a stranger cannot enumerate what exists.
+    // Vague on purpose: a closed event and a mistyped id answer the same way,
+    // so a stranger cannot enumerate what exists.
     notOpen:
       "Il n’y a pas d’inscription ouverte pour cette adresse. Vérifiez le lien qui vous a été communiqué.",
     loadFailed: "Le formulaire n’a pas pu être chargé. Rechargez la page.",
@@ -1145,28 +1015,22 @@ export const fr = {
     empty: "Personne ne s’est encore inscrit. Le formulaire public est à l’adresse",
 
     /**
-     * THE TWO "ANNULER"S, and they are not one key.
-     *
-     * `cancel` is the per-row button that CANCELS A BOOKING; common.cancel
-     * closes a form without doing anything. Identical in French, and German
-     * cannot share them: "stornieren" against "abbrechen". Where the two met
-     * head to head, in the cancel dialog, #115 gave the way out its own words
-     * (`keepBooking` below). Third instance of this shape, after
-     * attendance.undo/common.cancel.
+     * The two "Annuler"s are not one key. `cancel` is the per-row button that
+     * cancels a booking; common.cancel closes a form without doing anything.
+     * German says "stornieren" and "abbrechen". In the cancel dialog the way
+     * out has its own words (`keepBooking` below).
      */
     cancel: "Annuler",
-    // TWO KEYS, NOT ONE: the dialog ASKS ("… de X Y ?", with the space
-    // French puts before a question mark) and the button LABELS ("… de X Y").
-    // They read as the same sentence and are not the same string — which the
-    // first attempt at this slice got wrong by sharing a key.
+    // Two keys: the dialog asks ("… de X Y ?", with French's space before
+    // the question mark) and the button labels ("… de X Y").
     cancelAria: "Annuler l’inscription de {{name}}",
     cancelTitle: "Annuler l’inscription de {{name}}\u00a0?",
     cancelDescription:
       "L’inscription et tout ce qu’elle a commandé seront supprimés. La personne n’est pas prévenue. Cette action est définitive.",
     cancelConfirm: "Annuler l’inscription",
-    // The dialog's way out (#115). With common.cancel the dialog offered
-    // "Annuler" beside "Annuler l’inscription", which is ambiguous where a tap
-    // cannot be taken back, so this names what dismissing does.
+    // The dialog's way out. "Annuler" beside "Annuler l’inscription" would be
+    // ambiguous where a tap cannot be taken back, so this names what
+    // dismissing does.
     keepBooking: "Garder l’inscription",
 
     // What the kitchen is told: one entry per option, summed over every
@@ -1182,18 +1046,18 @@ export const fr = {
     unpaid: "Non payé",
     paidAria: "Payé : inscription de {{name}}",
     payFailed: "Le paiement n’a pas pu être enregistré.",
-    // {{count}} is the number of bookings that owe something; it picks the
-    // plural, and {{paid}} rides along. Non-breaking spaces, because on a phone
-    // the line broke inside the phrase and left "1" dangling.
+    // {{count}} is the number of bookings that owe something and picks the
+    // plural. No-break spaces, so a phone cannot break the line inside the
+    // phrase and leave "1" dangling.
     paidCount_one: "{{paid}}\u00a0sur\u00a0{{count}}\u00a0payée",
     paidCount_other: "{{paid}}\u00a0sur\u00a0{{count}}\u00a0payées",
 
-    // Markdown and JSON are developer formats, kept behind this (#115).
+    // Markdown and JSON are developer formats, kept behind this.
     moreFormats: "Autres formats",
 
     amend: "Corriger",
-    // Used as the row button's accessible name AND as the amend form's
-    // heading, so the two cannot disagree — the members.deleteTitle trick.
+    // The row button's accessible name and the amend form's heading, so the
+    // two cannot disagree, as with members.deleteTitle.
     amendTitle: "Corriger l’inscription de {{name}}",
     orderNotHere:
       "La commande ne se modifie pas ici. Pour la changer, annulez l’inscription et refaites-la.",
@@ -1215,10 +1079,8 @@ export const fr = {
     addOption: "Ajouter une option",
     price: "Prix en francs",
 
-    // The ONLY names these three controls have: they are icon-only, so this is
-    // what a screen reader reads. {{option}} is what the committee typed, or
-    // `thisOption` for a row that has no title yet — content either way,
-    // rendered verbatim.
+    // The only names these icon-only controls have. {{option}} is what the
+    // committee typed, or `thisOption` for a row with no title yet.
     moveUp: "Monter {{option}}",
     moveDown: "Descendre {{option}}",
     remove: "Retirer {{option}}",
@@ -1231,14 +1093,11 @@ export const fr = {
   /**
    * Signing in (/login).
    *
-   * THE HEADING IS `nav.login`, NOT A KEY OF ITS OWN. The nav item and the
-   * page it opens are the same word, and this file already pairs them that
-   * way for the chase list, the guest list and the options screen — one key,
-   * so a rename cannot leave the link and its destination disagreeing.
+   * The heading is `nav.login`, so a rename cannot leave the link and its
+   * destination disagreeing.
    *
-   * The field labels ARE their own keys, not `fields.username`/`password`.
-   * That section is the error vocabulary translateApiError reads; these name
-   * controls. The rule and the evidence for it are at `eventForm` (#166).
+   * The field labels are their own keys, not `fields.username`/`password`:
+   * those are the error vocabulary, these name controls (see `eventForm`).
    */
   auth: {
     username: "Identifiant",
@@ -1249,16 +1108,12 @@ export const fr = {
   },
 
   /**
-   * The account screen (/account): who you are, then the password form.
-   *
-   * #125 is about to move the password change to its own route. These keys
-   * move with it — the cheaper direction: a restructure that moves KEYS beats
-   * one that moves literals and then has to translate them.
+   * The account screens: /account (who you are) and /account/password.
    */
   account: {
     heading: "Mon compte",
-    // Who you are, above the password form (#100). An empty value is spelled
-    // out, because a blank or a dash reads as data that failed to load.
+    // An empty value is spelled out, because a blank or a dash reads as data
+    // that failed to load.
     identity: "Identité",
     username: "Identifiant",
     section: "Pupitre",
@@ -1270,7 +1125,7 @@ export const fr = {
     roles: "Rôles",
     rolesNone: "Aucun",
     password: "Mot de passe",
-    // EXPLAINED, NOT MERELY ENFORCED: a member bounced back here by the gate
+    // Explained, not only enforced: a member bounced back here by the gate
     // with no reason given would think the site was broken.
     provisionalNotice:
       "Votre mot de passe a été fourni par le comité et doit être remplacé avant de continuer.",
@@ -1280,10 +1135,9 @@ export const fr = {
     // Checked in the browser before anything is sent, so it is this screen's
     // own sentence rather than one of the API's error tokens.
     mismatch: "Les deux mots de passe ne correspondent pas.",
-    // The rule, stated under the field before anything is sent (#101). `min`
-    // is MIN_PASSWORD_LENGTH, never a literal, so it cannot disagree with the
-    // API. `ruleMet` is read only by a screen reader, after the rule, since
-    // the tick that says it on screen is an icon.
+    // The rule, stated under the field before anything is sent. `min` is
+    // MIN_PASSWORD_LENGTH, so it cannot disagree with the API. `ruleMet` is
+    // for a screen reader only, since the tick on screen is an icon.
     rule: "Au moins {{min}} caractères",
     ruleMet: "respecté",
     matches: "Les mots de passe correspondent.",
@@ -1296,11 +1150,9 @@ export const fr = {
   /**
    * The refusal a route guard renders (components/guards.tsx).
    *
-   * ITS OWN KEYS, NOT `errors.access_denied`. That token is what the API
-   * sends and translateApiError renders inside a form; this is a whole screen
-   * with a heading and a way out. They read the same in French today and have
-   * no reason to stay married — the same call `memberForm.publicVisible`
-   * makes.
+   * Its own keys, not `errors.access_denied`, which translateApiError renders
+   * inside a form; this is a whole screen with a heading and a way out. They
+   * read the same in French, as with `memberForm.publicVisible`.
    */
   guards: {
     deniedHeading: "Accès refusé",
@@ -1561,8 +1413,8 @@ export const fr = {
     german: "Allemand",
     photo: "Photo",
     atLeastOne: "Au moins un titre ou un texte, dans l’une des deux langues.",
-    // Worded as what the timeline will show, because "précision" alone did not
-    // say that a year entry keeps no day.
+    // Worded as what the timeline will show, because "précision" alone does
+    // not say that a year entry keeps no day.
     precisions: {
       year: "L’année seulement (2019)",
       month: "Le mois et l’année (octobre 2002)",
@@ -1587,7 +1439,7 @@ export const fr = {
   },
 
   /**
-   * The public schedule — /agenda's own heading and empty state, and
+   * The public schedule: /agenda's own heading and empty state, and
    * AgendaEntry/PublicAgenda's shared copy (the front page's block and the
    * full page render the same entries).
    */
@@ -1600,8 +1452,8 @@ export const fr = {
       "Les prochaines dates ne sont pas encore publiées. Revenez bientôt, ou écrivez au comité pour nous réserver.",
     seeAll: "Toutes les dates",
     register: "S’inscrire",
-    // {{title}} is the event's own title — content, not translated. Only the
-    // verb moves between locales; see PublicAgenda.tsx.
+    // {{title}} is the event's own title, not translated. Only the verb
+    // changes between locales; see PublicAgenda.tsx.
     registerFor: "S’inscrire — {{title}}",
   },
 
@@ -1613,13 +1465,12 @@ export const fr = {
     registersNav: "Registres",
     patronsHeading: "Le parrain et la marraine",
     patronsAlt: "Le parrain et la marraine des Canetons",
-    // THE NAMES ARE CONTENT; THE "et" BETWEEN THEM IS NOT. Left hardcoded
-    // in Band.tsx by #152, so /de/band read "Richard Hertig et Annick
-    // Bürgisser" — no accent in "et", so no grep over that file found it.
+    // The names are content; the "et" between them is not, so the whole
+    // line is catalogue copy.
     patrons: "Richard Hertig et Annick Bürgisser",
   },
 
-  /** /committee — who to write to, and who holds which seat. */
+  /** /committee: who to write to, and who holds which seat. */
   committee: {
     heading: "Le comité",
     headingHighlight: "comité",
@@ -1628,7 +1479,7 @@ export const fr = {
     booking: "Pour réserver les Canetons :",
   },
 
-  /** /join — how to join, for a parent or a curious child. */
+  /** /join: how to join, for a parent or a curious child. */
   join: {
     heading: "Tu veux commencer la guggen ?",
     headingHighlight: "la guggen",
@@ -1659,7 +1510,7 @@ export const fr = {
     contactPageLink: "page de contact",
   },
 
-  /** /contact — the only screen a stranger can make the server do work with. */
+  /** /contact, one of the two public forms that make the server do work. */
   contact: {
     heading: "Contact",
     intro:
@@ -1689,20 +1540,15 @@ export const fr = {
   /**
    * The two shared placeholder components, PhotoPending and Tbd.
    *
-   * PhotoPending shows one sentence for every photo slot. It used to name what
-   * was missing, which glued French grammar onto a register's name.
-   *
-   * Tbd's `what` is the same fix applied to the same trap: a caller passes a
-   * translated string, never a fragment glued together outside the catalogue.
+   * PhotoPending shows one sentence for every photo slot, so no French
+   * grammar is glued onto a register's name. A caller passes Tbd's `what` as
+   * a translated string, never a fragment glued together outside the
+   * catalogue.
    */
   placeholders: {
     tbd: "••• à compléter",
-    // The "with a subject" form is a WHOLE string, not the bare one plus
-    // punctuation glued on in the component. French puts a space before a
-    // colon and German does not, so a hardcoded " : " renders as
-    // "noch zu ergänzen : Name" on a German page -- French typography on
-    // German text. Same lesson as formatEventWhen: punctuation is part of
-    // the sentence, so it belongs in the catalogue.
+    // A whole string, punctuation included: French puts a space before a
+    // colon and German does not.
     tbdWhat: "••• à compléter : {{what}}",
     photoPending: "Photo à venir",
     registerFirstNames: "prénoms du registre",
@@ -1710,7 +1556,7 @@ export const fr = {
     committeeSeats: "les fonctions et les noms du comité",
     joinContact: "nom et numéro",
   },
-  // The role editor (#194), at /roles.
+  // The role editor, at /roles.
   rolesPage: {
     heading: "Rôles",
     intro: "Un rôle regroupe des droits. On donne les rôles aux personnes sur la page Membres.",
@@ -1731,9 +1577,8 @@ export const fr = {
     saveFailed: "Le rôle n’a pas pu être enregistré.",
     deleteFailed: "Le rôle n’a pas pu être supprimé.",
   },
-  // The tag editor (#107). "Catégorie" on screen: "étiquette" or "tag" would
-  // be the developer's word, and the committee sorts the planning into
-  // categories.
+  // The tag editor. "Catégorie" on screen: "étiquette" or "tag" would be the
+  // developer's word, and the committee sorts the planning into categories.
   eventTags: {
     heading: "Catégories",
     intro:

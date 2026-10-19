@@ -4,53 +4,39 @@ import { intlTag } from "./i18n/locale";
 /**
  * Francs on screen, centimes on the wire.
  *
- * THE API NEVER SENDS A FORMATTED PRICE and never takes one. `priceCents` is
- * an integer: 4500 is CHF 45.00. Binary floating point cannot represent 0.10
- * exactly, and money that is a rappen out in the tenth row is money the
- * committee reconciles by hand. RegistrationOptionResource's own docblock
- * carries the other half of this: currency formatting belongs beside the
- * language it is rendered in, and for this project that is the web side.
+ * The API never sends or takes a formatted price. `priceCents` is an integer
+ * (4500 is CHF 45.00), because binary floating point cannot represent 0.10
+ * exactly. Currency formatting belongs beside the language it is rendered in
+ * (see RegistrationOptionResource), which is the web side.
  *
- * So every conversion between the two lives here, and nothing else in the SPA
- * multiplies or divides by 100.
+ * Every conversion lives here; nothing else in the SPA multiplies or divides
+ * by 100.
  */
 
 /**
  * A price as a guest reads it: "CHF 45.00", "CHF 1'234.50".
  *
- * THE DIGITS COME FROM CLDR'S SWISS MONEY FORMAT AND THE CURRENCY IS PLACED
- * BY HAND, which is why this goes through `formatToParts` instead of reading a
- * formatted string.
+ * The digits come from CLDR's Swiss money format and the currency is placed
+ * by hand, hence `formatToParts`. A plain number formats with a comma in
+ * French ("1 234,50"), while CHF formats with a point, as Swiss money is
+ * written in every language. But the currency style trails the code
+ * ("1'234.50 CHF"), where Swiss invoices put it first, and that placement can
+ * change between ICU builds. Dropping the currency part keeps the point and
+ * settles the placement.
  *
- * Both halves of that were measured. Formatting a plain number gives a COMMA
- * in French ("1 234,50"), while the same locale formatting CHF gives a point,
- * because Switzerland writes money with a point in all three of its
- * languages. The currency style is therefore the only one that produces the
- * separator a price list needs. What it also produces is "1'234.50 CHF", the
- * code trailing, where every Swiss invoice and menu writes it first, and that
- * placement is CLDR's to change between ICU builds, so two browsers could
- * render one guest list two different ways. Dropping the currency part keeps
- * the first and settles the second.
- *
- * THE DECIMAL POINT IS SHARED; THE GROUP SEPARATOR BELONGS TO CLDR, AND IT
- * MOVES. This file once denied that by hardcoding `fr-CH` while its own
- * example showed the German form. Measured on two builds:
+ * The group separator belongs to CLDR and moves between releases:
  *
  *     CLDR 47 (Node 22.21.1)   fr-CH  U+202F   de-CH  U+2019
  *     CLDR 48 (Node 24.21.0)   fr-CH  U+0027   de-CH  U+0027
  *
- * Three different characters across one release, and as of CLDR 48 the two
- * locales are identical. The tag still follows the reader: which locale this
- * asks is the app's decision, while which glyph comes back is CLDR's, so
- * pinning today's answer would make the next release a silent regression.
- * `money.test.ts` therefore watches the TAG and never the separator — an
- * assertion about the separator is what broke on the CLDR 48 bump (#180).
+ * Which locale this asks is the app's decision; which glyph comes back is
+ * CLDR's. So `money.test.ts` watches the tag, never the separator.
  *
  * Built per call, never a module-scope const, for the reason lib/date.ts
- * gives at length.
+ * gives.
  *
- * Two decimals always, including on a round figure. A column mixing "CHF 45"
- * and "CHF 45.50" is harder to add up by eye than one that does not.
+ * Two decimals always: a column mixing "CHF 45" and "CHF 45.50" is harder to
+ * add up by eye.
  */
 export function formatCents(cents: number): string {
   const parts = new Intl.NumberFormat(intlTag(currentLocale()), {
@@ -59,32 +45,27 @@ export function formatCents(cents: number): string {
   }).formatToParts(cents / 100);
 
   const amount = parts
-    // The `literal` is the spacing CLDR puts beside the code, and it exists
-    // only to separate the two things being re-joined below.
+    // The `literal` is the spacing CLDR puts beside the code.
     .filter((part) => part.type !== "currency" && part.type !== "literal")
     .map((part) => part.value)
     .join("");
 
-  // A no-break space: "CHF" and the figure are one thing, and a narrow table
-  // cell on a phone is exactly where a plain space breaks the line between
-  // them.
+  // A no-break space, so a narrow table cell on a phone cannot break the line
+  // between "CHF" and the figure.
   return `CHF\u00a0${amount}`;
 }
 
 /**
  * A price the committee typed, in centimes, or null for an empty field.
  *
- * Null is a real answer here rather than a parse failure: an option with no
- * price at all is expressible on purpose, for one whose price lives in its
- * description, and that is a different thing from an option that costs
- * nothing. An empty field means the first, "0" means the second.
+ * Null is a real answer, not a parse failure: an option with no price (one
+ * whose price lives in its description) differs from one that costs nothing.
+ * An empty field means the first, "0" the second.
  *
- * A COMMA IS ACCEPTED AS THE DECIMAL SEPARATOR, because it is what a French
- * keyboard's numeric pad produces and what somebody writing Swiss prices by
- * hand types. Refusing "45,50" as malformed would be correct and useless.
+ * A comma is accepted as the decimal separator, since a French keyboard's
+ * numeric pad produces one.
  *
- * `Math.round` on the product, never the product as it stands: 45.55 * 100 is
- * 4554.999999999999 in IEEE 754, and truncating that is five rappen short.
+ * `Math.round` on the product: 45.55 * 100 is 4554.999999999999 in IEEE 754.
  */
 export function parseFrancs(input: string): number | null | "invalid" {
   const trimmed = input.trim();
@@ -93,9 +74,8 @@ export function parseFrancs(input: string): number | null | "invalid" {
     return null;
   }
 
-  // Anchored, with no exponent and no sign: a price is digits, optionally a
-  // separator and one or two more. A bare `Number()` here takes "1e3" as 1000
-  // and "-5" as a negative price.
+  // Anchored, with no exponent and no sign. A bare `Number()` takes "1e3" as
+  // 1000 and "-5" as a negative price.
   if (!/^\d+([.,]\d{1,2})?$/.test(trimmed)) {
     return "invalid";
   }
@@ -107,9 +87,8 @@ export function parseFrancs(input: string): number | null | "invalid" {
  * Centimes as the committee edits them: francs, with decimals only when there
  * are any.
  *
- * NOT `formatCents`, deliberately. That one is for reading a price; this one
- * fills a text input somebody then corrects, and "CHF 45.00" is not a thing
- * anybody wants to edit by hand. 4500 comes back as "45", 4550 as "45.50".
+ * Not `formatCents`, which is for reading: this fills a text input, where
+ * "CHF 45.00" would be in the way. 4500 comes back as "45", 4550 as "45.50".
  */
 export function francsInput(cents: number | null): string {
   if (cents === null) {

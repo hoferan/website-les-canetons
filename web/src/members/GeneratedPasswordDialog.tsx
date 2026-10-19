@@ -13,21 +13,17 @@ import { t } from "../i18n";
 /**
  * Shows a newly-issued password exactly once (ADR 0016).
  *
- * AS SELECTABLE TEXT, IN A LARGE MONOSPACE, NOT IN A PASSWORD FIELD. The whole
- * purpose is that an administrator reads it down the phone or hands it over on
- * paper, so masking it would defeat the feature.
+ * As selectable text in a large monospace, not a password field: an
+ * administrator reads it down the phone or hands it over on paper.
  *
- * It is deliberately NOT copied to the clipboard automatically either: a
- * credential sitting silently in the clipboard is worse than one on screen for
- * ten seconds, and this audience reads it aloud rather than pasting it.
+ * Not copied to the clipboard automatically: a credential sitting silently in
+ * the clipboard is worse than one on screen, and this audience reads it aloud.
  *
- * The dialog says plainly that it will not be shown again, because it will not:
- * the server keeps only the hash.
+ * The dialog says it will not be shown again; the server keeps only the hash.
  *
- * The alphabet it is drawn from has every confusable pair removed — no 0/O, no
- * 1/l/I, no 5/S, no 2/Z (App\Support\GeneratedPassword) — which is what makes
- * dictating it survivable. The monospace and the letter spacing here are the
- * other half of that: proportional text at body size is where "rn" becomes "m".
+ * The alphabet has the confusable characters removed (no 0/o, 1/l/i, 5/s or
+ * 2/z; App\Support\GeneratedPassword), and the monospace and letter spacing
+ * here do the rest: proportional text at body size is where "rn" becomes "m".
  */
 export function GeneratedPasswordDialog({
   password,
@@ -61,8 +57,8 @@ export function GeneratedPasswordDialog({
         </p>
 
         <AlertDialogFooter>
-          {/* The Radix action, which closes the dialog — correct here: there is
-              nothing that can fail, and nothing to read afterwards. */}
+          {/* The Radix action, which closes the dialog: nothing here can
+              fail. */}
           <AlertDialogAction onClick={onClose}>{t("members.generatedAck")}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

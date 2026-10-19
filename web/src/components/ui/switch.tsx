@@ -6,27 +6,23 @@ import { cn } from "@/lib/utils";
 /**
  * An on/off setting that takes effect the moment it is flipped.
  *
- * VENDORED from radix-ui like ui/radio-group.tsx, with the same `data-slot`
+ * Vendored from radix-ui like ui/radio-group.tsx, with the same `data-slot`
  * attributes and `cn()` composition.
  *
- * ONLY FOR A WRITE THAT HAPPENS ON THE FLIP. A setting saved later by a form's
+ * Only for a write that happens on the flip. A setting saved later by a form's
  * "Enregistrer" stays a checkbox: a switch promises the change has already
- * happened, and in a form it has not.
+ * happened.
  *
- * THE TRACK IS 44x24 AND THE TARGET IS NOT. The caller puts the switch in a
- * row at least `min-h-touch` high, with its visible label beside it, so the
- * 44px floor ui/button.tsx keeps is met by the row. Off is the muted ink
- * rather than the line colour, because the track's edge is the only thing
- * that shows a switch is there, and `line` is too faint on cream for that.
+ * The track is 44x24, so the caller puts the switch in a row at least
+ * `min-h-touch` high with its visible label beside it, and the row meets the
+ * 44px floor. Off is the muted ink because the track's edge is the only sign
+ * a switch is there, and `line` is too faint on cream.
  *
- * THE CALLER NAMES IT, and the name contains the visible label (WCAG 2.5.3),
- * so voice control can reach it by the word on screen.
+ * The caller names it, and the name contains the visible label (WCAG 2.5.3).
  *
- * BUSY IS `aria-disabled`, NEVER `disabled`. Radix renders a button, and
- * disabling the focused control blurs it to <body> (rule 2 in ui/button.tsx),
- * so a keyboard user who flips it with Space would lose their place mid-save.
- * The caller passes `aria-disabled` and returns early from `onCheckedChange`;
- * the `aria-disabled:` variants below style that.
+ * Busy is `aria-disabled`, never `disabled`, which would blur the focused
+ * control to <body> (rule 2 in ui/button.tsx). The caller passes
+ * `aria-disabled` and returns early from `onCheckedChange`.
  */
 function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimitive.Root>) {
   return (

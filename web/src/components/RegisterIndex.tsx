@@ -3,33 +3,25 @@ import { t } from "../i18n";
 /**
  * Jump links to each register on the band page.
  *
- * WHY A LONG PAGE GETS AN INDEX RATHER THAN BEING SHORTENED. One photograph per
- * register is a requirement carried from the legacy site, and the photographs
- * are coming back — so the page has to be designed PHOTOGRAPHED. Measured, the
- * photographed page is ~3554px at 390px against 3034px without them: the length
- * is inherent to the requirement, not a placeholder artefact. What the page
- * lacked was a way in. Two alternatives were rejected: side-by-side registers
- * help on a desktop only and leave uneven rows, and disclosures would hide the
- * band, and already mean "archive" on this site.
+ * The page is long because it carries one photograph per register, so it gets
+ * an index instead of being shortened. Side-by-side registers would help on a
+ * desktop only and leave uneven rows; disclosures would hide the band, and
+ * already mean "archive" on this site.
  *
- * It knows nothing about registers — the page owns that list — so the same
- * component works whether the photographs are present or pending, and now
- * whether the registers come from a hardcoded array or from the API.
+ * It knows nothing about registers: the page owns that list.
  */
 export function RegisterIndex({ entries }: { entries: { id: string; label: string }[] }) {
   return (
-    // aria-label because this is the page's SECOND nav; the site's own is
-    // "Navigation principale" and two unnamed navs are indistinguishable to a
-    // screen reader moving by landmark.
+    // Named because this is the page's second nav, and unnamed navs are
+    // indistinguishable to a screen reader moving by landmark.
     <nav aria-label={t("band.registersNav")} className="mt-block">
       <ul className="flex flex-wrap gap-2">
         {entries.map((entry) => (
           <li key={entry.id}>
             {/*
               A plain <a>, not a router Link: react-router would treat "#drums"
-              as a route. A same-page fragment is the browser's own job, and
-              nothing in this app intercepts it — ScrollToTop deliberately
-              abstains on a hash, and the header is not sticky.
+              as a route. ScrollToTop abstains on a hash, and the phone's
+              sticky Menu bar is cleared by scroll-padding-top in styles.css.
             */}
             <a
               href={`#${entry.id}`}

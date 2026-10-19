@@ -6,15 +6,10 @@ import App, { createAppRouter } from "./App";
 import { SessionProvider } from "./session/SessionProvider";
 
 /**
- * App owns the browser router, so this cannot use renderWithSession — that
- * helper supplies a memory router, and nesting two routers throws. The routes
- * themselves are covered in routes.test.tsx; what is asserted here is only that
- * the composition mounts and reaches a real page.
- *
- * jsdom's default location is "/", which the public home page now owns. Until
- * then it fell through to the catch-all and this test asserted the 404 view —
- * a fair proof that the router mounted, and a fair description of a site whose
- * own address answered "Page introuvable".
+ * App owns the browser router, so this cannot use renderWithSession, whose
+ * memory router would nest and throw. routes.test.tsx covers the routes; this
+ * asserts only that the composition mounts and reaches the home page at
+ * jsdom's default location "/".
  */
 test("the app mounts and renders a page", async () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

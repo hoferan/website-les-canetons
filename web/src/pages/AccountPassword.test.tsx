@@ -20,9 +20,8 @@ test("changes the password and says so", async () => {
   await renderWithSession(<AccountPassword />, { route: "/account/password" });
   await change("demo", "un-mot-de-passe");
 
-  // findByText: the role="status" region is always in the tree (see
-  // Account.tsx), so findByRole would resolve against an empty div before the
-  // mutation lands.
+  // findByText: the role="status" region is always in the tree, so findByRole
+  // would resolve against an empty div before the mutation lands.
   expect(await screen.findByText("Votre mot de passe a été changé.")).toBeInTheDocument();
 });
 
@@ -39,10 +38,8 @@ test("catches a mistyped confirmation without asking the API", async () => {
   await renderWithSession(<AccountPassword />, { route: "/account/password" });
   await change("demo", "un-mot-de-passe", "un-mot-de-pass");
 
-  // A client-side check, and one of the few French strings a component may
-  // write itself: the API knows nothing about a confirmation field, so there is
-  // no token to translate. Checking it here also means a typo costs no
-  // round-trip and burns no attempt against the re-authentication throttle.
+  // The API has no confirmation field, so a typo must burn no attempt against
+  // the re-authentication throttle.
   expect(
     await screen.findByText("Les deux mots de passe ne correspondent pas."),
   ).toBeInTheDocument();
@@ -82,14 +79,12 @@ test("reports a too-short password with the minimum, not a placeholder", async (
   await change("demo", "court");
 
   const problem = await screen.findByText(/trop court/);
-  // The regression this guards: 'too_short' interpolates {{min}}, and i18next
-  // prints a missing interpolation value LITERALLY. If the API ever stops
-  // sending params.min, the member reads "minimum {{min}} caractères".
+  // 'too_short' interpolates {{min}}, and i18next prints a missing value
+  // literally. Without params.min the member reads "minimum {{min}} caractères".
   expect(problem).toHaveTextContent("minimum 8 caractères");
   expect(problem).not.toHaveTextContent("{{min}}");
 });
 
-// #101: the rule is on screen before the first submit.
 test("states the length rule before anything is submitted, and ticks it at eight", async () => {
   setMockUser("demo.direction");
   await renderWithSession(<AccountPassword />, { route: "/account/password" });
@@ -137,22 +132,14 @@ test("says nothing about a forced change to a member who has none", async () => 
   setMockUser("demo.direction");
   await renderWithSession(<AccountPassword />, { route: "/account/password" });
 
-  // demo.direction's mustChangePassword is false in the mock, so the notice
-  // must be absent — the page is also the ordinary "change my password" screen.
-  //
-  // Asserted on the TEXT, not on queryByRole("alert"): FormError keeps an empty
-  // role="alert" in the tree at all times, so "no alert element" is never true
-  // on this page and that assertion would fail for a reason that has nothing to
-  // do with the notice.
+  // Asserted on the text: FormError keeps an empty role="alert" in the tree
+  // at all times, so queryByRole("alert") is never null on this page.
   expect(screen.queryByText(/doit être remplacé/i)).toBeNull();
 });
 
 /**
- * The notice the gate owes the reader. `MustChangePassword` bounces a member
- * here with no explanation of its own, so without this paragraph the site
- * simply refuses to go anywhere and says nothing about why. Untested until
- * 2026-09-18, and written down now because it moved to the shared `Notice`
- * component on that date.
+ * `MustChangePassword` bounces a member here with no explanation of its own,
+ * so this paragraph is the only place that says why.
  */
 test("explains why a committee-issued password bounced the member here", async () => {
   setMockUser("demo.both");
@@ -166,12 +153,8 @@ test("explains why a committee-issued password bounced the member here", async (
 });
 
 /**
- * The German side of the password form.
- *
- * Every string on this screen is asserted, because this is the one page a
- * member with a committee-issued password CANNOT LEAVE until they have read it
- * and acted on it. A single French sentence left here is a dead end for the
- * reader this locale exists for.
+ * Every German string on this screen is asserted, because a member with a
+ * committee-issued password cannot leave it until they have acted on it.
  */
 test("labels all three fields and the submit in German", async () => {
   setMockUser("demo.direction");
@@ -220,9 +203,8 @@ test("catches a mistyped confirmation in German, still without asking the API", 
   await renderWithSession(<AccountPassword />, { route: "/account/password", locale: "de-CH" });
   await changeInGerman("demo", "ein-neues-passwort", "ein-neues-passwor");
 
-  // The API has no confirmation field, so this sentence is the screen's own
-  // rather than a translated error token — which is exactly the kind of string
-  // that gets left behind in French when a page is translated.
+  // The screen's own sentence, not a translated error token, and so the kind
+  // of string that gets left behind in French.
   expect(
     await screen.findByText("Die beiden Passwörter stimmen nicht überein."),
   ).toBeInTheDocument();

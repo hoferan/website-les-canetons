@@ -12,10 +12,6 @@ function alternates(): Array<[string, string]> {
 }
 
 test("it publishes both languages and an x-default pointing at French", () => {
-  // THE TAG SET IS THE POINT. A crawler that matches neither listed language
-  // needs somewhere to go, and for a Fribourg band that is French — the same
-  // choice main.tsx makes by not reading navigator.language.
-  //
   // jsdom serves every test from "/", so these are the root's alternates.
   const origin = window.location.origin;
 
@@ -49,8 +45,7 @@ test("it removes its own tags on unmount and leaves other people's alone", async
 
   unmount();
 
-  // MUTATION TEST: widen the cleanup selector to `link[rel='alternate']` and
-  // this fails — the component would start deleting tags it never created.
+  // Widening the cleanup selector to `link[rel='alternate']` fails this.
   expect(alternates()).toEqual([["it", "https://example.test/it"]]);
 
   foreign.remove();

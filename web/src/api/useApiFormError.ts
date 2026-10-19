@@ -4,22 +4,17 @@ import { ApiError } from "./http";
 import { translateApiError, type TranslatedError } from "../i18n";
 
 /**
- * A form's API error, in French.
+ * A form's API error, in the UI's language.
  *
- * Three things every form in this app needs and gets wrong differently:
+ * 1. The narrowing. The generated hooks type `TError` as the declared error
+ *    models (`ValidationExceptionResponse | AuthLogin401` and so on), but the
+ *    mutator always throws an `ApiError`, so `instanceof` decides.
+ * 2. The fallback. Anything else (an HTML 502 from the host, a network drop)
+ *    still needs a translated message, never a raw English string.
+ * 3. The field lookup, so a message lands against its input.
  *
- * 1. **The narrowing.** The generated hooks type `TError` as the DECLARED error
- *    models — `ValidationExceptionResponse | AuthLogin401` and so on — but what
- *    the mutator actually throws is always an `ApiError`. The declared type is
- *    not to be trusted here; `instanceof` is.
- * 2. **The fallback.** Anything that is not an `ApiError` (an HTML 502 from the
- *    shared host, a network drop) still has to say something in French, and it
- *    must not be a raw English string or an i18next key.
- * 3. **The field lookup**, so a message lands against the input it is about.
- *
- * `fallbackMessage` is per-form on purpose: "L'enregistrement a échoué" and
- * "La connexion a échoué" are not interchangeable, and a generic one would be
- * the worst of both.
+ * `fallbackMessage` is per form: "L'enregistrement a échoué" and "La connexion
+ * a échoué" are not interchangeable.
  */
 export function useApiFormError(fallbackMessage: string) {
   const [error, setError] = useState<TranslatedError | null>(null);

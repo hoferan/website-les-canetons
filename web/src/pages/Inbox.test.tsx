@@ -10,10 +10,9 @@ import { renderWithSession } from "../test/renderWithSession";
 import { Inbox } from "./Inbox";
 
 /**
- * The mock seeds two OPEN contact messages — id 3 (Isabelle Dupasquier,
- * newest) and id 2 (Yannick Rossier) — plus a third already handled, which
- * `GET /inbox` excludes on the server side. `demo.committee` holds
- * `messages.view` and nothing more, mirroring the archive's own tests.
+ * The mock seeds two open contact messages, id 3 (Isabelle Dupasquier,
+ * newest) and id 2 (Yannick Rossier), plus a handled one that `GET /inbox`
+ * excludes. `demo.committee` holds `messages.view` without `messages.manage`.
  */
 async function renderInbox(locale: Locale = "fr") {
   setMockUser("demo.committee");
@@ -43,8 +42,7 @@ test("lists open items newest first", async () => {
 test("links each item to where it is dealt with", async () => {
   await renderInbox();
 
-  // Each row deep-links back to the archive with that message already open —
-  // a way THROUGH to the work, not a second place to do it.
+  // Each row deep-links to the archive with that message already open.
   expect(
     items()
       .getAllByRole("link")
@@ -67,11 +65,7 @@ test("renders a calm empty state when nothing is waiting", async () => {
   expect(screen.queryByText(/erreur/i)).not.toBeInTheDocument();
 });
 
-/**
- * THE BADGE'S GUARD, and the one Step 5's mutation check targets: see
- * task-11-report.md for both runs (red with the count severed, green
- * restored).
- */
+/** The nav badge stays hidden at zero; the next test pins the real count. */
 test("shows no badge when the count is zero", async () => {
   server.use(http.get("/api/v1/inbox/summary", () => HttpResponse.json({ total: 0, counts: {} })));
   setMockUser("demo.committee");
@@ -84,10 +78,8 @@ test("shows no badge when the count is zero", async () => {
 });
 
 /**
- * The other half of the same guard: a zero-count badge is invisible noise,
- * but a real count must actually reach the nav. Without this test, Step 5's
- * mutation (severing the badge's use of the summary) breaks nothing above —
- * the zero-badge test still passes when the badge is ALWAYS absent.
+ * The other half: a real count must reach the nav. The zero-count test alone
+ * still passes when the badge never reads the summary and is always absent.
  */
 test("shows the badge's count when something is waiting", async () => {
   setMockUser("demo.committee");
@@ -97,17 +89,10 @@ test("shows the badge's count when something is waiting", async () => {
   expect(badge).toHaveTextContent("2");
 });
 
-test("THE GERMAN WAS ALREADY WRITTEN AND WAS NEVER REACHED", async () => {
-  // #151 translated every key this screen uses. It rendered French anyway,
-  // because the component read `fr.inbox.*` directly — the catalogue object,
-  // not i18next — so the locale could not reach it.
-  //
-  // The kind label is the sharp end: it was a module-scope
-  // `Record<string, string>` snapshot of the FRENCH kinds, frozen at import,
-  // so every row read "Message du site" on a German page.
-  //
-  // MUTATION TEST: hoist kindLabel's lookup back to module scope and this
-  // fails, because the French tests above import the same module first.
+test("renders the inbox and its kind labels in German", async () => {
+  // Hoisting kindLabel's lookup to module scope would freeze the French
+  // labels at import; this fails then, because the French tests above import
+  // the same module first.
   await renderInbox("de-CH");
 
   expect(screen.getByRole("heading", { level: 1, name: "Posteingang" })).toBeInTheDocument();

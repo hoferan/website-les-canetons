@@ -41,34 +41,25 @@ import { OUTLINED_CARD } from "../carnival/raised";
 /**
  * The roster: everybody in the band.
  *
- * ONE ROSTER (ADR 0015), and since 2026_09_08_000001 everybody on it has an
- * account — the roster is the people the band tracks for events. Which of
- * them answer for one is what their roles grant. People the band merely
- * displays, such as instructors or honorary members, are CONTENT and are not
- * here at all.
+ * One roster (ADR 0015), and everybody on it has an account: the roster is
+ * the people the band tracks for events, and which of them answer one is
+ * what their roles grant. People the band merely displays, such as
+ * instructors or honorary members, are content and are not here.
  *
- * ONE LAYOUT: CARDS, AT EVERY WIDTH, in a grid that widens (#130). The screen
- * this replaces rendered a table that scrolled sideways at 390px, which is the
- * width most of this band's phones actually are; the rebuild answered that
- * with a card below `md` and a table above it, hand-maintained side by side,
- * which is the arrangement that left the guest list with no address column for
- * the whole life of that screen. There is one description of a person here
- * now, and the card labels each of its fields because the column heads that
- * used to name them went with the table.
+ * One layout: cards at every width, in a grid that widens. Each card labels
+ * its fields, since there are no column heads to name them.
  *
- * ROLES ARE SHOWN BY THEIR FRENCH LABEL, joined from GET /api/roles. Never the
- * key, and never the permission strings: "why does she have this?" is answered
- * with "because she is in Team Direction" (ADR 0014).
+ * Roles are shown by name, joined from GET /api/v1/roles. Never the key or
+ * the permission strings: "why does she have this?" is answered with
+ * "because she is in Team Direction" (ADR 0014).
  *
- * SEARCHED AND FILTERED ON THE SERVER (#97), never over the rows this screen
- * happens to hold: the collection envelope slices on the server, so a filter
- * here would search one page of a roster that had been cut short and say
- * nothing about the rest. See App\Support\Search.
+ * Searched and filtered on the server (#97): the collection envelope slices
+ * there, so a filter over the rows held here would miss the rest. See
+ * App\Support\Search.
  *
- * INVARIANT REFUSALS COME FROM THE SERVER. This screen does not pre-empt
+ * Invariant refusals come from the server. This screen does not pre-empt
  * cannot_delete_self or cannot_remove_last_administrator with its own copy of
- * the rule — a duplicated rule drifts, and then the two disagree in front of
- * somebody trying to fix a lockout. It renders what the API says, translated.
+ * the rule, which would drift; it renders what the API says, translated.
  */
 export function Members() {
   // What is typed, and what has been asked for. The box follows every
@@ -86,14 +77,14 @@ export function Members() {
   };
   const filtering = Object.keys(filters).length > 0;
 
-  // THE PREVIOUS ANSWER STAYS ON SCREEN while the next one loads, so typing
+  // The previous answer stays on screen while the next one loads, so typing
   // narrows the list rather than blanking it into "Chargement" per keystroke.
   const roster = useMemberIndex(filtering ? filters : undefined, {
     query: { placeholderData: keepPreviousData },
   });
-  // The whole roster, for the "3 sur 45" count. Unfiltered it is the SAME
-  // query as the one above — same key — so it costs no second request; while
-  // filtering it is the cached answer from before the first keystroke.
+  // The whole roster, for the "3 sur 45" count. Unfiltered it has the same
+  // key as the query above, so it costs no second request; while filtering it
+  // is the cached answer from before the first keystroke.
   const wholeRoster = useMemberIndex();
   const sections = useSectionIndex();
   const committeeFunctions = useCommitteeFunctionIndex();
@@ -106,11 +97,9 @@ export function Members() {
   const create = useMemberStore();
   const issuePassword = useMemberPasswordReset();
 
-  // THE THREE CONDITIONAL WRITES, built by hand over the generated functions.
-  // Each has to carry an `If-Match` that differs per call, and orval's mutation
-  // hooks take their request options once when the hook is created — see
-  // web/src/api/ifMatch.ts. The functions, their types and their errors are
-  // still the generated ones.
+  // The three conditional writes, built over the generated functions: each
+  // carries an `If-Match` that differs per call, and orval's mutation hooks
+  // fix their request options when created. See web/src/api/ifMatch.ts.
   const update = useMutation({
     mutationFn: ({
       member,
@@ -137,11 +126,9 @@ export function Members() {
   // (a member). A separate boolean plus a member would allow a fourth,
   // meaningless one.
   //
-  // AN EDIT CARRIES THE TAG OF THE READ IT WAS OPENED FROM, and the member it
-  // shows is that read's — not the row from the list. The tag has to describe
-  // what the person was looking at when they decided what to change, so
-  // seeding the form from a possibly-stale list row and writing with a fresh
-  // tag would satisfy the server while protecting nobody.
+  // An edit carries the tag of the read it was opened from, and shows that
+  // read's member, not the list row. The tag has to describe what the person
+  // was looking at when they decided what to change.
   const [editing, setEditing] = useState<{
     member: MemberResource | null;
     etag: string | null;
@@ -156,10 +143,8 @@ export function Members() {
   const [resetting, setResetting] = useState<MemberResource | null>(null);
   const [issued, setIssued] = useState<{ name: string; password: string } | null>(null);
 
-  // Through rowsOf, which owns the status narrowing and the collection
-  // envelope's own `data` hop — see web/src/api/collection.ts. Written out here
-  // it reads `roster.data.data.data`, three identically named hops of which
-  // only the middle one is the envelope.
+  // rowsOf owns the status narrowing and the envelope's `data` hop; written
+  // out it is `roster.data.data.data`. See web/src/api/collection.ts.
   const members = rowsOf<MemberResource>(roster.data);
   const rosterCount = totalOf(wholeRoster.data);
   const matchCount = totalOf(roster.data);
@@ -179,9 +164,8 @@ export function Members() {
     const role = roleList.find((candidate) => candidate.id === id);
     return role === undefined ? "" : roleName(role);
   };
-  // From what the roles GRANT, joined on roleIds as the roster's own docs say
-  // to, never from a role's key: renaming the role that answers must not
-  // silence the warning below.
+  // From what the roles grant, never from a role's key: renaming the role
+  // that answers must not silence the warning below.
   const answersEvents = (member: MemberResource) =>
     member.roleIds.some((id) =>
       roleList.find((role) => role.id === id)?.permissions.includes("attendance.respond"),
@@ -205,11 +189,10 @@ export function Members() {
   /**
    * Reads the one person, and keeps the tag that read handed out.
    *
-   * Both the edit form and the delete confirmation go through this, because
-   * both end in a conditional write and both need a tag describing what the
-   * administrator was shown. The roster list hands out none — one tag cannot
-   * validate forty-five rows — so this read is also the moment the concurrency
-   * window opens: "while this dialog was open".
+   * The edit form and the delete confirmation both end in a conditional write
+   * and need a tag describing what the administrator was shown. The list
+   * hands out none (one tag cannot validate every row), so this read opens
+   * the concurrency window: "while this dialog was open".
    */
   async function read(id: number): Promise<{ member: MemberResource; etag: string | null } | null> {
     setReadError(null);
@@ -217,8 +200,8 @@ export function Members() {
     try {
       const response = await memberShow(id);
       if (response.status !== 200) {
-        // Unreachable: the mutator throws on every non-2xx. The declared union
-        // says otherwise and tsc is right that it does.
+        // Unreachable: the mutator throws on every non-2xx, but the declared
+        // union still includes them.
         setReadError(t("members.loadFailed"));
         return null;
       }
@@ -269,8 +252,7 @@ export function Members() {
       if (editing?.member) {
         const member = editing.member;
         if (editing.etag === null) {
-          // No tag means the write would be refused with 428, which reads as a
-          // broken screen. Saying so and stopping is the honest answer.
+          // Without a tag the write would be refused with 428.
           setReadError(t("members.loadFailedReload"));
           return;
         }
@@ -283,11 +265,9 @@ export function Members() {
         const before = [...member.roleIds].sort((a, b) => a - b);
         const after = [...draft.roleIds].sort((a, b) => a - b);
         if (before.join() !== after.join()) {
-          // THE TAG FROM THE WRITE JUST MADE, not the one this form opened
-          // with: the PATCH above changed the member, so the tag it was
-          // checked against describes a state that is now gone and the roles
-          // call would answer 412. A successful write hands back the new tag
-          // for exactly this.
+          // The tag from the write just made, not the one this form opened
+          // with: the PATCH above changed the member, so the old tag would
+          // answer 412. A successful write hands back the new tag.
           const chained = entityTagOf(saved);
           if (chained === null) {
             setReadError(t("members.incompleteSave"));
@@ -301,9 +281,8 @@ export function Members() {
         }
       } else {
         const result = await create.mutateAsync({ data });
-        // One `.data` — orval's envelope on a mutation's return, not the double
-        // one a query has — and narrowed on status for the same reason the
-        // queries above are: the declared union includes the error responses.
+        // One `.data` (a mutation's return, not a query's envelope), narrowed
+        // on status because the declared union includes the error responses.
         if (result.status === 201) {
           setIssued({
             name: `${draft.firstName} ${draft.lastName}`,
@@ -313,8 +292,8 @@ export function Members() {
       }
     } catch (thrown) {
       form.setFromThrown(thrown);
-      // The panel stays OPEN: a rejected username has to be corrected where it
-      // was typed, and closing the form would throw away everything else too.
+      // The panel stays open: a rejected username is corrected where it was
+      // typed, and closing would throw away everything else too.
       return;
     }
 
@@ -348,9 +327,8 @@ export function Members() {
     try {
       const result = await issuePassword.mutateAsync({ member: resetting.id });
       if (result.status !== 200) {
-        // Unreachable in practice — the mutator throws on every non-2xx — but
-        // the declared union says it is possible, and inventing a password
-        // string here would be worse than saying nothing happened.
+        // Unreachable: the mutator throws on every non-2xx, but the declared
+        // union includes them, and inventing a password would be worse.
         destructive.setFromThrown(result);
         return;
       }
@@ -359,8 +337,8 @@ export function Members() {
       destructive.setFromThrown(thrown);
       return;
     }
-    // Order matters: capture the password, then close the confirmation, then
-    // show it. Closing first would unmount the state this reads.
+    // Capture the name before closing the confirmation, which clears the
+    // state it is read from.
     const name = `${resetting.firstName} ${resetting.lastName}`;
     setResetting(null);
     setIssued({ name, password });
@@ -371,10 +349,8 @@ export function Members() {
     <PageSection>
       <div className="flex flex-wrap items-baseline gap-tight">
         <h1 className="font-display text-4xl">{t("members.heading")}</h1>
-        {/* Straight off `meta.total`, which counts the roster on the SERVER
-            rather than counting the rows that happened to arrive. Today they
-            are the same number; the point is that they stay the same number
-            the day this list is ever cut short. */}
+        {/* Straight off `meta.total`, which counts the roster on the server,
+            so it stays right if the list is ever cut short. */}
         {rosterCount === null ? null : (
           <span className="text-ink-muted" data-testid="roster-count">
             {filtering && matchCount !== null
@@ -412,7 +388,7 @@ export function Members() {
         </p>
       ) : null}
 
-      {/* THE FILTERS. The labels are visually hidden, for the reason
+      {/* The filters. The labels are visually hidden, for the reason
           SearchField gives; each select's "all" option names what it filters,
           so it reads as "Tous les pupitres" until somebody picks one. */}
       <div className="mt-block flex flex-wrap gap-tight" data-testid="roster-filters">
@@ -465,21 +441,8 @@ export function Members() {
         </p>
       ) : null}
 
-      {/* THE CARD IS THE ONLY LAYOUT (#130). There was a table from md up as
-          well, hand-maintained beside this with nothing forcing the two to
-          agree — the bug class that left the guest list with no address column
-          for the whole life of that screen. The grid widens rather than the
-          layout changing, so a roster read on a phone and a roster read on a
-          laptop are the same thing.
-
-          EVERY FIELD IS LABELLED, which is what the column heads used to do.
-          Without them "perrine", "Trompettes" and "Membre" are three
-          unexplained lines under a name — and the label also puts the meaning
-          next to the value in the reading order, which is the part a screen
-          reader lost when the real <th> went. */}
-      {/* A SEARCH THAT FOUND NOBODY SAYS SO, and offers the way back. Without
-          it the screen is a heading, a count and nothing, which reads as a
-          roster that failed to load. */}
+      {/* A search that found nobody says so and offers the way back;
+          otherwise the screen reads as a roster that failed to load. */}
       {filtering && !roster.isPending && !roster.isError && members.length === 0 ? (
         <div className="mt-block" data-testid="roster-no-match">
           <p className="text-ink-muted">{t("members.noMatch")}</p>
@@ -498,9 +461,12 @@ export function Members() {
             <p className="font-semibold">
               {member.firstName} <span data-testid="member-last-name">{member.lastName}</span>
             </p>
-            {/* THE LABEL AND ITS COLON ARE ONE STRING. French spaces a colon
-                and German does not, so "Pupitre" plus ": " composed here is
-                French typography on a German card (#152, #155, #167). */}
+            {/* Every field is labelled, so "perrine", "Trompettes" and
+                "Membre" are not unexplained lines, and a screen reader hears
+                the meaning beside the value.
+
+                The label and its colon are one string: French spaces a colon
+                and German does not. */}
             <p className="text-sm text-ink-muted">
               {t("members.usernameLabel", { value: member.username })}
             </p>
@@ -512,15 +478,14 @@ export function Members() {
             <p className="text-sm">
               {t("members.rolesLabel", { value: rolesOf(member, labelForRole) })}
             </p>
-            {/* A REGISTER WITHOUT A ROLE THAT ANSWERS, which is almost always
-                a role somebody forgot to tick: a register grants nothing
+            {/* A register without a role that answers is almost always a
+                role somebody forgot to tick: a register grants nothing
                 (#189), so this person is never asked about an event. The same
-                pink pill as the login state below, the roster's "something
-                needs you". Waits for the roles, or every card would flash it. */}
+                pink pill as the login state below. Waits for the roles, or
+                every card would flash it. */}
             {member.sectionId !== null && roleList.length > 0 && !answersEvents(member) ? (
               // A flex child, not `inline-block`: that class also sets the
-              // width to the `block` spacing token, 32px, and the words ran
-              // out of the pill (docs/traps.md).
+              // width to the `block` spacing token, 32px (docs/traps.md).
               <div className="mt-tight flex">
                 <span
                   aria-label={t("members.notAnsweringName")}
@@ -530,12 +495,8 @@ export function Members() {
                 </span>
               </div>
             ) : null}
-            {/* NO `Label : value` PREFIX, unlike every field above it, and
-                that is not an oversight. The card labels each field because
-                the real <th> went when the card became the only layout
-                (#130) — the label is what puts the meaning beside the value
-                in the reading order. A pill is not a field with a value, and
-                "Dernière connexion le …" already carries its own label. */}
+            {/* No `Label : value` prefix: a pill is not a field with a value,
+                and "Dernière connexion le …" carries its own label. */}
             <LoginState member={member} />
             <div className="mt-related">
               <MemberActions
@@ -555,29 +516,20 @@ export function Members() {
         title={t("members.deleteTitle", {
           name: `${deleting?.member.firstName} ${deleting?.member.lastName}`,
         })}
-        // NAMES THE DAMAGE, and now that attendance exists it names that
-        // too: deleting a member cascades their answers, and the committee
-        // should know the planning loses them before they press this.
+        // Names the damage, including the attendance answers the delete
+        // cascades, so the committee knows the planning loses them.
         //
-        // WHAT GOES, NOT HOW MUCH. A count is the obvious addition —
-        // "3 réponses à venir seront effacées" — and it is deliberately
-        // absent. Nothing reads it before the delete, and the obvious way to
-        // supply it, a field on MemberResource, is the one place it must not
-        // go: App\Support\EntityTag hashes the RENDERED resource, so a member's
-        // tag would then move every time they answered an event, and answering
-        // would refuse a roster edit somebody had open. That is the exact
-        // coupling EntityTag's own docblock says it avoids for events. The
-        // event dialog made the same call for the same reason.
+        // What goes, not how much. A count would need a field on
+        // MemberResource, and App\Support\EntityTag hashes the rendered
+        // resource: the member's tag would move with every answer, and
+        // answering would refuse a roster edit somebody had open. The event
+        // dialog makes the same call.
         //
-        // Registrations are not in it: they belong to an event and a guest,
-        // and no registration row names a member.
+        // Registrations are not in it: no registration row names a member.
         //
-        // "CETTE PERSONNE", NOT THE NAME. The name is in the title and in the
-        // phrase that has to be typed, so the description loses nothing by
-        // dropping it — and interpolating it here meant a fixed masculine
-        // participle agreeing over whoever it named (#91). Agreeing with
-        // "personne" is right for everybody, and costs the roster no gender
-        // field the band has no reason to hold.
+        // "Cette personne", not the name, which is in the title and the typed
+        // phrase anyway: a name would need a participle agreeing with its
+        // gender (#91), and "personne" agrees for everybody.
         description={t("members.deleteDescription")}
         confirmLabel={t("common.delete")}
         confirmPhrase={
@@ -597,12 +549,9 @@ export function Members() {
         title={t("members.resetTitle", {
           name: `${resetting?.firstName} ${resetting?.lastName}`,
         })}
-        // No typed phrase: this is disruptive rather than irreversible — it can
-        // simply be done again — so it names the damage and asks for a press.
-        //
-        // The title names who; this sentence says "cette personne" rather than
-        // interpolating the first name, for the agreement reason given on the
-        // delete dialog above (#91).
+        // No typed phrase: this is disruptive rather than irreversible, so it
+        // names the damage and asks for a press. "Cette personne" for the
+        // reason given on the delete dialog above.
         description={t("members.resetDescription")}
         confirmLabel={t("members.reset")}
         busy={issuePassword.isPending}
@@ -623,7 +572,7 @@ export function Members() {
   );
 }
 
-/** The roles a person holds, in French, or the fact that they hold none. */
+/** The roles a person holds, by name, or the fact that they hold none. */
 function rolesOf(member: MemberResource, labelForRole: (id: number) => string): string {
   return member.roleIds.length === 0
     ? t("members.noRoles")
@@ -634,17 +583,9 @@ function rolesOf(member: MemberResource, labelForRole: (id: number) => string): 
  * The three per-person actions, laid out by `RowActions`: `Modifier` inline,
  * `Mot de passe` and `Supprimer` behind the "..." (#118).
  *
- * Extracted while the roster still had two layouts, because two copies of
- * three actions is where a fourth ends up in one of them and not the other —
- * and the phone layout was the one that got forgotten. #130 removed the
- * second layout; this stays a component because three actions and their
- * accessible names are worth reading in one place.
- *
  * Every accessible name carries the person's name, so a screen-reader user
- * hears which row's action they are on rather than the twelfth "Supprimer" on
- * the page. The 44px floor is `RowActions`'s concern now, not this
- * component's — a plain `Button` inline, `DropdownMenuItem`'s own min-height
- * in the menu.
+ * hears which row's action they are on rather than the twelfth "Supprimer".
+ * The 44px floor is `RowActions`'s concern.
  */
 function MemberActions({
   member,
@@ -672,8 +613,8 @@ function MemberActions({
     {
       key: "password",
       label: t("members.password"),
-      // THE SAME KEY AS THE DIALOG THIS OPENS, so the item's accessible name
-      // and the dialog's title cannot come to disagree.
+      // The same key as the dialog this opens, so the item's accessible name
+      // and the dialog's title cannot disagree.
       ariaLabel: t("members.resetTitle", { name }),
       onSelect: () => onResetPassword(member),
     },
@@ -682,11 +623,9 @@ function MemberActions({
       label: t("common.delete"),
       ariaLabel: t("members.deleteTitle", { name }),
       disabled: busy,
-      // NOT variant="raised-danger" any more. A filled red block was the most
-      // prominent thing on the card, above the person's own name, for an
-      // action taken a handful of times a season — and the planning rendered
-      // the same action as an outline button, so one action had two answers
-      // (#118). ConfirmByTypingName is the actual guard.
+      // Not raised-danger: a filled red block would outweigh the person's
+      // name for a rare action, and the planning shows the same action the
+      // same way (#118). ConfirmByTypingName is the actual guard.
       destructive: true,
       onSelect: () => void onDelete(member),
     },

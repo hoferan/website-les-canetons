@@ -12,9 +12,7 @@ test("it renders its children inside a section", () => {
   expect(screen.getByRole("heading", { name: "Bienvenue" })).toBeInTheDocument();
 });
 
-// The width is the whole reason this component exists, and it is the one thing
-// no other test in the suite can see -- so it is asserted here, at the single
-// place that owns it, rather than on sixteen pages.
+// The width is asserted here, where it is owned, rather than on every page.
 test("the default width is the shell, and the other two are opt-in", () => {
   const { container: shell } = render(<PageSection>a</PageSection>);
   expect(shell.firstChild).toHaveClass("max-w-shell");

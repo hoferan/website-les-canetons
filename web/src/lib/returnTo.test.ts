@@ -14,8 +14,7 @@ test("the root is the fallback for anything absent", () => {
   expect(safeReturnTo(42)).toBe("/");
 });
 
-// The old page needed an open-redirect guard because returnTo arrived as a URL
-// in a link anyone could send. These are the shapes it defended against.
+// The open-redirect shapes a destination from a link could carry.
 test("a protocol-relative URL is refused", () => {
   expect(safeReturnTo("//evil.com")).toBe("/");
 });

@@ -20,17 +20,14 @@ export type AccountTool = { to: string; label: string; icon: LucideIcon; count?:
 /**
  * The logged-in member's way to "Mon compte" and "Déconnexion".
  *
- * WHY A MENU (#99, decided 2026-09-14). The name and the logout used to sit
- * side by side as nav items, one stray click apart, and putting the logout
- * behind one more tap is enough to stop that. A confirm dialog would stop it
- * too, but logging out is cheap to undo, and a confirm on a reversible action
+ * A menu keeps the logout one tap away from a stray click. There is no confirm
+ * dialog: logging out is cheap to undo, and a confirm on a reversible action
  * trains people to click through the confirms that matter.
  *
- * DESKTOP ONLY. The avatar's menu also holds the committee's screens, so the
- * bar can keep to pages. The phone has no dropdown: its account actions are
- * the footer of PhoneNav's full-screen layer. A dropdown was tried there first,
- * and its popover floated over the page beside the full-width list, detached
- * from the row that opened it.
+ * Desktop only. The avatar's menu also holds the committee's screens, so the
+ * bar can keep to pages. On the phone the account actions are the footer of
+ * PhoneNav's full-screen layer, because a popover there floats detached from
+ * the row that opened it.
  */
 
 /** The desktop half: the right end of DesktopNav. */
@@ -73,16 +70,14 @@ function DesktopDropdown({
   const { logOut, isPending } = useLogout(onDone);
   const fullName = `${member.firstName} ${member.lastName}`.trim();
   const pending = tools.reduce((sum, tool) => sum + (tool.count ?? 0), 0);
-  // The avatar's "you are here", the job the yellow highlight does for the text
-  // entries beside it: anywhere under /account, or on any screen the menu
-  // leads to.
+  // The avatar's "you are here", like the yellow highlight on the text entries:
+  // anywhere under /account, or on any screen the menu leads to.
   const here = active.startsWith("/account") || tools.some((tool) => tool.to === active);
   const name = t("nav.accountMenu", { name: member.username });
 
   return (
     <DropdownMenu>
-      {/* NO CHEVRON. An avatar top right is a control everybody already
-          knows to click. */}
+      {/* No chevron: an avatar top right is a control everybody knows. */}
       <DropdownMenuTrigger
         aria-label={pending > 0 ? `${name}, ${t("nav.pending", { n: pending })}` : name}
         className="focus-ring-stage relative flex min-h-touch min-w-touch items-center justify-center rounded-full"
@@ -104,9 +99,8 @@ function DesktopDropdown({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" sideOffset={8} className="w-64">
-        {/* WHO IS LOGGED IN, since the trigger shows only initials. On the
-            shared family computer this is the line that says whose session
-            it is. Plain markup, not a menu item: nothing to select. */}
+        {/* Who is logged in, since the trigger shows only initials and a
+            family may share a computer. Plain markup: nothing to select. */}
         <div className="mb-1.5 flex items-center gap-3 border-b border-line px-2.5 pt-1.5 pb-3">
           <Avatar firstName={member.firstName} lastName={member.lastName} />
           <div className="min-w-0">
@@ -115,9 +109,9 @@ function DesktopDropdown({
           </div>
         </div>
 
-        {/* asChild straight onto Link, for the reason RowActions' ItemFor
-            gives: a real anchor survives middle-click, and one Slot layer is
-            all it takes for Radix's props to land. */}
+        {/* asChild straight onto Link, as in RowActions' ItemFor: a real
+            anchor survives middle-click, and one Slot layer lets Radix's
+            props land. */}
         {showAccount ? (
           <DropdownMenuItem asChild>
             <Link to="/account" aria-current={active === "/account" ? "page" : undefined}>

@@ -1,5 +1,5 @@
 /**
- * Shrinks a photo in the browser before it is uploaded (#105).
+ * Shrinks a photo in the browser before it is uploaded.
  *
  * A phone camera original runs to 5-20 MB and the server accepts 600 KB a
  * size, so the work happens here: decode once, then scale and re-encode as
@@ -230,12 +230,11 @@ export async function shrink(file: File): Promise<Blob[]> {
  * A 2D context for drawing a photo and reading it back, which is all this code
  * does with a canvas.
  *
- * CPU-BACKED ON PURPOSE. Firefox 156 on Windows, with its default accelerated
- * canvas, reads an image drawn onto a canvas back as all zeros: every photo
- * went up as a black JPEG of a few KB, while a plain fill read back correctly.
- * `willReadFrequently` keeps the canvas in main memory, where the read-back is
- * right in every browser (measured 2026-10-03: average brightness 0 against 97
- * on the same photo).
+ * CPU-backed on purpose. Firefox 156 on Windows, with its default accelerated
+ * canvas, reads an image drawn onto a canvas back as all zeros, so every photo
+ * would go up as a black JPEG of a few KB, while a plain fill reads back
+ * correctly. `willReadFrequently` keeps the canvas in main memory, where the
+ * read-back is right in every browser.
  */
 export function photoContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const context = canvas.getContext("2d", { willReadFrequently: true });
@@ -246,7 +245,7 @@ export function photoContext(canvas: HTMLCanvasElement): CanvasRenderingContext2
 /**
  * Whether the drawn size reads back as pure black along its middle row and
  * middle column: what a browser hands back when it fails to read a drawn image,
- * as Firefox's accelerated canvas did. No photograph is pure black along both
+ * as Firefox's accelerated canvas does. No photograph is pure black along both
  * lines, and two lines cost little even at 1920 px.
  */
 function readsBackBlack(context: CanvasRenderingContext2D, width: number, height: number): boolean {

@@ -18,24 +18,22 @@ import { safeReturnTo } from "../lib/returnTo";
 /**
  * The one way in.
  *
- * WHERE IT GOES AFTERWARDS, in order:
+ * Where it goes afterwards, in order:
  *
- *   1. `/account/password`, when the account must change its password. A
- *      committee-issued password was read out loud down a phone, so it is not a
- *      secret. MustChangePassword enforces this globally; sending them straight
- *      there just avoids a pointless bounce through a page they cannot use.
- *   2. Wherever they were trying to go, handed over in router STATE by the
+ *   1. `/account/password`, when the account must change its password (a
+ *      committee-issued password was read out down a phone, so it is not a
+ *      secret). MustChangePassword enforces this anyway; going straight there
+ *      saves a bounce.
+ *   2. Wherever they were trying to go, handed over in router state by the
  *      route guard and normalised by safeReturnTo.
  *   3. `/` otherwise.
  *
- * The session is INVALIDATED rather than written. GET /api/me is the single
- * shape describing who you are, so the login response deliberately carries no
- * identity (see AuthController::login) — this refetches it instead of guessing
- * from a body that does not have it.
+ * The session is invalidated rather than written: the login response carries
+ * no identity (see AuthController::login), and GET /api/v1/me is the single
+ * shape describing who you are.
  *
- * NO "FORGOT PASSWORD" LINK. There is no address to send one to: `members` has
- * no email column, and every password is committee-issued (ADR 0016). A link that
- * opened a dead end would be worse than its absence.
+ * No "forgot password" link: `members` has no email column, and every
+ * password is committee-issued (ADR 0016).
  */
 export function Login() {
   const [username, setUsername] = useState("");
@@ -52,8 +50,8 @@ export function Login() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    // aria-disabled, not disabled — so THIS early return is what actually
-    // prevents a double submit. See components/ui/button.tsx.
+    // The button is aria-disabled, not disabled, so this return prevents a
+    // double submit. See components/ui/button.tsx.
     if (login.isPending) {
       return;
     }
@@ -73,9 +71,9 @@ export function Login() {
       return;
     }
 
-    // Awaited before navigating: the destination is chosen from the NEW
-    // session, and a route guard rendering against a stale one would bounce
-    // the member straight back here.
+    // Awaited before navigating: the destination is chosen from the new
+    // session, and a guard rendering against a stale one would bounce the
+    // member straight back here.
     await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
     const me = queryClient.getQueryData<{ data?: { mustChangePassword?: boolean } }>(
       getAuthMeQueryKey(),
@@ -89,7 +87,7 @@ export function Login() {
       <PageHero title={t("nav.login")} seed={29} width="form" />
 
       <PageSection width="form">
-        {/* The fields stay the plain vendored inputs; only the card around them
+        {/* The fields stay plain vendored inputs; only the card around them
             and the button are raised (ADR 0029). */}
         <Card asChild className={cn(RAISED_CARD, "gap-related p-5")}>
           <form onSubmit={submit} noValidate>

@@ -1,5 +1,5 @@
 /**
- * Turns a library photo a quarter, in the browser (#105).
+ * Turns a library photo a quarter, in the browser.
  *
  * The server never decodes an image (ADR 0028), so a rotation is a
  * replacement: the largest stored size is loaded, turned on a canvas, and

@@ -1,37 +1,28 @@
 /**
  * The one place this project's API peculiarities live.
  *
- * orval generates every endpoint and TanStack Query hook, and routes them all
- * through customFetch below, so no generated file is ever hand-edited and no
- * call site has to remember any of the following:
+ * orval routes every generated endpoint and TanStack Query hook through
+ * customFetch below, so no call site has to remember any of this:
  *
- *  - Sanctum authenticates by SESSION COOKIE, so every request needs
+ *  - Sanctum authenticates by session cookie, so every request needs
  *    credentials: 'include'.
- *  - Sanctum rejects a mutating request with 419 unless the XSRF cookie has been
- *    seeded by GET /sanctum/csrf-cookie first. That path is NOT under /api.
- *  - A successful call returns orval's ENVELOPE, { data, status, headers } —
- *    not the parsed body. Every generated signature declares that shape, so
- *    returning the body alone type-checks everywhere and is undefined at
- *    runtime. Call sites read `.data`; through a TanStack Query hook that
- *    reads `query.data.data`, the outer one being Query's own.
- *  - Errors are RFC 9457 problem documents on application/problem+json, not
- *    Laravel's {message, errors}. `code` and `errors[].reason` are stable
- *    machine tokens the display layer translates into French; they are never
- *    shown raw. `title` is English prose for a log and must never be rendered.
+ *  - Sanctum rejects a write with 419 unless GET /sanctum/csrf-cookie (not
+ *    under /api) has seeded the XSRF cookie first.
+ *  - A successful call returns orval's envelope, { data, status, headers },
+ *    not the parsed body. Through a TanStack Query hook that reads
+ *    `query.data.data`, the outer one being Query's own.
+ *  - Errors are RFC 9457 problem documents. `code` and `errors[].reason` are
+ *    machine tokens the i18n layer translates and never shows raw. `title` is
+ *    English prose for a log and is never rendered.
  *
- * Signature note: orval's `httpClient: 'fetch'` mode calls its mutator as
- * `customFetch<T>(url, options)` — a URL string (already spec-relative, with
- * any query string already appended by the generated `getXUrl()` helper) and a
- * plain RequestInit (method, headers, body already JSON.stringify'd when there
- * is one) — not a single config object. That's the real, installed orval
- * 8.23.0 contract, so this mutator's parameter shape follows it rather than a
- * hand-designed one.
+ * orval's `httpClient: 'fetch'` mode calls the mutator as
+ * `customFetch<T>(url, options)`: a spec-relative URL with any query string
+ * already appended, and a plain RequestInit with the body already stringified.
  */
 
 /**
- * Spec paths are relative to /api/v1; the SPA is served from the same origin.
- * The version prefix is part of the contract — App\Http\Middleware\ApiVersion::PREFIX
- * on the Laravel side — and moving to a v2 means changing it here too.
+ * Spec paths are relative to /api/v1, on the same origin. The prefix mirrors
+ * App\Http\Middleware\ApiVersion::PREFIX; a v2 changes both.
  */
 const API_BASE = "/api/v1";
 const CSRF_COOKIE_PATH = "/sanctum/csrf-cookie";
@@ -44,18 +35,15 @@ export type ApiErrorField = {
 };
 
 /**
- * Thrown for every non-2xx response, so callers (and TanStack Query's error
- * state) always receive one type. `code` falls back to 'unknown_error' when the
- * body is not the contract at all — an HTML 502 from the host, say — because the
- * display layer must always have a token to translate.
+ * Thrown for every non-2xx response. `code` falls back to 'unknown_error' when
+ * the body is not the contract (an HTML 502 from the host, say), so the i18n
+ * layer always has a token to translate.
  *
- * `fields` keeps its name here even though the wire calls it `errors`: on this
- * side it is one property of an Error object, and `error.errors` reads as a
- * mistake. The wire name follows RFC 9457 convention; this one follows what the
- * UI does with it, which is highlight fields.
+ * `fields` is the wire's `errors`, renamed because `error.errors` reads as a
+ * mistake.
  *
- * `requestId` is the string a member reads out when something failed. It is
- * optional because a body that is not our contract has none.
+ * `requestId` is the string a member reads out when something failed; a body
+ * that is not our contract has none.
  */
 export class ApiError extends Error {
   readonly status: number;
@@ -117,15 +105,12 @@ export async function customFetch<T>(url: string, options?: RequestInit): Promis
     throw await toApiError(response);
   }
 
-  // orval's `httpClient: 'fetch'` contract is that a mutator returns the
-  // ENVELOPE, not the bare body: every generated signature declares it, e.g.
+  // The mutator returns the envelope every generated signature declares, e.g.
   // `eventIndexResponse = { data: …; status: 200 } & { headers: Headers }`.
-  // Returning the parsed body alone therefore type-checks at every call site
-  // and is `undefined` at runtime — a whole page's data silently missing, with
-  // no compiler error anywhere. Do not "simplify" this back.
+  // The bare body would type-check at every call site and be `undefined` at
+  // runtime (contract.test.ts and http.test.ts pin both halves).
   //
-  // 204 carries `data: null` rather than being absent, so a caller can read
-  // `.data` unconditionally.
+  // 204 carries `data: null`, so a caller can read `.data` unconditionally.
   const data = response.status === 204 ? null : await response.json();
 
   return { data, status: response.status, headers: response.headers } as T;
@@ -159,16 +144,12 @@ async function toApiError(response: Response): Promise<ApiError> {
     );
   }
 
-  // An RFC 9457 problem document. `title`, `status`, `detail` and `instance`
-  // are the standard members; `code`, `errors` and `requestId` are this API's
-  // extensions — see App\Exceptions\ApiError. There is no `type`: it could only
-  // have been a constant prefix in front of `code`.
+  // An RFC 9457 problem document, with this API's `code`, `errors` and
+  // `requestId` extensions (App\Exceptions\ApiError). There is no `type`.
   //
-  // Only `code` is load-bearing here — it is the token the French layer maps,
-  // and a body without one is not our contract at all. `detail` is declared but
-  // deliberately not carried onto ApiError: it is English prose for a developer
-  // reading a response, and nothing English reaches a member's screen. It is
-  // typed so this stays an honest description of the wire.
+  // A body without `code` is not our contract. `detail` is English prose for a
+  // developer and is typed here but never carried onto ApiError, because
+  // nothing English reaches a member's screen.
   const problem = body as {
     title?: string;
     code?: string;

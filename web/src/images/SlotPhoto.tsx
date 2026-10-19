@@ -29,7 +29,7 @@ type Props = {
 };
 
 /**
- * One photo slot (#105): put it on a page with a name and it shows whatever is
+ * One photo slot: put it on a page with a name and it shows whatever is
  * placed there, and lets whoever holds `images.manage` change it in place. It
  * reads the slots itself, so a page passes no photo.
  *

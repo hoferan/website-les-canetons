@@ -50,11 +50,8 @@ test("keeps the rehearsals off the page", async () => {
 });
 
 /**
- * THE OPPOSITE OF THE FRONT PAGE'S BLOCK, and the reason they are two
- * components. Somebody who navigated here asked for the schedule, so a heading
- * over blank space reads as a page that failed to load.
- *
- * Mutation-tested: returning null on an empty list, the way PublicAgenda does,
+ * The opposite of the front page's block: somebody who navigated here asked
+ * for the schedule. Returning null on an empty list, as PublicAgenda does,
  * fails this test and no other.
  */
 test("says the dates are not published yet rather than showing nothing", async () => {
@@ -66,9 +63,8 @@ test("says the dates are not published yet rather than showing nothing", async (
 });
 
 /**
- * The wording has to be true WHILE LOADING as well as when the list is really
- * empty — "aucune date" would be a claim the page cannot support until the
- * request lands.
+ * The wording has to be true while loading as well as when the list is empty;
+ * "aucune date" is a claim the page cannot make until the request lands.
  */
 test("never claims there are no dates", async () => {
   server.use(http.get("/api/v1/agenda", () => agendaOf(0)));
@@ -92,10 +88,7 @@ test("the front page caps its block at three and offers the rest", async () => {
   );
 });
 
-/**
- * A "toutes les dates" button under a list that already IS all the dates sends
- * somebody to a page they have just finished reading.
- */
+/** "Toutes les dates" under a list that already is all the dates is useless. */
 test("the front page offers no link when it is already showing everything", async () => {
   server.use(http.get("/api/v1/agenda", () => agendaOf(2)));
 
@@ -111,10 +104,8 @@ test("the front page offers no link when it is already showing everything", asyn
  * -------------------------------------------------------------------------- */
 
 /**
- * THE ONLY WAY A VISITOR REACHES THE BOOKING FORM from inside the site, and
- * the reason PublicEventResource gained an id at all. Without this link the
- * form is typed-URL-only, which is the shape of defect that hid the missing
- * logout for three releases.
+ * The only way a visitor reaches the booking form from inside the site, and
+ * why PublicEventResource carries an id. Without it the form is typed-URL-only.
  */
 test("offers a booking link on an event that is taking bookings", async () => {
   await renderWithSession(<Agenda />, { route: "/agenda" });
@@ -124,10 +115,8 @@ test("offers a booking link on an event that is taking bookings", async () => {
 });
 
 /**
- * MUTATION TEST: link on `takesRegistrations` rather than on
- * `registrationOpen` and this fails. Both events below take bookings; only one
- * of them is taking them now, and offering "S’inscrire" on the other sends a
- * reader to a form that refuses them.
+ * The link follows `registrationOpen`: offering "S’inscrire" on an event whose
+ * window is shut sends the reader to a form that refuses them.
  */
 test("offers none on an event whose window is shut", async () => {
   server.use(http.get("/api/v1/agenda", () => agendaOf(1)));

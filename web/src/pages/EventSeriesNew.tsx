@@ -13,16 +13,14 @@ import { t } from "../i18n";
 /**
  * A whole season in one request.
  *
- * IT LANDS ON THE PLANNING, carrying the count (#103). It used to report the
- * count in place, on its own path, and a check that read the URL took that
- * for a failed save and ran it again: two identical seasons on TEST. The
- * planning is also where the new rehearsals are, so the count is read beside
- * them, and it stays there until dismissed, with a link to generate the
- * season's second rehearsal variant straight away.
+ * It lands on the planning, carrying the count (#103), so the URL says the
+ * save worked: a count reported in place, on the form's own path, reads as a
+ * failed save to anything checking the URL, and running it again creates the
+ * season twice. The count stays beside the new rehearsals until dismissed,
+ * with a link to generate the season's second rehearsal variant.
  *
- * THE COUNT IS THE SERVER'S, read off the created collection rather than off
- * the ticked dates. They should agree; if they ever do not, the honest number
- * is the one describing what exists.
+ * The count is the server's, read off the created collection rather than the
+ * ticked dates, so it describes what exists.
  */
 export function EventSeriesNew() {
   const navigate = useNavigate();
@@ -36,16 +34,15 @@ export function EventSeriesNew() {
     try {
       const result = await create.mutateAsync({ data: request });
       await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
-      // A 201 carrying a collection — which is exactly why rowsOf narrows on
-      // any 2xx rather than on 200. See web/src/api/collection.ts.
+      // A 201 carrying a collection, which is why rowsOf narrows on any 2xx.
+      // See web/src/api/collection.ts.
       const state: SeriesCreatedState = {
         seriesCreated: rowsOf<EventResource>(result).length,
       };
       navigate("/events", { state });
     } catch (thrown) {
-      // The form stays open, with the ticks intact: a refused template has to
-      // be corrected where it was typed, and re-choosing the range would mean
-      // unticking the school holidays all over again.
+      // The form stays open with the ticks intact, so a refused template is
+      // corrected where it was typed without unticking the holidays again.
       form.setFromThrown(thrown);
     }
   }

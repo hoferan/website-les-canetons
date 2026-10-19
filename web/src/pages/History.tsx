@@ -21,7 +21,6 @@ import { useSession } from "../session/SessionProvider";
 
 const ADD_ID = "history-add";
 
-/** What the history form hands the page as it navigates back after a save. */
 /**
  * Set by the history form on its way back here. `photoFailed` means the entry
  * saved and its photo did not, which the form cannot report itself: it has
@@ -37,17 +36,15 @@ export type HistorySavedState = { historySaved: true; photoFailed?: boolean };
  * one, otherwise in the other, with `lang` on the entry's text and a note in
  * the page's language saying which. ADR 0026.
  *
- * THE DATE IS IN THE HEADING, above the title, at every width. On a timeline
+ * The date is in the heading, above the title, at every width: on a timeline
  * the year is the landmark, so heading navigation has to reach it, and an
- * entry without a title still gets a heading. A date column beside the line
- * was considered for desktop, but the page is a text-width column, and a
- * second column only narrows the text it is there to show.
+ * untitled entry still gets a heading. There is no date column, because the
+ * page is text-width and a second column only narrows the text.
  *
- * The controls are ABSENT without the permission rather than refused, like
- * the planning's: a link that leads to "Accès refusé" teaches people that
- * parts of the site are broken for them.
+ * The controls are absent without the permission rather than refused, like
+ * the planning's: a link that leads to "Accès refusé" reads as a broken site.
  *
- * THE LONGEST PAGE ON THE SITE, so the carnival look stops at the hero (ADR
+ * The longest page on the site, so the carnival look stops at the hero (ADR
  * 0029): the entries stay on plain cream, and the only colour below it is the
  * timeline's own markers.
  */
@@ -62,11 +59,10 @@ export function History() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // A SAVE ARRIVES AS HISTORY STATE from the form, and is announced once the
-  // page is here. Set after mount into a live region that already exists,
-  // which is what gets it read out; then cleared from the history entry, so a
-  // reload or "back" does not announce it again. SeriesCreatedNotice does the
-  // same for the planning.
+  // A save arrives as history state from the form. It is set after mount into
+  // a live region that already exists, which is what gets it read out, then
+  // cleared from the history entry so a reload or Back does not repeat it.
+  // SeriesCreatedNotice does the same for the planning.
   useEffect(() => {
     const saved = location.state as HistorySavedState | null;
     if (saved?.historySaved !== true) {
@@ -166,9 +162,9 @@ function TimelineEntry({
     t("history.untitledEntry", {
       of: dateWithPreposition(entry.occurredOn, entry.precision, locale),
     });
-  // LANG ON THE ENTRY'S OWN TEXT ONLY. The date, the hidden importance and
-  // the controls are page copy, and a lang on the whole entry would have a
-  // screen reader read them in the entry's language.
+  // lang goes on the entry's own text only. The date, the hidden importance
+  // and the controls are page copy, and would otherwise be read in the
+  // entry's language.
   const textLang = shown.fallback ? shown.lang : undefined;
 
   return (
@@ -179,10 +175,10 @@ function TimelineEntry({
         className="absolute top-0 left-0 -translate-x-[calc(50%+1px)]"
       />
 
-      {/* WRAP ANYWHERE: a pasted URL or a German compound is one unbroken
-          word, and at 390px it pushed the whole page sideways. Hyphenation
-          only on the title, where Bungee's wide capitals need it; on
-          ragged-right text it split ordinary words at every width. */}
+      {/* wrap-anywhere: a pasted URL or a German compound is one unbroken
+          word that pushes the page sideways at 390px. Hyphenation only on
+          the title, where Bungee's wide capitals need it; on ragged-right
+          text it splits ordinary words at every width. */}
       <h2 className="wrap-anywhere">
         {entry.important ? <span className="sr-only">{t("history.importantPrefix")}</span> : null}
         <span className="block text-sm font-semibold text-violet">

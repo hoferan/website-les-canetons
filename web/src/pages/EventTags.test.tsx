@@ -128,10 +128,10 @@ test("the confetti switch shows the stored flag and saves as it is flipped", asy
 });
 
 /**
- * MUTATION TEST: pass `disabled={busy}` again, alone or beside aria-disabled,
- * and `toBeEnabled()` fails. In a browser that attribute throws a keyboard
- * user's focus to <body> mid-save (rule 2 in ui/button.tsx), but jsdom keeps
- * the focus where it was, so the focus assertions here cannot see it;
+ * Mutation test: pass `disabled={busy}`, alone or beside aria-disabled, and
+ * `toBeEnabled()` fails. In a browser that attribute throws a keyboard user's
+ * focus to <body> mid-save (rule 2 in ui/button.tsx), but jsdom keeps the
+ * focus where it was, so the focus assertions here cannot see it;
  * tags.spec.ts shows it in Chromium. Drop the early return and the second
  * Space turns the switch off mid-save.
  */
@@ -167,7 +167,7 @@ test("a Space flip saves without disabling the switch, and ignores a second one"
 });
 
 test("a refused flip puts the switch back and says why", async () => {
-  // MUTATION TEST: drop the reset in flip()'s finally and the switch stays on
+  // Mutation test: drop the reset in flip()'s finally and the switch stays on
   // over a refusal, showing a flag the server never stored.
   const user = userEvent.setup();
   server.use(
@@ -254,9 +254,9 @@ test("deleting a tag says how many events lose it, then removes it", async () =>
 });
 
 /**
- * MUTATION TEST: put `disabled={busy}` back on either button and
- * `toBeEnabled()` fails. Drop the early return from either and its press
- * opens the edit form or the delete dialog over a flip still saving.
+ * Mutation test: put `disabled={busy}` on either button and `toBeEnabled()`
+ * fails. Drop the early return from either and its press opens the edit form
+ * or the delete dialog over a flip still saving.
  */
 test("while a flip saves, Modifier and Supprimer stay enabled and do nothing", async () => {
   const user = userEvent.setup();
@@ -283,9 +283,9 @@ test("while a flip saves, Modifier and Supprimer stay enabled and do nothing", a
 });
 
 /**
- * MUTATION TEST: put `disabled={busy}` back and `toBeEnabled()` fails. Drop
- * the early return from the form's onSubmit and the second press sends a
- * second PUT.
+ * Mutation test: put `disabled={busy}` on the button and `toBeEnabled()`
+ * fails. Drop the early return from the form's onSubmit and the second press
+ * sends a second PUT.
  */
 test("Enregistrer stays enabled while the rename saves, and a second press sends nothing", async () => {
   const user = userEvent.setup();
@@ -313,9 +313,9 @@ test("Enregistrer stays enabled while the rename saves, and a second press sends
 });
 
 /**
- * MUTATION TEST: put `disabled={busy}` back and `toBeEnabled()` fails. Drop
- * the early return from the form's onSubmit and the second press sends a
- * second POST.
+ * Mutation test: put `disabled={busy}` on the button and `toBeEnabled()`
+ * fails. Drop the early return from the form's onSubmit and the second press
+ * sends a second POST.
  */
 test("Ajouter stays enabled while the tag is created, and a second press sends nothing", async () => {
   const user = userEvent.setup();
@@ -339,8 +339,8 @@ test("Ajouter stays enabled while the tag is created, and a second press sends n
 });
 
 /**
- * MUTATION TEST: put `disabled={busy}` back on either button and
- * `toBeEnabled()` fails. Drop the confirm's early return and a second DELETE
+ * Mutation test: put `disabled={busy}` on either button and `toBeEnabled()`
+ * fails. Drop the confirm's early return and a second DELETE
  * goes out. Drop `!busy` from the dialog's onOpenChange and Annuler closes it
  * mid-delete: Radix's Cancel calls onOpenChange(false) on every click,
  * whatever aria-disabled says, so that check is the only thing holding it.

@@ -18,15 +18,11 @@ import { type TranslationKey, t } from "../i18n";
 /**
  * The four pages a stranger most likely wants, in that order.
  *
- * A CURATED SUBSET OF THE NAV, ON PURPOSE — see DestinationCards.tsx. The nav
- * is the list of what exists; this is the list of what to read first.
+ * A curated subset of the nav (see DestinationCards.tsx): the nav lists what
+ * exists, this lists what to read first.
  *
- * Each description says what is on the page it links to IN THE STATE THAT PAGE
- * SHIPS IN, not a promise about some finished version. /band today shows six
- * registers with a placeholder where the names go, because consent is opt-in
- * and nobody has been asked yet. So these are honest about the shipping site.
- * None of them asserts a fact about the band — those come from /history, or
- * from the band.
+ * Each description says what the linked page shows as it ships, not a
+ * promise about a finished version, and none asserts a fact about the band.
  */
 const DESTINATIONS: {
   to: string;
@@ -71,29 +67,16 @@ const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
 /**
  * The front door.
  *
- * IT WAS FAITHFUL PARITY, AND THAT WAS THE PROBLEM. The legacy home page was a
- * logo, the words "Bienvenue sur notre site", the navigation and one image: it
- * never said when the band was founded, what a Guggenmusik is, or who can
- * join. The first SPA reproduced that exactly, so the front page was a
- * content-free heading and a placeholder.
+ * The hero copy condenses /history; nothing factual is invented anywhere on
+ * this site (hence `<Tbd />`). If the band writes a few sentences about
+ * themselves, those replace it.
  *
- * THE HERO COPY IS A CONDENSATION OF /history, NOT NEW COPY. Nothing factual
- * is invented anywhere on this site — the `<Tbd />` count is the proof of how
- * seriously that is taken. Every clause below is already published on
- * /history, which is why this page did not have to wait for the band to write
- * anything. It still deserves their eyes once, and if they ever write two or
- * three sentences about themselves, those replace the one below.
- *
- * NO TUTOIEMENT. /join says "Tu veux commencer la guggen ?" because it
- * addresses children directly. A front door is read by parents and children
- * both, so the copy stays impersonal rather than inventing a register shift on
- * the site's most-read page.
+ * No tutoiement. /join addresses children directly ("Tu veux commencer la
+ * guggen ?"), but the front door is read by parents and children both.
  *
  * The agenda sits after the photograph slot and before the destinations: the
- * hero says what the band is, the agenda says what it is doing next, and
- * somebody still reading after both is the person who wants to go somewhere.
- * It is the only thing here that changes by itself, and it is allowed to
- * render nothing.
+ * hero says what the band is, the agenda what it does next, and somebody
+ * still reading wants to go somewhere. The agenda may render nothing.
  */
 export function Home() {
   // The same query PublicAgenda reads, so React Query asks for it once.
@@ -104,38 +87,29 @@ export function Home() {
 
   return (
     <>
-      {/* THE POSTER HERO, ADR 0029. Full width, so it sits outside PageSection,
-          with the shell width inside it. `pb-14` and up leave the Scallop room
-          to draw over the bottom edge. */}
+      {/* The poster hero (ADR 0029). Full width, so it sits outside
+          PageSection, with the shell width inside it. `pb-14` and up leave
+          the Scallop room to draw over the bottom edge. */}
       <div className="relative overflow-hidden bg-poster text-white">
         <Confetti seed={11} colours={POSTER_CONFETTI} wobble />
         <div className="relative mx-auto grid max-w-shell gap-block px-4 pt-8 pb-14 md:grid-cols-[1.4fr_1fr] md:items-center md:pt-16 md:pb-24">
-          {/* The band's badge — the mark people know from the flyers, the
-              costumes and the instruments — as the hero's mark, stuck on like
-              a sticker. It sits here because the header carries the duck as
-              its own mark beside a live-text wordmark; see Logo.tsx for why.
+          {/* The band's badge, the mark people know from the flyers and
+              costumes, stuck on like a sticker. The header carries the duck
+              beside a live-text wordmark instead; see Logo.tsx.
 
-              THIS IS THE BADGE'S ONLY PLACEMENT ON THE SITE. It was briefly in
-              the footer too, and dropped on 2026-09-03: shown in the chrome of
-              every page it stopped being the thing you recognise and became
-              wallpaper. One prominent placement beats two quiet ones.
+              This is the badge's only placement: in the chrome of every page
+              it would become wallpaper.
 
-              Narrower below `sm`. Measured at 390px: w-48 renders 192×141 and
-              w-64 renders 256×188, so dropping to w-48 saves 47px of hero
-              height rather than the 64px of width the class name suggests,
-              because the image keeps its aspect ratio. */}
+              Narrower below `sm`, which saves about 47px of hero height at
+              390px, since the image keeps its aspect ratio. */}
           <div data-confetti-avoid className="justify-self-center md:order-2">
             <BrandLogo className="w-48 rotate-[4deg] border-4 border-white shadow-raised sm:w-64 md:w-72" />
           </div>
 
           <div>
-            {/* text-3xl below `sm`. Bungee is a signage face whose lowercase
-                glyphs are drawn as CAPITALS, so this line sets as caps whatever
-                the source says and is far wider than Karla at the same size.
-                It wraps to four lines at 390px at either text-3xl or text-4xl;
-                the smaller size saves 4px of line-height per line, not a line.
-                A sentence-case heading is not available while this face is in
-                use; that is the look, not a bug.
+            {/* Bungee draws its lowercase as capitals, so this line sets as
+                caps whatever the source says, and is far wider than Karla at
+                the same size. That is the look, not a bug.
 
                 leading-[1.18] at every size, for the highlight's sake: see
                 Highlighted.tsx. */}
@@ -146,13 +120,11 @@ export function Home() {
               <Highlighted text={t("home.hero")} mark={t("home.heroHighlight")} />
             </h1>
 
-            {/* ONE sentence, not a paragraph, and it carries the only
-                practically useful facts: Saturday mornings, and no experience
-                needed. That is what somebody deciding whether to turn up needs.
-                White here is 5.3:1 at its worst, the top right of the
-                paragraph at 390px, where the poster is pinkest under it. The
-                gradient in styles.css runs the way it does to keep that above
-                4.5:1. */}
+            {/* One sentence with the practical facts somebody deciding
+                whether to turn up needs: Saturday mornings, no experience
+                needed. White here is 5.3:1 at its worst (top right at 390px,
+                where the poster is pinkest); the gradient in styles.css runs
+                the way it does to keep that above 4.5:1. */}
             <p data-confetti-avoid className="mt-related max-w-text text-lg">
               {t("home.heroSub")}
             </p>
@@ -188,8 +160,7 @@ export function Home() {
 
       {/* Held until the agenda has answered, whatever the answer. The cards
           start inside a phone's first screen, so rendered while the agenda
-          loads they were pushed down when its dates arrived (#236). They appear
-          together with the agenda instead, in space nothing else occupies.
+          loads they would be pushed down when its dates arrive (#236).
 
           On the yellow band, the one other surface on this page that takes
           confetti. */}

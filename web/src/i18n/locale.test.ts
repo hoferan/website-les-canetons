@@ -22,8 +22,8 @@ describe("localeFromPath", () => {
     expect(localeFromPath("/de/")).toEqual({ locale: "de-CH", basename: "/de" });
   });
 
-  // THE TRAP THIS FUNCTION EXISTS TO AVOID. A prefix match on "/de" would
-  // claim every one of these, mount the router at /de, and render nothing.
+  // A prefix match on "/de" would claim every one of these, mount the router
+  // at /de, and render nothing.
   test("matches /de as a whole segment, never as a string prefix", () => {
     expect(localeFromPath("/design")).toEqual({ locale: "fr", basename: "/" });
     expect(localeFromPath("/depot")).toEqual({ locale: "fr", basename: "/" });
@@ -59,11 +59,8 @@ describe("htmlLang and intlTag", () => {
     expect(htmlLang("de-CH")).toBe("de-CH");
   });
 
-  // ONE TAG PER LOCALE SINCE #161. French used to have two — fr-FR for long
-  // dates, fr-CH for everything else — because they are a comma apart in the
-  // long form ("samedi 5 décembre 2026" against "samedi, 5 décembre 2026").
-  // The only caller of the long form rendered on no screen, so the choice went
-  // with it. intlTag's docblock says what to do if a long date comes back.
+  // One tag per locale. intlTag's docblock says what to do if a long date
+  // with a weekday comes back.
   test("French is fr-CH and German is de-CH, with nothing left to choose", () => {
     expect(intlTag("fr")).toBe("fr-CH");
     expect(intlTag("de-CH")).toBe("de-CH");

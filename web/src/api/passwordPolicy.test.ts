@@ -4,9 +4,9 @@ import { expect, test } from "vitest";
 
 import { MIN_PASSWORD_LENGTH } from "./passwordPolicy";
 
-// Resolved from the Vitest root (the repo root). The committed export is what
-// CI's openapi-drift job holds to the Laravel rules, so reading it here chains
-// the SPA's number to AccountPasswordRequest without a second copy to forget.
+// Resolved from the Vitest root (the repo root). CI's openapi-drift job holds
+// the committed export to the Laravel rules, so this chains the SPA's number
+// to AccountPasswordRequest.
 const openapi = JSON.parse(readFileSync(resolve("api/openapi.json"), "utf8")) as {
   components: { schemas: Record<string, { properties: Record<string, { minLength?: number }> }> };
 };

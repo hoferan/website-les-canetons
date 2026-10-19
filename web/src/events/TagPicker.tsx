@@ -7,8 +7,8 @@ import { t, tagLabel } from "../i18n";
 import { TAG_COLOURS } from "./tagColours";
 
 /**
- * Picks an event's tags in its form (#107): the same chips the card shows,
- * each a toggle button.
+ * Picks an event's tags in its form: the same chips the card shows, each a
+ * toggle button.
  *
  * Toggle buttons in a fieldset, not checkboxes: a ticked box beside a chip
  * would show the choice twice. `aria-pressed` carries it for a screen reader,
@@ -48,9 +48,8 @@ export function TagPicker({
               onClick={() => toggle(tag.id)}
               className="group inline-flex min-h-touch items-center outline-none"
             >
-              {/* No dimming of the unchosen chips: opacity took their text
-                  under 4.5:1 (axe, in both forms). The border and the check
-                  carry the choice instead, and the check says only that. */}
+              {/* Unchosen chips are not dimmed: opacity takes their text under
+                  4.5:1 contrast. The border and the check carry the choice. */}
               <span
                 className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium group-focus-visible:ring-[3px] group-focus-visible:ring-ring/50 ${TAG_COLOURS[tag.colour]} ${
                   pressed ? "border-current" : "border-transparent"

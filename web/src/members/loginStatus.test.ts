@@ -7,11 +7,8 @@ afterEach(async () => {
   await setLocale("fr");
 });
 
-// The roster's job here is to make the committee LOOK at the rows it has to do
-// something about (#94). So the two facts split by what they are for: a state
-// somebody must act on becomes a pill, and the last-login date stays plain
-// reference text. An account in normal use therefore has no pill at all —
-// that absence is the signal.
+// A state somebody must act on becomes a pill, and the last-login date stays
+// plain reference text. An account in normal use has no pill at all.
 
 test("a provisional password that has never been used raises both pills", () => {
   const state = loginState({ mustChangePassword: true, lastLoginAt: null });
@@ -59,11 +56,10 @@ test("the terse pill carries a fuller accessible name", () => {
   expect(pill?.accessibleName).toBe("Mot de passe provisoire");
 });
 
-// A regression guard on the specific wording that was rejected: `Jamais
-// connecté` has to agree with the member, and this codebase has no
-// inclusive-writing convention to reach for. `utilisé` agrees with `le compte`
-// instead, so it is safe. This pins that one stem and nothing wider — an
-// agreeing word like `inscrit` would pass it.
+// `Jamais connecté` would have to agree with the member, and the codebase has
+// no inclusive-writing convention; `utilisé` agrees with `le compte`. This
+// pins that one stem and nothing wider: an agreeing word like `inscrit` would
+// pass it.
 test("no pill uses the participle that would agree with the member", () => {
   const combinations = [
     { mustChangePassword: true, lastLoginAt: null },
@@ -81,15 +77,12 @@ test("no pill uses the participle that would agree with the member", () => {
 });
 
 test("the pills and the date are German, and the date keeps its own preposition", async () => {
-  // `formatLastLogin` was made locale-aware in #151; the words AROUND it were
-  // not. "Dernière connexion le X" against "Letzte Anmeldung am X" — the
-  // preposition differs and it is not part of the date, so the whole sentence
-  // comes from the catalogue rather than being glued together here.
+  // "Dernière connexion le X" against "Letzte Anmeldung am X": the
+  // preposition differs and is not part of the date, so the whole sentence
+  // comes from the catalogue.
   //
-  // The French label also avoids a participle that would have to agree with
-  // the member ("jamais utilisé" agrees with `le compte`). German has no such
-  // constraint — see the note in fr.ts, which exists so nobody "simplifies"
-  // the French to match the German.
+  // German has no participle-agreement constraint; the note in fr.ts keeps
+  // anybody from simplifying the French to match.
   await setLocale("de-CH");
 
   const state = loginState({ mustChangePassword: true, lastLoginAt: "2026-09-01T19:30:00+02:00" });

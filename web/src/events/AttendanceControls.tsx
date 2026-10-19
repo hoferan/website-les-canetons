@@ -21,9 +21,8 @@ import { WithdrawDialog } from "./WithdrawDialog";
  * The cached planning, as much of its shape as this file has to know.
  *
  * TanStack holds orval's whole `{ status, data, headers }` envelope, and ours
- * is the `{ data, meta }` inside it — so the rows are two hops down. Written
- * as a guard rather than a cast because the same key can hold an error
- * envelope, and a cast would patch `.data.data.map` onto a problem document.
+ * is the `{ data, meta }` inside it, so the rows are two hops down. A guard,
+ * not a cast, because the same key can hold an error envelope.
  */
 type CachedPlanning = { status: number; data: { data: EventResource[] } };
 
@@ -35,15 +34,12 @@ function isPlanning(cached: unknown): cached is CachedPlanning {
 /**
  * Put an answer into every cached planning, without a refetch.
  *
- * EVERY cached planning: the upcoming list and the past one are separate
- * queries under the same `/events` prefix, and `setQueriesData` matches by
- * prefix for exactly this reason.
+ * Every cached planning: the upcoming and past lists are separate queries
+ * under the same `/events` prefix, and `setQueriesData` matches by prefix.
  *
- * NOTHING IS INVALIDATED AFTERWARDS, deliberately. `myAttendance` is the only
- * field an answer moves, and what is written here on success is the server's
- * own answer rather than a guess — so a refetch would re-fetch the whole
- * planning to learn what we already hold, and the row would flicker through
- * one render of stale data on the way.
+ * Nothing is invalidated afterwards. `myAttendance` is the only field an
+ * answer moves, and on success this writes the server's own answer, so a
+ * refetch would learn nothing and flicker the row through stale data.
  */
 function patchMyAttendance(
   queryClient: QueryClient,
@@ -69,31 +65,23 @@ function patchMyAttendance(
 /**
  * Answering for an event, from the planning, without leaving it.
  *
- * THE PRODUCT IS A 13-YEAR-OLD ON A PHONE ON A BUS. Everything
- * here follows from that:
+ * Built for a 13-year-old on a phone on a bus:
  *
- *   - BOTH ANSWERS ARE ALWAYS VISIBLE, rather than one toggle that has to be
- *     read before it can be used. Which one is current is carried by
- *     `aria-pressed` and by the fill, so the control says what you answered
- *     and what you can answer in the same glance.
- *   - THE CONTROL MOVES BEFORE THE NETWORK DOES. The cache is patched on the
+ *   - Both answers are always visible, so the control shows what you answered
+ *     and what you can answer at a glance. The current one is carried by
+ *     `aria-pressed` and by the fill.
+ *   - The control moves before the network does. The cache is patched on the
  *     way out and rolled back if the server refuses, so a tap on a bad
- *     connection is not a button that does nothing for two seconds. The LIST
- *     does not move at all, now by design — see the planning's docblock for
- *     why an instant answer made a mis-tap likelier until the card was held in
- *     place (#95).
- *   - A FIRST ANSWER IS UNDOABLE for five minutes (ADR 0018), from the toast
- *     and nowhere else. The window is what keeps the withdrawal reason honest:
- *     without it a member
- *     could erase a `oui` and re-answer `non` for free, with no reason. A
- *     CHANGE is not undoable here, because the only thing behind undo is a
- *     DELETE — see the comment where the toast is raised.
+ *     connection is not a button that does nothing for two seconds. The card
+ *     itself stays in place; the planning's docblock says why (#95).
+ *   - A first answer is undoable for five minutes (ADR 0018), from the toast
+ *     only. The window keeps the withdrawal reason honest: without it a member
+ *     could erase a `oui` and re-answer `non` with no reason. A change is not
+ *     undoable; see where the toast is raised.
  *
- * IT RENDERS NOTHING WITHOUT `attendance.respond`. Dominique Direction
- * organises and plays nothing; the API answers her `403 not_answerable`, and a
- * pair of buttons that always refuse teaches her that the site is broken for
- * her. The permission comes from the session, which is the same fact the
- * server checks. The register does not decide it either way.
+ * It renders nothing without `attendance.respond`. An organiser who plays
+ * nothing gets `403 not_answerable` from the API, and buttons that always
+ * refuse look like a broken site. The register does not decide it.
  */
 export function AttendanceControls({
   event,
@@ -102,9 +90,8 @@ export function AttendanceControls({
   event: EventResource;
   /**
    * Whether this card is rendered inside "À répondre", where an answered card
-   * now stays put (#95). It is the only thing that needs saying there: the
-   * block's heading says these are owed, and the pressed button alone does not
-   * explain why an answered one is still under it.
+   * stays put (#95). The pressed button alone does not explain why an answered
+   * card is still under a heading that says these are owed.
    */
   inOwed?: boolean;
 }) {
@@ -132,10 +119,9 @@ export function AttendanceControls({
   /**
    * Undo, offered from the toast and nowhere else.
    *
-   * It takes the answer it is undoing as an argument rather than reading
-   * `answer`, which is a prop of the render that RAISED the toast — by the time
-   * anybody taps Annuler that render is describing the state before the answer
-   * was given, which is the one thing this must not put back.
+   * It takes the answer it undoes as an argument. `answer` belongs to the
+   * render that raised the toast, which describes the state before the answer
+   * was given, and that is the one thing this must not put back.
    */
   async function undo(recorded: AttendanceResource) {
     patchMyAttendance(queryClient, event.id, null);
@@ -163,8 +149,8 @@ export function AttendanceControls({
       recordedAt: new Date().toISOString(),
     };
 
-    // Optimistic, with `recordedAt` set to now — which is what makes the undo
-    // the toast offers believable while the request is still in flight.
+    // `recordedAt` is now, which keeps the toast's undo believable while the
+    // request is still in flight.
     patchMyAttendance(queryClient, event.id, optimistic);
 
     try {
@@ -174,9 +160,9 @@ export function AttendanceControls({
       setWithdrawing(false);
       refusal.clear();
 
-      // Confetti for a new "Oui" to an event the committee marked as worth
-      // it (#108). After the server took it, so a refusal throws nothing, and
-      // not for an "Oui" that was already the answer.
+      // Confetti for a new "Oui" to an event with a celebrating tag, only
+      // after the server took it and not for an "Oui" that was already the
+      // answer.
       if (
         status === "yes" &&
         previous?.status !== "yes" &&
@@ -185,18 +171,13 @@ export function AttendanceControls({
         celebrate();
       }
 
-      // THE UNDO IS OFFERED ON A FIRST ANSWER ONLY, because DELETE is the only
-      // thing behind it and DELETE returns the event to UNANSWERED. On a first
-      // answer that is exactly right, and it is the state a second PUT cannot
-      // express. On a CHANGE it would be a button labelled "Annuler" that
-      // throws away the previous answer as well as the new one — and, when the
-      // change was a withdrawal, throws away the reason just collected along
-      // with the `oui` it was given for. Somebody who mis-tapped a change
-      // taps the other answer again, which costs nothing in that direction.
-      // NAMED, because the undo below is only usable by somebody who can tell
-      // they answered the wrong event. "Vous venez." is the same sentence
-      // whichever card was tapped, so a mis-tap produced the toast the
-      // intended tap would have produced, and nothing said otherwise.
+      // The undo is offered on a first answer only. DELETE is the only thing
+      // behind it and returns the event to unanswered, which is right for a
+      // first answer. On a change it would throw away the previous answer too,
+      // and on a withdrawal the reason just collected. A mis-tapped change is
+      // fixed by tapping the other answer again.
+      // The toast names the event, so somebody who tapped the wrong card can
+      // tell; otherwise the undo is useless to them.
       toast.success(
         t(status === "yes" ? "attendance.toastYes" : "attendance.toastNo", {
           title: event.title,
@@ -205,8 +186,8 @@ export function AttendanceControls({
           action:
             previous === null
               ? {
-                  // attendance.undo, NEVER common.cancel. Both are "Annuler"
-                  // in French; this one takes an answer back (German:
+                  // attendance.undo, never common.cancel. Both are "Annuler"
+                  // in French, but this one takes an answer back (German:
                   // "Rückgängig") and the dialogs' one closes without doing
                   // anything ("Abbrechen").
                   label: t("attendance.undo"),
@@ -218,9 +199,8 @@ export function AttendanceControls({
     } catch (thrown) {
       patchMyAttendance(queryClient, event.id, previous);
       refusal.setFromThrown(thrown);
-      // The dialog owns the message when it is open — a blank reason lands
-      // against its field. Everywhere else there is no surface to put it on
-      // but a toast.
+      // When the dialog is open it shows the message against its field.
+      // Otherwise a toast is the only surface.
       if (!withdrawing) {
         toast.error(
           thrown instanceof ApiError
