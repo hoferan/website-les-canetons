@@ -10,9 +10,10 @@ import { t } from "../i18n";
  * stale name is worse than an obvious gap: a parent who rings the wrong person
  * gets a wrong answer, whereas a parent who sees a gap asks.
  *
- * So this renders something no reader can mistake for real content, and that
- * `grep -c "<Tbd" web/src` counts exactly. That count is the to-do list, and
- * the open questions behind it are §3 of `docs/content-audit-2026-08-31.md`.
+ * So this renders something no reader can mistake for real content. What is
+ * still missing is tracked in #106, counted by rendering the public pages: a
+ * grep over call sites miscounts, because some sit in a loop and others render
+ * only for an empty roster.
  *
  * IT MUST BE EMPTY BEFORE PROD. TEST and QA are behind HTTP Basic Auth, so
  * placeholders there are seen only by the band. PROD is public and has never

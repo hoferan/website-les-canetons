@@ -1,295 +1,118 @@
 # Website "Guggenmusik Les Canetons de Fribourg" — Project Instructions
 
-## Project Overview
+## Project overview
 
-Public website and members' area for the Guggenmusik **Les Canetons de Fribourg**
-(a Fribourg carnival brass band). Public pages present the band (history, sections,
-committee, sponsors, media, contact). A members' area, gated by login, lets members
-respond to events (participate / not) and lets the admin ("Team Direction") manage
-events and view attendance summaries.
+Public website and members' area for the Guggenmusik **Les Canetons de
+Fribourg**, a Fribourg carnival band. The public pages present the band and
+take bookings for events such as the souper. Behind a login, members answer
+events, and the people whose roles allow it manage events, members, photos and
+history, and read the guest lists and the contact inbox. The UI is French at
+`/` and German under `/de/`.
 
-## Tech Stack
+## Tech stack
 
 Two applications, one origin, one repository:
 
-- **`web/` — a React + TypeScript SPA**, built by **Vite 8**, styled with
+- **`web/`**: a React + TypeScript SPA built by **Vite 8** and styled with
   **Tailwind 4**. Data comes from the API through a **generated** client
-  (OpenAPI → orval → TanStack Query hooks). The build output *is* the deployed
-  document root: `index.html` plus hashed bundles under `assets/`.
-- **`api/` — Laravel 13** (`composer.json` requires `^13.8`), which owns the whole JSON API and the database
-  schema. Its own Composer project (`api/composer.json`, `api/vendor/`, its own
-  tests and migrations), sharing the database rather than having one of its own.
-  Deployed as `_api/` inside the document root.
-- **PHP 8.4** (matches prod) and **MariaDB 10.3** (prod: 10.3.8).
-- **Apache** with `.htaccess` (API dispatch + SPA fallback + cache policy) on
-  `easy-hebergement.net` shared hosting.
+  (OpenAPI → orval → TanStack Query hooks). The build output is the document
+  root: `index.html` plus hashed bundles under `assets/`.
+- **`api/`**: **Laravel 13**, which owns the whole JSON API and the database
+  schema. Its own Composer project, tests and migrations. Deployed as `_api/`
+  inside the document root.
+- **PHP 8.4** and **MariaDB 10.3**, matching production (10.3.8).
+- **Apache** with `.htaccess` on `easy-hebergement.net` shared hosting.
 
-There is no PHP outside `api/`. The old front end — a front-controller app in
-`app/` with server-rendered pages, Bulma, Twig and a per-page Vite build — was
-deleted in the SPA cutover. Its history went with it: that pull request was
-squash-merged, and the branch holding the original commits is gone from every
-remote, so there is no old page left to read.
+There is no PHP outside `api/`. The old server-rendered front end (`app/`,
+Bulma, Twig) was deleted in the SPA cutover, and its history is not reachable,
+so there is no old page left to read.
 
-### Tailwind 4 is CSS-first
+**Tailwind 4 is CSS-first.** There is no `tailwind.config.ts`: the entry is
+`@import "tailwindcss"` in `web/src/styles.css`, with the design tokens in an
+`@theme` block in the same file. `.stylelintrc.json` lists Tailwind's at-rules
+under `ignoreAtRules` and disables `import-notation`.
 
-There is **no `tailwind.config.ts`**. The entry point is
-`@import "tailwindcss"` in `web/src/styles.css`, and design tokens live in an
-`@theme` block in that same file. Stylelint does not know Tailwind's at-rules,
-so `.stylelintrc.json` lists them under `at-rule-no-unknown`'s `ignoreAtRules`
-and disables `import-notation` (v4 imports a bare `"tailwindcss"`, not a
-`url()`).
+### The `.htaccess`, and what takes the site down
 
-### The `.htaccess`, and two things that will take the site down
-
-The tracked template is `config/htaccess/site.htaccess`;
-`tools/build-overlays.mjs` merges it with each environment's auth block into
-`dist/overlay/<env>/`. The file is **server-owned** and never uploaded by a
-deploy. Read its comments before touching any of it. Two properties are
+The template is `config/htaccess/site.htaccess`, merged per environment into
+`dist/overlay/<env>/` by `tools/build-overlays.mjs`. It is server-owned and
+never uploaded by a deploy. **Read its comments before touching it.** What is
 load-bearing:
 
-1. **The `/api/*` dispatch must stay first**, above the SPA fallback, because
-   the fallback matches every path. Nothing sits between the two any more — see
-   the note below. One rule does sit *above* the dispatch, added 2026-09-14:
-   the canonical-host redirect, `www.<anything>` → `<anything>`, 301. Every
-   environment's `www.` name is a DNS alias of its apex, so the SPA served
-   there perfectly and then could not log anybody in — Sanctum reads
-   Origin/Referer against `SANCTUM_STATEFUL_DOMAINS`, which names the apex
-   only, so no session started and `POST /api/v1/login` answered
-   `400 stateful_request_required`. It is mod_rewrite rather than
-   `RedirectMatch` and is guarded on `REDIRECT_STATUS`, for the reasons the
-   template gives at length; `tools/build-overlays.test.mjs` pins both
-   conditions and their order.
-2. **`[L]`, not `[END]`.** `END` is Apache 2.3.9+; this host's version is
-   unresolved (it 500s on `<RequireAny>`, which leans 2.2) and an unknown
-   `RewriteRule` flag is a syntax error — a 500 on *every* request to the whole
-   site. `[L]` is safe on 2.2 and 2.4, and correct here because the substituted
-   path `_api/public/index.php` cannot re-match `^api(/|$)`: that pattern
-   matches only a path that is **exactly** `api` or that **begins** `api/`, so
-   every name but the literal `api` is loop-safe for free — the previous name,
-   `api-laravel`, included, though not for the reason its comment used to give;
-   see `config/htaccess/site.htaccess`.
+1. **The `/api/*` dispatch stays first**, above the SPA fallback, which matches
+   every path. Only the `www.` → apex redirect sits above it (Sanctum names the
+   apex only); `tools/build-overlays.test.mjs` pins both and their order.
+2. **`[L]`, not `[END]`.** This host's Apache version is unknown (it 500s on
+   `<RequireAny>`) and an unknown flag 500s every request.
+3. **The fallback is a catch-all** guarded by `RewriteCond
+   %{ENV:REDIRECT_STATUS} ^$`, never `!-f`/`!-d`: the guard stops a FastCGI
+   loop, the catch-all keeps files like the dead `config.php` from being
+   served. An unknown URL answers **200 with the SPA's 404 view**, on purpose.
+4. **Any new redirect is dangerous.** mod_alias sees the internal paths of the
+   re-entered pass, FastCGI prefix included; two earlier ones 301'd the whole
+   API and looped every URL. Read the template's note first.
 
-**There was a third property until 2026-09-07: two negative lookaheads on the
-legacy `RedirectMatch 301` rules**, each of which had already broken something
-— the `.php` rule's lookahead excluding the dispatch target (without it **the
-entire API answered 301** while every page still looked fine), and the `.html`
-rule's `(?!index\.html$)` (without it the SPA fallback's own output was 301'd
-and **every URL of the site redirect-looped**). All three legacy 301s were
-deleted on 2026-09-07 — the rebuild makes every URL English and owes no
-backwards compatibility, so each one 301'd to a path that answers the SPA's own
-404 view anyway — and both landmines went with them. The mechanism is still
-written up in the template at the point where they used to sit, because it is
-what makes *any* future redirect here dangerous: a `RedirectMatch` is mod_alias,
-which sees internal paths on the re-entered pass, including whatever prefix this
-host's FastCGI wrapper adds. Read that block before adding one.
-
-The fallback is a **catch-all** with a `RewriteCond %{ENV:REDIRECT_STATUS} ^$`
-guard, not an `!-f`/`!-d` guard. The guard is what stops the rewrite re-matching
-its own output and looping into a 500 on this FastCGI host; the catch-all is
-what keeps files that *do* exist and must not be read — each server's now-dead
-`config.php`, and any future stray — served as the shell rather than served as
-themselves. An unknown URL therefore answers **200 with the SPA's own 404
-view**, deliberately — enumerating routes in `.htaccess` would drift.
-
-**That catch-all is not meant to be the only thing in front of the Laravel
-tree any more, nor the primary one.** `api/.htaccess` denies the whole tree and
-`api/public/.htaccess` re-grants the one directory meant to be reachable,
-shipping as `_api/.htaccess` and `_api/public/.htaccess`; every deploy from now
-on uploads them, and until 2026-09-07 none ever did (see **Deployment**). But
-that is the tool's state, not a server's: **assume the boundary is absent on a
-given server until `/_api/.env` there answers 403.** `staging/README.md` carries
-the per-server checklist and what to do if this host 500s on the new
-directives; `config/htaccess/site.htaccess` carries the mechanism, and why
-Apache's authorization beats the rewrite it now sits in front of.
+`api/.htaccess` and `api/public/.htaccess` deny the Laravel tree and re-grant
+its public directory. **Assume that boundary is absent on a server until
+`/_api/.env` there answers 403** (`staging/README.md`).
 
 ### Build
 
-`npm run build` (`tools/build.mjs`) assembles `dist/build/`, the
-environment-agnostic code artifact:
-
-```
-index.html        the SPA shell
-assets/           hashed JS/CSS, plus img/ and icons/ copied verbatim
-_api/             the Laravel API with a production-only vendor/
-```
-
-**The order of the two builds is load-bearing.** Vite empties its `outDir`, so
-building the SPA *after* the Laravel copy would delete the API from the
-artifact — an outage nothing downstream catches, because the upload still
-succeeds and only `/api/*` 500s. CI's `build` job asserts both halves exist for
-exactly that reason.
-
-`dist/build/` is git-ignored and never hand-edited. The build reuses a
-persistent Composer cache at `.composer-cache/`.
+`npm run build` (`tools/build.mjs`) assembles `dist/build/`: `index.html`,
+`assets/` and `_api/` with a production-only `vendor/`. **The order of the two
+builds is load-bearing**: Vite empties its `outDir`, so building the SPA after
+copying Laravel deletes the API from the artifact, which still uploads fine.
+CI's `build` job asserts both halves exist. Never hand-edit `dist/build/`.
 
 ### Deployment
 
-**Auto TEST, tag-promoted TEST/QA/PROD.** A merge to `main` auto-deploys
-`dist/build/` to **TEST** via the `deploy-test` job in `.github/workflows/ci.yml`.
-TEST, QA and PROD are each independently deployable on demand via
-`workflow_dispatch` (`deploy-test.yml`, `deploy-qa.yml`, `deploy-prod.yml`), all
-calling one reusable workflow, `_deploy.yml`. There is no Required-reviewers
-gate; dispatching one with a chosen ref *is* the gate. Promotions are identified
-by tags named `YYYY-MM-DD-<short-sha>` (or a custom name — see
-`tag-release.yml`), created from whatever commit you verified on TEST.
-`deploy-prod.yml` additionally checks, via the GitHub Deployments API, that its
-target commit already deployed successfully to `qa`, and refuses otherwise even
-with `dry_run`. Rolling back is redeploying an older tag.
+The runbook is **`staging/README.md`**: server layout, both deploy paths, the
+deploy CLI, `_api/.env` provisioning, migrations and recovery. ADRs 0004 to
+0008 hold the reasoning. The rules that apply on every task:
 
-**Where each server actually stands, as of 2026-09-14.** TEST runs the rebuild:
-the whole of `main` was deployed and verified there, the ten pending migrations
-applied on the first request after the upload, and it carries a seeded roster
-and a season. Its Apache authorization boundary is **confirmed working** —
-`/_api/.env` answers 403 — which settles the open question in
-`staging/README.md` about whether this host accepts those directives at all.
-**QA and PROD are still pre-cutover and run the old server-rendered site**;
-production answers `<title>Accueil</title>` and 404s `/api/v1/config` into its
-own HTML. Two consequences follow. Their `_api/.env` still lacks the five keys
-TEST gained (`BOOTSTRAP_ADMIN_*`, `FEATURE_CALENDAR`), so the config-shape
-pre-flight refuses their next deploy until each is hand-edited, and
-`MAIL_COMMITTEE_ADDRESS` makes six. **TEST has carried all six since
-2026-09-18**, so a merge to `main` deploys there again. Its value on TEST is a
-placeholder, deliberately: the pre-flight compares key sets and never reads a
-value, and TEST sets `MAIL_MAILER=array`, so nothing is sent from it at all. A
-contact submission still stores its row and answers `{"ok": true}`, and
-`ContactController::notify()` catches the refused send and logs it at `error`,
-so TEST's log carries a line per submission. QA and PROD send for real, and
-there the value must name a mailbox the committee reads, never the
-`MAIL_FROM_ADDRESS` beside it; `api/.env.example` says why. And **do not run
-`npm run put-overlay:qa` or `:prod` on their own**: the template is the SPA
-front controller and falls back to `index.html`, so placing it on a server still
-running the old `index.php` app takes that server down. The overlay and the
-artifact move together, at the cutover.
+- **A merge to `main` deploys to TEST.** QA and PROD are deployed by
+  dispatching `Deploy QA` / `Deploy PROD` with a tag; PROD refuses a commit
+  that has not deployed to QA. Rollback is redeploying an older tag.
+- **Deploy through `npm run deploy:<env>` and `status:<env>`**, never
+  `node tools/deploy/cli.mjs`. `--dry-run` the first deploy to a new
+  environment. Exit 2 means a guard or the mass-delete brake refused.
+- **Server-owned files never travel**: `.htaccess`, `robots.txt`, `.htpasswd`,
+  `config.php` and `_api/.env`, named as exact paths in `PROTECTED_PATHS`
+  (`tools/deploy/preflight.mjs`). `_api/.env` is set by hand, nothing recreates
+  it, and a server without it 500s every `/api/*` request.
+- **The deploy refuses on any drift between a server's `_api/.env` key set and
+  `api/.env.example`**, in either direction. So a new key goes into
+  `api/.env.example` in the same commit as the code that reads it, and an
+  optional setting goes into `api/config/*.php`, **never** into
+  `api/.env.example`, where it would refuse every server's next deploy.
+- **QA and PROD still run the old server-rendered site** until their cutover.
+  Do not run `npm run put-overlay:qa` or `:prod` on their own: the template
+  falls back to an `index.html` those servers do not have. The overlay and the
+  artifact move together.
 
-Every upload **excludes the server-owned files** — `.htaccess`, `robots.txt`,
-`_api/.env` (and `config.php`, which still exists on each server and should be
-deleted by hand once). Those are placed per server: `npm run build:overlay`
-generates `.htaccess`/`robots.txt` into `dist/overlay/<env>/`; `_api/.env` is
-always set by hand. Nothing recreates it, and a server without it 500s every
-`/api/*` request — so it must exist *before* the first deploy. See
-`staging/README.md`.
+### Migrations
 
-**Automated deploy (`npm run deploy:<env>`):** `tools/deploy/cli.mjs` builds and
-then **mirrors** `dist/build/` to the target over plain FTP (creds from a
-git-ignored `.env.<env>`, falling back to `.env`): uploads new/changed files
-(changed = different **sha256 content hash**), deletes stale remote files, and
-removes emptied directories deepest-first. A **mass-delete safety brake**
-refuses (exit 2) when a deploy would delete both >50 files and >20% of the
-remote tree; override with `-- --force-delete` after checking the plan.
-Server-owned files and the tool-owned `.sync-state.json` are never uploaded and
-never deleted — matched as **exact root-relative paths** (`PROTECTED_PATHS` in
-`tools/deploy/preflight.mjs`). That was a **basename match at any depth** until
-2026-09-07, and the basename form silently dropped `api/.htaccess` and
-`api/public/.htaccess` — the authorization boundary around the Laravel tree —
-from every upload for the whole life of the project, so no server ever had them.
-(It dropped a third, `api/public/robots.txt`, Laravel's stock file: harmless and
-unreachable behind the catch-all, so the set that now travels is three.)
-The exact-path form has one obligation in exchange: **a rename of the deployed
-directory has to be mirrored in that set.** The entry is the literal
-`_api/.env`, and if it stops matching, the next `--relist` or bootstrap deploy
-classifies every server's hand-placed API configuration as stale and deletes it.
-Every bulk phase fans out over `FTP_CONCURRENCY` connections (default 6, clamped
-1-8) with exponential-backoff reconnect; the host is flaky under concurrency.
+Laravel owns the schema; migrations live in `api/database/migrations/` and
+start from an empty database. ADRs 0008 and 0030.
 
-> **The `.env.*` files define `FTP_PASS`, which is what the CLI reads.** This
-> note used to describe a mismatch with `FTP_PASSWORD` and tell you to inject
-> the variable for a one-off command. That was true once and is not any more:
-> all three files were corrected, and `npm run status:test` runs with nothing
-> injected. Verified 2026-09-14.
-
-**Sync state (`.sync-state.json`):** each deploy writes a manifest at the site
-root (deployed path → `{size, sha256}` plus commit/status). Routine deploys diff
-against that one file — no recursive remote LIST — and an aborted deploy is
-resumable. The full parallel LIST runs only on bootstrap (no state file) or
-`-- --relist`. Deletion can see files the tool did not itself deploy only on
-those authoritative runs. **Always `-- --dry-run` the first deploy to a new
-environment.**
-
-**Commands** (never call `node tools/deploy/cli.mjs` directly): `deploy:<env>`
-and the build-free `status:<env>`, `<env>` = `test`|`qa`|`prod`. Flags after
-`--`: `--dry-run`, `--force`, `--force-delete`, `--relist`, `--no-delete`,
-`--verbose`. Exit codes: 0 ok, 1 failure, 2 refused by a guard/brake. Each
-target hard-refuses unless its `FTP_DIR` matches the env name.
-
-**Config-shape pre-flight:** before uploading, the deploy CLI fetches the
-target's `_api/.env` and compares its **key set** (never values — those
-are never read or logged) against `api/.env.example`. Any drift refuses the
-deploy with the exact keys to fix, so shipping code that expects a new key fails
-that server's deploy instead of 500ing every request afterwards. `--dry-run`
-reports the same drift without refusing; a server with no `.env` yet only warns.
-
-**Deployment marker:** each deploy writes `deployment.json` to the site root
-(commit, ref, time, run URL). Note it is **not** web-readable: the fallback
-catch-all serves the shell for it, like every other root file. Read it through
-`GET /api/health` instead, which also reports whether the database answers and
-which migrations are pending. It is public and any status but 200 means
-unhealthy; `HealthController` says why.
-
-### Automated DB migrations
-
-**Laravel owns the schema outright** — it is the only migration system. Migrations
-live in `api/database/migrations/`.
-
-After each deploy, `npm run dbmigrate:<env>` POSTs to the token-gated
-`POST <SITE_URL>/api/migrate`, which runs `artisan migrate --force` server-side
-(remote DB login is blocked) and answers with `applied[]` / `pending[]`. The
-secret travels in the **`X-Migrate-Token` header** — never a query parameter,
-since Apache logs query strings in plain text. `?mode=dry-run` (the default for
-anything that is not exactly `apply`) reports pending without touching the
-schema.
-
-**That default belongs to the endpoint, not to the command.** `npm run
-dbmigrate:<env>` with no argument sends `mode=apply`, so it migrates. Do not
-reach for it expecting a safe preview.
-
-**CI never runs it, and cannot: the host firewalls the GitHub runner's IP.** A
-runner can push a deploy out over FTP, but no inbound HTTP request from a runner
-ever reaches the site.
-
-**What actually migrates a deployed server is
-`App\Http\Middleware\RunPendingMigrations`.** It is prepended to Laravel's `api`
-*and* `web` middleware groups, so the first `/api/*` request — or the first
-`GET /sanctum/csrf-cookie`, which the SPA primes before every mutating call —
-applies whatever is pending, under a MySQL advisory lock
-(`GET_LOCK('lescanetons_migrate')`) so concurrent PHP-FPM workers cannot
-double-apply. A raw `GET_LOCK`, deliberately, not `Cache::lock()` or
-`migrate --isolated`: both go through the `database` cache store, whose `cache`
-table is itself created by a migration. Gated by **`AUTO_MIGRATE`** in each
-server's `.env`, defaulting to `true`. One `/api/*` route is exempt: the public
-photo file, `GET /api/v1/images/{sha256}.jpg` (the digest of that size's own bytes), runs without
-`RunPendingMigrations` (and without Sanctum's stateful middleware), so a photo
-costs one query. It never triggers a migration; the SPA's `GET /api/v1/config`
-does (ADR 0028).
-
-**Still use `npm run dbmigrate:<env>` for any non-trivial migration.** The
-request-path runner has no timeout of its own — a long `ALTER` holds a PHP-FPM
-worker and will hit `max_execution_time` on this shared host, leaving a
-half-applied schema. Run it by hand *before* the deploy that needs it.
-
-**Failure mode: a migration that fails takes the whole API down.** The
-middleware refuses to serve against a schema it cannot vouch for, so every
-`/api/*` request answers **503 `service_unavailable`**, and the failing
-migration retries on every request. This is why migrations must stay idempotent
-*and* backward-compatible.
-
-**`AUTO_MIGRATE=false` does not fail closed, on purpose.**
-`RunPendingMigrations::handle()` skips `maybeMigrate()` entirely when the flag
-is off, so the server serves against whatever schema it has. That is the
-outage switch: with no shell on the host, it is how a migration failing on
-every request gets stopped and the site brought back while the fix is written.
-Set it back to `true` afterwards, because a server left on `false` answers
-against a schema the code may have outgrown. ADR 0030 has the reasoning.
+- **They run on the first request after a deploy**, through
+  `App\Http\Middleware\RunPendingMigrations` (in the `api` and `web` groups,
+  under a MySQL `GET_LOCK`), gated by `AUTO_MIGRATE`, default `true`. CI never
+  migrates and cannot: the host firewalls the runners.
+- **`npm run dbmigrate:<env>` applies**; preview with `-- --dry-run`. Run a
+  non-trivial migration by hand before the deploy that needs it: the request
+  path has no timeout, and a long `ALTER` dies halfway.
+- **A failing migration takes the whole site down** (every `/api/*` answers
+  503, so the SPA cannot boot) and retries on every request. So every
+  migration is **idempotent and backward compatible**.
+- **`AUTO_MIGRATE=false` keeps serving** against whatever schema there is: the
+  outage switch on a host with no shell. Set it back afterwards.
 
 ## Traps
 
 **`docs/traps.md` collects the things that cost real debugging time and are not
-obvious from the code.** Read the entries covering whatever you are about to
-touch *before* you start — that is the whole point of the file. Its traps are
-the ones you would not meet in time otherwise: a Scramble extension that is
-never called and reports nothing, `$request->session()` throwing rather than
-returning null, a Scalar heading that silently gets no anchor.
-
-Where a new trap goes depends on when you would need it:
+obvious from the code.** Read the entries for whatever you are about to touch
+*before* you start.
 
 | Home | For |
 | --- | --- |
@@ -297,23 +120,20 @@ Where a new trap goes depends on when you would need it:
 | `docs/traps.md` | You need it *before* opening a file, so no comment could reach you |
 | This file | It changes what you do by default on **every** task |
 
-Keep it in one of them, not several. This file is loaded into every session, so
-a trap that belongs in `docs/traps.md` costs context on every turn if it lands
-here instead.
+Keep a trap in one of them, not several. This file is loaded into every
+session.
 
 ## Decisions
 
-**`docs/adr/` records the decisions the code makes no sense without**: why one
-origin, why FTP mirroring, why migrations run on a request, why permissions and
-never roles, and so on. Read the index in `docs/adr/README.md` before changing
-anything one of them covers, and write a new record when you take a decision of
-that weight. Records are MADR 4 (ADR 0000), started from
-`docs/adr/adr-template.md`.
+**`docs/adr/` records the decisions the code makes no sense without.** Read the
+index in `docs/adr/README.md` before changing anything one of them covers, and
+write a new record for a decision of that weight. Records are MADR 4 (ADR
+0000), started from `docs/adr/adr-template.md`.
 
 Specs and plans written by the skills below are working documents. They go in
-`docs/superpowers/`, which is git-ignored, and they are never committed or
-cited. A code comment gives its reason in place, or points at an ADR or an
-issue, never at a spec section or a plan task. ADR 0001 has the reasoning.
+`docs/superpowers/`, which is git-ignored, and are never committed or cited. A
+code comment gives its reason in place, or points at an ADR or an issue. ADR
+0001 has the reasoning.
 
 ## Superpowers Skills
 
@@ -338,14 +158,9 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
 
 ## Architecture
 
-- **`web/` and `api/` are the two applications; `dist/build/` is the generated
-  FTP payload.** `dist/build/` is produced by `npm run build` and is never
-  hand-edited or committed. All tooling lives at the repo root
-  (`package.json`, `vite.config.ts`, `orval.config.ts`, `tsconfig.json`,
-  `docker/`, `config/`, `tools/`, `.github/`).
-- **Apache splits the traffic before either application runs.** `/api/*` and
-  `/sanctum/*` go to `_api/public/index.php`; everything else gets
-  `index.html`.
+- **Apache splits the traffic before either application runs**: `/api/*` and
+  `/sanctum/*` go to `_api/public/index.php`, everything else gets
+  `index.html`. All tooling lives at the repo root.
 - **`web/` layout:**
 
   ```
@@ -355,7 +170,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
     public/assets/icons/  favicons + PWA manifest -> /assets/icons/*
     src/
       main.tsx            boot: config + session gate, then the router
-      routes.tsx          the route table — English URLs; /de/* is the German mount
+      routes.tsx          the route table; English URLs, /de/* is the German mount
       api/                GENERATED client + hooks, and the http.ts mutator
       mocks/              MSW handlers for the mocked backend
       components/         layout, nav, footer, env ribbon, guards
@@ -363,353 +178,149 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
       i18n/               both catalogues, the locale rules and the switcher
       styles.css          Tailwind entry and @theme tokens
     e2e/                  Playwright specs
+    screenshots/          the screenshot sweep and its page list
   ```
 
-  The PWA manifest link must keep `crossorigin="use-credentials"`, or the
-  manifest fetch fails behind TEST/QA Basic Auth. Previously fixed bug.
+  The PWA manifest link keeps `crossorigin="use-credentials"`, or the fetch
+  fails behind TEST/QA Basic Auth.
+- **Images in `web/public/assets/img/` have a budget**: longest edge 1920px,
+  JPEG quality 82, progressive, no EXIF, at most 600 KB, enforced by
+  `tools/image-budget.mjs`. Band photographs belong in the image library.
+  Never re-optimise already-optimised files.
+- **`web/src/api/generated/` is generated; never hand-edit it.** Change the
+  controller, run `npm run openapi && npm run generate:api`, commit the result.
+  CI's `openapi-drift` job fails if either is stale.
+- **Every request goes through the mutator in `web/src/api/http.ts`**: cookie
+  credentials, CSRF priming (`GET /sanctum/csrf-cookie` once per page load) and
+  a typed `ApiError` for every non-2xx, whose `fields` is the wire's `errors[]`.
+  Never call `fetch("/api/…")` directly; a write without the replayed
+  `X-XSRF-TOKEN` answers `419 invalid_session`.
+- **Both public POSTs need an `Idempotency-Key`** and an `X-Form-Token`
+  (`POST /api/v1/contact`, `POST /api/v1/events/{event}/registrations`); see
+  `App\Http\Middleware\IdempotentWrite`.
+- **Runtime configuration comes from `GET /api/v1/config`**, never from
+  `import.meta.env`: every environment runs the same build (ADR 0007).
+- **The API reference is `GET /api/docs`**, behind `API_DOCS_ENABLED` (default
+  off, answering 404), reading the committed `openapi.json`.
+- **Everything lives under `/api/v1/*`**, from `withRouting(apiPrefix:
+  ApiVersion::PREFIX)` in `api/bootstrap/app.php`. `api/routes/meta.php`
+  (docs, migrate, health) is deliberately outside it.
+- **API layout:** routes in `api/routes/api.php`, each commented with why it is
+  public or which permission gates it; controllers in
+  `api/app/Http/Controllers/Api/`; shared logic in `api/app/Support/`. Pair
+  `auth:sanctum` with `permission:` so an anonymous caller gets 401, not 403.
+- **Auth is Sanctum's stateful SPA cookie flow** (ADR 0010). **Authorization
+  checks a permission, never a role** (ADR 0014): permissions are the cases of
+  `App\Support\Permission`, roles are data grouping them, and the
+  `permission:<name>` middleware is the only enforcement. Answering an event is
+  `attendance.respond`, through the `musician` role; a register grants nothing.
+  Every account holds the fixed baseline role `member` (`events.view`,
+  `account.manage`). The SPA's `can()` mirrors permissions for UX only.
+  `AccessDecidedByPermissionTest`, `PermissionMiddlewareTest` (with its
+  `SESSION_ONLY` list) and an ESLint `no-restricted-syntax` rule fail the build
+  if access is decided any other way.
+- **Errors are problem documents** (`App\Exceptions\ApiError`) with exactly
+  seven keys, pinned by `ApiErrorContractTest`. `translateApiError()` in
+  `web/src/i18n/` is the only place user-facing language is computed, from
+  `code` and `errors[].reason`, so every token needs copy in **both** `fr.ts`
+  and `de.ts` (`ApiErrorVocabularyTest`); a missing German one falls back to
+  French silently.
 
-  **Photographs have a budget: longest edge 1920px, JPEG quality 82,
-  progressive, no EXIF — roughly 300-600 KB each.** That directory was 44.5 MB
-  before this was enforced, including one 19 MB camera original at 6048x4024,
-  which on a phone at a rehearsal is a page that never finishes loading.
-  **`npm run check` enforces this** — `tools/image-budget.mjs` walks
-  `web/public/assets/img/`, reads each image's dimensions out of its header and
-  fails, naming the file, on anything over 1920px or 600 KB. The exemptions are
-  by name in that file, each with its reason; an exempt name is still held to a
-  4000px / 2 MB ceiling, so a camera original arriving under an exempt name does
-  not sail through. One name is exempt, the logo, because it is already small
-  and re-encoding a small image only softens it. An exemption covers the file
-  that earned it, not the name: `comite.jpg`, `Flyer.jpeg` and `CD_img.png`
-  were dropped from the list once the files themselves were deleted, so
-  whatever arrives under those names next is budgeted like any other new
-  photograph. Photographs of the band do not live here at all any more; they
-  are in the image library, which serves each one as a `srcset`. Re-encoding
-  is also generational: never run an optimisation pass over already-optimised
-  files.
-- **`web/src/api/generated/` is generated — never hand-edit it.** Change the
-  Laravel controller, run `npm run openapi && npm run generate:api`, commit the
-  result. CI's `openapi-drift` job fails if either is stale. ESLint ignores the
-  directory.
-- **Every request goes through the mutator in `web/src/api/http.ts`**, which
-  owns cookie credentials, Sanctum's CSRF priming (`GET /sanctum/csrf-cookie`
-  once per page load) and the problem-document error contract. It throws a typed
-  `ApiError` for every non-2xx. Note it renames the wire's `errors[]` to
-  `fields` on the client side, deliberately — see the comment at
-  `web/src/api/http.ts:52`. Never call `fetch("/api/…")` directly: Sanctum's
-  stateful SPA mode puts `/api/v1/*` behind the `web` middleware group, so a
-  mutating request without the replayed `X-XSRF-TOKEN` header comes back `419`
-  with `"code":"invalid_session"`.
-- **Both public POSTs require an `Idempotency-Key`** (`POST /api/v1/contact`,
-  `POST /api/v1/events/{event}/registrations`), alongside the `X-Form-Token`
-  they already required. A retry with the same key replays the stored answer
-  and creates nothing; a different body under the same key answers `409`. The
-  stored answers live in `idempotency_keys` and are swept by a lottery on
-  write, because this host has no scheduler — see
-  `App\Http\Middleware\IdempotentWrite`. Retention and lottery are in
-  `api/config/api.php` and **must never reach `api/.env.example`**, where an
-  extra key refuses every server's next deploy.
-- **Runtime configuration comes from `GET /api/v1/config`**, not from
-  `import.meta.env`. TEST, QA and PROD run the same commit, built reproducibly
-  from its tag, so no environment-specific value may be baked in. That endpoint
-  drives the non-prod corner ribbon and the feature flags. See ADR 0007.
-- **The API reference lives at `GET /api/docs`**, gated by `API_DOCS_ENABLED`
-  in each server's `.env` (default **off**, answering 404 rather than 403).
-  It is a Scalar page reading the **committed** `openapi.json` that ships in
-  the artifact — Scramble is a dev dependency and is not installed on any
-  server, and CI's `openapi-drift` job already guarantees that file matches the
-  code, so the docs cannot describe an API the generated client does not speak.
-  `GET /api/docs.json` serves that document with its `servers` rewritten to a
-  relative `/api/v1`: the committed file pins an absolute production URL (for a
-  byte-identical export), and serving it untouched would make the docs page on
-  TEST fire real requests at PROD.
-
-  Both routes sit under `/api/` deliberately, because the `.htaccess` dispatch
-  claims that prefix before the SPA fallback. Scramble's own `/docs/api` is
-  outside it and has always been swallowed by the fallback.
-- **Auth:** Laravel owns it — `POST /api/v1/login` / `POST /api/v1/logout` via
-  Sanctum's stateful SPA cookie flow (ADR 0010). Authorization checks a
-  **permission, never a role**: the permissions are the cases of
-  `App\Support\Permission`, roles are data that group them, and the
-  `permission:<name>` route middleware (`App\Http\Middleware\RequirePermission`)
-  is the only thing that enforces anything. Answering an event is
-  `attendance.respond`, held through the `musician` role; a register groups and
-  displays and grants nothing. Every account holds the fixed baseline role
-  `member` (`events.view`, `account.manage`), so only `/logout`, `/me` and the
-  inbox need a session alone. The SPA's guards mirror the permissions for UX
-  only, through `can()` from `useSession()`. See ADR 0014.
-
-  **Three guards fail the build if access is decided any other way.**
-  `AccessDecidedByPermissionTest` scans `api/app/` for a register or a role
-  key used as a gate. `PermissionMiddlewareTest` fails on any `auth:sanctum`
-  route without `permission:`, unless it is on that test's `SESSION_ONLY`
-  list with its reason. And an ESLint `no-restricted-syntax` rule refuses a
-  role-key comparison or a test of `user.sectionId`/`user.sectionName` in
-  `web/src/`, outside `i18n/` and `mocks/`.
-- **The contract is versioned: everything lives under `/api/v1/*`.** The prefix
-  comes from `withRouting(apiPrefix: ApiVersion::PREFIX)` in
-  `api/bootstrap/app.php`, and `App\Http\Middleware\ApiVersion` owns that
-  string so the mount point and the middleware that reads it cannot drift.
-  `api/routes/meta.php` is deliberately **outside** it — `/api/docs`,
-  `/api/docs.json` and `/api/migrate` describe or operate the API rather than
-  being part of it, and a v2 would not get a second copy of either. The
-  `.htaccess` needs no change for any of this: its dispatch matches
-  `^api(/|$)`, which already covers both. That middleware also carries the
-  `Deprecation` / `Sunset` / `Link: rel="successor-version"` headers that will
-  one day retire v1; they are configured in `api/config/api.php` and every one
-  of them is null today, so nothing is emitted. **Those keys must never be
-  added to `api/.env.example`** — the deploy pre-flight refuses on extra keys
-  as well as missing ones, so an optional key there would refuse every
-  server's next deploy.
-- **API:** routes in `api/routes/api.php` (each with a comment saying why it is
-  public or which permission gates it), controllers in
-  `api/app/Http/Controllers/Api/`, shared logic in `api/app/Support/`. Pair
-  `auth:sanctum` with `permission:` wherever both apply, so an anonymous caller
-  gets 401 rather than 403.
-- **The API error contract is a problem document**, rendered by
-  `App\Exceptions\ApiError`, deliberately replacing Laravel's native
-  `{message, errors:{}}`. Every failure carries the same seven keys —
-  `title`, `status`, `code`, `instance`, `errors`, `requestId`, `detail` — and
-  `ApiErrorContractTest` pins that set, so adding or dropping one is a test
-  failure. This is not cosmetic: `web/src/i18n/`'s `translateApiError()` is the
-  **only** place in the whole system where user-facing language is computed,
-  and it maps the machine tokens `code` and `errors[].reason` onto whichever
-  catalogue i18next has loaded. Laravel's native shape carries English prose
-  that layer cannot translate — so any new error must emit a token that exists
-  in **both** `web/src/i18n/fr.ts` and `web/src/i18n/de.ts`.
-  `api/tests/Feature/ApiErrorVocabularyTest.php` enforces this, reading both
-  files directly through the repository tree (the compose `php` service mounts
-  the whole repository, while `web`'s document root holds only built bundles,
-  so the suite must not run in `web`).
-  German is not optional there: a token missing from `de.ts` falls back to the
-  French string through i18next's `fallbackLng`, so a German page renders
-  French and nothing complains.
-- **Environments:** the `env` value from `GET /api/v1/config` drives the non-prod
-  corner ribbon. TEST and QA are private behind HTTP Basic Auth; see
-  `staging/README.md`.
-
-## Local Development
+## Local development
 
 ```bash
 npm run dev         # generate the docker .htaccess overlay, then bring the stack up
-npm run dev:web     # Vite dev server on :5173 — where you actually work
+npm run dev:web     # Vite dev server on :5173, where you actually work
+npm run dev:mock    # the SPA against the MSW-mocked backend, no Docker
 npm run build       # refresh the artifact the :8090 stack serves
 npm run smoke       # HTTP smoke checks against the built artifact (11 checks)
 npm run dev:down    # stop
 ```
 
-**Two dev modes, on purpose:**
-
-| URL | What | When |
-| --- | --- | --- |
-| http://localhost:5173 | Vite dev server, HMR, proxying `/api` and `/sanctum` to :8090 | day-to-day frontend work |
-| http://localhost:8090 | Apache serving the **built** `dist/build/` | parity checks, `npm run smoke` |
-
-Both are a single origin to the browser, so Sanctum's cookie flow is exercised
-for real in each. The dev origin is listed in `SANCTUM_STATEFUL_DOMAINS` in
-`docker/api/env.docker` **only**, never in a shipped default.
-
-The :8090 stack serves whatever `npm run build` last produced — it does not pick
-up source edits. That is the point: it is the parity check.
-
-| Other URLs | |
+| URL | What |
 | --- | --- |
-| http://localhost:8091 | DbGate (DB UI, opens straight into `lescanetons` — no login) |
+| http://localhost:5173 | Vite with HMR, proxying `/api` and `/sanctum` to :8090. Day-to-day work |
+| http://localhost:8090 | Apache serving the **built** `dist/build/`, for parity checks; no source edits |
+| http://localhost:8091 | DbGate, opens straight into `lescanetons` |
 | http://localhost:8025 | Mailpit |
 | `localhost:3307` | MariaDB |
 
-**Never `docker compose up` directly.** `npm run dev` first runs
-`node tools/build-overlays.mjs docker`, which generates
-`dist/overlay/docker/.htaccess` and removes any stale copy first.
-`docker-compose.yml` bind-mounts that one file; if it doesn't exist, Docker
-creates a **directory** in its place and `web` refuses to start at all ("not a
-directory: are you trying to mount a directory onto a file?"). The site is
-simply down until `npm run dev` regenerates it.
+Both are one origin, so Sanctum's cookie flow is real in each. The dev origin is
+in `SANCTUM_STATEFUL_DOMAINS` in `docker/api/env.docker` only.
 
-Relatedly, the `dist/build` mount **must not be `:ro`**. The `.htaccess` mount
-nests inside it, and Docker cannot create that mountpoint against a read-only
-parent — the container never starts.
+**Never `docker compose up` directly.** `npm run dev` first generates the
+`dist/overlay/docker/.htaccess` that compose bind-mounts; without it Docker
+makes a directory there and `web` will not start. The `dist/build` mount must
+not be `:ro`.
 
-**Six services, all long-running.** `php` is the PHP tools container
-(`docker/php/`): PHP 8.4 CLI with Composer, the whole repository at `/repo`,
-the `api_vendor` volume over `api/vendor` and `docker/api/env.docker` as
-`api/.env`. Its entrypoint runs `composer install` into the volume and only
-then reports healthy. `web` waits on that, and on `db` being healthy — that
-healthcheck pings `-h 127.0.0.1`, not `localhost`, because the unix-socket
-path falsely reports healthy against MariaDB's temporary `--skip-networking`
-init server.
+**Every PHP command goes through `tools/php-runner.mjs`**: into the compose
+`php` service when it is healthy, native `php` otherwise (web session, CI).
+That service's volume is the only `api/vendor` the tools see. The Laravel suite
+uses its own `laravel_api_test` database, because `RefreshDatabase` drops every
+table.
 
-**Every PHP command goes through `tools/php-runner.mjs`**: `docker compose
-exec php …` when that service is healthy, a native `php` otherwise (web
-session, CI), and with neither it stops and says to run `npm run dev`. A
-Docker daemon without the stack does not count, so a CI runner takes the
-native branch. Pint, Larastan, the OpenAPI export and the Laravel suite all
-use it. In the container nothing is installed on the host: the volume is the
-only `vendor/` the tools see, and a host `api/vendor` is shadowed, not used.
+**Seeded accounts**, password `demo` (`DevSeeder`; registers and roles come
+from migration `2026_09_07_000001`, and `comite.local` from
+`2026_09_07_000002`). Every account holds `member`, and everyone in a register
+holds `musician`. Describe them by what they can do:
 
-**Migrations run from the `web` entrypoint** (`php _api/artisan migrate
---force`, wrapped in a retry because `artisan` has no connection retry of its
-own), before Apache accepts its first request. On a real server there is no
-entrypoint: the schema is applied by `RunPendingMigrations` on the first request
-after a deploy, or by `npm run dbmigrate:<env>` by hand.
+| Login | Can |
+| --- | --- |
+| `demo.direction` | `direction`: every permission but the three account-level ones. No register, never in an attendance list |
+| `demo.player` | Cloches: answers events, nothing more |
+| `demo.both` | Trompettes and `direction`: answers and manages. The case an either/or role model breaks |
+| `demo.committee` | Trombones and `committee`: guest lists and inbox, read only |
+| `demo.young` | Batteurs. A parent uses the child's login |
 
-Laravel owns the schema outright and starts from an empty database — there is
-no `docker/db/init/01-schema.sql` any more for migrations to coexist with, so
-new migrations need not guard against tables created some other way. They must
-still be safe to re-run: the same files run against TEST, QA and PROD, and
-`RunPendingMigrations` re-checks for pending work on every request, so a
-migration must be idempotent regardless (a repeat run must not error or
-duplicate data) even though it no longer has to defend against a pre-existing
-raw-SQL schema. (The Laravel *test* suite uses its own throwaway
-`laravel_api_test` database — see `api/phpunit.xml` — because `RefreshDatabase`
-drops every table.)
+The mocked backend (`web/src/mocks/`) has its own fixtures; its `demo.both`
+must change their password first.
 
-**Seeded members come from `api/database/seeders/DevSeeder.php`.** There are
-five seeded members, all with logins (password `demo`) — every member has an
-account, because the roster is the people the band tracks for events. The **registers and roles are no longer the seeder's** —
-they are reference data seeded by `2026_09_07_000001_seed_registers_and_roles`,
-because the shared host has no shell to run a seeder with. A sixth account,
-`comite.local`, is created by `2026_09_07_000002_bootstrap_first_administrator`
-on a fresh database (migrations run before the seeder, so nobody holds
-`members.manage` yet). Describe them by what they can **do** — roles are now
-editable data that group permissions, and there is no per-user role string to
-name instead.
-
-Every one holds the baseline `member` role (`events.view`,
-`account.manage`). Every one with a register also holds `musician`
-(`attendance.respond`), and the seeder grants it explicitly: the register
-itself grants nothing.
-
-- `demo.direction` (Dominique Direction) — holds the `direction` role, which
-  grants every permission except the three account-level ones the `member`
-  and `musician` roles carry. Holds no `musician` and has no register, so
-  never appears in an attendance list: organises, does not play.
-- `demo.player` (Perrine Player) — plays in Cloches and holds `musician`, so
-  answers for events, and nothing else: no manage/view permissions at all.
-- `demo.both` (Bastien Both) — plays in Trompettes and holds `musician`
-  **and** `direction`, so answers for events for themselves *and* manages
-  them. This is the case the old either/or role matrix could not express; if
-  someone reintroduces an either/or, this member is what breaks.
-- `demo.committee` (Camille Committee) — plays in Trombones and holds the
-  `committee` role, which grants `registrations.view` and `messages.view`:
-  the guest list and the inbox, read-only. The role exists in reference data,
-  so somebody has to hold it or its screens are never looked at.
-- `demo.young` (Nadia Sansconnexion) — plays in Batteurs. The case where a
-  **parent uses the child's login**: the account exists and is used, just not by
-  the member. People the band only *displays* — instructors, honorary members —
-  are content, not members.
-
-## Development Commands
+## Development commands
 
 ```bash
 npm install           # first-time setup; there is no separate PHP install step
-npm run check         # typecheck, Pint, both test suites, eslint, stylelint, prettier, secret guard
+npm run check         # typecheck, Pint, Larastan, node tests, Vitest, eslint, stylelint, prettier, guards
 npm run fix           # auto-fix: Pint + eslint + stylelint + prettier
+npm run test:api      # the Laravel suite (needs a database, so not in check)
 npm run test:web      # Vitest (web/src)
-npm run test:e2e      # Playwright (web/e2e)
+npm run test:e2e      # Playwright (web/e2e), against the mocked backend
 npm run test:js       # node:test over tools/
+npm run screenshots   # every route at 1280 and 390px into dist/screenshots/
 npm run lighthouse    # public pages vs. the performance budget (informational)
-npm run screenshots   # every route at 1280 and 390px into dist/screenshots/ (web/screenshots/pages.json)
-npm run lint:api      # Laravel Pint (--test)
-npm run artisan -- route:list   # artisan, from api/
-npm run composer -- outdated    # Composer, from api/
-npm run php -- -v               # php, from the repo root
+npm run artisan -- route:list   # artisan, composer and php go through php-runner
 ```
 
-The three pass-throughs run through `tools/php-runner.mjs`, so they land in
-the `php` service when the stack is up. The `--` is npm's: without it npm
-keeps the flags for itself.
-
-**`npm run check` does not run the Laravel suite.** It needs a live database,
-so it has a command of its own:
-
-```bash
-npm run test:api
-```
-
-`tools/phpunit.mjs` runs it through the runner: inside the compose `php`
-service when the stack is up, natively otherwise. The raw form is
-`docker compose exec -w /repo/api php php artisan test`, and in Git Bash that
-one needs `MSYS_NO_PATHCONV=1` in front or the `-w` argument is rewritten to a
-Windows path. PowerShell is unaffected, and so is `npm run test:api`. Do not
-run the suite in `web`: its document root has no `web/` source, so
-`ApiErrorVocabularyTest` fails there.
-
-**Run the web suite from PowerShell, not Git Bash.** Git Bash reports the cwd
-with a **lowercase** drive letter (`c:\Workspace\...`); PowerShell reports
-`C:\`. Vitest 4 keys module resolution off that path, so from Git Bash it can
-load two instances of `vitest` and every test file fails to collect with
-**"Vitest failed to find the runner"**, pointing at `web/src/setupTests.ts`. It
-looks like 29 red files and a catastrophic regression; it is neither, and the
-identical command from PowerShell is green. It is intermittent, which makes it
-worse — it has already sent two separate sessions hunting a phantom.
-
-`npm run check` deliberately does **not** build: Vite empties
-`dist/build/`, which would delete `_api/` out from under a running stack.
-CI's `build` job covers the artifact.
-
-A Husky pre-commit hook runs `lint-staged` on staged files.
+- **Run Vitest from PowerShell, not Git Bash.** Git Bash's lowercase drive
+  letter can make Vitest 4 load twice, and every file then fails with "Vitest
+  failed to find the runner". Intermittent, and not a regression.
+- In Git Bash, `docker compose exec -w /repo/api php php artisan test` needs
+  `MSYS_NO_PATHCONV=1`. Never run the suite in the `web` container.
+- `npm run check` does not build, because Vite would empty `dist/build/` and
+  delete `_api/` from under a running stack.
 
 ### Claude Code web sessions
 
-A web session starts with no Docker daemon running, so `npm run dev` is out.
-`tools/ensure-dev-stack.sh` (via the cross-platform `tools/ensure-dev-stack.mjs`
-entry) detects that (`$CLAUDE_CODE_REMOTE=true`, `docker info` failing) and
-stands up an equivalent stack natively: MariaDB via `apt`, `lescanetons` +
-`lescanetons_test` created empty (Laravel's own migrations populate them),
-`api/`'s Composer dependencies, and `api/.env` generated from
-`api/.env.example` pointed at `127.0.0.1`. It is idempotent and a no-op when
-Docker is reachable. It is **not** run from the SessionStart hook — apt/DB
-provisioning would blow the hook timeout.
-
-`npm run websession:init` chains `npm install` and `ensure-dev-stack` in one
-command, and is all a fresh session needs.
-
-**The Laravel suite runs in a web session**, and so do Pint and the Scramble
-export — verified 2026-09-15, `npm run test:api` green at 585 tests. **Larastan
-does not, by choice since 2026-09-16:** `phpstan/phpstan` is a 2.9 GB clone from
-git sources, about half of what provisioning cost, so a web session omits it and
-CI's `lint-api` job is the gate. The other half is PHPUnit's dependencies, which
-vendor the same phar into their own history and cannot be dropped —
-`docs/web-session.md` has the measurements. `npm run lint:types` there prints that and exits 0 — which
-means `npm run check` can be green in a web session without any PHP having been
-type-checked. Push and read the PR.
-What breaks a naive `composer install` is **not** the network allowlist,
-whatever this file and `docs/web-session.md` said until then: GitHub traffic
-takes the session's GitHub proxy, which scopes the API to the repositories
-*attached to the session*, so every third-party `dist` zipball 403s and Composer
-reports it as `Could not authenticate against github.com`. Git is not scoped, so
-the install goes over git instead — `use-github-api false` plus a derived
-`source` for the one dist-only package. `ensure-dev-stack.sh` does both. **Do
-not try to fix this by changing the environment's network access**; it cannot
-help, and two sessions have now spent themselves proving it.
-
-**`docs/web-session.md` is the whole story.** Read it before concluding anything
-is unrunnable here — and before changing an environment setting to make it run.
-
-Two limits are real. **MariaDB from `apt` is 10.11, not production's 10.3**, so
-anything schema-shaped wants either a real Docker host or the `mariadb:10.3`
-container a hand-started `dockerd` can run (see the doc). And there is **no
-`:8090` parity stack** — the compose `web` image cannot be built here — so
-`npm run smoke` and every Apache behaviour are out of reach in a web session.
+No Docker daemon runs there. **`npm run websession:init`** stands up a native
+stack instead (idempotent; too slow for the SessionStart hook). The Laravel
+suite runs; Larastan is skipped by choice, so `npm run check` can be green with
+no PHP type-checked and CI's `lint-api` is the gate. MariaDB is 10.11, and there
+is no `:8090` stack. "Could not authenticate against github.com" from Composer
+is the session's GitHub proxy: **do not change network access to fix it.**
+Read **`docs/web-session.md`** before concluding anything is unrunnable there.
 
 ## How work is tracked
 
 **The backlog is GitHub issues. There is no `state.md` and there must not be
-one.** Two trackers contradict each other within a week, and a prose file goes
-stale silently: `docs/continue-here.md` claimed 17 content placeholders for over
-a month when the real count was 23. An issue cannot drift the same way, because
-a merged PR closes it whether or not anyone remembers.
+one**: a prose tracker goes stale silently; a merged PR closes its issue.
 
-- **A milestone is a slice.** `gh issue list --milestone "<title>"` is how you
-  find what is next; do not invent an ordering.
-- **One issue, one branch, one PR**, closed with a `Closes #N`. Work that needs
-  two PRs is two issues.
-- **Read the issue before starting.** The bodies carry the measurement and the
-  decision — the 223px, the file and line, why an option was rejected — so that
-  nothing has to be re-derived or re-argued.
+- **A milestone is a slice.** `gh issue list --milestone "<title>"` finds what
+  is next; do not invent an ordering.
+- **One issue, one branch, one PR**, closed with `Closes #N`.
+- **Read the issue before starting.** Its body carries the measurement and the
+  decision.
 - **Close with evidence, not assertion.** A green suite is routinely green over
-  a visibly broken page here, so the closing PR carries the screenshot, the
-  measured number or the failing-then-passing guard.
+  a broken page here, so the PR carries the screenshot, the measured number or
+  the failing-then-passing guard.
 
 ## Pull Requests
 
@@ -720,109 +331,73 @@ a merged PR closes it whether or not anyone remembers.
 
 ## Who may change what
 
-The editability ladder, and the reason it also decides what can ever be
-translated. The reasoning is in ADR 0014.
+ADR 0014 has the reasoning.
 
 | Thing | Changed by |
 | --- | --- |
 | The permission set (`App\Support\Permission`) | developer, code + deploy — a permission is real only if middleware checks it |
 | UI text (`web/src/i18n/`) | developer, code + deploy |
-| Which roles exist, what each is called and grants | `roles.manage`, on `/roles` (#194). The baseline role is fixed |
-| The register list, its order and both names | `members.manage`, on `/registers` (#276) |
+| Which roles exist, their names and grants | `roles.manage`, on `/roles`. The baseline role is fixed |
+| The registers, their order and both names | `members.manage`, on `/registers` |
 | Members: identity, register, roles, password | `members.manage` |
 | One's own password | any account holder |
 | Events | `events.manage` |
 | One's own answer to an event | `attendance.respond` |
 | Somebody else's answer | `attendance.record_for_others` |
-| Photos: the library on `/media`, and every photo slot, changed on the page that shows it (a history entry's in its form) | `images.manage` |
+| Photos: the library on `/media`, and each photo slot on the page that shows it | `images.manage` |
 
-**Who names a thing decides whether it can be translated.** A developer-defined
-name is a fixed key, so a second language costs one catalogue file; a user-typed
-name is content, rendered verbatim, and no translation layer reaches it. German
-shipped 2026-09-19 to 2026-09-21, so the second catalogue exists and the rule
-above is load-bearing. A role keeps an immutable `key` for identity, and since
-#194 it also carries `label_fr` and `label_de`, typed in the role editor
-(ADR 0026). A seeded role nobody has renamed has neither, so the SPA translates
-its `key` through the catalogue; `roleName()` in `web/src/i18n/` does both.
-A register keeps its French `name` and since #276 gains an optional `name_de`,
-both typed in the register editor; `registerName()` shows the German one where
-there is one. The roster resolves it from `GET /sections` by id rather than
-carrying it on each member, because a name on the member is hashed into the
-member's entity tag.
+So no permission enters the enum before middleware checks it.
 
-Adding `system.manage` to the enum before its middleware exists is forbidden by
-the rule in row one.
+**Who names a thing decides whether it can be translated.** A developer's name
+is a catalogue key; a user-typed name is content, shown as typed. Roles and
+registers therefore carry their own per-language labels (ADR 0026), resolved by
+`roleName()` and `registerName()` in `web/src/i18n/`.
 
-**The role editor goes through `AccessIntegrity` on every write.** Nobody may
-take `members.manage` or `roles.manage` from its last holder, or from
-themselves, and nobody may touch the baseline role. Those are the two
-permissions that let somebody undo a change through the site, and this host has
-no shell to repair a lockout from. A new write that changes who holds a
-permission has to call the same check before it writes.
+**Every write that changes who holds a permission calls `AccessIntegrity`.**
+Nobody may take `members.manage` or `roles.manage` from its last holder or from
+themselves, or touch the baseline role: there is no shell to repair a lockout.
 
 ## Language
 
-- **Everything is written in English** — documentation and ADRs (`docs/`), code,
-  comments, DB table/column names, enum/stored values, identifiers, slugs, and
-  file names.
-- **API JSON response bodies are English** — every error response's `title`,
-  `detail`, `code`, and `errors[].field`/`errors[].reason` are English
-  identifiers. Nothing there is user-facing: translation happens exclusively at
-  the display layer, in `web/src/i18n/`. `POST /api/migrate` is the one
-  exception — token-gated deploy tooling, never seen by an end user.
-- **French and German are used for ONE thing only: user-visible UI text** —
-  labels, page copy, buttons, on-screen event titles. Rendered text, not API
-  bodies. The SPA ships `fr-CH` at `/` and `de-CH` under `/de/*`, and every
-  string exists in both catalogues: `de.ts` is declared `typeof fr`, so a key
-  in one and not the other fails `npm run typecheck` before any test runs.
-- The existing code follows this: `contact_messages` uses `first_name`/
-  `last_name` and `responses.answer` uses `participate`/`notparticipate`, while
-  the UI reads French and German. Match that pattern.
+- **Everything is written in English**: docs, ADRs, code, comments, table and
+  column names, stored values, identifiers, slugs, file names.
+- **API JSON bodies are English**, error tokens included. Translation happens
+  only in `web/src/i18n/` (`POST /api/migrate` is the one exception).
+- **French and German are for user-visible UI text only**: `fr-CH` at `/`,
+  `de-CH` under `/de/*`. `de.ts` is typed `typeof fr`, so a key missing from
+  either fails `npm run typecheck`.
+- So `contact_messages` has `first_name`/`last_name` and `responses.answer`
+  stores `participate`/`notparticipate`, while the UI reads French and German.
 
 ## Dos
 
 - Run `npm run check` before pushing, and `npm run test:api` for API work.
 - Match production versions (PHP 8.4, MariaDB 10.3).
-- Put new tooling/config at the repo root.
-- Add a new **page** route in `web/src/routes.tsx`, and a new **API** route in
+- Put new tooling and config at the repo root.
+- Add a **page** route in `web/src/routes.tsx` and to
+  `web/screenshots/pages.json` (a test enforces it), and an **API** route in
   `api/routes/api.php`.
 - Regenerate the client (`npm run openapi && npm run generate:api`) whenever an
   API response shape changes, and commit the result.
-- Give every new API error token copy in **both** catalogues —
-  `web/src/i18n/fr.ts` and `web/src/i18n/de.ts`. `de.ts` is typed
-  `typeof fr`, so a missing key fails `npm run typecheck`, and
-  `ApiErrorVocabularyTest` fails `npm run test:api` until both carry it.
+- Give every new API error token copy in **both** `fr.ts` and `de.ts`.
 - Put `#[Emits('...')]` on any action that refuses with a code no middleware
-  implies — a conflict a controller raises, a refusal from `App\Support\*`. The
-  status comes from `App\Support\ErrorVocabulary`, so the action names WHAT it
-  refuses and never which number carries it. Without it the code reaches no
-  operation's `code` enum and a generated client has no branch for it;
+  implies; the status comes from `App\Support\ErrorVocabulary`.
   `DeclaredCodesTest` and `EmittedCodesTest` fail if you forget.
-- Put `etag:<facet>` on any new write that **replaces or removes** an existing
-  thing, and give it a single-thing read to get the tag from — a collection
-  hands out none. `App\Http\Middleware\ConditionalWrite` explains which writes
-  are covered and why attendance is exempt; on the SPA side a screen reads the
-  row as the form opens and writes with that read's `ETag`, never a fresher
-  one.
-- **Expect `{data, meta}` from every endpoint that answers with a list**, and
-  write nothing to make a new one do it — `App\Http\Middleware\
-  PaginatesCollections` envelopes any JSON list body, so a controller returning
-  a resource collection is already paged, documented and `Link`-ed. On the SPA
-  side read the rows through `rowsOf()` in `web/src/api/collection.ts`: orval
-  wraps the response again, so written out by hand it is `query.data.data.data`
-  and only the middle hop is the envelope. A mocked handler must envelope too —
-  `collection()` in `web/src/mocks/handlers.ts` mirrors the middleware,
-  clamping included.
+- Put `etag:<facet>` on any new write that **replaces or removes** a thing, and
+  give it a single-thing read for the tag (`App\Http\Middleware\ConditionalWrite`
+  explains the coverage). A screen writes with the `ETag` of the read it opened
+  with, never a fresher one.
+- **Expect `{data, meta}` from every list endpoint**; `App\Http\Middleware\
+  PaginatesCollections` adds it, so write nothing. Read rows through `rowsOf()`
+  in `web/src/api/collection.ts`, and envelope mocked lists with `collection()`
+  in `web/src/mocks/handlers.ts`.
 
 ## Don'ts
 
-- Never commit `dist/build/`, `api/.env`, or any production data / DB dump.
+- Never commit `dist/build/`, `api/.env`, or any production data or DB dump.
 - Never hand-edit `dist/build/` or `web/src/api/generated/`.
 - Never store real member data or passwords in seed files.
-- Never rename `_api/` without checking two things. The `REDIRECT_STATUS` guard
-  on both dispatch rules is needed only for a name `^api(/|$)` can actually
-  match — i.e. literally `api`; every other name is loop-safe for free, `_api`
-  included (see the `.htaccess` section above). But **every** rename has to be
-  mirrored in `PROTECTED_PATHS` (`tools/deploy/preflight.mjs`), which names
-  `_api/.env` as an exact path, or the next `--relist` deploy deletes each
-  server's API configuration — see **Deployment** above.
+- Never rename `_api/` without mirroring it in `PROTECTED_PATHS`
+  (`tools/deploy/preflight.mjs`), or the next `--relist` deploy deletes every
+  server's `_api/.env`. A rename to literally `api` would also need the
+  `REDIRECT_STATUS` guard on the dispatch rules.

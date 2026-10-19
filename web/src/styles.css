@@ -162,8 +162,8 @@
 
      IF YOU CHANGE THIS FACE, CHECK ITS GLYPH DATA FIRST. Most Google Fonts
      display faces are fine, but several in this register are not — Bowlby One
-     fails on 13 glyphs, Titan One on 9. The check is in docs/continue-here.md;
-     it needs fontTools and takes about a minute. */
+     fails on 13 glyphs, Titan One on 9. The check is in docs/traps.md; it
+     needs fontTools and takes about a minute. */
   --font-display: "Bungee", "Karla Variable", system-ui, sans-serif;
 }
 
