@@ -99,9 +99,10 @@ start from an empty database. ADRs 0008 and 0030.
   `App\Http\Middleware\RunPendingMigrations` (in the `api` and `web` groups,
   under a MySQL `GET_LOCK`), gated by `AUTO_MIGRATE`, default `true`. CI never
   migrates and cannot: the host firewalls the runners.
-- **`npm run dbmigrate:<env>` applies**; preview with `-- --dry-run`. Run a
-  non-trivial migration by hand before the deploy that needs it: the request
-  path has no timeout, and a long `ALTER` dies halfway.
+- **`npm run dbmigrate:<env>` applies**; preview with `-- --dry-run`. It runs under
+  the same PHP time limit as any request, so a long `ALTER` dies halfway either
+  way: ship a heavy migration in its own deploy, ahead of the code that needs
+  it, and run `dbmigrate` right after.
 - **A failing migration takes the whole site down** (every `/api/*` answers
   503, so the SPA cannot boot) and retries on every request. So every
   migration is **idempotent and backward compatible**.

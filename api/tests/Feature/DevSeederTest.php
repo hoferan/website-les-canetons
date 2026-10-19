@@ -22,9 +22,9 @@ class DevSeederTest extends TestCase
         $this->seed(DevSeeder::class);
     }
 
-    public function test_it_creates_the_three_demo_logins(): void
+    public function test_it_creates_the_five_demo_logins(): void
     {
-        foreach (['demo.direction', 'demo.player', 'demo.both'] as $username) {
+        foreach (['demo.direction', 'demo.player', 'demo.both', 'demo.committee', 'demo.young'] as $username) {
             $member = Member::where('username', $username)->first();
 
             $this->assertNotNull($member, "missing seeded member {$username}");

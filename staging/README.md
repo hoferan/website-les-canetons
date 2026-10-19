@@ -270,7 +270,7 @@ pending it takes a MySQL advisory lock (`GET_LOCK('lescanetons_migrate')`), runs
 `artisan migrate --force` and releases it. `AUTO_MIGRATE` gates it and defaults
 to `true`.
 
-**By hand, for anything that is not trivial:**
+**By hand, to preview pending migrations or to watch them run:**
 
 ```bash
 npm run dbmigrate:<env> -- --dry-run   # lists pending, changes nothing
@@ -286,9 +286,12 @@ exemption in `.htaccess` needs `<RequireAny>`, which this host 500s on).
 
 The request-path runner has no timeout of its own. A long `ALTER` holds a
 PHP-FPM worker until `max_execution_time` stops it halfway, and the next request
-retries from wherever it stopped. If you would not be comfortable with a
-migration running inside a page load, run it by hand **before** the deploy that
-needs it.
+retries from wherever it stopped. Running it by hand does not help: the
+migration file only reaches the server with a deploy, and `POST /api/migrate`
+goes through the same `api` middleware group and the same PHP time limit. For a
+heavy migration, ship it in a deploy of its own, ahead of the code that needs
+it, and run `npm run dbmigrate:<env>` right after that deploy so you are the
+request that runs it.
 
 **A failing migration is a total outage.** `RunPendingMigrations` refuses to
 serve against a schema it cannot vouch for, so every `/api/*` request and

@@ -42,8 +42,8 @@ through the `database` cache store, whose table is itself created by a migration
 `AUTO_MIGRATE` in each server's `.env` switches this off, and defaults to on.
 
 `POST /api/migrate`, with its secret in the `X-Migrate-Token` header, stays as the
-manual path: `npm run dbmigrate:<env>` for a dry run, or to apply a heavy migration
-before the deploy that needs it.
+manual path: `npm run dbmigrate:<env>` for a dry run, or to be the request that
+applies a heavy migration right after the deploy that ships it.
 
 Every migration must be idempotent and backward compatible. MariaDB commits DDL
 implicitly, so a failed migration cannot be rolled back.
@@ -55,8 +55,9 @@ implicitly, so a failed migration cannot be rolled back.
 - Bad, because a migration that fails takes the API down. Every `/api/*` request
   answers 503 `service_unavailable`, and the migration retries on every request.
 - Bad, because a long `ALTER` holds a PHP-FPM worker with no timeout of its own and
-  can hit `max_execution_time`, leaving a half-applied schema. Anything non-trivial
-  goes through `npm run dbmigrate:<env>` first.
+  can hit `max_execution_time`, leaving a half-applied schema. `POST /api/migrate`
+  runs under the same limit, so a heavy migration ships in a deploy of its own,
+  ahead of the code that needs it.
 - Bad, because the first visitor after a deploy pays for the migration.
 - Bad, because `AUTO_MIGRATE=false` does not fail closed: the server serves against
   whatever schema it has. That is deliberate, because the flag is the switch that ends
