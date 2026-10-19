@@ -78,6 +78,39 @@ test("the contact form is usable and sends", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Message envoyé");
 });
 
+// The refusal path, through the mocked guard itself, which refuses a filled
+// honeypot exactly as PublicWriteGuard does. The component test pins the copy
+// against a handler that refuses everything. A bot fills `website` by name in
+// the DOM, and so does this, because Playwright's fill() will not touch a
+// hidden input.
+test("a submission that trips the honeypot is refused, and keeps what was typed", async ({
+  page,
+}) => {
+  await page.goto("/contact");
+
+  await page.getByLabel("Nom", { exact: true }).fill("Rossier");
+  await page.getByLabel("Prénom", { exact: true }).fill("Claire");
+  await page.getByLabel("E-mail", { exact: true }).fill("claire@example.ch");
+  await page.getByLabel("Sujet", { exact: true }).fill("Une question");
+  await page.getByLabel("Message", { exact: true }).fill("Bonjour !");
+
+  // React tracks an input's value itself, so a plain `.value =` is swallowed.
+  // The prototype's setter plus an `input` event is what reaches onChange.
+  await page.locator('input[name="website"]').evaluate((input: HTMLInputElement) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(input, "https://spam.example");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  await page.getByRole("button", { name: "Envoyer" }).click();
+
+  await expect(page.getByRole("alert").filter({ hasText: "Envoi refusé" })).toHaveText(
+    "Envoi refusé. Rechargez la page et réessayez.",
+  );
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Contact");
+  await expect(page.getByLabel("Message", { exact: true })).toHaveValue("Bonjour !");
+});
+
 // #102, and only a real browser can check it: jsdom has no interactive
 // validation, so the component tests pass whether or not the form is
 // `noValidate`. Here, without it, Chromium never fires the submit event.
