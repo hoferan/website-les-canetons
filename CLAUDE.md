@@ -608,6 +608,7 @@ npm run test:web      # Vitest (web/src)
 npm run test:e2e      # Playwright (web/e2e)
 npm run test:js       # node:test over tools/
 npm run lighthouse    # public pages vs. the performance budget (informational)
+npm run screenshots   # every route at 1280 and 390px into dist/screenshots/ (web/screenshots/pages.json)
 npm run lint:api      # Laravel Pint (--test)
 npm run artisan -- route:list   # artisan, from api/
 npm run composer -- outdated    # Composer, from api/

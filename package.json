@@ -39,6 +39,7 @@
     "test:api": "node tools/phpunit.mjs",
     "test:web": "vitest run",
     "test:e2e": "playwright test",
+    "screenshots": "playwright test --config playwright.screenshots.config.ts",
     "test:js": "node --test \"tools/deploy/*.test.mjs\" \"tools/*.test.mjs\"",
     "smoke": "node tools/smoke-docker.mjs",
     "lint:js": "eslint web",

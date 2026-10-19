@@ -1,0 +1,75 @@
+name: Screenshots
+
+# Every route at 1280px and 390px, as each login sees it, so a reviewer can
+# look at a visual change without standing up the stack (#42). Against the
+# MSW-mocked backend, like the e2e job, so it needs no database and no PHP.
+# What is photographed: web/screenshots/pages.json.
+#
+# INFORMATIONAL, AND A WORKFLOW OF ITS OWN FOR THAT REASON, as lighthouse.yml
+# is. ci.yml's all-green is the one required check on main and must need every
+# job in that file, so a job there would gate the merge. The sweep does fail
+# when a page answers the 404 or the refusal view instead of itself, but that
+# is a red mark on the PR, not a blocked merge.
+
+on:
+  pull_request:
+    paths-ignore: ["docs/**", "api/**", "**/*.md"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install Node dev tools
+        run: npm ci
+      # The same cached Chromium as ci.yml's e2e job, keyed the same way, so
+      # the two workflows share one cache entry.
+      - name: Read the Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ steps.playwright.outputs.version }}
+      - name: Install the Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install the Playwright browser's OS libraries
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: Photograph every route
+        run: npm run screenshots
+      # Kept even when a page failed, since the pictures taken before it are
+      # what shows the reviewer what went wrong.
+      - name: Keep the screenshots
+        id: upload
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: screenshots
+          path: dist/screenshots/
+          retention-days: 14
+      - name: Link them from the summary
+        if: always() && steps.upload.outputs.artifact-url != ''
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          {
+            echo "### Screenshots"
+            echo
+            echo "Every route at desktop (1280px) and phone (390px) width, one folder per login: [download]($ARTIFACT_URL)."
+          } >> "$GITHUB_STEP_SUMMARY"
