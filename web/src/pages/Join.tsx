@@ -64,7 +64,7 @@ const FACTS: {
  * These are not generated from the roster, unlike /band and /committee. A
  * member row carries no phone number — the schema has never had one — and
  * "who to ring about joining" is not a committee title either. When the band
- * answers the audit, the two names land here as prose.
+ * supplies them (#106), the two names land here as prose.
  */
 const JOINING_CONTACTS = 2;
 

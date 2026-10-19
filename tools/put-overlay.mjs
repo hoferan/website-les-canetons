@@ -251,9 +251,7 @@ async function main() {
   const missing = ['FTP_HOST', 'FTP_USER', 'FTP_PASS', 'FTP_DIR'].filter((k) => !process.env[k]);
   if (missing.length) {
     console.error(
-      `Missing FTP settings: ${missing.join(', ')} — set them in .env.${target}.\n` +
-        `Note .env.* declare FTP_PASSWORD while the tooling reads FTP_PASS; that mismatch is ` +
-        `deliberate (see CLAUDE.md). Inject it for a one-off run rather than editing the env file.`
+      `Missing FTP settings: ${missing.join(', ')} — set them in .env.${target}.`
     );
     process.exit(1);
   }
