@@ -160,7 +160,7 @@ export function Contact() {
             them can reach faster on WhatsApp. But the site publishes no direct
             contact detail anywhere (comite@lescanetons.org was pulled from
             /committee in the 2026-08-31 audit; /join's contacts are
-            placeholders, see Join.tsx:26), so a member who has not got the
+            placeholders, see JOINING_CONTACTS in Join.tsx), so a member who has not got the
             number has only this form. Hiding it behind a reveal was built and
             rejected on 2026-09-18 for exactly that reason: it charges a click of
             everybody it does not help, and does not spare the one it does a
