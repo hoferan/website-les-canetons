@@ -334,6 +334,25 @@ test("the running total counts in German and prices in Swiss German", async () =
   await expect.poll(() => screen.getByTestId("booking-total").textContent).toContain("1 Person");
 });
 
+test("the confirmation counts the guests in German", async () => {
+  const user = userEvent.setup();
+  await renderBooking(SOUPER, "de-CH");
+
+  await user.type(screen.getByLabelText("Name"), "Muster");
+  await user.type(screen.getByLabelText("Vorname"), "Anna");
+  await user.type(screen.getByLabelText("E-Mail"), "anna@example.ch");
+  await user.type(screen.getByLabelText("Telefon"), "079 000 00 00");
+  await user.type(screen.getAllByRole("spinbutton")[0] as HTMLElement, "1");
+  await user.click(screen.getByRole("button", { name: "Anmelden" }));
+
+  await screen.findByTestId("booking-summary");
+
+  // From the catalogue, like the running total: "personne" plus an "s" above
+  // one is the French rule.
+  expect(screen.getByTestId("booked-guests")).toHaveTextContent(/^1 Person — CHF/);
+  expect(screen.queryByText(/personne/)).toBeNull();
+});
+
 // The four required fields say so, and an empty form is refused by the app in
 // the page's language, not by the browser in its own.
 test("marks the four required fields, and refuses an empty form in French", async () => {

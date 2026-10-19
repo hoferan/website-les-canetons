@@ -295,3 +295,18 @@ test("the filtered count keeps its hand-replaced braces, in German", async () =>
   expect(count.textContent).toMatch(/^\d+ von \d+ Nachrichten?$/);
   expect(count.textContent).not.toContain("{");
 });
+
+test("a write that never reaches the API says so in German", async () => {
+  // A dropped connection is not an ApiError, so useApiFormError shows the
+  // screen's fallback message.
+  server.use(http.patch("/api/v1/contact-messages/:id", () => HttpResponse.error()));
+  await renderArchive("/contact-messages", "de-CH");
+
+  await userEvent.click(cards().getAllByRole("button", { name: /Lesen/ })[0]!);
+  await screen.findByTestId("message-panel");
+  await userEvent.click(panel().getByRole("switch", { name: "Erledigt" }));
+
+  expect(await panel().findByRole("alert")).toHaveTextContent(
+    "Die Aktion konnte nicht ausgeführt werden.",
+  );
+});

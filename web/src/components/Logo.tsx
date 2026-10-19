@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 
+import { t } from "../i18n";
+
 /**
  * There are two logos. `Logo` is the header lockup: the duck mark beside the
  * band's name set in Bungee. `BrandLogo` is the original artwork, the
@@ -74,7 +76,7 @@ export function BrandLogo({ className }: { className?: string }) {
   return (
     <img
       src="/assets/img/Les_Canetons_Fribourg_logo_2.jpg"
-      alt="Le logo des Canetons de Fribourg"
+      alt={t("home.brandLogoAlt")}
       width={237}
       height={174}
       className={cn("h-auto rounded-lg", className)}

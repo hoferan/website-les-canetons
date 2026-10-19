@@ -101,7 +101,7 @@ export function ContactMessages() {
 
   const list = useContactMessageIndex();
 
-  const action = useApiFormError("L’action n’a pas pu être effectuée.");
+  const action = useApiFormError(t("contactMessages.actionFailed"));
 
   // Built over the generated functions, not orval's mutation hooks, which fix
   // their request options when created; the tag differs per call. See
