@@ -75,24 +75,30 @@ is already current does not touch it.
 
 ---
 
-## Scramble: an `extensions` entry that is silently never called
+## Scramble: an `extensions` entry that names no class is silently dropped
 
-`config/scramble.php`'s `extensions` array accepts an `OperationExtension`, but
-one listed there was found **never invoked**: the export succeeded, the document
-was unchanged, and nothing warned. This project registers operation
-transformers through the provider instead:
+`config/scramble.php`'s `extensions` array takes every kind of Scramble
+extension. Each pipeline that reads it keeps the entries that are `is_a()` its
+own base class, so a name that resolves to no class matches none of them and
+disappears without a warning. The file has no namespace: `MyExtension::class`
+without a `use` line names the global `\MyExtension`, which does not exist.
 
-```php
-// AppServiceProvider::boot()
-Scramble::configure()->withOperationTransformers(MyExtension::class);
-```
+The symptom is nothing at all. The export succeeds, the document is unchanged,
+and nothing logs a warning. **Diagnose it by putting a `throw` in `handle()`.**
+If the export still succeeds, the class is never reached, and the problem is
+how it is listed, not what it does.
 
-**Re-check this before relying on it.** A reading of Scramble 0.13.36's
-`ScrambleServiceProvider::bootingPackage()` suggests config-listed operation
-extensions are merged into the operation transformers after all. Either way,
-diagnose a silent extension by putting a `throw` in `handle()`: if the export
-still succeeds, the class is not being called and the problem is registration,
-not logic.
+Until 2026-10-19 this entry said an `OperationExtension` listed in that array is
+never called. That is wrong for Scramble 0.13.36. A throwing extension listed
+only there failed the export, and moving `DocumentsFailureModes` there from
+`AppServiceProvider` left `api/openapi.json` byte-identical. The same throwing
+extension listed without its `use` line let the export pass, which matches what
+was seen on 2026-09-11 and is the likely cause of the old conclusion.
+
+Operation extensions from the array run before the ones `AppServiceProvider`
+registers with `withOperationTransformers()`, because Scramble's own provider
+boots first. This project keeps all four of its own in the provider, so their
+order is in one list.
 
 ## Scramble: a request body's content entry IS a `$ref`
 
