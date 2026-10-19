@@ -1,5 +1,5 @@
 /**
- * The upload queue, free of React and the DOM so it is tested directly (#105).
+ * The upload queue, free of React and the DOM so it is tested directly.
  *
  * Up to a hundred photos can be dropped at once, on a phone. Shrinking is the
  * memory-hungry step, so one runs at a time; uploads are the slow step, so two

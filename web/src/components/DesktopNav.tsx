@@ -19,16 +19,14 @@ const GAP = 20;
  * The desktop bar: one line at every width, the entries that do not fit
  * folded into "Plus" from the right (#99).
  *
- * `entries` IS IN ORDER OF IMPORTANCE, left to right, so what folds first is
+ * `entries` is in order of importance, left to right, so what folds first is
  * what matters least. Layout owns that order.
  *
- * MEASURED, NOT BREAKPOINTED. The labels change with the language and the
- * list changes with the session and the member's permissions, so no fixed
- * breakpoint could say how many fit. A hidden copy of every entry, plus the
- * "Plus" trigger, is measured instead, and re-measured whenever the bar or
- * that copy changes size; the copy's size changes when the web font arrives.
- * The copy pads every label as the highlight does, so the item that becomes
- * current cannot push the bar onto a second line.
+ * Measured, not breakpointed: the labels change with the language and the
+ * list with the member's permissions, so no fixed breakpoint could say how
+ * many fit. A hidden copy of every entry plus the "Plus" trigger is measured,
+ * and re-measured whenever the bar or the copy changes size (the copy changes
+ * when the web font arrives).
  *
  * Where ResizeObserver does not exist (jsdom) every entry stays visible,
  * which is also what a first paint shows before anything is measured.
@@ -82,8 +80,8 @@ export function DesktopNav({
       if (el) observer.observe(el);
     }
     return () => observer.disconnect();
-    // Keyed on what the entries SAY rather than on the array, which Layout
-    // builds afresh on every render.
+    // Keyed on what the entries say, not on the array, which Layout builds
+    // afresh on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature]);
 
@@ -148,15 +146,14 @@ export function DesktopNav({
         {trailing}
       </div>
 
-      {/* THE RULER: every entry once, then the "Plus" trigger, laid out like
-          the real ones and never seen. aria-hidden, and spans rather than
-          links, so it adds nothing to the accessibility tree or the tab
-          order. Clipped inside a zero-size box: `invisible` still takes up
-          room, and at 768px the unclipped ruler, wider than the window,
-          scrolled the whole page sideways. `w-max` keeps each entry at its
-          one-line width inside it. Each label is padded as the highlight
-          pads it, so the entry that becomes current cannot push the bar onto
-          a second line. */}
+      {/* The ruler: every entry once, then the "Plus" trigger, laid out like
+          the real ones and never seen. aria-hidden spans, so it adds nothing
+          to the accessibility tree or the tab order. Clipped inside a
+          zero-size box because `invisible` still takes up room, and a ruler
+          wider than the window would scroll the page sideways. `w-max` keeps
+          each entry on one line. Each label is padded as the highlight pads
+          it, so the entry that becomes current cannot push the bar onto a
+          second line. */}
       <div
         aria-hidden="true"
         className="pointer-events-none invisible absolute top-0 left-0 size-0 overflow-hidden"

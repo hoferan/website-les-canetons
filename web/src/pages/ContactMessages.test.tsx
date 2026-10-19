@@ -10,10 +10,9 @@ import { renderWithSession } from "../test/renderWithSession";
 import { ContactMessages } from "./ContactMessages";
 
 /**
- * Every assertion here depends on the archive having arrived, so the helper
- * waits for it rather than each test remembering to. `demo.direction` holds
- * both `messages.view` and `messages.manage` — the two-permission tests below
- * switch to `demo.committee`, which holds view alone.
+ * Renders the archive and waits for it to arrive. `demo.direction` holds both
+ * `messages.view` and `messages.manage`; the tests that need view alone use
+ * `demo.committee`.
  */
 async function renderArchive(route = "/contact-messages", locale: Locale = "fr") {
   setMockUser("demo.direction");
@@ -22,11 +21,7 @@ async function renderArchive(route = "/contact-messages", locale: Locale = "fr")
   return result;
 }
 
-/**
- * The archive. ONE LAYOUT since #130 — cards at every width. There was a table
- * above `md` as well until 2026-09-18, rendering the same five facts a second
- * time, so every query here had to say which of the two it meant.
- */
+/** The archive's cards, the one layout at every width. */
 function cards() {
   return within(screen.getByTestId("messages-cards"));
 }
@@ -43,7 +38,7 @@ test("lists the messages newest first", async () => {
   await renderArchive();
 
   // The mock seeds id 3 (Dupasquier) newest, then 2 (Rossier), then 1
-  // (Chappuis) — the server's own order, which rowsOf() must not disturb.
+  // (Chappuis): the server's own order, which rowsOf() must not disturb.
   expect(
     cards()
       .getAllByTestId("message-last-name")
@@ -69,8 +64,8 @@ test("renders an empty state when nothing has been sent", async () => {
 test("expands the message named by ?open=", async () => {
   await renderArchive("/contact-messages?open=2");
 
-  // Message 2 is Yannick Rossier's — its full body, not just the row's
-  // truncated preview, must be on screen once the deep link has resolved.
+  // Message 2 is Yannick Rossier's. Its full body, not the row's truncated
+  // preview, must be on screen once the deep link has resolved.
   await screen.findByTestId("message-panel");
   expect(panel().getByText(/vous cherchez des musiciens/i)).toBeInTheDocument();
   expect(panel().getByRole("link", { name: "y.rossier@example.ch" })).toHaveAttribute(
@@ -83,10 +78,8 @@ test("the close control keeps its French name once it is only an icon", async ()
   await renderArchive("/contact-messages?open=2");
   await screen.findByTestId("message-panel");
 
-  // Queried by accessible name on purpose. The button shows an X and no text,
-  // so "Fermer" survives only in aria-label — drop it and this is an unlabelled
-  // button that a screen reader announces as nothing, on the only way out of
-  // the panel.
+  // The button shows only an X, so "Fermer" lives in aria-label alone, on the
+  // only way out of the panel.
   await userEvent.click(panel().getByRole("button", { name: "Fermer" }));
 
   expect(screen.queryByTestId("message-panel")).not.toBeInTheDocument();
@@ -141,10 +134,10 @@ test("switching Traité off reopens a handled message", async () => {
 });
 
 /**
- * MUTATION TEST, three guards. Drop the `finally` that clears the optimistic
- * value and the switch stays on after the refusal; drop the panel's alert and
- * the refusal is never read; drop the early return while busy and the second
- * click turns the switch off mid-save.
+ * Three guards. Without the `finally` that clears the optimistic value the
+ * switch stays on after the refusal; without the panel's alert the refusal is
+ * never read; without the early return while busy a second click turns the
+ * switch off mid-save.
  */
 test("a refused flip puts the switch back and says why in the panel", async () => {
   let release = () => {};
@@ -185,9 +178,7 @@ test("the heading count agrees with the filtered rows, not the whole archive", a
   // Unfiltered: the heading names the whole archive, all three seeded rows.
   expect(screen.getByTestId("message-count")).toHaveTextContent("3 messages");
 
-  // The fixture seeds one handled message (Chappuis) among three, so
-  // "Traités" leaves exactly one row on screen. The heading must say so
-  // rather than repeat the archive's total of three.
+  // The fixture seeds one handled message (Chappuis) among three.
   await userEvent.click(screen.getByRole("button", { name: "Traités" }));
 
   expect(cards().getAllByTestId("message-last-name")).toHaveLength(1);
@@ -195,9 +186,8 @@ test("the heading count agrees with the filtered rows, not the whole archive", a
 });
 
 test("filtering to a status with nothing in it explains itself, not as an error", async () => {
-  // Overrides the list wholesale, so the fixture is exactly "every message is
-  // open" — no reliance on which of the three seeded rows happen to be
-  // handled today. Filtering to "Traités" then has nothing to show.
+  // Every message open, independent of the seeded rows, so "Traités" has
+  // nothing to show.
   server.use(
     http.get("/api/v1/contact-messages", () =>
       HttpResponse.json({
@@ -226,41 +216,31 @@ test("filtering to a status with nothing in it explains itself, not as an error"
 
   const empty = await screen.findByText(/aucun message ne correspond/i);
   expect(empty).not.toHaveAttribute("role", "alert");
-  // Distinct from the true-empty copy: there ARE messages, just none in this
-  // filter.
+  // Distinct from the true-empty copy: there are messages, none in this filter.
   expect(screen.queryByText(/prêt à en recevoir/i)).not.toBeInTheDocument();
 });
 
 /**
- * MUTATION-TESTED GUARD (per docs/traps.md's standing rule): reintroduce the
- * "fetch a fresher tag immediately before the write" anti-pattern and confirm
- * this fails, then confirm it passes again. See task-10-report.md for both
- * runs.
+ * Guards against fetching a fresher tag just before the write.
  *
- * The scenario: open a message (the component's own read captures tag A),
- * then move the SERVER's stored tag to B by driving a second write through
- * the same mock store directly — exactly as if another committee member
- * acted first, and the same technique Members.test.tsx uses for the
- * equivalent roster guard. Switching "Traité" on must still send
- * the PATCH with tag A: never a tag re-read at write time, which is the
- * whole point of a conditional write (web/src/api/ifMatch.ts).
+ * Open a message (the component's read captures tag A), then move the
+ * server's stored tag to B with a second write through the mock store, as if
+ * another committee member acted first (Members.test.tsx does the same for
+ * the roster). Switching "Traité" on must still send tag A
+ * (web/src/api/ifMatch.ts).
  *
- * `server.events` — not a `server.use()` override — is what lets this
- * capture the header the browser actually sent without touching or
- * duplicating the handler's own staleness logic.
+ * `server.events`, not a `server.use()` override, captures the header that
+ * was sent without duplicating the handler's staleness logic.
  */
 test("writes the handled PATCH with the tag from the read the user saw, not a fresher one", async () => {
   await renderArchive();
 
-  // Open message 3 (Dupasquier) — the component's own read, tag A.
+  // Open message 3 (Dupasquier): the component's own read, tag A.
   await userEvent.click(cards().getAllByRole("button", { name: /Lire/ })[0]!);
   await screen.findByTestId("message-panel");
 
-  // Move the server's stored tag for message 3, through the mock store
-  // directly rather than through the component under test. `tagA` is read
-  // independently here — nothing has changed the message since the
-  // component's own read moments ago, so the two reads agree; this is what
-  // the assertion below actually checks the PATCH against.
+  // An independent read agrees with the component's, since nothing has
+  // changed the message in between. The PATCH is checked against it.
   const independentRead = await fetch("/api/v1/contact-messages/3");
   const tagA = independentRead.headers.get("ETag");
   expect(tagA).not.toBeNull();
@@ -270,8 +250,8 @@ test("writes the handled PATCH with the tag from the read the user saw, not a fr
     headers: { "Content-Type": "application/json", "If-Match": tagA ?? "" },
     body: JSON.stringify({ handled: true }),
   });
-  // The server's tag for message 3 is now B — different from A, since the
-  // PATCH above changed handledAt/handledBy, which mockEntityTag hashes.
+  // The server's tag is now B: the PATCH changed handledAt and handledBy,
+  // which mockEntityTag hashes.
 
   let capturedIfMatch: string | null | undefined;
   const captureHeader = ({ request }: { request: Request }) => {
@@ -284,17 +264,10 @@ test("writes the handled PATCH with the tag from the read the user saw, not a fr
   try {
     await userEvent.click(handledSwitch());
 
-    // THE LOAD-BEARING ASSERTION: the outgoing header is tag A, the read the
-    // component itself performed — never tag B, the one a re-read just
-    // before the write would have picked up.
+    // The assertion that catches a re-read: tag A, never B.
     expect(capturedIfMatch).toBe(tagA);
 
-    // The mock's own staleness enforcement surfaces this as a 412, since the
-    // component's tag A no longer matches the server's B. Asserted too, but
-    // it is not the half that catches the anti-pattern: a re-read immediately
-    // before the write would send tag B and this would succeed instead of
-    // refusing — passing every other test in this file while the header
-    // assertion above is what would catch it.
+    // The mock answers 412, since A no longer matches B.
     expect(await screen.findByText(/modifié cet élément entre-temps/i)).toBeInTheDocument();
   } finally {
     server.events.removeListener("request:start", captureHeader);
@@ -302,8 +275,6 @@ test("writes the handled PATCH with the tag from the read the user saw, not a fr
 });
 
 test("the archive is German, and its count pluralises by the German rule", async () => {
-  // Twenty-five direct `fr.contactMessages.*` reads lived here. The German
-  // for every one of them had been written in #151 and was unreachable.
   await renderArchive("/contact-messages", "de-CH");
 
   expect(screen.getByRole("heading", { level: 1, name: "Nachrichten" })).toBeInTheDocument();
@@ -313,13 +284,9 @@ test("the archive is German, and its count pluralises by the German rule", async
 });
 
 test("the filtered count keeps its hand-replaced braces, in German", async () => {
-  // contactMessages uses SINGLE braces replaced by hand, unlike the rest of
-  // the catalogue's i18next `{{ }}`. Both catalogues mirror that, and mixing
-  // the two styles inside one key renders the braces on screen — which is what
-  // this asserts has not happened.
-  //
-  // The word itself is now a plural family: it was `total > 1 ? … : …`, the
-  // French rule, which is right in French ("0 message") and wrong in German.
+  // contactMessages uses single braces replaced by hand, unlike the rest of
+  // the catalogue's i18next `{{ }}`. Mixing the two styles inside one key
+  // renders the braces on screen.
   await renderArchive("/contact-messages", "de-CH");
 
   await userEvent.click(screen.getByRole("button", { name: "Offen" }));

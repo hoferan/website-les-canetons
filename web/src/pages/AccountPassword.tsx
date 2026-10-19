@@ -18,13 +18,12 @@ import { useSession } from "../session/SessionProvider";
 /**
  * Change my own password, at /account/password.
  *
- * A page of its own rather than a dialog over /account (#125), because of the
- * forced change: a committee-issued password arrives with must_change_password
- * set, and MustChangePassword holds the member here until it is replaced. A
- * dialog would have to open by itself and refuse to close; a route needs no
- * focus trap, survives Back, and can be named when the committee tells somebody
- * where to go. So the page works as both the routine screen and the one you
- * cannot leave, and the difference is one notice and the missing back link.
+ * A page rather than a dialog because of the forced change: a
+ * committee-issued password arrives with must_change_password set, and
+ * MustChangePassword holds the member here until it is replaced. A route
+ * needs no focus trap, survives Back, and can be named when the committee
+ * tells somebody where to go. The forced case differs only by one notice and
+ * the missing back link.
  */
 export function AccountPassword() {
   const { user } = useSession();
@@ -44,8 +43,7 @@ export function AccountPassword() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    // aria-disabled, not disabled — so this early return is what actually
-    // prevents a double submit.
+    // The button is aria-disabled, so this return prevents a double submit.
     if (change.isPending) {
       return;
     }
@@ -56,9 +54,8 @@ export function AccountPassword() {
       return;
     }
 
-    // Client-side, deliberately: the API has no confirmation field, so there is
-    // no token to translate — and a typo here costs no round-trip and burns no
-    // re-authentication attempt against the throttle.
+    // Checked here because the API has no confirmation field, and a typo then
+    // burns no re-authentication attempt against the throttle.
     if (newPassword !== confirmation) {
       setMismatch(true);
       return;
@@ -69,9 +66,8 @@ export function AccountPassword() {
       await change.mutateAsync({ data: { currentPassword, newPassword } });
     } catch (thrown) {
       setFromThrown(thrown);
-      // Only the passwords are cleared: whatever was wrong, retyping all three
-      // is the honest cost, and leaving a rejected value in the box invites
-      // pressing the button again unchanged.
+      // A rejected value left in the box invites pressing the button again
+      // unchanged, so all three are cleared.
       setCurrentPassword("");
       setNewPassword("");
       setConfirmation("");
@@ -83,16 +79,15 @@ export function AccountPassword() {
     setConfirmation("");
     setDone(true);
 
-    // mustChangePassword has just flipped, and MustChangePassword reads it — so
-    // the session must be refetched or the member stays trapped on this page
-    // after succeeding.
+    // mustChangePassword has just flipped. Without a refetch MustChangePassword
+    // keeps the member trapped here after succeeding.
     await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
   }
 
   return (
     <PageSection width="form">
-      {/* No way back while the gate holds them: the link would only bounce
-          off MustChangePassword and land here again. */}
+      {/* No back link while the gate holds them: it would only bounce off
+          MustChangePassword and land here again. */}
       {user?.mustChangePassword ? null : (
         <Link
           to="/account"
@@ -106,8 +101,8 @@ export function AccountPassword() {
       <h1 className="font-display text-4xl">{t("account.password")}</h1>
 
       {user?.mustChangePassword ? (
-        // Why it says anything at all, rather than merely bouncing them: see
-        // account.provisionalNotice in i18n/fr.ts.
+        // Why the gate explains itself: see account.provisionalNotice in
+        // i18n/fr.ts.
         <Notice className="mt-related">{t("account.provisionalNotice")}</Notice>
       ) : null}
 
@@ -146,8 +141,7 @@ export function AccountPassword() {
           type="password"
           value={confirmation}
           onChange={setConfirmation}
-          // A mismatch reported on submit stops being true the moment the two
-          // agree, and saying both at once would contradict itself.
+          // A mismatch reported on submit clears as soon as the two agree.
           problem={mismatch && !matches ? t("account.mismatch") : undefined}
           hint={matches ? <Check met>{t("account.matches")}</Check> : undefined}
           required
@@ -157,10 +151,9 @@ export function AccountPassword() {
         <FormError error={error} />
 
         {/*
-          Always in the tree, never conditionally inserted — the same reasoning
-          as FormError's alert region: a live region added to the DOM in the
-          same commit as other churn is announced by some browser/AT pairs and
-          missed by others.
+          Always in the tree, as FormError's alert region is: a live region
+          inserted with other DOM churn is missed by some browser and screen
+          reader pairs.
         */}
         <div role="status">
           {done ? <p className="text-ink-muted">{t("account.changed")}</p> : null}
@@ -175,12 +168,11 @@ export function AccountPassword() {
 }
 
 /**
- * One line under a field that is either satisfied or not yet (#101).
+ * One line under a field that is either satisfied or not yet.
  *
- * Neither state is an error, so nothing here is red: an unmet rule is muted
- * text beside an empty circle, a met one is full ink beside a tick. The palette
- * has no green, and one hint does not earn one. The tick is an icon, so a
- * screen reader gets `ruleMet` in words instead.
+ * Neither state is an error, so nothing is red: unmet is muted text beside an
+ * empty circle, met is full ink beside a tick. The palette has no green. A
+ * screen reader gets `ruleMet` in words instead of the tick.
  */
 function Check({ met, children }: { met: boolean; children: ReactNode }) {
   const Icon = met ? CircleCheck : Circle;

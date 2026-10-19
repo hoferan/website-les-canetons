@@ -5,18 +5,17 @@ import { formatLastLogin } from "../lib/date";
 /**
  * The two fields the state is derived from, and nothing else.
  *
- * Pick rather than the whole resource, so a test needs two fields rather than
- * a fixture member — and so nothing here can quietly start depending on a
- * third field without saying so in this type.
+ * Pick rather than the whole resource, so a test needs two fields instead of a
+ * fixture member, and a third dependency has to show up in this type.
  */
 export type LoginStatusFields = Pick<MemberResource, "mustChangePassword" | "lastLoginAt">;
 
 /**
  * One thing the committee may have to act on.
  *
- * `accessibleName` exists because the shortest label that scans is not always
- * a phrase that stands on its own: a screen reader reaches `Provisoire` with
- * no card around it to supply the missing noun.
+ * `accessibleName` exists because the short label does not always stand on
+ * its own: a screen reader reaches `Provisoire` with no card around it to
+ * supply the noun.
  */
 export type LoginPill = {
   key: "never-used" | "provisional";
@@ -34,25 +33,21 @@ export type LoginState = {
 /**
  * Whether this person can actually log in, and whether they ever have.
  *
- * SPLIT BY WHAT THE FACT IS FOR, not by which field it came from. This started
- * as one sentence carrying both facts, and read as prose among prose: true,
- * and overlooked (#94). A state somebody must chase is a pill; a date nobody
- * has to act on is reference text beneath it. So an account in normal use
- * raises nothing at all, and a pill keeps meaning "look here" — which it stops
- * meaning the moment every row has one.
+ * Split by what each fact is for. A state somebody must chase is a pill; a
+ * date nobody has to act on is reference text beneath it. An account in
+ * normal use raises nothing, so a pill keeps meaning "look here".
  *
- * ORDER IS DELIBERATE. `Jamais utilisé` comes first because it is the one that
- * may mean the credential never reached the person; `Provisoire` beside it
- * says the committee still holds it.
+ * `Jamais utilisé` comes first because it may mean the credential never
+ * reached the person; `Provisoire` beside it says the committee still holds
+ * it.
  *
- * NO PARTICIPLE AGREES WITH THE MEMBER. `Jamais connecté` would have to, and
- * this codebase has no inclusive-writing convention to reach for; `utilisé`
- * agrees with `le compte` instead.
+ * No participle agrees with the member. `Jamais connecté` would have to, and
+ * the codebase has no inclusive-writing convention; `utilisé` agrees with
+ * `le compte`.
  *
- * The issue this comes from (#94) asks for a "never issued" state as well.
- * There is no such state: 2026_09_08_000001_require_member_credentials made
- * members.password NOT NULL and MemberController::store() generates one for
- * every new member. Everybody has a credential; the question is whose it is.
+ * There is no "never issued" state: members.password is NOT NULL and
+ * MemberController::store() generates one for every new member. Everybody has
+ * a credential; the question is whose it is.
  */
 export function loginState(member: LoginStatusFields): LoginState {
   const pills: LoginPill[] = [];
@@ -78,8 +73,8 @@ export function loginState(member: LoginStatusFields): LoginState {
     lastLogin:
       member.lastLoginAt === null
         ? null
-        : // formatLastLogin is already locale-aware (#151); the preposition
-          // around it is not, so the whole sentence comes from the catalogue.
+        : // formatLastLogin is locale-aware but the preposition around it is
+          // not, so the whole sentence comes from the catalogue.
           t("members.lastLogin", { date: formatLastLogin(member.lastLoginAt) }),
   };
 }

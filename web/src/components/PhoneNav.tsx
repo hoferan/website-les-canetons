@@ -36,33 +36,23 @@ const MENU_CONFETTI = [
 ];
 
 /**
- * The phone's Menu bar and the menu it opens: "Scène" (#99).
+ * The phone's Menu bar and the full-screen layer it opens (#99). The layer has
+ * the stage colour, a real ✕ and closes on Esc, so it reads as a menu; Radix's
+ * Dialog gives it the focus trap and the scroll lock.
  *
- * A FULL-SCREEN BLACK LAYER, NOT A LIST PUSHED INTO THE PAGE. The previous
- * version pushed a white list into the page under the white Menu bar, and a
- * design review found it did not read as a menu at all: nothing marked where
- * it ended, it had no close control, the brand went away the moment it
- * opened, and every row carried the same muted weight between some fifteen
- * hairlines. The layer is the stage colour, has a real ✕, and closes on Esc;
- * Radix's Dialog gives it the focus trap and the scroll lock.
- *
- * WHAT GOES WHERE:
+ * What goes where:
  * - the member's own screens first, in a card, because that is what a member
- *   opens the menu for: Événements every week, and the committee's screens;
+ *   opens the menu for;
  * - then the public pages in the display face, "Nous rejoindre" underlined in
  *   pink because it is what the site is for;
- * - the account last, in a footer. It was the first and heaviest row, and it
- *   is the least used.
+ * - the account last, in a footer, as the least used.
  *
- * THE PAGES AND THE MENU ARE ONE DESIGN (ADR 0029). The committee member who
- * liked this menu also noticed it looked like nothing else on the site, so the
- * pages came towards it and it took their marks in return: the current page
- * is the site's one highlight, yellow under ink, where it was a violet pill; a
- * coloured marker stands before each page; Connexion is the raised yellow
- * button; and confetti fills the empty stage below the list, kept off every
- * row by `data-confetti-avoid`.
+ * It shares the pages' marks (ADR 0029): the current page in yellow under ink,
+ * a coloured marker before each page, Connexion as the raised yellow button,
+ * and confetti on the empty stage, kept off every row by
+ * `data-confetti-avoid`.
  *
- * RENDERED INSIDE THE NAV, NOT IN A PORTAL, so the links stay inside the
+ * Rendered inside the nav, not in a portal, so the links stay inside the
  * "Navigation principale" landmark.
  */
 export function PhoneNav({
@@ -243,8 +233,8 @@ function AccountFooter({
       data-confetti-avoid
       className="sticky bottom-0 mt-auto border-t border-white/10 bg-stage px-4 pt-3 pb-4"
     >
-      {/* WHO IS LOGGED IN, on a line of its own: squeezed in beside the two
-          actions the username truncated to "demo.di…" at 390px. */}
+      {/* Who is logged in, on a line of its own: beside the two actions the
+          username truncates at 390px. */}
       <p className="flex items-center gap-3">
         <Avatar firstName={member.firstName} lastName={member.lastName} />
         <span className="min-w-0">

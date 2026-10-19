@@ -35,7 +35,7 @@ import { OUTLINED_CARD } from "../carnival/raised";
 
 type Filter = "all" | "open" | "handled";
 
-/** The subject, or the opening of the body — mirroring what the inbox shows. */
+/** The subject, or the opening of the body, as the inbox shows it. */
 function preview(message: ContactMessageResource): string {
   if (message.subject) {
     return message.subject;
@@ -49,8 +49,7 @@ function preview(message: ContactMessageResource): string {
  * back up.
  */
 function countLabel(filter: Filter, visible: number, total: number): string {
-  // THE CATALOGUE PICKS THE FORM. This was `total > 1 ? … : …`, which is the
-  // French plural rule written in JavaScript: French counts zero as singular
+  // The catalogue picks the plural form: French counts zero as singular
   // ("0 message") and German does not ("0 Nachrichten").
   const word = t("contactMessages.word", { count: total });
 
@@ -58,10 +57,9 @@ function countLabel(filter: Filter, visible: number, total: number): string {
     return `${total} ${word}`;
   }
 
-  // SINGLE BRACES, REPLACED BY HAND, and deliberately not i18next's `{{ }}`:
-  // this section was written that way and both catalogues mirror it. The two
-  // styles are not interchangeable and mixing them inside one key silently
-  // renders the braces.
+  // Single braces, replaced by hand, because both catalogues write this
+  // section that way. Mixing them with i18next's `{{ }}` inside one key
+  // silently renders the braces.
   return t("contactMessages.countFiltered")
     .replace("{visible}", String(visible))
     .replace("{total}", String(total))
@@ -81,26 +79,20 @@ function matchesFilter(filter: Filter, message: ContactMessageResource): boolean
 /**
  * The archive: every message the public has sent, open and handled alike.
  *
- * MODELLED ON web/src/pages/Members.tsx — same read-then-write ETag flow, same
- * one-layout card grid since #130, same shape of "opening a row reads the one
- * thing and keeps the tag that read handed out"
+ * Modelled on Members.tsx: the same read-then-write ETag flow and card grid.
  *
- * EXPANDING A ROW ALWAYS RE-READS IT, even though the list already carries
- * every field (`ContactMessageIndex200DataItem` is the same resource as the
- * single-thing read). The list hands out no `ETag` — one tag cannot validate
- * every row — so a screen acting on a row straight from the list would be
- * refused 428. The tag the handle and delete mutations quote is always the one
- * this read handed out, never a fresher one fetched just before the write:
- * that is the whole point of a conditional write (see web/src/api/ifMatch.ts).
+ * Expanding a row always re-reads it, even though the list carries every
+ * field: the list hands out no `ETag` (one tag cannot validate every row), so
+ * acting on a row straight from the list would be refused 428. The handle and
+ * delete mutations quote the tag this read handed out, never a fresher one
+ * (see web/src/api/ifMatch.ts).
  *
- * `messages.view` is what the route is guarded on, and is all the `committee`
- * role holds — somebody whose entire job is reading this list. Handling and
- * deleting are `messages.manage`, so those controls are absent for a viewer
- * rather than present and refused.
+ * The route is guarded on `messages.view`, which the `committee` role holds.
+ * Handling and deleting are `messages.manage`, so those controls are absent
+ * for a viewer rather than present and refused.
  *
- * `?open=<id>` expands that message on arrival: the inbox's rows link here
- * with it, so a message reached from there opens ready to read rather than
- * making its reader find it again in the list.
+ * `?open=<id>` expands that message on arrival; the inbox's rows link here
+ * with it.
  */
 export function ContactMessages() {
   const { can } = useSession();
@@ -111,9 +103,9 @@ export function ContactMessages() {
 
   const action = useApiFormError("L’action n’a pas pu être effectuée.");
 
-  // Conditional writes, built by hand over the generated FUNCTIONS: orval's
-  // mutation hooks fix their request options once, when the hook is created,
-  // and the tag differs per call. See web/src/api/ifMatch.ts.
+  // Built over the generated functions, not orval's mutation hooks, which fix
+  // their request options when created; the tag differs per call. See
+  // web/src/api/ifMatch.ts.
   const handle = useMutation({
     mutationFn: ({ id, handled, etag }: { id: number; handled: boolean; etag: string }) =>
       contactMessageHandle(id, { handled }, ifMatch(etag)),
@@ -124,10 +116,9 @@ export function ContactMessages() {
   });
 
   const [filter, setFilter] = useState<Filter>("all");
-  // The message currently expanded, and the ETag its read handed out — the
-  // tag the handle and delete mutations below quote back. Both writes hand
-  // back a fresh tag on success, so a handle followed by a delete needs no
-  // second read.
+  // The message currently expanded, and the ETag its read handed out, which
+  // the handle and delete mutations quote back. Both writes return a fresh
+  // tag on success, so a handle followed by a delete needs no second read.
   const [opened, setOpened] = useState<{
     message: ContactMessageResource;
     etag: string | null;
@@ -144,10 +135,9 @@ export function ContactMessages() {
   const visible = messages.filter((message) => matchesFilter(filter, message));
   const mayManage = can("messages.manage");
 
-  // Both keys, every time: the archive's own list (staying accurate for the
-  // filter buttons below) AND the inbox's badge, which lives in Layout and
-  // never remounts, so nothing else would ever move its count after a handle
-  // or delete. See Layout.tsx for the other half — navigation, not a timer.
+  // Both keys: the archive's list, and the inbox badge, which lives in Layout
+  // and never remounts, so nothing else would move its count after a handle
+  // or delete. Layout.tsx has the other half (refresh on navigation).
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: getContactMessageIndexQueryKey() }),
@@ -164,8 +154,8 @@ export function ContactMessages() {
     try {
       const response = await contactMessageShow(id);
       if (response.status !== 200) {
-        // Unreachable: the mutator throws on every non-2xx. The declared
-        // union says otherwise and tsc is right that it does.
+        // Unreachable: the mutator throws on every non-2xx, but the declared
+        // union still includes them.
         setReadError(t("contactMessages.readError"));
         return;
       }
@@ -177,11 +167,8 @@ export function ContactMessages() {
     }
   }
 
-  // THE DEEP LINK. The inbox sends `?open=<id>`, so a message reached from
-  // there opens ready to read. Depends on the PARAM'S VALUE, not the
-  // `searchParams` object — react-router hands out a fresh object on every
-  // render regardless of whether the query string changed, and depending on
-  // it would re-run this on every keystroke of the filter buttons above.
+  // The inbox's deep link. Depends on the param's value, not the
+  // `searchParams` object, which react-router hands out fresh on every render.
   const openParam = searchParams.get("open");
   useEffect(() => {
     if (openParam === null) {
@@ -192,12 +179,10 @@ export function ContactMessages() {
       return;
     }
     void openMessage(id);
-    // openMessage is intentionally omitted: it is redefined every render, and
-    // listing it would re-run this on every render while `?open=` is present
-    // — including every filter click — issuing a fresh GET each time. It
-    // closes over nothing that varies in a way that matters (state setters,
-    // and the stable module-level API functions), so the version captured
-    // when this effect last ran behaves identically to the newest one.
+    // openMessage is redefined every render, and listing it would issue a
+    // fresh GET on every filter click while `?open=` is present. It closes
+    // over only state setters and module-level API functions, so the captured
+    // version behaves like the newest one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openParam]);
 
@@ -212,8 +197,7 @@ export function ContactMessages() {
       return;
     }
     if (opened.etag === null) {
-      // No tag means the write would be refused 428, which reads as a broken
-      // screen. Saying so and stopping is the honest answer.
+      // Without a tag the write would be refused 428.
       setReadError(t("contactMessages.readError"));
       return;
     }
@@ -225,8 +209,8 @@ export function ContactMessages() {
         etag: opened.etag,
       });
       if (saved.status !== 200) {
-        // Unreachable: the mutator throws on every non-2xx. The declared
-        // union says otherwise and tsc is right that it does.
+        // Unreachable: the mutator throws on every non-2xx, but the declared
+        // union still includes them.
         setReadError(t("contactMessages.readError"));
         return;
       }
@@ -343,10 +327,6 @@ export function ContactMessages() {
 
       {!list.isPending && !list.isError && visible.length > 0 ? (
         <>
-          {/* THE CARD IS THE ONLY LAYOUT (#130). A table from md up used to sit
-              beside this, rendering the same five facts a second time by hand.
-              `MessageSummary` is now the single description of a message in a
-              list, so a field added to it arrives at every width at once. */}
           <ul
             data-testid="messages-cards"
             className="mt-block grid gap-related sm:grid-cols-2 xl:grid-cols-3"
@@ -399,9 +379,8 @@ export function ContactMessages() {
             >
               {t("common.cancel")}
             </AlertDialogCancel>
-            {/* A plain Button, not AlertDialogAction: that closes the dialog
-                on click, and this action can fail — a 412 — so the message
-                has to be readable where it happened. */}
+            {/* A plain Button, not AlertDialogAction, which closes the dialog
+                on click: a 412 has to be readable where it happened. */}
             <Button
               type="button"
               variant="raised-danger"
@@ -421,11 +400,8 @@ export function ContactMessages() {
 }
 
 /**
- * One message's worth of facts, as the archive list shows them.
- *
- * This was shared by a card and a table layout until #130 deleted the second.
- * It is now the single description of a message in a list, which is the point:
- * a field added here arrives at every width at once.
+ * One message's facts, as the archive list shows them. The card is the only
+ * layout, so a field added here arrives at every width.
  */
 function MessageSummary({
   message,
@@ -521,11 +497,9 @@ function MessagePanel({
       className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
     >
       {/* The row does not wrap, so a long name wraps inside its block and the
-          close button keeps the top right. At 390px "Isabelle Dupasquier"
-          takes 304px of the 322px row, and a wrapping row put the button on a
-          line of its own under the e-mail (#265). min-w-0 lets the name block
-          shrink below its longest word, and break-words then breaks a long
-          name or e-mail inside it. */}
+          close button keeps the top right at 390px (#265). min-w-0 lets the
+          name block shrink below its longest word, and break-words breaks a
+          long name or e-mail inside it. */}
       <div className="flex items-start justify-between gap-tight">
         <div className="min-w-0 break-words">
           <h2 className="font-display text-2xl">
@@ -535,9 +509,8 @@ function MessagePanel({
             {message.email}
           </a>
         </div>
-        {/* Icon-only, so the French moves from the label to the accessible
-            name rather than disappearing: a bare X is unreadable to a screen
-            reader, and this is the only way out of the panel. */}
+        {/* Icon-only, so the label moves to the accessible name: this is the
+            only way out of the panel. */}
         <Button
           type="button"
           variant="ghost"

@@ -27,9 +27,8 @@ test("the entries render oldest first, with dates in the page's language", async
 });
 
 /**
- * THE DATE IS IN THE HEADING (#104's review). On a timeline the year is the
- * landmark, so heading navigation has to reach it, and an entry without a
- * title still gets a heading: its date.
+ * The date is in the heading: on a timeline the year is the landmark, so
+ * heading navigation has to reach it, and an untitled entry still gets one.
  */
 test("an entry without a title has its date as its heading, and its text", async () => {
   const timeline = await renderHistory();
@@ -141,8 +140,8 @@ test("a German-only entry on the French page is German, marked", async () => {
   const only = within(timeline).getByRole("listitem");
   expect(only).toHaveTextContent("En allemand");
   expect(within(only).getByText("Nur Deutsch").closest("[lang]")).toHaveAttribute("lang", "de-CH");
-  // LANG ON THE ENTRY'S TEXT ONLY: the date is formatted in the page's
-  // language and must not be read with a German voice.
+  // lang on the entry's text only: the date is in the page's language and
+  // must not be read with a German voice.
   expect(within(only).getByText("2020").closest('[lang="de-CH"]')).toBeNull();
 });
 
@@ -153,9 +152,9 @@ test("editing and deleting are named in the page's language and word order", asy
 });
 
 /**
- * THE DELETE QUOTES THE TAG FROM WHEN THE DIALOG OPENED, not a fresher one
- * read at the moment of confirming, which would let a colleague's rewrite in
- * between be deleted silently.
+ * The delete quotes the tag from when the dialog opened. A fresher one read
+ * on confirming would let a colleague's rewrite in between be deleted
+ * silently.
  */
 test("a delete confirmed after somebody changed the entry is refused, and says so", async () => {
   const user = userEvent.setup();
@@ -258,9 +257,9 @@ function serveOnly(...rows: ReturnType<typeof untitled>[]) {
 }
 
 /**
- * AN UNTITLED ENTRY IS NAMED BY ITS DATE, in the right French and German:
- * "d’octobre", "du 11.11.2023", "vom 11.11.2023". Named "cette entrée", three
- * untitled rows had three identical buttons.
+ * An untitled entry is named by its date, in the right French and German
+ * ("d’octobre", "du 11.11.2023", "vom 11.11.2023"), so untitled rows do not
+ * get identical buttons.
  */
 test("an untitled entry's buttons and dialog use the right French for its date", async () => {
   serveOnly(untitled(1, "2002-10-01", "month"), untitled(2, "2023-11-11", "day"));
@@ -308,10 +307,7 @@ test("a delete says so", async () => {
   await expect.poll(() => screen.getByRole("status").textContent).toBe("Entrée supprimée.");
 });
 
-/**
- * A PHOTO ON THE TIMELINE (#105). The alt texts come off the entry, in the
- * page's language first (ADR 0026), and the entry's title is the last resort.
- */
+/** No photo carries alt text, so the image is named after the entry. */
 test("an entry with a photo shows it named after the entry, and the others show no image", async () => {
   const timeline = await renderHistory();
   // The photo is its slot's, which arrives with the photo slots.

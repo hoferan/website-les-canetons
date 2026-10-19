@@ -39,20 +39,16 @@ import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
 
 /**
- * The public nav, IN ORDER OF IMPORTANCE, left to right — what a stranger
- * wants, in the order a stranger wants it. The desktop bar folds from the
- * right into "Plus" when it runs out of room, so this order is also the order
- * in which entries disappear (#99).
+ * The public nav in order of importance, left to right. The desktop bar folds
+ * from the right into "Plus" when it runs out of room, so this is also the
+ * order in which entries disappear (#99).
  *
  * "Nous rejoindre" is first because recruiting is what this site is for: the
- * band takes players from 7 to 18 and loses them at 18, so the visitor worth
- * optimising for is a parent deciding whether to turn up on Saturday. The
- * people page follows, then the way to write in, and last the pages a parent
- * needs least. The external sites come after all of them: the gallery, then
- * the band's Instagram and Facebook, which fold first.
+ * band takes players from 7 to 18, so the visitor worth optimising for is a
+ * parent deciding whether to turn up on Saturday. The pages a parent needs
+ * least come last, then the external sites, which fold first.
  *
- * EVERY ENTRY HERE MUST BE A ROUTE THAT EXISTS — a nav item that 404s is worse
- * than a missing one.
+ * Every entry must be a route that exists.
  */
 const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
   { to: "/join", labelKey: "nav.join" },
@@ -67,12 +63,9 @@ const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
  * The committee's screens, each gated by the permission that gates the API
  * route behind it. Under the avatar on desktop, in "Mon espace" on a phone.
  *
- * THE ENTRY IS ABSENT, NOT REFUSED. A member who cannot use
- * /members never sees the word: showing a link that leads to "Accès refusé"
- * teaches people that parts of the site are broken for them.
- *
- * Gated on a PERMISSION, never a role name — the same rule the middleware and
- * the route guards follow.
+ * A member without the permission never sees the entry: a link that leads to
+ * "Accès refusé" teaches people that parts of the site are broken for them.
+ * Gated on a permission, never a role name (ADR 0014).
  */
 const TOOLS: Array<{ to: string; labelKey: TranslationKey; permission: string; icon: LucideIcon }> =
   [
@@ -99,16 +92,14 @@ export function Layout() {
   const active = pathname;
 
   const mayReadInbox = can("messages.view");
-  // Disabled rather than gated in the render below: a query that never runs
-  // for an anonymous visitor or a member without the permission is the
-  // honest way to say "this number is not for you", and it means the
-  // permission check happens once here instead of at every read of `.data`.
+  // Disabled for anyone who may not read the inbox, so the permission check
+  // happens once here instead of at every read of `.data`.
   const inboxSummary = useInboxSummary({ query: { enabled: user !== null && mayReadInbox } });
   const inboxTotal =
     inboxSummary.data && inboxSummary.data.status === 200 ? inboxSummary.data.data.total : 0;
 
-  // The lists the two navs lay out. Built here, in one place, so the desktop
-  // bar and the phone list cannot disagree about what exists.
+  // Built in one place so the desktop bar and the phone list cannot disagree
+  // about what exists.
   const publicEntries: NavEntry[] = [
     ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
     {
@@ -135,10 +126,9 @@ export function Layout() {
       iconOnly: true,
     },
   ];
-  // THE MEMBERS' TOOL, and first when logged in: reading the planning is what
-  // everybody in the band does every week, so it is the last thing to fold.
-  // Shown on `events.view`, the permission its route asks for, which the
-  // baseline role grants to every account. The account link below answers to
+  // The planning comes first when logged in: everybody in the band reads it
+  // every week, so it is the last thing to fold. Shown on `events.view`, the
+  // permission its route asks for; the account link answers to
   // `account.manage` the same way.
   const mayReadPlanning = can("events.view");
   const mayManageAccount = can("account.manage");
@@ -176,13 +166,9 @@ export function Layout() {
     })),
   ];
 
-  // REFRESHES THE BADGE ON NAVIGATION, AND ONLY THEN — never a timer. Layout
-  // wraps every route and never remounts, so TanStack Query's own
-  // refetch-on-mount never fires again after the first page load; without
-  // this, marking a message handled from /contact-messages (which invalidates
-  // this query key itself, see ContactMessages.tsx) is the only way the count
-  // would ever move. `isFirstRender` skips the run that would otherwise pair
-  // with the query's own initial fetch on mount.
+  // Refreshes the badge on navigation, never on a timer. Layout wraps every
+  // route and never remounts, so the query's refetch-on-mount fires only
+  // once. `isFirstRender` skips the run that would double that first fetch.
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
@@ -192,25 +178,18 @@ export function Layout() {
     if (user !== null && mayReadInbox) {
       void inboxSummary.refetch();
     }
-    // inboxSummary and mayReadInbox are deliberately omitted: both are fresh
-    // every render, and listing them would refire this on every settle of the
-    // query itself rather than only on a route change.
+    // inboxSummary and mayReadInbox are omitted: both are fresh every render,
+    // and listing them would refire this on every settle of the query.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   return (
     <>
-      {/* Renders nothing; resets scroll on pathname change. Mounted here,
-          rather than per route in routes.tsx, so it survives navigation
-          instead of remounting on every page. See its own doc comment for
-          why, including the measured symptom and the hash exclusion. */}
+      {/* Mounted here rather than per route, so it survives navigation. */}
       <ScrollToTop />
 
-      {/* THE SKIP LINK, first in the tab order (#15). The header and the nav
-          are ten stops on the desktop front page before the content starts.
-          Hidden until focused, then pinned over the header's top left. A
-          plain fragment link: following it focuses <main>, which is why that
-          element carries tabIndex -1. */}
+      {/* The skip link, first in the tab order (#15). Hidden until focused.
+          Following it focuses <main>, which is why that carries tabIndex -1. */}
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-panel focus:px-4 focus:py-3 focus:text-ink focus:outline-2 focus:outline-violet"
@@ -222,8 +201,6 @@ export function Layout() {
 
       <header className="bg-stage text-white">
         <div className="mx-auto flex max-w-shell items-center justify-between gap-3 px-4 py-3 md:pb-0">
-          {/* The lockup, and the reasoning for splitting the mark from the
-              wordmark, both live in Logo.tsx. */}
           <Logo />
           {/* Desktop only. The phone's copy sits in the Menu bar below; see
               LanguageSwitch for why the two differ. */}
@@ -233,26 +210,19 @@ export function Layout() {
         </div>
       </header>
 
-      {/* NAMED, and it has to be. The band page carries a second nav (the
-          register index), and the front page repeats four of these links as
-          destination cards — so "the link called Nous rejoindre" matches two
-          elements on / and a query has nothing to scope to. Two navs without
-          names are also indistinguishable to a screen-reader user moving by
-          landmark.
+      {/* Named, because the band page carries a second nav (the register
+          index) and the front page repeats four of these links as
+          destination cards. Unnamed navs are indistinguishable to a
+          screen-reader user moving by landmark.
 
-          A SIBLING OF THE HEADER, NOT INSIDE IT, so that it can stick: a
-          sticky element only sticks within its parent, and inside the header
-          it would scroll away with it. On a phone the Menu bar stays at the
-          top, so the menu opens from anywhere on a long page; the desktop bar
-          scrolls away as before.
+          A sibling of the header so it can stick: a sticky element only
+          sticks within its parent. On a phone the Menu bar stays at the top;
+          the desktop bar scrolls away.
 
-          ON THE STAGE, like the header above it (ADR 0029). It was a white
-          bar, which split the chrome in two and made the phone menu the one
-          screen that looked like the band. The mock-up puts the desktop
-          entries in the header's own row; they stay a row of their own
-          because beside the full lockup and the language switch only three
-          fit before "Plus" at 1280px, and nav.spec.ts pins that nothing folds
-          there. */}
+          On the stage, like the header (ADR 0029). The desktop entries keep
+          a row of their own: beside the full lockup and the language switch
+          only three fit before "Plus" at 1280px, and nav.spec.ts pins that
+          nothing folds there. */}
       <nav
         aria-label={t("nav.primary")}
         className="sticky top-0 z-30 bg-stage text-white md:static"
@@ -301,11 +271,9 @@ export function Layout() {
 
       {/* tabIndex -1 so the skip link can move focus here; it is never a tab stop.
 
-          min-h-dvh keeps the footer below the first screen. While a page waits
-          for its data it is a heading and a line, and without the minimum the
-          footer sat in view and was pushed down when the list arrived: a
-          layout shift of 0.57 on /history (#236). The cost is a footer one
-          scroll away on a page shorter than the screen. */}
+          min-h-dvh keeps the footer below the first screen, so it is not
+          pushed down when a page's data arrives (a layout shift, #236). The
+          cost is a footer one scroll away on a page shorter than the screen. */}
       <main id="main" tabIndex={-1} className="min-h-dvh outline-none">
         <FooterEdgeContext.Provider value={setFooterEdge}>
           <Outlet />
@@ -314,8 +282,7 @@ export function Layout() {
 
       <Footer above={footerEdge} />
 
-      {/* Mounted once here rather than per page: the layout route survives
-          navigation, so a toast raised by a mutation is not unmounted by the
+      {/* Mounted once here, so a toast raised by a mutation survives the
           redirect that follows it. */}
       <Toaster />
     </>

@@ -6,13 +6,8 @@ import { formatCents, francsInput, parseFrancs } from "./money";
 
 /**
  * The no-break space `formatCents` puts between CHF and the figure, written
- * as an escape rather than as itself.
- *
- * A literal one is indistinguishable from a plain space in a diff, in a
- * review and in an editor, so a test asserting the wrong character would pass
- * or fail for a reason nobody could see. This also states the thing the
- * function exists to guarantee: "CHF" and the amount are one unit and a narrow
- * table cell on a phone must not break the line between them.
+ * as an escape: a literal one is indistinguishable from a plain space in a
+ * diff, a review or an editor.
  */
 const NBSP = "\u00a0";
 
@@ -32,40 +27,20 @@ describe("formatCents", () => {
   });
 
   /**
-   * The separator is deliberately `\D` rather than a codepoint, because which
-   * character CLDR puts there is CLDR's to change, and it has changed once
-   * already in this file's short life. What the app guarantees is that there
-   * IS one, and that the decimal beside it stays a point.
+   * The separator is `\D` rather than a codepoint, because CLDR changes the
+   * character. The app guarantees there is one, and that the decimal stays a
+   * point.
    */
   it("groups thousands the Swiss way", () => {
     expect(formatCents(123450)).toMatch(/^CHF\u00a01\D234\.50$/);
   });
 
   /**
-   * THE READER'S LOCALE IS WHAT `Intl` IS ASKED. That is the contract, and it
-   * is the one thing here that no CLDR release can quietly erase.
-   *
-   * IT USED TO BE ASSERTED THROUGH THE SEPARATOR, which is exactly why it
-   * broke (#180). The test read "de-CH groups with a straight apostrophe and
-   * fr-CH does not", and that pair of claims is true on precisely one of the
-   * three builds now known to run it:
-   *
-   *     Node 22.21.1  CLDR 47   fr-CH U+202F   de-CH U+2019   line 1 false
-   *     Node 22.23.2  CLDR ?    (what CI runs, where it passed)
-   *     Node 24.21.0  CLDR 48   fr-CH U+0027   de-CH U+0027   line 2 false
-   *
-   * Measured on the first and third; the middle is inferred from a green CI
-   * run, since the old assertions could only pass where de-CH used U+0027 and
-   * fr-CH did not. Nothing pins the Node version for a developer, so which of
-   * the three you get is an accident of your machine.
-   *
-   * As of CLDR 48 the two locales render money identically, so nothing
-   * downstream of `Intl` can tell them apart at all.
-   *
-   * So this watches the TAG rather than the output. It fails on every ICU
-   * build if `formatCents` stops consulting the reader, INCLUDING the builds
-   * where the two locales happen to render the same. That is the case the old
-   * assertion could not survive, and the reason this one is a spy.
+   * The contract is that `Intl` is asked for the reader's locale. The output
+   * cannot show it: the separator differs between ICU builds, nothing pins
+   * the Node version for a developer, and as of CLDR 48 fr-CH and de-CH
+   * render money identically. So this spies on the tag, and fails on every
+   * build if `formatCents` stops consulting the reader.
    */
   it("asks Intl for the reader's own locale", async () => {
     const asked: string[] = [];
@@ -87,10 +62,9 @@ describe("formatCents", () => {
   });
 
   /**
-   * WHAT money.ts PLACES BY HAND, as against what it takes from CLDR, and so
-   * what must hold in both languages whatever ICU is installed: the code in
-   * front, the no-break space after it, a point for the decimal and two
-   * digits behind it.
+   * What money.ts places by hand, so what holds in both languages whatever
+   * ICU is installed: the code in front, the no-break space, a decimal point
+   * and two digits.
    */
   it("puts CHF in front with a no-break space, in both languages", async () => {
     const swiss = /^CHF\u00a0\d\D?\d{3}\.50$/;
@@ -113,9 +87,7 @@ describe("parseFrancs", () => {
   });
 
   /**
-   * 45.55 * 100 is 4554.999999999999 in IEEE 754. Truncating instead of
-   * rounding loses a rappen per line, which is the whole reason the wire
-   * carries integers.
+   * 45.55 * 100 is 4554.999999999999 in IEEE 754; truncating loses a rappen.
    */
   it("rounds rather than truncating the float", () => {
     expect(parseFrancs("45.55")).toBe(4555);

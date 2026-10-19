@@ -49,7 +49,7 @@ function bodyOf(draft: TagDraft) {
 }
 
 /**
- * The committee's list of event tags (#107): create, rename, recolour,
+ * The committee's list of event tags: create, rename, recolour,
  * delete. Choosing which tags an event carries happens in the event's own
  * form, where the event is; this page only keeps the list.
  *
@@ -204,7 +204,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             </span>
           </div>
           {/* Apart from the buttons: it is a setting, and they are actions.
-              On a phone the buttons wrap under it rather than leaving
+              On a phone the buttons wrap under it instead of leaving
               "Supprimer" on a line of its own. */}
           <div className="flex min-h-touch items-center gap-2">
             <Switch

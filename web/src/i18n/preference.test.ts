@@ -34,10 +34,8 @@ test("storage being unavailable is not an error", () => {
     throw new Error("SecurityError: access denied");
   };
 
-  // try/finally, not a bare restore after the assertion: if this expectation
-  // ever fails, a trailing restore line never runs and every later test in the
-  // file inherits a throwing localStorage -- a failure that looks like
-  // something else entirely.
+  // try/finally, so a failing expectation cannot leave a throwing
+  // localStorage to every later test in the file.
   try {
     expect(storedLocale()).toBeNull();
   } finally {
@@ -50,9 +48,8 @@ test("only the bare root redirects, and only for a stored German preference", ()
   expect(shouldRedirectToGerman("/", "fr")).toBe(false);
   expect(shouldRedirectToGerman("/", null)).toBe(false);
 
-  // THE URL IS THE AUTHORITY EVERYWHERE BUT THE BARE ROOT. If any of these
-  // returned true, a shared link would render in the recipient's stored
-  // language rather than the one it names.
+  // Everywhere else the URL decides, or a shared link would render in the
+  // recipient's stored language rather than the one it names.
   expect(shouldRedirectToGerman("/agenda", "de-CH")).toBe(false);
   expect(shouldRedirectToGerman("/de", "de-CH")).toBe(false);
   expect(shouldRedirectToGerman("/de/agenda", "de-CH")).toBe(false);

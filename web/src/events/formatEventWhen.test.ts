@@ -3,10 +3,9 @@ import { afterEach, expect, test } from "vitest";
 import { setLocale } from "../i18n";
 import { formatEventDay, formatEventWhen } from "./formatEventWhen";
 
-// THIN SPACE, EN DASH, THIN SPACE -- what Intl's formatRange actually emits,
-// and therefore what the hand-composed one-day form matches. Spelled out here
-// because an ordinary space looks identical in source and in a failure
-// message: asserting " - " against this fails with "expected X to be X".
+// Thin space, en dash, thin space: what Intl's formatRange emits, and so what
+// the hand-composed one-day form matches. Spelled out because an ordinary
+// space looks identical in source and in a failure message.
 const SEP = "\u2009\u2013\u2009";
 
 afterEach(async () => {
@@ -19,23 +18,14 @@ test("a single-day event renders one short date and a time range", () => {
 });
 
 test("an event crossing days renders a date RANGE", () => {
-  // "Weekend musical, 3-4 October" from the live planning. This is what the
-  // old `weekend` boolean existed to fake, and it now falls out of the dates.
-  //
-  // Intl's own formatRange composes this, which is the point of the short
-  // form: the hand-built "du … à … au … à …" is gone, and with it the `à`
-  // that only existed because the comma had been removed (#162).
+  // The musical weekend, 3 and 4 October. Intl's formatRange composes it.
   const when = formatEventWhen("2026-10-03T09:00:00+02:00", "2026-10-04T16:00:00+02:00");
   expect(when).toBe(`sam., 03.10.2026 09:00${SEP}dim., 04.10.2026 16:00`);
 });
 
 test("the same events in German, composed by Intl rather than by hand", async () => {
-  // THE WHOLE ARGUMENT FOR THE SHORT FORM, in two assertions. German wants a
-  // comma after the weekday that long-form French rejects, so one
-  // hand-composed sentence could never serve both languages — which is what
-  // made #154 look expensive. In the short form each locale gets its own
-  // correct punctuation for free: note German's extra comma before the time,
-  // which French does not take.
+  // In the short form each locale gets its own punctuation from Intl: note
+  // German's extra comma before the time, which French does not take.
   await setLocale("de-CH");
 
   expect(formatEventWhen("2026-09-05T10:00:00+02:00", "2026-09-05T12:00:00+02:00")).toBe(
@@ -55,18 +45,16 @@ test("it renders Fribourg time regardless of where the browser is", () => {
 });
 
 test("it summers and winters correctly, which a fixed offset would not", () => {
-  // The same UTC wall-clock hour is 10:00 in Fribourg in December and 11:00 in
-  // September, because CET is +01:00 and CEST is +02:00. A formatter pinned to
-  // one offset gets half the season right, which is the failure that looks
-  // like nothing until somebody misses a rehearsal.
+  // The same UTC hour is 10:00 in Fribourg in December and 11:00 in
+  // September (CET is +01:00, CEST +02:00). A formatter pinned to one offset
+  // gets half the season wrong.
   expect(formatEventWhen("2026-12-05T09:00:00Z", "2026-12-05T11:00:00Z")).toContain("10:00");
   expect(formatEventWhen("2026-09-05T09:00:00Z", "2026-09-05T11:00:00Z")).toContain("11:00");
 });
 
 test("a night event ending after midnight is a date RANGE, judged in Fribourg", () => {
-  // 23:00–01:00 Fribourg time. Judged on the raw ISO strings this is one UTC
-  // day and would render as a single date with a time range reading
-  // "23:00 – 01:00", which describes an event that ran backwards.
+  // 23:00 to 01:00 Fribourg time. Judged in UTC this is one day, and would
+  // render as one date with a time range that runs backwards.
   const when = formatEventWhen("2026-09-05T23:00:00+02:00", "2026-09-06T01:00:00+02:00");
   expect(when).toBe(`sam., 05.09.2026 23:00${SEP}dim., 06.09.2026 01:00`);
 });

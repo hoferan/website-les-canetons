@@ -324,6 +324,32 @@ the suite cannot see it.
 Wrap the badge in a `flex` container and leave the class off, as the draft badge
 in `EventCard.tsx` and the roster pill in `Members.tsx` do.
 
+## A module-level `t()` or `Intl` formatter is stuck in French
+
+Anything evaluated when a module is first imported keeps the locale active at
+that moment: `const NAV = [{ label: t("nav.home") }]`, a module-level
+`Intl.DateTimeFormat`, a formatter cache keyed by shape alone. The first page
+loads in French, so a later switch to `/de/*` keeps French labels, month names
+and weekdays, and a French-only test suite never notices. Store the catalogue
+key (`labelKey`) and call `t()` at render; build formatters at render or cache
+them by locale tag and shape together, as `lib/date.ts` does.
+
+## A `dark:` utility in a comment generates the class
+
+Tailwind 4 scans source files as text, comments included. The site has one
+light theme (ADR 0022) and `styles.css` declares no `@custom-variant dark`, so
+any `dark:` class Tailwind finds becomes a `prefers-color-scheme` media query
+that restyles the page on every phone set to dark. Do not write a complete
+`dark:` class anywhere under `web/src`, even as an example.
+
+## `FormError` is always in the tree, so `findByRole("alert")` finds it empty
+
+`FormError` (`web/src/components/FormField.tsx`) renders its `role="alert"`
+region on every render and changes only the contents, because some screen
+readers miss an alert inserted in the same commit as other changes. A test
+that waits with `findByRole("alert")` resolves at once on the empty region and
+then asserts against nothing. Wait for the message with `findByText`.
+
 ## `Log::warning` never reaches a server's log
 
 `api/.env.example` sets `LOG_LEVEL=error`, and the Docker stack runs at

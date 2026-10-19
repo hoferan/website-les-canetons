@@ -17,26 +17,21 @@ import { t, type TranslatedError } from "../i18n";
 /**
  * Taking back a commitment: the one answer that is not one tap (ADR 0018).
  *
- * ONE TRANSITION COSTS A REASON, and only one. Saying "Non" to an event nobody
- * counted on is a tap, and so is changing a "Non" into a "Oui" — saying yes
- * late is good news, and asking a 13-year-old to justify it is friction that
- * buys nothing. `yes` -> `no` opens this dialog because it is the transition
- * somebody has already planned around.
+ * Only `yes` to `no` costs a reason, because somebody has already planned
+ * around that yes. A first "Non" is a tap, and so is turning "Non" into "Oui":
+ * a late yes is good news and needs no justifying.
  *
- * IT ASKS FOR THE REASON, IT DOES NOT ASK "ARE YOU SURE". Three people typing
- * "malade" in the same week is information the committee can act on; a count
- * that dropped by one is not. So the field is the whole dialog, and the answer
- * it collects is shown beside the name on the chase list.
+ * It asks for the reason, not "are you sure". Three people typing "malade" in
+ * the same week is something the committee can act on, so the field is the
+ * whole dialog and the reason is shown beside the name on the chase list.
  *
- * THE SERVER IS WHAT ENFORCES IT, not this component. A blank reason comes back
- * as an ordinary `400 validation_failed` against `note`, which lands here
- * through `problem` — the same path every other form in the app uses. The
- * client-side `armed` check below only spares the member a round trip; deleting
- * it changes nothing about what can be stored.
+ * The server enforces it: a blank reason is refused with
+ * `validation_failed` against `note`, which lands here through `problem`. The
+ * `armed` check below only saves a round trip.
  *
- * Like ConfirmByTypingName, the action is a plain Button rather than Radix's
- * AlertDialogAction, which closes the dialog on click: this request can fail
- * and the message has to be readable next to the field it is about.
+ * Like ConfirmByTypingName, the action is a plain Button, not Radix's
+ * AlertDialogAction, which closes the dialog on click: the request can fail
+ * and the message has to stay readable next to its field.
  */
 export function WithdrawDialog({
   open,
@@ -76,10 +71,9 @@ export function WithdrawDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          {/* THE GUILLEMETS AND THE SPACE BEFORE THE "?" ARE IN THE STRING.
-              French sets both with a no-break space inside and German takes
-              neither, so composing them here would put French typography on a
-              German page. `eventTitle` is content and renders verbatim. */}
+          {/* The guillemets and the space before the "?" are in the string:
+              French sets both with a no-break space and German takes neither.
+              `eventTitle` is content and renders verbatim. */}
           <AlertDialogTitle>
             {t("attendance.withdrawTitle", { title: eventTitle })}
           </AlertDialogTitle>

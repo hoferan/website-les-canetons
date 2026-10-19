@@ -37,10 +37,9 @@ function Harness() {
 }
 
 /**
- * FOCUS GOES BACK TO WHAT OPENED THE DIALOG (#104's review). Radix returns it
- * to an AlertDialogTrigger, and no dialog in the app has one: each is opened
- * from state, so on closing focus fell to <body> and a keyboard user started
- * again from the top of the page.
+ * Focus goes back to what opened the dialog. Radix returns it to an
+ * AlertDialogTrigger, and no dialog in the app has one, so without the local
+ * change focus would fall to <body>.
  */
 test("closing a dialog opened from state gives focus back to what opened it", async () => {
   const user = userEvent.setup();

@@ -3,12 +3,12 @@ import { tagLabel } from "../i18n";
 import { TAG_COLOURS } from "./tagColours";
 
 /**
- * One event tag as a tinted pill (#107).
+ * One event tag as a tinted pill.
  *
  * `break-words` rather than `whitespace-nowrap`, as a backstop. A name at the
- * API's 40-character cap fits on one line even on a 320px phone (measured,
- * web/e2e/tags.spec.ts), but a chip that cannot wrap widens its card past
- * the screen edge if it ever runs longer, the way #89 did.
+ * API's 40-character cap fits on one line on a 320px phone
+ * (web/e2e/tags.spec.ts), but a chip that cannot wrap would widen its card
+ * past the screen edge if it ever ran longer.
  */
 export function TagChip({
   tag,

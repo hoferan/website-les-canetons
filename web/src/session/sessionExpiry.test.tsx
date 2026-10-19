@@ -13,7 +13,7 @@ import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 
 /**
- * A session that dies while a members' page is open (#296).
+ * A session that dies while a members' page is open.
  *
  * `/me` is cached forever, so nothing re-reads it on its own. These pin that
  * the first 401 from any other call makes SessionProvider ask again, which is

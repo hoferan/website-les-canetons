@@ -13,13 +13,8 @@ function show(actions: RowAction[], inlineKey = "first") {
   );
 }
 
-// A UNION OF ITS OWN, MIRRORING RowAction — `Partial<RowAction>` cannot
-// stand in here: `Partial` of a discriminated union collapses to the
-// members' COMMON keys (both branches declare `to` and `onSelect`, just
-// with opposite optionality), so the result is a plain object that would let
-// this helper build the exact unrepresentable shape M6/M7 closed off
-// (`to` and `onSelect` together). This keeps the fixture honest about the
-// same two shapes the component itself accepts.
+// Mirrors RowAction's two shapes. `Partial<RowAction>` would collapse to the
+// common keys and allow `to` and `onSelect` together, which RowAction forbids.
 type ActionOverride =
   | { onSelect?: () => void; disabled?: boolean; destructive?: boolean; to?: never }
   | { to: string; destructive?: boolean; onSelect?: never; disabled?: never };
@@ -76,17 +71,10 @@ describe("RowActions", () => {
     const user = userEvent.setup();
     show([action("first", { to: "/somewhere" }), action("b", { to: "/elsewhere" }), action("c")]);
 
-    // The inline action is a real link: this one-level `asChild` (Button ->
-    // Link) works fine and is exercised throughout the app already.
     expect(screen.getByRole("link", { name: "first X" })).toHaveAttribute("href", "/somewhere");
 
-    // The in-menu action is ALSO a real anchor: DropdownMenuItem's `asChild`
-    // goes straight to react-router's `Link`, one Slot layer, no
-    // intermediate component to drop props. Assert the actual element, not
-    // just that a menuitem with the right name exists — Testing Library
-    // resolves the role from the merged `role="menuitem"` attribute
-    // regardless of tag name, so the underlying element could in principle
-    // be anything; pin it down to an anchor with the right href.
+    // The role comes from the merged role="menuitem" whatever the tag, so
+    // assert the element itself is an anchor.
     await user.click(screen.getByRole("button", { name: "Autres actions pour X" }));
     const item = await screen.findByRole("menuitem", { name: "b X" });
     expect(item.tagName).toBe("A");

@@ -18,8 +18,8 @@ function boxOf(element: Element, origin: DOMRect): Box {
  * marked `data-confetti-avoid`.
  *
  * Only for coloured surfaces (a hero, a coloured band, the phone menu), and
- * never on the cream a visitor reads from: that is the ADR's rule, and nothing
- * here can enforce it, so the caller does.
+ * never on the cream a visitor reads from (ADR 0029). Nothing here can
+ * enforce that, so the caller does.
  *
  * The parent must be `relative` and clip its overflow. The layout is measured,
  * so it is recomputed when the parent resizes; until the first measurement,

@@ -5,11 +5,10 @@ import { rememberLocale } from "./preference";
 /**
  * What each language calls itself, and the code the header shows for it.
  *
- * The visible labels are codes, "FR" and "DE", the way the canton's own site
- * and most Swiss sites show them. The endonym is what a screen reader hears for
- * the current language and what a pointer sees as the link's tooltip: an
- * ENDONYM, NOT A TRANSLATION, and so not in the catalogues, because somebody
- * who cannot read the current page has to recognise the way out of it.
+ * The visible labels are codes, "FR" and "DE", as most Swiss sites show them.
+ * The endonym is what a screen reader hears for the current language and the
+ * link's tooltip. It is not a translation, and so not in the catalogues:
+ * somebody who cannot read the current page has to recognise the way out.
  */
 const ENDONYM: Record<Locale, string> = {
   fr: "Français",
@@ -26,13 +25,11 @@ const ORDER: Locale[] = ["fr", "de-CH"];
 /**
  * Where the switcher points, as a string.
  *
- * A PURE FUNCTION BECAUSE THE NAVIGATION IS NOT TESTABLE HERE — the same seam
- * `logoutDestination()` carves out, for the same reason: `window.location` is
- * non-configurable in this jsdom setup, so nothing can stand in for it.
+ * A pure function, the same seam as `logoutDestination()`: `window.location`
+ * is non-configurable in this jsdom setup, so the navigation is not testable.
  *
- * IT READS THE REAL BROWSER PATH, never `useLocation()`. The router is mounted
- * under a `basename`, so `useLocation()` has already had `/de` stripped off
- * and would send every German page back to itself.
+ * It reads the real browser path, never `useLocation()`, which has `/de`
+ * stripped by the router's `basename`.
  *
  * Search and hash travel: switching language on `/events?past=1` should keep
  * showing past events.
@@ -47,32 +44,25 @@ export function switchDestination(
 /**
  * "FR DE" in the header, the current language marked.
  *
- * OUT OF THE NAV LIST (#99). It used to be a nav item reading only "Deutsch",
- * which said nothing about the page's own language and, on a phone, sat behind
- * the hamburger as the last row. It is now visible on every screen size
- * without opening anything, which matters most to the German-speaking parent
- * who lands on the French front page: in the black header band on desktop,
- * and on a phone at the right of the "Menu" bar. In the band on a phone
- * it took 88px from the wordmark, which then wrapped to two lines at 390px and
- * three at 320px.
+ * Outside the nav list, so it is visible on every screen size without opening
+ * anything, for the German-speaking parent who lands on the French front
+ * page: in the black header band on desktop, at the right of the "Menu" bar
+ * on a phone. In the band on a phone it would take 88px from the wordmark,
+ * which then wraps at 390px.
  *
- * THE CURRENT LANGUAGE IS NOT A LINK. It would point at the page you are on.
+ * The current language is not a link; it would point at the page you are on.
  *
- * THE OTHER ONE IS A REAL LINK, NOT A BUTTON. Changing locale is a full page
- * load — `basename` is fixed when the router mounts — so this is a navigation,
- * and an anchor is what makes it middle-clickable, openable in a new tab, and
- * visible to a crawler following the `hreflang` alternates beside it.
+ * The other one is a real link, not a button. Changing locale is a full page
+ * load (`basename` is fixed when the router mounts), and an anchor is
+ * middle-clickable and visible to a crawler.
  *
- * `rememberLocale` IS WRITTEN IN THE CLICK HANDLER, AND THE ORDER IS
- * LOAD-BEARING. Switching to French from `/de` lands on `/`, where main.tsx
- * asks `shouldRedirectToGerman()` — which would bounce the visitor straight
- * back to `/de` if the stored preference were still German. localStorage
- * writes synchronously, so the handler completing before the browser navigates
- * is what makes this safe. preference.ts's own docblock carries the warning;
- * this is the call site it was written for.
+ * `rememberLocale` runs in the click handler, before the navigation.
+ * Switching to French from `/de` lands on `/`, where main.tsx's
+ * `shouldRedirectToGerman()` would bounce a visitor whose stored preference
+ * is still German straight back. localStorage writes synchronously, so the
+ * handler finishes before the browser navigates (see preference.ts).
  *
- * TWO LOCALES, SO A PAIR RATHER THAN A MENU. A third language is when this
- * becomes a menu, and not before.
+ * Two locales, so a pair rather than a menu.
  */
 export function LanguageSwitch() {
   const current = currentLocale();
@@ -98,9 +88,9 @@ export function LanguageSwitch() {
           <a
             key={locale}
             href={switchDestination(locale)}
-            // Both of these name the TARGET, which is the point: `hrefLang`
-            // tells a crawler what is on the other end, and `lang` stops a
-            // screen reader pronouncing it with the page's voice.
+            // Both name the target: `hrefLang` tells a crawler what is on the
+            // other end, and `lang` stops a screen reader using the page's
+            // voice.
             hrefLang={htmlLang(locale)}
             lang={htmlLang(locale)}
             title={ENDONYM[locale]}

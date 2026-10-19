@@ -7,22 +7,13 @@ import { User } from "lucide-react";
  * Decorative: whatever shows the avatar also carries the member's name as
  * text or as an accessible name, so the disc itself is aria-hidden.
  */
-export function Avatar({
-  firstName,
-  lastName,
-  size = "md",
-}: {
-  firstName: string;
-  lastName: string;
-  size?: "sm" | "md";
-}) {
+export function Avatar({ firstName, lastName }: { firstName: string; lastName: string }) {
   const letters = initials(firstName, lastName);
-  const box = size === "sm" ? "size-7 text-xs" : "size-9 text-sm";
 
   return (
     <span
       aria-hidden="true"
-      className={`${box} inline-flex shrink-0 items-center justify-center rounded-full bg-violet font-semibold text-white`}
+      className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-violet text-sm font-semibold text-white"
     >
       {letters === "" ? <User className="size-4" /> : letters}
     </span>

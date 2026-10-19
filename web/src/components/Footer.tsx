@@ -20,20 +20,18 @@ const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
  * The foot of every page: who the band is, the two things a parent who has
  * read this far wants to do, and the band's accounts elsewhere.
  *
- * "NOUS REJOINDRE" AND "CONTACT" ARE THE ONLY PAGE LINKS. On a phone the Menu bar stays
- * pinned to the top, so a second copy of the nav here would only lengthen the
- * page. On a desktop the bar scrolls away, and these two links cover what a
- * parent at the bottom of a page is looking for.
+ * "Nous rejoindre" and "Contact" are the only page links. On a phone the Menu
+ * bar stays pinned to the top, so a copy of the nav here would only lengthen
+ * the page; on a desktop these two cover what a parent at the bottom of a page
+ * is looking for.
  *
- * NO BADGE, DELIBERATELY. It was briefly shown here and taken out again on
- * 2026-09-03: it is the mark on the flyers and the costumes, so it earns one
- * prominent placement rather than a repeat in the chrome of every page. That
- * placement is the home page. The band's name is set in text instead.
+ * No badge: the mark on the flyers and costumes gets one prominent placement,
+ * on the home page, not a repeat on every page. The band's name is text.
  *
- * THE NETWORKS ARE NAMED beside their marks, because few people recognise
+ * The networks are named beside their marks, because few people recognise
  * Flickr's two dots without the word.
  *
- * THE TOP EDGE IS SCALLOPED in the colour of whatever sits above (ADR 0029),
+ * The top edge is scalloped in the colour of whatever sits above (ADR 0029),
  * which only the page knows: `above` comes from carnival/footerEdge.ts, and
  * null is the cream. On the cream the footer keeps its gap; under a coloured
  * band it sits flush, so the band's bumps hang straight into it.

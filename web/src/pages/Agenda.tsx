@@ -8,27 +8,16 @@ import { AgendaEntry, BADGE_TINTS } from "../events/PublicAgenda";
 import { t } from "../i18n";
 
 /**
- * Every upcoming public appearance — where a visitor can come and watch.
+ * Every upcoming public appearance, where a visitor can come and watch.
  *
- * THIS PAGE OWES AN ANSWER, WHICH IS THE WHOLE DIFFERENCE FROM THE FRONT
- * PAGE'S BLOCK. That one renders nothing when there is nothing, because a
- * visitor who came to read about the band never asked for a schedule and
- * "aucune date" under the hero reads as "this band does nothing". Somebody who
- * navigated HERE asked, and leaving them on a heading over blank space is the
- * page failing to load as far as they can tell. So the empty case is written
- * out, and it says what is true: the dates are not published yet, not that
- * there are none.
+ * Unlike the front page's block, which renders nothing when empty, this page
+ * answers: somebody who navigated here asked for the schedule, and a heading
+ * over blank space reads as a failed load. The empty sentence says the dates
+ * are not published yet, which is also true while the request is in flight,
+ * so there is no loading state (a short list on the same origin).
  *
- * NO LOADING STATE STILL. The read is one request against a list of a few
- * dozen rows on the same origin, and a spinner that flashes for 80ms is worse
- * than the sentence appearing 80ms late. What would be wrong is the sentence
- * claiming emptiness while the request is in flight — so it is phrased as "pas
- * encore publiées", which is true both while loading and when the list really
- * is empty.
- *
- * A REHEARSAL IS NOT HERE. The endpoint filters on `is_public`, which defaults
- * to false, so the band's private planning stays private and this page shows
- * the appearances somebody decided to publish.
+ * The endpoint filters on `is_public`, which defaults to false, so rehearsals
+ * and other private planning never show here.
  */
 export function Agenda() {
   const agenda = useAgendaIndex();

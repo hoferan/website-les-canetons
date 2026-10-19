@@ -11,11 +11,9 @@ import { RAISED_CARD } from "../carnival/raised";
 import { type TranslationKey, t } from "../i18n";
 
 /**
- * The information blocks, in the legacy page's order.
- *
- * `headingKey`/`lineKeys` rather than `heading`/`lines`, so the labels resolve
- * at render time — see Layout.tsx's NAV for why a module-level array cannot
- * carry the translated string itself.
+ * The information blocks. Keys rather than strings, resolved at render time:
+ * a module-level array is evaluated once at import, so translated strings in
+ * it would be frozen in one language.
  */
 const FACTS: {
   headingKey: TranslationKey;
@@ -49,44 +47,31 @@ const FACTS: {
 ];
 
 /**
- * THE JOINING CONTACTS ARE PLACEHOLDERS ON PURPOSE.
+ * The joining contacts are placeholders until the band supplies current names
+ * and numbers (#106); they then land here as prose.
  *
- * The legacy page published two names with mobile numbers. Both were the pair
- * that /history says have handed the direction musicale over, and when the
- * content audit asked whether the numbers were still right the answer was that
- * since the direction changed "the phone numbers might be out of date as well
- * — just replace them with placeholders".
+ * No tel: link on a placeholder: a wrong number dials a stranger, while a
+ * parent who sees a gap writes to the committee, the fallback offered below.
  *
- * There is deliberately NO tel: link on a placeholder. A clickable number that
- * is wrong dials a stranger; a parent who sees a gap writes to the committee
- * instead, which is the fallback offered below.
- *
- * These are not generated from the roster, unlike /band and /committee. A
- * member row carries no phone number — the schema has never had one — and
- * "who to ring about joining" is not a committee title either. When the band
- * supplies them (#106), the two names land here as prose.
+ * Not generated from the roster: a member row carries no phone number, and
+ * "who to ring about joining" is not a committee title.
  */
 const JOINING_CONTACTS = 2;
 
 /**
- * A PLACE link, not a directions link.
- *
- * This used to be a maps/dir/ URL whose origin was a hardcoded coordinate pair
- * west of Fribourg, so every parent who clicked "Werkhof" was routed from a
- * spot that had nothing to do with where they were. Found by the 2026-08-31
- * content audit. A place query lets Google use the visitor's own location if
- * they ask for directions from here.
+ * A place link, not a directions link: a place query lets Google route from
+ * the visitor's own location if they ask for directions.
  */
 const WERKHOF_MAP =
   "https://www.google.com/maps/search/?api=1&query=" +
   encodeURIComponent("Association Werkhof, Planche-Inférieure 14, 1700 Fribourg");
 
 /**
- * How to join — the page a parent or a curious child lands on.
+ * How to join: the page a parent or a curious child lands on.
  *
- * NO TUTOIEMENT ANYWHERE ELSE ON THE PUBLIC SITE, but this heading keeps it:
- * it is the legacy page's own line and it addresses the child directly, which
- * is who it is for. The home page stays impersonal because it is read by both.
+ * The only tutoiement on the public site: this heading addresses the child
+ * directly, which is who it is for. The home page stays impersonal because
+ * it is read by both.
  */
 export function Join() {
   return (

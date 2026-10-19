@@ -18,8 +18,8 @@ const GAP = 6;
  *
  * A piece whose drawn shape would come within GAP of an avoided box is
  * dropped rather than moved, so the gaps around text stay clean and nothing
- * piles up at their edges. That makes the count an upper bound: a box that is mostly text gets
- * fewer pieces, which is the right answer for it.
+ * piles up at their edges. That makes the count an upper bound: a box that is
+ * mostly text gets fewer pieces.
  */
 export function scatter({
   width,
@@ -37,7 +37,7 @@ export function scatter({
   /**
    * A multiple of the mock-ups' density, for a surface whose free space is a
    * small part of it: the phone menu's list covers most of the screen, and at
-   * the usual density its empty lower half got four pieces.
+   * the usual density its empty lower half gets only a few pieces.
    */
   density?: number;
 }): Piece[] {
@@ -49,8 +49,8 @@ export function scatter({
     const x = random() * width;
     const y = random() * height;
     const piece: Piece = { x, y, ...randomPiece(random, palette) };
-    // Measured from the shape's reach, not its centre: a centre-only margin
-    // let a full-size squiggle lie across a heading's first letters.
+    // Measured from the shape's reach, not its centre: with a centre-only
+    // margin a full-size squiggle can lie across a heading's first letters.
     const clearance = REACH[piece.kind] * piece.scale + GAP;
     const covered = avoid.some(
       (box) =>

@@ -90,26 +90,20 @@ const EMPTY: Contact = {
 /**
  * Book a place at an event.
  *
- * ANONYMOUS, and the only page besides /contact that a stranger can make the
- * server write from. It owes the same three protections and obtains each at
- * the same moment — see `web/src/api/publicWrite.ts` and Contact.tsx, which
- * this follows rather than re-argues.
+ * Anonymous, and with /contact the only page where a stranger can make the
+ * server write. It takes the same three protections as Contact.tsx: see
+ * `web/src/api/publicWrite.ts`.
  *
- * THE PAGE IS REACHED BY LINK FROM /agenda OR BY A URL THE BAND SHARED. There
- * is no public list of bookable events and there is not meant to be: the
- * souper is one evening a year, advertised on a flyer and on Facebook, and the
- * agenda's own card is the second way in.
+ * Reached by link from /agenda or by a URL the band shared. There is no
+ * public list of bookable events, by design.
  *
- * `open` IS THE SERVER'S ANSWER AND IS NEVER DERIVED HERE from the two dates
- * it also sends. A browser with a wrong clock would otherwise render a form
- * for a closed event and the refusal would arrive only after the guest had
- * filled it in. The dates are rendered, because "les inscriptions ouvrent le
- * 3 octobre" is what the reader came for; the decision is not taken from them.
+ * `open` is the server's answer and is never derived here from the two dates
+ * it also sends: a browser with a wrong clock would render a form for a
+ * closed event. The dates are only displayed.
  *
- * AN EVENT THAT TAKES NO BOOKINGS ANSWERS 404, whether or not it exists, and
- * that refusal is rendered as the same sentence either way. The server is
- * deliberate about not telling a stranger which of the two it is, and a page
- * that said "cet événement existe mais…" would give it away.
+ * An event that takes no bookings answers 404 whether or not it exists, and
+ * the page renders the same sentence either way, so a stranger cannot tell
+ * which it is.
  */
 export function EventBooking() {
   const { id } = useParams();
@@ -117,8 +111,8 @@ export function EventBooking() {
 
   const [contact, setContact] = useState<Contact>(EMPTY);
   const [website, setWebsite] = useState("");
-  // Keyed by option id. A missing key is none of that option, which is what
-  // makes an untouched form send nothing rather than a row of zeroes.
+  // Keyed by option id. A missing key is none of that option, so an untouched
+  // form sends nothing instead of a row of zeroes.
   const [quantities, setQuantities] = useState<Record<number, string>>({});
   const [booked, setBooked] = useState<RegistrationResource | null>(null);
   const bookedHeading = useRef<HTMLHeadingElement>(null);
@@ -129,9 +123,9 @@ export function EventBooking() {
     query: { retry: false },
   });
 
-  // Pinned exactly as the contact form's is: the server refuses a token under
-  // two seconds old, so a refetch on a focus change would replace a good token
-  // with the one value that cannot work, at the worst possible moment.
+  // Pinned as the contact form's is: the server refuses a token under two
+  // seconds old, so a refetch on a focus change would replace a good token
+  // with one that cannot work yet.
   const formToken = useFormTokenShow({
     query: {
       staleTime: Infinity,
@@ -178,11 +172,10 @@ export function EventBooking() {
     onSuccess: (result) => {
       if (result.status === 201) {
         // The confirmation replaces a form several screens long in place, and
-        // the window keeps the submit button's offset. Left alone, a guest at
-        // 390px lands on the footer with the heading 477px above the screen
-        // and focus on <body>. flushSync renders the heading now, so it can be
-        // scrolled to and focused before the browser paints. The scroll is
-        // instant, like ScrollToTop's, so reduced motion has nothing to undo.
+        // the window keeps the submit button's offset, so a guest on a phone
+        // would land on the footer with focus on <body>. flushSync renders the
+        // heading now, so it can be scrolled to and focused before the browser
+        // paints. The scroll is instant, like ScrollToTop's.
         flushSync(() => setBooked(result.data));
         window.scrollTo(0, 0);
         bookedHeading.current?.focus({ preventScroll: true });
@@ -261,9 +254,8 @@ export function EventBooking() {
             </ul>
             <p className="mt-tight">
               {booked.guestCount} personne{booked.guestCount > 1 ? "s" : ""}
-              {/* Null is not zero: a booking of unpriced options owes an unknown
-                amount, and "CHF 0.00" would assert the first about the
-                second. */}
+              {/* Null is not zero: a booking of unpriced options owes an
+                unknown amount, not "CHF 0.00". */}
               {booked.totalCents === null ? null : <> — {formatCents(booked.totalCents)}</>}
             </p>
           </Card>
@@ -350,23 +342,20 @@ export function EventBooking() {
                     />
                   ))}
 
-                  {/* The refusal for the whole list lands on `choices`, which is
-                    where the server puts it too: no single quantity is wrong
-                    when the sum is. */}
+                  {/* The refusal for the whole list lands on `choices`, as the
+                    server sends it: no single quantity is wrong when the sum
+                    is. */}
                   {messageFor("choices") ? (
                     <span className="text-sm text-danger" role="alert">
                       {messageFor("choices")}
                     </span>
                   ) : null}
 
-                  {/* THE RUNNING TOTAL, and it is the reason the prices are on
-                    the wire as integers. A guest deciding between two adult
-                    meals and three should be able to read what each costs
-                    before submitting, not after. */}
+                  {/* The running total, which is why prices travel as integers:
+                    a guest reads what a choice costs before submitting. */}
                   <p className="text-ink" data-testid="booking-total">
-                    {/* THE COUNT IS THE CATALOGUE'S. `guests > 1` is the FRENCH
-                      plural rule, which puts "0 personne" on a French page
-                      correctly and "0 Person" on a German one wrongly. */}
+                    {/* The count's plural comes from the catalogue: `guests > 1`
+                      is the French rule, and wrong for "0 Person" in German. */}
                     {guests === 0
                       ? t("booking.chooseSomeone")
                       : priced.length === 0
@@ -378,10 +367,9 @@ export function EventBooking() {
                   </p>
                 </fieldset>
 
-                {/* The honeypot, written out exactly as the contact form's:
-                  hidden from people and from assistive technology, a real
-                  control whose value is submitted, and refused when absent as
-                  firmly as when filled. */}
+                {/* The honeypot, as on the contact form: hidden from people and
+                  assistive technology, a real control whose value is submitted,
+                  and refused when absent as firmly as when filled. */}
                 <input
                   type="text"
                   name="website"
@@ -412,9 +400,8 @@ export function EventBooking() {
 /**
  * How many of one option, with what it costs beside it.
  *
- * A NUMBER INPUT RATHER THAN A CHECKBOX, because the old souper already did
- * quantities — "3 × viande, 1 × enfant" in one booking — and a checkbox per
- * option would have made the same family fill the form four times.
+ * A number input, not a checkbox: one booking carries quantities such as
+ * "3 × viande, 1 × enfant".
  */
 function QuantityField({
   option,
@@ -432,19 +419,15 @@ function QuantityField({
   const browser = useBrowserProblem(option.label);
 
   return (
-    // A GRID, NOT `flex flex-wrap justify-between`, and this was measured at
-    // 390px rather than reasoned about. Wrapping put "Sans repas"'s box on a
-    // line of its own, left-aligned under its description, while the two
-    // priced options kept theirs on the right — three boxes in two columns,
-    // and the odd one reading as if it belonged to nothing. A two-column grid
-    // wraps the TEXT inside its own cell and leaves the box where it is at
-    // every width.
+    // A grid, not `flex flex-wrap justify-between`: wrapping at 390px moved a
+    // long option's box under its description, away from the other boxes. The
+    // grid wraps the text inside its cell and keeps every box on the right.
     <div className="grid grid-cols-[1fr_auto] items-start gap-tight">
       <div className="flex flex-col">
         <label htmlFor={id}>
           {option.label}
-          {/* Null, not zero. An option whose price lives in its description
-              says nothing here rather than claiming to be free. */}
+          {/* Null, not zero: an option whose price lives in its description
+              says nothing here instead of claiming to be free. */}
           {option.priceCents === null ? null : (
             <span className="text-ink-muted"> — {formatCents(option.priceCents)}</span>
           )}
@@ -454,12 +437,9 @@ function QuantityField({
         ) : null}
       </div>
 
-      {/* THE VENDORED Input, not a hand-rolled one. MEASURED in a browser:
-          the first version of this control came out 42px high against this
-          project's 44px floor, because `px-3 py-2` on a bare input is two
-          pixels short of it and nothing says so. `min-h-touch` lives in
-          Input; `w-20` wins over its `w-full` because `cn` tailwind-merges
-          rather than concatenating. */}
+      {/* The vendored Input, which carries the 44px floor (`min-h-touch`); a
+          bare input with `px-3 py-2` is 42px high. `w-20` wins over its
+          `w-full` because `cn` tailwind-merges. */}
       <Input
         id={id}
         type="number"

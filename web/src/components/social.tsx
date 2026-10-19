@@ -3,7 +3,7 @@
  * drift apart (#224).
  *
  * The marks are Simple Icons paths (CC0), inlined because lucide-react ships
- * no brand icons. They are the same paths the old site's footer used.
+ * no brand icons.
  */
 
 export const GALLERY_URL = "https://www.flickr.com/photos/201962767@N02/collections";

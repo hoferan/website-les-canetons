@@ -19,20 +19,17 @@ export const BADGE_TINTS = ["bg-yellow", "bg-cyan", "bg-lime"];
 /**
  * One appearance, as a stranger reads it.
  *
- * NOT EventCard, which is typed on EventResource and renders the dress code,
+ * Not EventCard, which is typed on EventResource and renders the dress code,
  * the committee's notes and an answer slot. This has four fields, each one
  * already on a poster, and no caller who may see the rest.
  *
- * Keyed by its CALLER on the event's id, which the resource gained when the
- * booking form was built: two events do collide on a date here — the live
- * planning had two on 3 October — so the start and the title together were
- * only nearly unique.
+ * Callers key it on the event's id: two events can share a date, so the start
+ * and the title together are only nearly unique.
  *
- * THE BOOKING LINK APPEARS ONLY WHILE BOOKINGS ARE OPEN, and `registrationOpen`
- * is the server's answer rather than anything derived from a date here. An
- * event whose window has not opened is on this list like any other; offering
- * "S'inscrire" on it would send a reader to a form that refuses them, which is
- * the same promise broken either way round.
+ * The booking link appears only while bookings are open, and
+ * `registrationOpen` is the server's answer, not derived from a date here. An
+ * event whose window has not opened is listed like any other, and a booking
+ * link on it would lead to a form that refuses the reader.
  */
 export function AgendaEntry({
   event,
@@ -99,26 +96,23 @@ export function AgendaEntry({
 }
 
 /**
- * What the band is doing next, on the front page — or nothing at all.
+ * What the band is doing next, on the front page, or nothing at all.
  *
- * IT RENDERS NOTHING UNLESS IT HAS AN EVENT, AND THAT IS THE WHOLE DESIGN.
- * Pending, refused and empty all collapse into an empty list, so one guard
- * covers all three. There is deliberately no "Chargement…" and no error:
+ * It renders nothing unless it has an event. Pending, refused and empty all
+ * collapse into an empty list, so one guard covers all three. There is no
+ * loading state and no error:
  *
- *   - a card saying "aucun événement" on a band's front page reads as "this
- *     band does nothing", which is worse than no section at all;
- *   - the visitor never asked for the schedule, so an error about it is noise
- *     on the page where noise is most visible;
- *   - this live dependency must never hold up the hero, and a component that
- *     can only add or add nothing cannot.
+ *   - "aucun événement" on a band's front page reads as "this band does
+ *     nothing", which is worse than no section;
+ *   - the visitor never asked for the schedule, so an error about it is noise;
+ *   - this live dependency must never hold up the hero.
  *
- * /agenda IS THE OPPOSITE CASE, and says so in its own file: somebody who
- * navigated there asked for the schedule and is owed an answer either way.
- * That difference is why these are two components over one endpoint rather
- * than one component with a prop.
+ * /agenda is the opposite case: somebody who navigated there asked for the
+ * schedule and is owed an answer either way. Hence two components over one
+ * endpoint instead of one with a prop.
  *
- * THREE, NOT ALL OF THEM. A season of carnival dates below the hero is a
- * schedule rather than an invitation, and the rest of them have a page now.
+ * Three, not all of them: a season of dates below the hero is a schedule, not
+ * an invitation, and the rest are on /agenda.
  */
 export function PublicAgenda() {
   const agenda = useAgendaIndex();
@@ -145,9 +139,8 @@ export function PublicAgenda() {
         ))}
       </ul>
 
-      {/* Only when there is more to see. A "toutes les dates" button under a
-          list that already IS all the dates sends somebody to a page they have
-          just finished reading. */}
+      {/* Only when there is more to see; under a list that already holds
+          every date it would lead to a page the reader has just read. */}
       {all.length > SHOWN ? (
         <ButtonLink to="/agenda" variant="raised-light" className="mt-block">
           {t("agenda.seeAll")}

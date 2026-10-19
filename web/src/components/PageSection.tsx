@@ -3,26 +3,17 @@ import { cn } from "@/lib/utils";
 /**
  * The page shell: the centred column, the gutter and the vertical rhythm.
  *
- * WHY IT EXISTS. Pages hand-wrote `mx-auto max-w-… px-4 py-8` about
- * thirty-five times, between them using FIVE different widths -- max-w-3xl,
- * 5xl, md, 4xl and 2xl -- while the header, nav and footer were fixed at
- * max-w-5xl. So at 1280 the nav's first item started at x=143 and the page
- * content at x=272: a misalignment visible on every page of the site.
+ * Pages use it instead of hand-writing widths, so the content lines up with
+ * the header, nav and footer.
  *
  * Three widths, and no more:
- *   shell — the default, and the same width as the chrome, so gutters line up
- *   text  — a prose column, kept near 65 characters, CENTRED
- *   form  — a single narrow form, as /authentification_inscription wants
+ *   shell: the default, the same width as the chrome, so gutters line up
+ *   text:  a prose column kept near 65 characters, centred
+ *   form:  a single narrow form
  *
- * THE `text` COLUMN IS CENTRED, AND THAT IS A DECISION, not an oversight. The
- * one shared shell width exists so that the nav and the content share a left
- * edge -- but a centred 44rem column cannot share an edge
- * with a 72rem one, and left-aligning it leaves about 500px of empty page
- * beside the content at 1280. Both were built and compared in a browser; André
- * chose the centred column on 2026-09-01. So the shared left edge is true of
- * `shell` pages only, which is where it was actually costing something.
- *
- * `section` rather than `div`: every page's outermost element already was one.
+ * The `text` column is centred on purpose. It cannot share a left edge with
+ * the wider chrome, and left-aligning it would leave a wide empty strip beside
+ * it on a desktop. So the shared left edge holds for `shell` pages only.
  */
 export function PageSection({
   children,

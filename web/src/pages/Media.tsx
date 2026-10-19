@@ -54,12 +54,11 @@ type Props = {
  * unused ones. It places nothing: a photo is placed on the page that shows it,
  * through the SlotPhotoControl on each slot there.
  *
- * A SELECTION LARGER THAN THE ROOM LEFT IS STILL QUEUED WHOLE. The notice says
- * how many places remain and the server refuses the rest with
- * `image_library_full`, card by card. Trimming the selection here instead
- * would drop the wrong files: a photo the library already holds comes back as
- * a duplicate and takes no place, and only the server can tell which those
- * are.
+ * A selection larger than the room left is still queued whole. The notice says
+ * how many places remain, and the server refuses the rest with
+ * `image_library_full`, card by card. Trimming here would drop the wrong
+ * files: a photo the library already holds comes back as a duplicate and
+ * takes no place, and only the server can tell which those are.
  */
 export function Media({ upload, shrinker }: Props = {}) {
   const summary = useImageSummary();

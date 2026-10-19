@@ -15,8 +15,7 @@ test("an internal destination renders a router link", () => {
 });
 
 // An external link that opens a new tab without rel="noreferrer" hands the
-// destination a window.opener it can navigate. The nav's Flickr link already
-// gets this right by hand; this makes it structural.
+// destination a window.opener it can navigate.
 test("an external destination opens a new tab and cannot reach window.opener", () => {
   render(
     <MemoryRouter>

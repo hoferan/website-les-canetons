@@ -49,11 +49,11 @@ type Failure = { image: ImageResource; message: string };
  * another order is chosen. The search, the order and the used/unused filter
  * all work on the list in hand: see librarySearch.ts.
  *
- * ONLY AN UNUSED PHOTO CAN BE SELECTED. The server refuses to delete a photo
+ * Only an unused photo can be selected. The server refuses to delete a photo
  * that is shown anywhere (`image_in_use`), so a box on a used card would only
  * lead to a refusal. The card says where the photo is shown instead.
  *
- * EACH DELETE CARRIES ITS OWN TAG, read through GET /images/{id} as the
+ * Each delete carries its own tag, read through GET /images/{id} as the
  * confirm dialog opens (see web/src/api/ifMatch.ts for why the read and not
  * the list). The deletes run one after the other and a refusal settles that
  * photo only: if somebody placed one of them meanwhile, the rest still go.
@@ -283,10 +283,10 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
                 {t("photos.addedOn", { date: formatDay(image.createdAt) })} ·{" "}
                 {kilobytes(image.bytes)}
               </p>
-              {/* ONE LINE, NOT A LIST OF LINKS. Each link on its own 44px row
-                  made a card twice as tall for two places, and the card's own
-                  link leads to the photo's page, which lists every place as a
-                  link anyway. Two lines at most; the title holds the rest. */}
+              {/* One line rather than a list of links: a 44px row per link
+                  would make a card twice as tall for two places, and the
+                  photo's page lists every place as a link. Two lines at most;
+                  the title holds the rest. */}
               {image.usages.length > 0 ? (
                 <p
                   className="flex items-start gap-1.5 text-sm text-ink-muted"

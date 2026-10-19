@@ -19,10 +19,9 @@ import { type TranslationKey, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 
 /**
- * `website` is the honeypot and is ALWAYS the empty string. It is part of the
- * body rather than of the headers, and it must arrive present: a body that
- * merely omits it is refused too, which is what stops a hand-written POST
- * walking past the guard by leaving the field out.
+ * `website` is the honeypot and is always the empty string. It must arrive
+ * present: a body that omits it is refused too, so a hand-written POST cannot
+ * pass the guard by leaving the field out.
  */
 const EMPTY: ContactRequest = {
   lastName: "",
@@ -34,9 +33,8 @@ const EMPTY: ContactRequest = {
 };
 
 /**
- * Field order is the legacy page's. The labels carry no colon, as on the
- * booking form: each sits above its control, where a colon points at nothing
- * (#102).
+ * The labels carry no colon, as on the booking form: each sits above its
+ * control, where a colon points at nothing (#102).
  */
 const FIELDS: {
   name: Exclude<keyof ContactRequest, "website">;
@@ -55,26 +53,21 @@ const FIELDS: {
 /**
  * Write to the committee.
  *
- * THE ONLY THING ON THE PUBLIC SITE THAT WRITES, and the only screen a
- * stranger can make the server do work with. The three protections it owes are
- * in `web/src/api/publicWrite.ts`; what matters here is WHEN each is obtained.
+ * A public write a stranger can trigger. Its three protections are in
+ * `web/src/api/publicWrite.ts`; what matters here is when each is obtained.
  *
- * The form token is fetched AS THE PAGE RENDERS and pinned. A token under two
- * seconds old is refused, so fetching one on submit guarantees a rejection,
- * and letting the query refetch on a focus change would replace a good token
- * with a too-fresh one at the worst possible moment. `staleTime: Infinity` and
- * the two refetch opt-outs are what pin it; the token stays valid for two
- * hours, which is longer than anybody has this form open.
+ * The form token is fetched as the page renders and pinned. A token under two
+ * seconds old is refused, so fetching on submit guarantees a rejection, and a
+ * refetch on focus would swap a good token for a too-fresh one.
+ * `staleTime: Infinity` and the two refetch opt-outs pin it; it stays valid
+ * for two hours.
  *
  * The idempotency key is minted once per mount, in a ref, so a retry after a
- * refusal reuses it — a failed attempt releases its key server-side, so the
- * same key is exactly right — while a fresh visit to the page gets a fresh
- * one.
+ * refusal reuses it (a failed attempt releases its key server-side), while a
+ * fresh visit gets a fresh one.
  *
- * SUCCESS IS RENDERED IN PLACE rather than on a /confirmation route, unlike
- * the legacy site. A thank-you page that is reachable by URL, by Back, and by
- * a bookmark says a message was sent when none was; replacing the form with
- * its own answer cannot.
+ * Success is rendered in place: a thank-you route reachable by URL, Back or
+ * bookmark would say a message was sent when none was.
  */
 export function Contact() {
   const { user } = useSession();
@@ -97,11 +90,10 @@ export function Contact() {
     mutationFn: (token: string) =>
       contactStore(values, publicWriteHeaders(token, idempotencyKey.current)),
     onSuccess: () => {
-      // Same as the booking confirmation: the panel replaces the form in
-      // place, and the window would keep the submit button's offset, leaving
-      // the sender on the footer at 390px with focus on <body>. flushSync
-      // renders the heading now so it can be scrolled to and focused before
-      // the browser paints.
+      // As in the booking confirmation: the panel replaces the form, and the
+      // window would keep the submit button's offset, leaving the sender on
+      // the footer at 390px with focus on <body>. flushSync renders the
+      // heading so it can be scrolled to and focused before the paint.
       flushSync(() => setSent(true));
       window.scrollTo(0, 0);
       sentHeading.current?.focus({ preventScroll: true });
@@ -111,17 +103,15 @@ export function Contact() {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Explicit, not implied by the button: aria-disabled leaves the control
-    // clickable, and Enter in a field submits through the default button
-    // regardless. This early return is the only thing preventing a double send.
+    // aria-disabled leaves the button clickable, and Enter in a field submits
+    // regardless, so this return is the only guard against a double send.
     if (send.isPending) return;
     clear();
     if (!formIsValid(event.currentTarget)) return;
 
-    // No token, no submission. The query is fired on mount and the form takes
-    // longer than that to fill in, so this is the failed-fetch case (429 or
-    // 503), not a race — which is why it says "réessayer" rather than
-    // "patienter".
+    // The query fires on mount and the form takes longer to fill in, so a
+    // missing token means the fetch failed (429 or 503). Hence "réessayer"
+    // rather than "patienter".
     const token = formToken.data?.status === 200 ? formToken.data.data.token : null;
     if (!token) {
       setFromThrown(new Error("no form token"));
@@ -154,29 +144,22 @@ export function Contact() {
       </PageHero>
 
       <PageSection width="text">
-        {/* A MEMBER IS TOLD, NOT STOPPED. They would retype a name the session is
-            already holding and go through three protections meant for strangers
-            — honeypot, form token, idempotency key — to reach a committee most of
-            them can reach faster on WhatsApp. But the site publishes no direct
-            contact detail anywhere (comite@lescanetons.org was pulled from
-            /committee in the 2026-08-31 audit; /join's contacts are
-            placeholders, see JOINING_CONTACTS in Join.tsx), so a member who has not got the
-            number has only this form. Hiding it behind a reveal was built and
-            rejected on 2026-09-18 for exactly that reason: it charges a click of
-            everybody it does not help, and does not spare the one it does a
-            single keystroke, since /api/v1/me carries no e-mail address to
-            prefill with. Attributing a member's message to their account is a
-            real fix and belongs with the committee inbox (#88). */}
+        {/* A member is told, not stopped. Most can reach the committee faster
+            on WhatsApp, but the site publishes no direct contact detail (the
+            /join contacts are placeholders, see JOINING_CONTACTS in Join.tsx),
+            so a member without the number has only this form. Hiding the form
+            behind a reveal would cost everybody a click and save nobody a
+            keystroke: /api/v1/me carries no e-mail address to prefill. */}
         {user ? <Notice className="mb-related">{t("contact.memberNotice")}</Notice> : null}
 
         <FormError error={error} />
 
-        {/* The values are NOT cleared on failure: a rejected message must not
-            make someone retype it. Same rule as the event form.
+        {/* The values are kept on failure, as on the event form, so a
+            rejected message need not be retyped.
 
-            Raised like every card on cream, while the fields inside stay the
-            plain vendored inputs: decoration stays out of anything a person
-            types into (ADR 0029). */}
+            Raised like every card on cream, while the fields stay plain
+            vendored inputs: no decoration on what a person types into
+            (ADR 0029). */}
         <Card asChild className={cn(RAISED_CARD, "gap-0 p-5", error && "mt-related")}>
           <form onSubmit={submit} noValidate className="space-y-related">
             <RequiredLegend />
@@ -187,11 +170,9 @@ export function Contact() {
                 label={t(field.labelKey)}
                 type={field.type}
                 as={field.as}
-                /* Every field is required, `subject` included — which the legacy
-                 markup was NOT, even though ContactRequest has always required
-                 it. A blank subject used to pass the browser, make a round
-                 trip, be rejected, and surface as a generic failure that named
-                 no field. Deliberate fix, pinned by a test. */
+                /* Every field is required, `subject` included, as
+                 ContactRequest requires it; otherwise a blank subject comes
+                 back as a generic failure that names no field. */
                 required
                 autoComplete={field.autoComplete}
                 problem={messageFor(field.name)}
@@ -200,13 +181,10 @@ export function Contact() {
               />
             ))}
 
-            {/* THE HONEYPOT. Hidden from people and from assistive technology
-                both — `hidden` keeps it out of the accessibility tree, so a
-                screen-reader user is never asked to fill in a field that must
-                stay empty — while remaining a real control whose value is
-                submitted. tabIndex -1 and autoComplete "off" stop a keyboard
-                user and a password manager reaching it by accident, which is the
-                other way a real person trips this. */}
+            {/* The honeypot. `hidden` keeps it out of the accessibility tree
+                while it stays a real, submitted control. tabIndex -1 and
+                autoComplete "off" keep a keyboard user and a password manager
+                from filling it by accident. */}
             <input
               type="text"
               name="website"
@@ -219,8 +197,8 @@ export function Contact() {
               }
             />
 
-            {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
-                early return is the real guard. */}
+            {/* aria-disabled, not disabled: see components/ui/button.tsx. The
+                submit handler's early return is the real guard. */}
             <Button
               type="submit"
               variant="raised-violet"

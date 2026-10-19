@@ -4,35 +4,24 @@ import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /**
- * A SEGMENTED CONTROL: pick one of a few views, all of them visible at once.
+ * A segmented control: pick one of a few views, all of them visible at once.
  *
- * VENDORED from radix-ui, the same way ui/dropdown-menu.tsx and
- * ui/alert-dialog.tsx are: the same `data-slot` attributes and the same `cn()`
- * composition, so the three files read alike.
+ * Vendored from radix-ui like ui/dropdown-menu.tsx and ui/alert-dialog.tsx,
+ * with the same `data-slot` attributes and `cn()` composition. Root and Item
+ * only: a segment shows its state by filling, so there is no `Indicator`.
+ * No `dark:` utility, for the reason in ui/button.tsx.
  *
- * TWO PARTS AND NO MORE. Root and Item — no `Indicator`, because a segment
- * shows its state by filling rather than by drawing a dot beside a label.
+ * RadioGroup rather than ToggleGroup. `ToggleGroup type="single"` renders
+ * radio roles but never selects on an arrow key, so focus moves while
+ * `aria-checked` stays false. RadioGroup selects the item an arrow lands on.
+ * jsdom cannot show this, so web/e2e/members.spec.ts measures it.
  *
- * NO `dark:` UTILITY, for the reason ui/button.tsx sets out at length: this app
- * declares no `dark` custom variant, so Tailwind 4 compiles one to a
- * prefers-color-scheme media query that fires on any phone whose OS is set to
- * dark, which at a rehearsal at night is most of them.
+ * A radio group also cannot be cleared, where a ToggleGroup calls
+ * `onValueChange("")` when the pressed item is pressed again, so call sites
+ * need no guard (see the test).
  *
- * WHY RadioGroup AND NOT ToggleGroup, which is the component whose name fits.
- * `ToggleGroup type="single"` renders role="radiogroup" and role="radio" — and
- * then never selects on an arrow key: its source has no arrow handling at all,
- * so the focus moves and `aria-checked` stays false behind it. It claims to be
- * a radio and does not behave as one. RadioGroup implements the pattern its
- * roles promise, by clicking the item its own onFocus lands on while an arrow
- * is held. jsdom cannot show this, so web/e2e/members.spec.ts measures it.
- *
- * AND IT CANNOT BE CLEARED. A ToggleGroup hands the caller `onValueChange("")`
- * when the pressed item is pressed again, which on the planning would mean a
- * list that is neither upcoming nor past; every call site would need a guard.
- * A radio group has no such state, so no guard exists anywhere — see the test.
- *
- * THE ROOT NEEDS AN ACCESSIBLE NAME from its caller. A radiogroup without one
- * announces two radios belonging to nothing.
+ * The root needs an accessible name from its caller, or it announces radios
+ * belonging to nothing.
  */
 function RadioGroup({
   className,
@@ -42,8 +31,7 @@ function RadioGroup({
     <RadioGroupPrimitive.Root
       data-slot="radio-group"
       className={cn(
-        // `w-fit`, so the control is as wide as its options rather than as wide
-        // as the row it sits in.
+        // `w-fit`: as wide as its options, not the row.
         "inline-flex w-fit items-center gap-[2px] rounded-md border bg-background p-[2px]",
         className,
       )}
@@ -64,11 +52,8 @@ function ToggleOption({
     <RadioGroupPrimitive.Item
       data-slot="toggle-option"
       className={cn(
-        // min-h-touch, not a height: the same 44px floor ui/button.tsx puts on
-        // every control and ui/dropdown-menu.tsx puts on every menu item.
-        //
-        // `checked`, NOT `on`: RadioGroup's data-state is checked/unchecked
-        // where ToggleGroup's would have been on/off.
+        // min-h-touch: the 44px floor every control carries.
+        // RadioGroup's data-state is checked/unchecked, not on/off.
         "inline-flex min-h-touch shrink-0 cursor-default items-center justify-center rounded-sm px-4 text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
         className,
       )}

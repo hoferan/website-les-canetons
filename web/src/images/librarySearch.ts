@@ -1,5 +1,5 @@
 /**
- * Searching and sorting the library, on the client (#105). The library holds
+ * Searching and sorting the library, on the client. The library holds
  * a hundred photos at most and `GET /images` returns all of them, so asking
  * the server again for every keystroke would cost a request and buy nothing.
  */

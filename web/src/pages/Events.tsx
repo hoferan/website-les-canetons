@@ -43,81 +43,48 @@ import { useSession } from "../session/SessionProvider";
 /**
  * The planning: what the band is doing, and when.
  *
- * EVERYBODY MAY READ IT. Everybody in the band needs to know when the next
- * rehearsal is, so this screen asks for `events.view`, which the baseline
- * role grants to every account. Creating and editing are gated on
- * `events.manage`, and those controls are ABSENT rather than refused for
- * everybody else — a link that leads to "Accès refusé" teaches people that
- * parts of the site are broken for them.
+ * Everybody may read it: the screen asks for `events.view`, which the
+ * baseline role grants to every account. Creating and editing need
+ * `events.manage`, and those controls are absent for everybody else, because
+ * a link that leads to "Accès refusé" reads as a broken site.
  *
- * THE PAST REPLACES THE PLANNING RATHER THAN EXTENDING IT. It is the other
- * half of the list, not a superset: by next carnival the full history is a
- * hundred rehearsals to scroll past on a phone, and it reads newest-first
- * because history is read backwards from now while the planning ahead is read
- * soonest-first. The API makes the same split, on the start of today rather
- * than on now, so an event that began an hour ago stays in the planning of
- * somebody running late.
+ * The past view replaces the planning instead of extending it, and reads
+ * newest-first while the planning reads soonest-first. The API splits on the
+ * start of today, so an event that began an hour ago stays in the planning.
  *
- * ORDERED BY URGENCY, NOT BY DATE, as of when the screen was built. Events
- * that were unanswered then are pinned to the top under "À répondre"; the
- * planning follows below. This is why the old site needed a second page,
- * /inscriptions_utilisateurs — under this design that page has no reason to
- * exist, because "my answers" IS the top of the one screen.
+ * Events unanswered when the list was built sit on top under "À répondre",
+ * and the rest of the planning follows. The blocks partition the list: a card
+ * in both would be two live sets of answer buttons for one event.
  *
- * THE TWO BLOCKS PARTITION THE LIST rather than the top one repeating rows
- * from the bottom: a card in both places would be two live sets of answer
- * buttons for one event. That still holds, because the block a card is in is
- * decided once, when the list is built.
- *
- * ANSWERING MOVES NOTHING (#95). The card stays where the thumb found it,
- * marked "Répondu", and only settles into the block below on the next load, on
- * the past toggle, or on a day chosen or cleared. Until this, answering the
- * top card dropped it out of the block at once and the next event's buttons
- * arrived within a few pixels of where the finger had just been — so making
- * the answer instant made a mis-tap MORE likely rather than less. Three things
- * follow, and the third is the one that decided it:
- *
- *   - THE MOVE WAS NEVER THE FEEDBACK. The fill, `aria-pressed`, the marker
- *     and the toast are; the move was feedback about classification, and on a
- *     phone its destination is several screens down. What the reader saw was
- *     the card they tapped vanishing and a different event taking its place.
- *   - ANIMATING IT WAS REJECTED, not deferred. It decorates the hazard rather
- *     than removing it — the next card still arrives under the thumb, only
- *     later and in motion — and styles.css flattens every duration under
- *     `prefers-reduced-motion`, so the protection would be off for exactly the
- *     people who asked the platform for predictability. A timer was rejected
- *     too: it trades a movement somebody caused for one with no cause at all.
- *   - A MOVE COSTS THE FOCUS. The blocks are two parents, so moving a card
- *     between them unmounts the node the focus is on: every answer sent a
- *     keyboard or screen-reader user back to the top of the page. Held in
- *     place, the pressed button keeps focus and announces itself.
- *
- * "À répondre" therefore still means something when it is empty — it is a
- * state you arrive at rather than one you watch happen — and what carries the
- * to-do semantics while you are on the screen is the count under the heading.
+ * Answering moves nothing (#95). The card stays where the thumb found it,
+ * marked "Répondu", and settles into the block below only on the next load,
+ * the past toggle or a day chosen or cleared. Moving it at once put the next
+ * event's buttons under the finger, and unmounted the focused node, sending a
+ * keyboard or screen-reader user back to the top. An animation or a timer
+ * would still bring the next card under the thumb, and styles.css flattens
+ * durations under `prefers-reduced-motion`. While on the screen, the count
+ * under the heading carries the to-do meaning.
  */
 export function Events() {
   const { can, config } = useSession();
   const queryClient = useQueryClient();
   const [showingPast, setShowingPast] = useState(false);
 
-  // The calendar, and the day it has filtered the list down to. Both are here
-  // rather than inside EventCalendar because the filter is what the calendar
-  // is FOR: it does not navigate, it narrows the list below it.
+  // The calendar and the day it filters the list to live here, outside
+  // EventCalendar, because the calendar does not navigate: it narrows the
+  // list below it.
   const [showingCalendar, setShowingCalendar] = useState(false);
   const [day, setDay] = useState<string | null>(null);
 
-  // THE SEARCH (#97), ON THE SERVER. Unlike the day, which narrows the loaded
-  // half of the planning to one date on the calendar drawn from it, a search
-  // has to see the whole list — and only the server does once the envelope
-  // ever cuts it short. The box follows each keystroke; the request follows
-  // the box once it has been still for 250ms.
+  // The search runs on the server: unlike the day filter, it has to see the
+  // whole list, and only the server does once the envelope cuts it short.
+  // The request follows the box once it has been still for 250ms.
   const [typed, setTyped] = useState("");
   const q = useDebouncedValue(typed.trim());
 
-  // THE TAG (#107), on the server like the search and for the same reason.
-  // `tag` is derived through shownTag() rather than reset in an effect, so a
-  // tag deleted while it was chosen never reaches the request.
+  // The tag filter runs on the server too, for the same reason. `tag` is
+  // derived through shownTag() instead of reset in an effect, so a tag
+  // deleted while it was chosen never reaches the request.
   const tagList = rowsOf<EventTagResource>(useEventTagIndex().data);
   const [chosenTag, setChosenTag] = useState<number | null>(null);
   const tag = shownTag(chosenTag, tagList);
@@ -129,13 +96,10 @@ export function Events() {
   // message has to be read next to the card it is about.
   const publishing = useApiFormError(t("events.publishFailed"));
 
-  // The event being deleted, together with the tag of the read the dialog was
-  // opened from. DELETE is a conditional write, and the planning hands out no
-  // tag of its own: one tag cannot validate five rows, and a list-wide one
-  // would refuse every delete whenever anybody touched anything. So opening
-  // the dialog is also the read, which is where "while this dialog was open"
-  // starts. Built by hand over the generated function because the header
-  // differs per call — see web/src/api/ifMatch.ts.
+  // The event being deleted, with the tag of the read the dialog opened from.
+  // DELETE is a conditional write and the list hands out no per-row tag, so
+  // opening the dialog is also the read. Built by hand over the generated
+  // function because the header differs per call: see web/src/api/ifMatch.ts.
   const [deleting, setDeleting] = useState<{ event: EventResource; etag: string | null } | null>(
     null,
   );
@@ -147,12 +111,9 @@ export function Events() {
       eventDestroy(event, ifMatch(etag)),
   });
 
-  // `past: "1"` is the magic value the API reads; anything else is the
-  // upcoming view. Passing undefined rather than "0" keeps the query string
-  // absent altogether, which is what the default case looks like on the wire.
-  //
-  // The previous answer STAYS ON SCREEN while a new search loads, so typing
-  // narrows the list rather than blanking it into "Chargement" per keystroke.
+  // The API reads `past: "1"`; anything else is the upcoming view, so the
+  // default sends no query string at all. The previous answer stays on screen
+  // while a new search loads, so typing does not blank the list per keystroke.
   const params = {
     ...(showingPast ? { past: "1" as const } : {}),
     ...(q === "" ? {} : { q }),
@@ -162,21 +123,18 @@ export function Events() {
     query: { placeholderData: keepPreviousData },
   });
 
-  // Through rowsOf, which owns the status narrowing and the collection
-  // envelope's own `data` hop — see web/src/api/collection.ts.
   const allEvents = rowsOf<EventResource>(planning.data);
 
   const mayManage = can("events.manage");
-  // OFF EVERYWHERE until somebody has looked at it on TEST. The flag comes
-  // from GET /api/v1/config, so it is the server's answer rather than
-  // something baked into a bundle three environments share.
+  // Off unless the server switches it on (FEATURE_CALENDAR). The flag comes
+  // from GET /api/v1/config because every environment runs the same bundle.
   const calendarEnabled = config.features?.calendar === true;
   const maySeeAnswers = can("attendance.view_all");
   const maySeeGuests = can("registrations.view");
 
-  // Applied BEFORE the split, so a chosen day narrows both blocks. The day is
-  // the Fribourg one, which is what bandZoneParts is for: slicing the ISO
-  // string would file a 00:30 event under the previous day.
+  // Applied before the split, so a chosen day narrows both blocks. The day is
+  // the Fribourg one: slicing the ISO string would file a 00:30 event under
+  // the previous day.
   const shown =
     day === null
       ? allEvents
@@ -184,44 +142,34 @@ export function Events() {
           (event) => event.startsAt !== null && bandZoneParts(event.startsAt).date === day,
         );
 
-  // DRAFTS ARE THEIR OWN GROUP, above the planning, and never take part in the
-  // to-do partition below: nobody owes an answer about an event the band has
-  // not been told about. Only somebody with events.manage is sent any, so the
-  // group is absent for everyone else without this screen deciding anything.
+  // Drafts are their own group above the planning and stay out of the to-do
+  // partition: nobody owes an answer about an event the band has not been
+  // told about. Only somebody with events.manage is sent any.
   const drafts = shown.filter(isDraft);
   const events = shown.filter((event) => !isDraft(event));
 
-  // The split that makes the top block a to-do list. Two things are never in
-  // it. PAST EVENTS, because the screen asks what you owe an answer on and
-  // nobody is owed an answer about last Saturday. And EVERYTHING, for somebody
-  // without attendance.respond: `myAttendance` is null on every event for
-  // Dominique Direction, who organises and plays nothing, so the naive split
-  // would file the whole planning under "À répondre" and then show her no way
-  // to answer any of it. Her register would not decide it either way; the
-  // permission does.
+  // The split that makes the top block a to-do list. Past events never enter
+  // it, and nothing does for somebody without attendance.respond:
+  // `myAttendance` is null on every event for somebody who organises and plays
+  // nothing, so the split would file the whole planning as owed with no way
+  // to answer it. The permission decides this, not the register.
   const answerable = can("attendance.respond") && !showingPast;
 
-  // WHAT WAS OWED WHEN THIS LIST WAS BUILT, which is what the top block
-  // partitions on rather than on `myAttendance` as it stands (#95). Answering
-  // therefore leaves the card where the thumb found it — see the docblock for
-  // why that beats moving it, and why neither a timer nor an animation does.
+  // The top block partitions on what was owed when this list was built, not
+  // on `myAttendance` as it stands, so answering leaves the card in place
+  // (#95, see the docblock).
   //
-  // The scope is the identity of the list itself, so re-scoping it is exactly
-  // what releases the hold: a new mount, the past toggle, a day chosen or
-  // cleared on the calendar. Data arriving is NOT a settle — a background
-  // refetch must not move a card the reader is looking at.
-  //
-  // A SEARCH IS A RE-SCOPE TOO, like a day: the blocks re-partition on what
-  // the search found. NOT WHILE THE PREVIOUS ANSWER IS STANDING IN for it —
-  // keepPreviousData means the rows on screen belong to the last search for
-  // a moment, and a snapshot taken then would pin them under the new one.
+  // The scope is the identity of the list, so changing it releases the hold:
+  // a new mount, the past toggle, a day, a search. Data arriving does not, so
+  // a background refetch cannot move a card the reader is looking at. No
+  // snapshot is taken while keepPreviousData shows the last search's rows, or
+  // it would pin them under the new one.
   const scope = `${showingPast}|${day ?? ""}|${q}`;
   const [owed, setOwed] = useState<{ scope: string; ids: Set<number> } | null>(null);
 
   if (!planning.isPending && !planning.isPlaceholderData && owed?.scope !== scope) {
-    // Set during render, which React answers by re-rendering before it commits
-    // anything — the documented way to derive state from something that
-    // changed. An effect would paint one frame of the wrong partition first.
+    // Set during render, so React re-renders before committing. An effect
+    // would paint one frame of the wrong partition first.
     setOwed({
       scope,
       ids: new Set(events.filter((event) => event.myAttendance === null).map((event) => event.id)),
@@ -234,43 +182,36 @@ export function Events() {
   const awaiting = answerable ? events.filter(stillOwed) : [];
   const planned = answerable ? events.filter((event) => !stillOwed(event)) : events;
 
-  // What the heading's count is about: the answers still missing, which is not
-  // the size of the block any more. An event created since the list was built
-  // is unanswered and therefore in here too, which is why this counts rather
-  // than reading the snapshot.
+  // The heading's count is the answers still missing, which is not the size
+  // of the block. It counts instead of reading the snapshot because an event
+  // created since the list was built is unanswered too.
   const missing = awaiting.filter((event) => event.myAttendance === null).length;
 
-  // WHETHER THE PLANNED-EVENTS SECTION GETS A HEADING (#182) — see the JSX
-  // site below for the full reasoning. Never over an empty list either: a
-  // heading names what is under it.
-  // A drafts group above it needs the heading too: without one the planned
-  // cards run straight on from the drafts with only a gap between them.
+  // Whether the planned section gets a heading (#182): see the JSX below. A
+  // drafts group above it needs one too, or the planned cards run straight on
+  // from the drafts.
   const showHeading =
     planned.length > 0 && (showingPast || awaiting.length > 0 || drafts.length > 0);
 
   function card(event: EventResource, inOwed: boolean) {
-    // WHAT THIS READER MAY DO TO THIS EVENT, as data rather than as markup.
-    // The screen still decides which actions exist — three permissions gate
-    // them independently — and RowActions decides only which one stays inline
-    // and which go behind the "..." (#118). Neither the card nor RowActions
-    // calls can().
+    // What this reader may do to this event, as data. The screen decides which
+    // actions exist; RowActions decides only which one stays inline and which
+    // go behind the "...". Neither the card nor RowActions calls can().
     const actions: RowAction[] = [];
 
     if (maySeeAnswers && !isDraft(event)) {
       actions.push({
         key: "attendance",
-        // THE SAME KEY AS THE SCREEN IT OPENS, so the link and its
-        // destination cannot come to disagree.
+        // The same key as the screen it opens, so the two cannot disagree.
         label: t("attendance.heading"),
         ariaLabel: t("events.whoComingAria", { title: event.title }),
         to: `/events/${event.id}/attendance`,
       });
     }
 
-    // ONLY ON AN EVENT THAT TAKES BOOKINGS. Every other card would otherwise
-    // carry a link to an empty list that can never fill up, and the planning
-    // is mostly rehearsals. `takesRegistrations` is the server's own
-    // derivation from the closing date.
+    // Only on an event that takes bookings, or most cards would link to a list
+    // that can never fill up. `takesRegistrations` is the server's derivation
+    // from the closing date.
     if (maySeeGuests && event.takesRegistrations && !isDraft(event)) {
       actions.push({
         key: "registrations",
@@ -280,9 +221,8 @@ export function Events() {
       });
     }
 
-    // Publishing is the one thing a draft is FOR, so it is promoted inline.
-    // A draft has no chase list and no guest list: nothing can be answered
-    // or booked until it is published.
+    // Publishing is what a draft is for, so it is promoted inline. A draft has
+    // no chase list and no guest list: nothing can be answered or booked yet.
     if (mayManage && isDraft(event)) {
       actions.push({
         key: "publish",
@@ -334,39 +274,33 @@ export function Events() {
       <EventCard
         key={event.id}
         event={event}
-        // The card decides nothing about permissions — see its docblock. A
-        // player is passed no actions at all, so their card has no empty
-        // control row rather than a row of refusals.
+        // The card decides nothing about permissions. A player is passed no
+        // actions, so their card has no empty control row.
         actions={
           actions.length > 0 ? (
             <RowActions
               actions={actions}
-              // The weekly one. When the reader does not hold
-              // attendance.view_all it is simply absent, and RowActions
-              // promotes whatever is first — see its docblock.
+              // Without attendance.view_all this key is absent, and
+              // RowActions promotes whatever is first.
               inlineKey={isDraft(event) ? "publish" : "attendance"}
               rowName={event.title}
             />
           ) : null
         }
-        // NOT ON THE PAST. The API would accept the write, but a pair of
-        // buttons asking whether you are coming to a rehearsal that finished
-        // last week is an invitation to nonsense, and the chase list is where a
-        // late correction belongs.
+        // Not on the past. The API would accept the write, but a late
+        // correction belongs on the chase list.
         answer={
           showingPast || isDraft(event) ? undefined : (
             <AttendanceControls event={event} inOwed={inOwed} />
           )
         }
-        // WHAT THE SCREEN DECIDES, mirroring the API's gates for UX only —
-        // the numbers are already null for anybody who may not see them, so
-        // this suppresses an empty strip rather than protecting anything.
+        // Mirrors the API's gates for UX only: the numbers are already null for
+        // anybody who may not see them, so this only suppresses an empty strip.
         meta={
           <EventMeta
             tags={event.tags}
             isPublic={mayManage ? event.isPublic : undefined}
-            // NOT ON A DRAFT: "0/4 réponses" is a fraction of a question that has
-            // not been asked, since nobody can answer an event until it is published.
+            // Not on a draft: nobody can answer it until it is published.
             answered={
               maySeeAnswers && !isDraft(event) ? (event.answeredCount ?? undefined) : undefined
             }
@@ -386,9 +320,8 @@ export function Events() {
    * Publish a draft, or put a published event back.
    *
    * Both are conditional writes, so like the delete they start from a read of
-   * the one event: the tag it hands out is what says "the event you are
-   * publishing is the one you looked at". A refusal stays on screen next to
-   * the list, naming the missing fields or the answers in the way.
+   * the one event for its tag. A refusal stays on screen above the list,
+   * naming the missing fields or the answers in the way.
    */
   async function changePublication(row: EventResource, direction: "publish" | "unpublish") {
     publishing.clear();
@@ -419,9 +352,8 @@ export function Events() {
         setDeleting({ event: response.data, etag: entityTagOf(response) });
       }
     } catch (thrown) {
-      // Announced rather than swallowed: a dialog that never opens reads as a
-      // dead button, and the reason is usually worth knowing (the event has
-      // already gone, or the session has).
+      // Announced, because a dialog that never opens reads as a dead button
+      // (the event or the session has usually gone).
       destructive.setFromThrown(thrown);
     } finally {
       setOpening(null);
@@ -443,9 +375,9 @@ export function Events() {
       await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
       setDeleting(null);
     } catch (thrown) {
-      // The dialog STAYS OPEN, which is why the confirm button is a plain
-      // Button rather than Radix's AlertDialogAction: a 412 has to be readable
-      // where it happened, next to the event it is about.
+      // The dialog stays open, so a 412 is read next to the event it is about.
+      // That is why the confirm button is a plain Button, not Radix's
+      // AlertDialogAction.
       destructive.setFromThrown(thrown);
     }
   }
@@ -456,25 +388,14 @@ export function Events() {
         <h1 className="font-display text-3xl">{t("events.heading")}</h1>
 
         {mayManage ? (
-          /* ONE TRIGGER, NOT TWO BUTTONS, and the reason is one adjacency. At
-             103px this fits beside the 170px heading, so it costs no row of its
-             own; the full label at 175px plus the series at 144px fit on a line
-             together but never beside the heading, which is the 44px this
-             removes. Creating is a desk job — a season is planned at home, not
-             at the Werkhof on a Saturday morning — so one extra tap is the
-             cheaper half of the trade. #182.
+          /* One menu trigger instead of two buttons, so it fits beside the
+             heading on a phone and costs no row of its own (#182). Creating
+             is a desk job, so the extra tap is cheap. RowActions is
+             row-shaped, so this page-level menu does not use it.
 
-             NOT `RowActions`. That component is row-shaped: it takes a row's
-             name, promotes an `inlineKey` and counts what is left to decide
-             whether to draw a trigger at all. A page-level menu with nothing
-             inline beside it is a different thing, and widening RowActions to
-             cover both would give one component two jobs.
-
-             THE ITEMS KEEP THEIR FULL LABELS. "Un événement" would be shorter
-             and is what a menu under "Ajouter" reads like, but a menu item has
-             to stand alone for somebody moving through the menu with a screen
-             reader. This is also what keeps events.emptyHint honest: it quotes
-             t("events.addSeries"), the same key rendered here. */
+             The items keep their full labels so each stands alone for a
+             screen reader, and events.emptyHint quotes t("events.addSeries"),
+             the same key rendered here. */
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" aria-label={t("events.addTriggerAria")}>
@@ -484,12 +405,10 @@ export function Events() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {/* asChild STRAIGHT TO Link, never through ButtonLink: a menu
-                  item already carries its own styling and the 44px floor, and
-                  ButtonLink destructures a closed prop list without spreading
-                  the rest, so Radix's Slot-merged role, tabIndex and keyboard
-                  wiring would be dropped before reaching an element. The
-                  mechanism is written up at RowActions' ItemFor. */}
+              {/* asChild straight to Link, never through ButtonLink: ButtonLink
+                  does not spread unknown props, so Radix's Slot-merged role,
+                  tabIndex and keyboard wiring would be dropped. See RowActions'
+                  ItemFor. */}
               <DropdownMenuItem asChild>
                 <Link to="/events/new">{t("events.add")}</Link>
               </DropdownMenuItem>
@@ -517,17 +436,9 @@ export function Events() {
       ) : null}
 
       <div className="mt-related flex flex-wrap items-center gap-tight">
-        {/* WHICH HALF OF THE LIST, as a switch rather than as a button. It was
-            a 213px imperative sentence in the same `variant="raised-light"` as the
-            calendar toggle beside it, so it read as a third thing to DO; and it
-            carried no state at all, unlike that neighbour, so nothing announced
-            which view was on screen. #182.
-
-            NO GUARD ON THE INCOMING VALUE, and that is a property of the
-            primitive rather than an omission here: a radio group cannot be
-            cleared by its user, so `next` is always one of the two values
-            below. ui/radio-group.tsx's docblock records what ToggleGroup would
-            have cost instead. */}
+        {/* Which half of the list, as a switch so the current view is
+            announced. No guard on the incoming value: a radio group cannot be
+            cleared, so `next` is always one of the two values below. */}
         <RadioGroup
           value={showingPast ? "past" : "planning"}
           orientation="horizontal"
@@ -538,13 +449,11 @@ export function Events() {
           <ToggleOption value="past">{t("events.viewPast")}</ToggleOption>
         </RadioGroup>
 
-        {/* BESIDE THE SWITCH, NOT ON A ROW OF ITS OWN. A row costs the first
-            card 60px at 390px, which is the exact budget #182 won back and
-            members.spec.ts guards (first card above y=300). Beside the 173px
-            switch it gets ~177px, so the visible placeholder is the short
-            word and the full "Rechercher un événement" stays its accessible
-            name. It takes the rest of the row and wraps under the switch
-            only on a screen narrower than any phone this band carries. */}
+        {/* Beside the switch, not on a row of its own: a row costs the first
+            card 60px at 390px, the #182 phone budget that members.spec.ts
+            guards (first card above y=300). The narrow width is why the
+            placeholder is the short word and the full label stays the
+            accessible name. */}
         <SearchField
           id="planning-search"
           label={t("events.searchLabel")}
@@ -554,10 +463,8 @@ export function Events() {
           className="min-w-40 flex-1 sm:max-w-72"
         />
 
-        {/* md AND UP ONLY, and absent from a phone altogether rather than
-            shrunk onto one. A month grid is for somebody planning a season at
-            a desk; the list is the whole phone view and stays the default
-            everywhere. */}
+        {/* md and up only: a month grid is for planning a season at a desk,
+            and the list stays the default everywhere. */}
         {calendarEnabled ? (
           <Button
             type="button"
@@ -584,9 +491,8 @@ export function Events() {
         </div>
       ) : null}
 
-      {/* VISIBLE AT EVERY WIDTH, unlike the calendar that sets it. A narrowed
-          list whose only control has just been hidden by a resize is a
-          planning that has silently lost most of its events. */}
+      {/* Visible at every width, unlike the calendar that sets it, so a resize
+          that hides the calendar cannot leave the list silently narrowed. */}
       {day !== null ? (
         <p className="mt-related flex flex-wrap items-center gap-tight text-sm">
           <span data-testid="day-filter" className="text-ink-muted">
@@ -606,12 +512,9 @@ export function Events() {
         </p>
       ) : null}
 
-      {/* The empty branch SAYS SOMETHING. A blank screen reads as broken, and
-          this is the state a committee sees before they have entered the
-          season — the first thing they will ever see on this page. */}
-      {/* A SEARCH THAT FOUND NOTHING IS NOT AN EMPTY PLANNING, and gets
-          neither the empty planning's sentence nor the committee's hint to
-          add a series: nothing is missing, the words just matched nothing. */}
+      {/* The empty state says something, since a blank screen reads as
+          broken. A search or tag that matched nothing gets its own sentence
+          and no hint to add a series: the planning may be full. */}
       {!planning.isPending && !planning.isError && shown.length === 0 ? (
         <div className="mt-block">
           <p className="text-ink-muted">
@@ -623,13 +526,11 @@ export function Events() {
                   ? t("events.emptyPast")
                   : t("events.empty")}
           </p>
-          {/* Nor is a tag nothing carries: the planning may be full. */}
           {mayManage && !showingPast && q === "" && tag === null ? (
             <p className="mt-tight text-sm text-ink-muted">
-              {/* THE HINT QUOTES THE BUTTON BESIDE IT, so the label is read
-                  from the same key that renders it rather than written out a
-                  second time -- and the guillemets travel in the string,
-                  because French spaces them and German does not. */}
+              {/* The hint quotes the menu item from the key that renders it.
+                  The guillemets travel in the string, because French spaces
+                  them and German does not. */}
               {t("events.emptyHint", { action: t("events.addSeries") })}
             </p>
           ) : null}
@@ -653,19 +554,15 @@ export function Events() {
             {t("events.owedHeading")}
           </h2>
 
-          {/* THE COUNT CARRIES THE TO-DO SEMANTICS the move used to carry, and
-              it is a sibling of the heading rather than part of it: the h2 is
-              this region's accessible name, and folding a number into it
-              renames the region every time somebody answers. One line at
-              375px in both wordings, so the last answer of a session does not
-              reflow the list it was meant to hold still. */}
+          {/* The count carries the to-do meaning. It sits beside the heading,
+              not in it: the h2 names this region, and a number in it would
+              rename the region on every answer. Both wordings fit one line at
+              375px, so the last answer does not reflow the list. */}
           <p data-testid="owed-count" aria-live="polite" className="mt-tight text-ink-muted">
-            {/* ZERO IS ITS OWN SENTENCE, not a plural form: "Tout est
-                répondu" is not the plural of anything, and neither French nor
-                German has a `_zero` category. Above zero the catalogue
-                decides, because German moves the VERB as well as the noun --
-                "Es fehlt" against "Es fehlen" -- which the `missing === 1`
-                ternary that used to be here could never have carried. */}
+            {/* Zero is its own sentence, since neither French nor German has
+                a `_zero` plural category. Above zero the catalogue decides,
+                because German changes the verb too ("Es fehlt", "Es
+                fehlen"). */}
             {missing === 0 ? t("events.allAnswered") : t("events.owedCount", { count: missing })}
           </p>
 
@@ -675,19 +572,14 @@ export function Events() {
         </section>
       ) : null}
 
-      {/* SUPPRESSED IN THE UPCOMING VIEW ONLY, when there is no block above it
-          to be distinguished from: a lone "Planning" under a page titled
-          "Planning" is a line of chrome costing a line of screen. ALWAYS
-          PRESENT IN THE PAST VIEW, where "Événements passés" is the only
-          thing on the page saying which half is on screen (#182). AND NEVER
-          OVER AN EMPTY LIST, in either view, which is the clause that cost two
-          rounds to get right: this section and the empty-message block above
-          ARE siblings rather than alternatives, so nothing but `planned.length`
-          stops a heading rendering with no list under it — "Aucun événement
-          passé." followed by a labelled, empty "Événements passés". Note the
-          two conditions read different arrays on purpose: the message asks
-          about `events`, this asks about `planned`, so a player owed an answer
-          on everything gets neither (the block above holds it all). */}
+      {/* The heading is dropped in the upcoming view when no block above it
+          needs telling apart, since a lone "Planning" under a page titled
+          "Planning" costs a line of screen (#182). It always shows in the
+          past view, where it says which half is on screen. It never shows
+          over an empty list: this section and the empty message are
+          siblings, so only `planned.length` stops a heading with nothing
+          under it. The message reads `shown` and this reads `planned` on
+          purpose, so a player owed an answer on everything gets neither. */}
       <section className="mt-block" aria-labelledby={showHeading ? "planning-heading" : undefined}>
         {showHeading ? (
           <h2 id="planning-heading" className="font-display text-xl">
@@ -699,14 +591,10 @@ export function Events() {
         </div>
       </section>
 
-      {/*
-        NO TYPED PHRASE for an event, unlike a member. Typing a name back is
-        the price of an action that destroys somebody's history and cannot be
-        undone; an event the committee mistyped a minute ago costs them the
-        minute. What the dialog owes is the NAME of what it is about to take,
-        and what goes with it — the API deletes every attendance answer and
-        every public booking attached to the event.
-      */}
+      {/* No typed phrase for an event, unlike a member: typing a name back is
+          for an action that destroys somebody's history. The dialog names the
+          event and what goes with it, since the API deletes every attendance
+          answer and public booking attached to it. */}
       <ConfirmByTypingName
         open={deleting !== null}
         title={t("events.deleteTitle", { title: deleting?.event.title ?? "" })}

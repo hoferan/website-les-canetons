@@ -26,14 +26,14 @@ import { dateWithPreposition, historyDate, shownIn } from "./entry";
 /**
  * The delete confirmation for one history entry.
  *
- * IT READS THE ENTRY'S TAG AS THE DIALOG OPENS, because the list hands out
+ * It reads the entry's tag as the dialog opens, because the list hands out
  * none, and deletes with that tag and never a fresher one: a colleague's
  * change while the dialog is open then answers 412 instead of being deleted
  * unseen. The dialog stays open on a refusal so the 412 is read next to the
  * entry it is about.
  *
- * IT NAMES THE ENTRY, by title and date, or by date alone: on a phone the
- * dialog covers the row it was opened from.
+ * It names the entry, by title and date or by date alone, because on a phone
+ * the dialog covers the row it was opened from.
  *
  * After a delete the button it was opened from is gone, so `afterDelete`
  * says where focus goes instead.
@@ -96,8 +96,8 @@ export function DeleteHistoryEntry({
     try {
       const etag = opened.etag;
       if (etag === null) {
-        // Without a tag the delete is refused with 428; the fallback
-        // message is the honest thing to show instead.
+        // Without a tag the delete would be refused with 428, so show the
+        // fallback message instead.
         action.setFromThrown(new Error("no entity tag"));
         return;
       }

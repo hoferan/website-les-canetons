@@ -28,9 +28,9 @@ export type MemberDraft = {
  * The role list with a role granting attendance.respond added, unless one in
  * it already does.
  *
- * Found by what the role grants, never by its key (ADR 0014), so this keeps
- * working when roles become editable data and the one that answers events is
- * renamed. When several grant it, the first in the API's order is ticked.
+ * Found by what the role grants, never by its key (ADR 0014), because roles
+ * are editable data and the one that answers events can be renamed. When
+ * several grant it, the first in the API's order is ticked.
  */
 function withAnsweringRole(roleIds: number[], roles: RoleResource[]): number[] {
   const answering = roles.filter((role) => role.permissions.includes("attendance.respond"));
@@ -60,35 +60,30 @@ export function draftFrom(member: MemberResource | null): MemberDraft {
 /**
  * Create or edit one person.
  *
- * A PERSON, NOT A PROFILE FORM WITH A PASSWORD BOX. There is no password field
- * at all: issuing a credential is its own action (ADR 0016), and it is the same
- * action as resetting one. The form says so rather than leaving an empty
- * password box that would imply otherwise.
+ * There is no password field: issuing a credential is its own action, the
+ * same as resetting one (ADR 0016). The form says so instead of showing an
+ * empty password box that would imply otherwise.
  *
- * The username is REQUIRED, because every member has an account
- * (2026_09_08_000001) — the roster is the people the band tracks for events,
- * and all of them are answerable. People the band merely displays are content,
- * not members.
+ * The username is required because every member has an account: the roster
+ * is the people the band tracks for events. People the band merely displays
+ * are content, not members.
  *
- * ROLES ARE INERT WHILE CREATING, and that is the API's shape rather than a
- * simplification: POST /api/members grants only the baseline role and
- * ignores any roleIds, because granting anything else is exactly one operation
- * (PUT /members/{id}/roles) with its own lockout invariants and its own audit
- * entry. Accepting roles at creation would make the unguarded path strictly
- * easier than the guarded one.
+ * Roles are inert while creating, because that is the API's shape: POST
+ * /members grants only the baseline role and ignores any roleIds. Granting
+ * anything else is one operation (PUT /members/{id}/roles) with its own
+ * lockout invariants and audit entry, and accepting roles at creation would
+ * make the unguarded path easier than the guarded one.
  *
- * THE `disabled` ATTRIBUTE ON THOSE CHECKBOXES IS THE ONE LEGITIMATE USE in
- * this app. The rule against it exists because disabling a FOCUSED SUBMIT
- * BUTTON throws focus to <body> mid-request; a checkbox that is inert for the
- * whole lifetime of the form is a different thing, and `aria-disabled` on an
- * input does not actually stop it being toggled. The explanatory copy beneath
- * it stays — an inert control with no explanation is worse than either.
+ * The `disabled` attribute on those checkboxes is the one legitimate use in
+ * this app. The rule against it exists because disabling a focused submit
+ * button throws focus to <body> mid-request; a checkbox inert for the whole
+ * life of the form is different, and `aria-disabled` on an input does not
+ * stop it being toggled. The copy beneath explains why it is inert.
  *
- * `publicVisible` is a checkbox written out by hand rather than through
- * FormField: FormField's own comment explains why it handles no checkboxes —
- * the value is a boolean and the label belongs after the control. It carries
- * min-h-touch explicitly, because it is neither a Button nor an Input and so
- * inherits nothing.
+ * `publicVisible` is a hand-written checkbox rather than a FormField, for the
+ * reason FormField's comment gives: the value is a boolean and the label
+ * follows the control. It carries min-h-touch itself, being neither a Button
+ * nor an Input.
  */
 export function MemberForm({
   member,
@@ -124,8 +119,8 @@ export function MemberForm({
       className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
       onSubmit={(event) => {
         event.preventDefault();
-        // aria-disabled, not disabled — so this early return is what actually
-        // prevents a double submit.
+        // The button is aria-disabled, not disabled, so this early return is
+        // what prevents a double submit.
         if (busy || !formIsValid(event.currentTarget)) {
           return;
         }
@@ -179,11 +174,11 @@ export function MemberForm({
           value={draft.sectionId ?? ""}
           onChange={(event) => {
             const sectionId = event.target.value === "" ? null : Number(event.target.value);
-            // CHOOSING a register pre-ticks a role that answers events,
-            // because somebody given one almost always plays (#189). The
-            // register itself grants nothing, so it is the tick that the save
-            // turns into a grant, and it can be unticked before saving. Not on
-            // the create form, whose roles are inert until the person exists.
+            // Choosing a register pre-ticks a role that answers events,
+            // because somebody given one almost always plays. The register
+            // grants nothing; the tick is what the save turns into a grant,
+            // and it can be unticked first. Not on the create form, whose
+            // roles are inert until the person exists.
             setDraft((current) => ({
               ...current,
               sectionId,
@@ -206,13 +201,8 @@ export function MemberForm({
         </select>
       </div>
 
-      {/* A SELECT SINCE 2026-09-14, and it was free text before that. Three
-          things went wrong with typing it: a typo reached a page the band hands
-          out, nothing beside the text ranked the seats so /committee could only
-          sort alphabetically, and a typed name is content no translation layer
-          can ever reach. The list is reference data on the same rung as the
-          registers, which is why this renders exactly like the two selects
-          around it. */}
+      {/* A select over reference data, like the registers: the seats are
+          ranked for /committee, and a typo cannot reach a public page. */}
       <div className="flex flex-col gap-1">
         <label htmlFor="committeeFunctionId">{t("memberForm.committeeFunction")}</label>
         <select
@@ -238,17 +228,10 @@ export function MemberForm({
         </select>
       </div>
 
-      {/* A SECOND REGISTER FIELD, and it is not a duplicate of the one above.
-          `sectionId` is where somebody PLAYS; this is the register they TEACH. An instructor commonly
-          teaches one and plays in another, and the public band page lists them
-          under both — correctly, because both are true.
-
-          IT HAD NO CONTROL UNTIL 2026-09-14. The column shipped with the first
-          roster, the draft carried it, and Members.tsx sent it on every write —
-          but nothing ever rendered an input, so the value could only ever be whatever it
-          already was, which for every member was null. Found by André during
-          a manual pass over the public pages, on the first release where
-          anything READ it. */}
+      {/* A second register field, not a duplicate: `sectionId` is where
+          somebody plays, and this is the register they teach. An instructor
+          often teaches one and plays in another, and the public band page
+          lists them under both. */}
       <div className="flex flex-col gap-1">
         <label htmlFor="instructorOfSectionId">{t("memberForm.instructorOf")}</label>
         <select
@@ -286,10 +269,9 @@ export function MemberForm({
         <legend>{t("memberForm.rolesLegend")}</legend>
         {roles.map((role) => (
           /*
-            The hint is DESCRIBED BY, not part of the label. Wrapping both in
-            one <label> makes the control's accessible name "Team Direction
-            Organise les événements…" — the whole paragraph read out on every
-            focus, and a name nothing can query by.
+            The hint describes the checkbox and is not part of its label.
+            Wrapped in one <label>, the whole paragraph would be read out as
+            the name on every focus, and nothing could query by it.
           */
           <div key={role.id} className="flex min-h-touch items-start gap-2 py-1">
             <input

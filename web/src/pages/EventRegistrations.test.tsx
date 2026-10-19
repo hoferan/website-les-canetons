@@ -15,10 +15,8 @@ const SOUPER = 7;
 
 /**
  * jsdom implements neither half of a download: `URL.createObjectURL` is
- * undefined and clicking an anchor navigates nowhere. Stubbed rather than
- * skipped, because what these tests are about is which REQUEST is made and
- * what happens when it is refused — the browser's own save dialog is not
- * this app's behaviour to assert.
+ * undefined and clicking an anchor navigates nowhere. Stubbed, because these
+ * tests are about which request is made and what happens when it is refused.
  */
 beforeEach(() => {
   URL.createObjectURL = vi.fn(() => "blob:mock");
@@ -41,11 +39,7 @@ async function renderGuestList(
   return result;
 }
 
-/**
- * The guest list. One layout since #130 — there was a table beside these cards
- * until 2026-09-18, both in the DOM at once, and every query here had to say
- * which of the two it meant or find each guest twice.
- */
+/** The guest list. */
 function cards() {
   return screen.getByTestId("guest-cards");
 }
@@ -88,8 +82,8 @@ function cardFor(text: string) {
 test("leads with the three numbers the committee acts on", async () => {
   await renderGuestList();
 
-  // Two bookings, six people between them, and CHF 150.00 — the second
-  // booking took only an unpriced option, so it adds people and no money.
+  // Two bookings, six people and CHF 150.00: the second booking took only an
+  // unpriced option, so it adds people and no money.
   expect(screen.getByTestId("guest-counts")).toHaveTextContent("2 inscriptions");
   expect(screen.getByTestId("guest-counts")).toHaveTextContent("6 personnes");
   expect(screen.getByTestId("guest-counts")).toHaveTextContent("150.00");
@@ -105,15 +99,13 @@ test("shows what each guest ordered and what it comes to", async () => {
 });
 
 /**
- * A booking whose options carry no price owes an UNKNOWN amount, not zero.
- * "CHF 0.00" in that cell would tell the committee somebody is paying nothing.
+ * A booking whose options carry no price owes an unknown amount, not zero.
  */
 test("leaves the total empty for a booking of unpriced options", async () => {
   await renderGuestList();
 
-  // NOT `includes("Python")`: Jeanne's seeded table preference is "Avec la
-  // famille Python", so that matched HER row and the assertion passed for the
-  // wrong reason until it did not. The order is what distinguishes them.
+  // Found by the order, not `includes("Python")`: Jeanne's seeded table
+  // preference is "Avec la famille Python".
   const marc = cardFor("1 × Sans repas");
 
   expect(marc).toHaveTextContent("Python Marc");
@@ -121,29 +113,22 @@ test("leaves the total empty for a booking of unpriced options", async () => {
 });
 
 /**
- * THE TWO PERMISSIONS ON ONE SCREEN.
+ * The two permissions on one screen: `demo.committee` holds
+ * `registrations.view` but not `registrations.manage`.
  *
- * MUTATION TEST: render the row actions unconditionally and this fails.
- * `demo.committee` holds `registrations.view` as their ONLY permission — the
- * role exists so somebody can read this list — and amending or cancelling
- * somebody's booking is a different act on a stranger's personal data.
+ * Mutation test: render the row actions unconditionally and this fails.
  */
 test("a viewer gets the list and no way to change it", async () => {
   await renderGuestList("demo.committee");
 
   expect(within(cards()).getByText(/Aebischer/)).toBeInTheDocument();
-  // queryAllByRole().toHaveLength(0), NOT queryByRole().not.toBeInTheDocument():
-  // the guest list holds several bookings, so the gate this guards against
-  // losing brings back one control PER BOOKING once it does. The singular
-  // query then THROWS "found multiple elements" the moment that happens —
-  // the mutation fails for the right reason with the wrong message, which
-  // reads as a broken query rather than as a lost permission. Same fix as
-  // `expectNoSuchAction` in Events.test.tsx:70-73, and for the same reason.
+  // queryAllByRole: a lost gate brings back one control per booking, and the
+  // singular query would throw "found multiple elements" instead of failing
+  // on the count (as `expectNoSuchAction` in Events.test.tsx).
   //
-  // STILL A PAGE-WIDE QUERY, and only because this screen has two actions and
-  // RowActions therefore draws no menu. A third action turns this into a
-  // closed menu and this assertion into a tautology, because a closed Radix
-  // menu's items are not in the DOM at all.
+  // A page-wide query works only because two actions draw no menu. A third
+  // action would put them in a closed menu, whose items are not in the DOM,
+  // and make this assertion vacuous.
   expect(screen.queryAllByRole("button", { name: /^Corriger/ })).toHaveLength(0);
   expect(screen.queryAllByRole("button", { name: /^Annuler l’inscription/ })).toHaveLength(0);
 });
@@ -151,21 +136,17 @@ test("a viewer gets the list and no way to change it", async () => {
 test("somebody who may manage gets both controls on every row", async () => {
   await renderGuestList();
 
-  // ONCE, not twice. There were two of this button until #130 — one per
-  // layout, both in the DOM — and the count is worth asserting because it is
-  // what a second layout coming back would change first.
+  // Once: a second layout would double this count first.
   expect(
     screen.getAllByRole("button", { name: "Corriger l’inscription de Jeanne Aebischer" }),
   ).toHaveLength(1);
 });
 
 /**
- * THE CONDITIONAL WRITE.
+ * The conditional write, quoting the tag of the read the form opened with.
  *
- * MUTATION TEST: drop `ifMatch(etag)` from the PATCH and this fails with the
- * mocked backend's 428, exactly as the real API would answer. The tag comes
- * from the read the form opened with, which is the window the check is meant
- * to cover.
+ * Mutation test: drop `ifMatch(etag)` from the PATCH and this fails with the
+ * mocked backend's 428, as the real API would answer.
  */
 test("corrects a booking, quoting the tag the form opened with", async () => {
   const user = userEvent.setup();
@@ -217,22 +198,18 @@ test("a correction lands on the list", async () => {
   await user.type(phone, "079 999 99 99");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  // The panel closes only on a successful write, so its absence IS the
+  // The panel closes only on a successful write, so its absence is the
   // assertion that the write went through.
   await expect.poll(() => screen.queryByLabelText("Téléphone")).toBeNull();
-  // The number is now its own element and its own link, so this asserts the
-  // amended value AND that the new markup survives an amendment round-trip --
-  // strictly stronger than the toHaveTextContent on the row it replaces.
+  // The amended number, as a link dialled in E.164.
   expect(
     within(cardFor("Aebischer Jeanne")).getByRole("link", { name: "079 999 99 99" }),
-    // Dialled in E.164 since #129, read from the corrected number.
   ).toHaveAttribute("href", "tel:+41799999999");
 });
 
 /**
- * WHAT WAS ORDERED IS NOT EDITABLE, matching the API, whose PATCH has no
- * `choices` field. A form that silently omitted the thing somebody came to
- * change is a form they will look for twice, so the panel says so.
+ * What was ordered is not editable, matching the API, whose PATCH has no
+ * `choices` field, and the panel says so.
  */
 test("the correction panel says the order is not changed here", async () => {
   const user = userEvent.setup();
@@ -247,9 +224,8 @@ test("the correction panel says the order is not changed here", async () => {
 });
 
 /**
- * Cancelling asks for the surname to be typed, because the guest is NOT
- * notified: somebody outside the band loses their place, hears nothing, and
- * cannot re-book once the window has shut.
+ * Cancelling asks for the surname to be typed, because the guest is not
+ * notified and cannot re-book once the window has shut.
  */
 test("cancelling names the damage and stays inert until the name is typed", async () => {
   const user = userEvent.setup();
@@ -291,7 +267,7 @@ test("offers the four downloads and asks the server for the one that was clicked
   for (const label of ["Excel", "CSV"]) {
     await user.click(screen.getByRole("button", { name: label }));
   }
-  // The developer formats are one step further away (#115), and still there.
+  // The developer formats are one step further away, and still there.
   await user.click(screen.getByText("Autres formats"));
   for (const label of ["Markdown", "JSON"]) {
     await user.click(screen.getByRole("button", { name: label }));
@@ -303,22 +279,22 @@ test("offers the four downloads and asks the server for the one that was clicked
 test("Markdown and JSON are not beside Excel at equal weight", async () => {
   await renderGuestList();
 
-  // Inside a closed <details>: in the DOM, not visible. MUTATION TEST: move
-  // them back into FORMATS and both assertions fail.
+  // Inside a closed <details>: in the DOM, not visible. Mutation test: move
+  // them into FORMATS and both assertions fail.
   expect(screen.getByRole("button", { name: "Excel" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Markdown", hidden: true })).not.toBeVisible();
   expect(screen.getByRole("button", { name: "JSON", hidden: true })).not.toBeVisible();
 });
 
 /* ---------------------------------------------------------------------------
- * The kitchen view (#115)
+ * The kitchen view
  * -------------------------------------------------------------------------- */
 
 test("tells the kitchen how many of each option were booked", async () => {
   await renderGuestList();
 
-  // Jeanne took 2 adult and 3 child meals, Marc one "Sans repas". MUTATION
-  // TEST: count bookings instead of summing quantities and the first entry
+  // Jeanne took 2 adult and 3 child meals, Marc one "Sans repas". Mutation
+  // test: count bookings instead of summing quantities and the first entry
   // reads "1 × Repas adulte".
   const totals = within(screen.getByTestId("option-totals")).getAllByRole("listitem");
   expect(totals.map((item) => item.textContent)).toEqual([
@@ -398,10 +374,11 @@ test("flipping Payé records the payment, quoting a tag, and the list shows it",
 });
 
 /**
- * MUTATION TEST: send the opposite of the fresh read instead of what the
- * switch says, and this fails. Somebody else recorded the payment after this
- * list loaded; flipping the stale switch on must keep it paid, not take it
- * back.
+ * Somebody else recorded the payment after this list loaded; flipping the
+ * stale switch on must keep it paid, not take it back.
+ *
+ * Mutation test: send the opposite of the fresh read instead of what the
+ * switch says, and this fails.
  */
 test("flipping Payé on sends paid, even when somebody recorded it meanwhile", async () => {
   const user = userEvent.setup();
@@ -437,7 +414,7 @@ test("flipping Payé on sends paid, even when somebody recorded it meanwhile", a
 });
 
 /**
- * MUTATION TEST, three guards. Drop the `finally` that clears the optimistic
+ * Mutation test, three guards. Drop the `finally` that clears the optimistic
  * value and the switch stays on after the refusal; drop the card's alert and
  * the refusal is never read; drop the early return while busy and the second
  * click turns the switch off mid-save.
@@ -483,8 +460,8 @@ test("a booking with no price has no payment to record", async () => {
 });
 
 /**
- * MUTATION TEST: render the switch for a viewer as well and this fails. A
- * switch somebody cannot move reads as broken, so a viewer gets the pill.
+ * A switch somebody cannot move reads as broken, so a viewer gets the pill.
+ * Mutation test: render the switch for a viewer as well and this fails.
  */
 test("a viewer reads who has paid from a pill, with no switch", async () => {
   await renderGuestList("demo.committee");
@@ -512,7 +489,7 @@ test("the cancel dialog's way out does not also say Annuler", async () => {
   );
 
   const dialog = await screen.findByRole("alertdialog");
-  // MUTATION TEST: drop dismissLabel and the first assertion fails.
+  // Mutation test: drop dismissLabel and the first assertion fails.
   expect(within(dialog).queryByRole("button", { name: "Annuler" })).toBeNull();
   await user.click(within(dialog).getByRole("button", { name: "Garder l’inscription" }));
 
@@ -521,12 +498,9 @@ test("the cancel dialog's way out does not also say Annuler", async () => {
 });
 
 /**
- * The one refusal on that endpoint an operator can act on: a server without
- * ext-zip answers `503 xlsx_unavailable`, and CSV still works there.
- *
- * A plain `<a download>` could not do this. The problem document would be
- * saved as souper-inscriptions.xlsx and opened in Excel as JSON, which is why
- * the download goes through fetch.
+ * A server without ext-zip answers `503 xlsx_unavailable`, and CSV still
+ * works there. The download goes through fetch because a plain
+ * `<a download>` would save the problem document as an .xlsx file.
  */
 test("says in French when a server cannot make an Excel file", async () => {
   const user = userEvent.setup();
@@ -543,10 +517,9 @@ test("says in French when a server cannot make an Excel file", async () => {
   await renderGuestList();
   await user.click(screen.getByRole("button", { name: "Excel" }));
 
-  // A STRAIGHT apostrophe, because that is what fr.ts's error catalogue uses
-  // throughout — unlike the page copy around it, which uses the typographic
-  // one. Matching on the wrong character fails with "unable to find the text",
-  // which reads as a missing message rather than as a missing quote mark.
+  // A straight apostrophe, which fr.ts's error catalogue uses throughout,
+  // unlike the typographic one in the page copy. The wrong character fails as
+  // "unable to find the text", which looks like a missing message.
   expect(await screen.findByText(/L'export Excel n'est pas disponible/)).toBeInTheDocument();
 });
 
@@ -561,19 +534,9 @@ test("an event nobody has booked says where the form is", async () => {
 test("the guest card carries the postal address", async () => {
   await renderGuestList();
 
-  // The regression this screen actually shipped: the card rendered
-  // `booking.address` from the day it was written and the table never did, so
-  // the desktop view carried LESS than the phone view for the same row (#98).
-  // There is one layout now (#130), so the two cannot disagree — this pins the
-  // field itself, which is the half that still matters.
   expect(cardFor("Aebischer Jeanne")).toHaveTextContent("Route des Alpes 12, 1700 Fribourg");
 });
 
-/**
- * This pair of assertions used to be written out twice, once per layout, which
- * is what two hand-maintained copies of one row costs a suite. One layout, one
- * test.
- */
 test("a card's e-mail and phone are tappable and its address is not", async () => {
   await renderGuestList();
 
@@ -583,10 +546,9 @@ test("a card's e-mail and phone are tappable and its address is not", async () =
   // Corriger and Annuler are buttons, so the only links on the card are these.
   expect(links).toHaveLength(2);
   expect(links[0]).toHaveAttribute("href", "mailto:jeanne.aebischer@example.ch");
-  // The API's E.164 reading, not the typed text: see ContactLink (#129).
+  // The API's E.164 reading, not the typed text: see ContactLink.
   expect(links[1]).toHaveAttribute("href", "tel:+41791234567");
-  // The "no geo:, no maps URL" decision, pinned: a max:255 free-text address
-  // makes a confidently wrong pin.
+  // No geo: link or maps URL: a free-text address makes a wrong pin.
   expect(within(card).queryByRole("link", { name: /Route des Alpes/ })).toBeNull();
 });
 
@@ -595,9 +557,8 @@ test("the contact block reads as three separate facts, not one run-on string", a
 
   const stack = within(cardFor("Aebischer Jeanne")).getByTestId("guest-contact");
 
-  // Asserted POSITIVELY. A lone `querySelector("br")` null check passes on an
-  // empty block and on one holding a single text node, so it is never the only
-  // assertion here.
+  // Asserted positively: a lone `querySelector("br")` null check passes on an
+  // empty block and on a single text node.
   expect(stack.children).toHaveLength(3);
   expect(stack.children[0]).toHaveTextContent("jeanne.aebischer@example.ch");
   expect(stack.children[1]).toHaveTextContent("079 123 45 67");
@@ -608,8 +569,7 @@ test("the contact block reads as three separate facts, not one run-on string", a
 test("a booking with no address gets two lines, not an empty third", async () => {
   await renderGuestList();
 
-  // Marc Python's address is null. Render it unconditionally and this fails --
-  // the card's own guard, carried across correctly.
+  // Marc Python's address is null. Render it unconditionally and this fails.
   const stack = within(cardFor("Python Marc")).getByTestId("guest-contact");
 
   expect(stack.children).toHaveLength(2);
@@ -641,9 +601,8 @@ test("a phone nobody can dial stays plain text", async () => {
 
   await renderGuestList();
 
-  // The PRESENCE half is what makes this honest: assert only the absence and
-  // the test passes just as well when the override never applied or the row
-  // never rendered at all.
+  // The presence half matters: the absence alone also passes when the
+  // override never applied or the row never rendered.
   const card = cardFor("Aebischer");
 
   expect(within(card).getByText("à demander")).toBeInTheDocument();
@@ -651,16 +610,14 @@ test("a phone nobody can dial stays plain text", async () => {
 });
 
 /* ---------------------------------------------------------------------------
- * The guest list in German (#157)
+ * The guest list in German
  * -------------------------------------------------------------------------- */
 
 test("both counts pluralise in German, and the total groups the German way", async () => {
   await renderGuestList("demo.direction", SOUPER, "de-CH");
 
-  // THE HEADING AND THE PER-CARD COUNT WERE BOTH MISSED on the first pass and
-  // found by reading the rendered page: "INSCRIPTIONS" over a German list, and
-  // "5 personnes" under each booking. Neither carries an accent, so neither
-  // grep over the file saw them — the same shape as #156's "5 membres".
+  // The heading and the per-card count carry no accent, so a grep for French
+  // misses them; only the rendered page shows them.
   expect(screen.getByRole("heading", { level: 1, name: "Anmeldungen" })).toBeInTheDocument();
 
   const counts = screen.getByTestId("guest-counts");
@@ -673,20 +630,17 @@ test("both counts pluralise in German, and the total groups the German way", asy
   expect(first).toHaveTextContent("5 Personen");
   expect(first).toHaveTextContent("Tisch:");
 
-  // THE GROUP SEPARATOR IS THE READER'S. money.ts was pinned to fr-CH, so a
-  // German page grouped with a narrow space; the apostrophe is Swiss German's.
-  // 150.00 has no group separator, so the assertion that matters is in
-  // money.test.ts — this one only proves the screen goes through the
-  // locale-aware formatter at all.
+  // The group separator follows the locale (Swiss German uses the
+  // apostrophe). 150.00 has none, so money.test.ts holds the real assertion;
+  // this only proves the screen uses the locale-aware formatter.
   expect(counts).toHaveTextContent("CHF");
 });
 
-test("THE TWO ANNULERS BECOME TWO DIFFERENT GERMAN WORDS", async () => {
-  // The row button cancels a BOOKING; the amend form's button closes the form
-  // without doing anything. French calls both "Annuler" — which is why #115
-  // wants the French half renamed, and why German cannot wait for it.
+test("the two Annulers become two different German words", async () => {
+  // The row button cancels a booking; the amend form's button closes the form
+  // without doing anything. French calls both "Annuler".
   //
-  // MUTATION TEST: point registrations.cancel at common.cancel and the first
+  // Mutation test: point registrations.cancel at common.cancel and the first
   // query below finds nothing, because the row button would read "Abbrechen".
   await renderGuestList("demo.direction", SOUPER, "de-CH");
 
@@ -712,10 +666,8 @@ test("cancelling names the guest, and the dialog asks where the button labels", 
 
   await userEvent.click(button);
 
-  // TWO KEYS, NOT ONE. The button LABELS and the dialog ASKS — the French
-  // dialog ends "… ?" with the space French puts before a question mark, and
-  // the button does not. Sharing a key would have put a question mark on a
-  // button.
+  // Two keys: the button labels and the dialog asks, so only the dialog ends
+  // in a question mark (spaced in French).
   const dialog = await screen.findByRole("alertdialog");
   expect(dialog).toHaveAccessibleName(`Anmeldung von ${name} stornieren?`);
   expect(button.getAttribute("aria-label")).toBe(`Anmeldung von ${name} stornieren`);

@@ -1,23 +1,19 @@
 import { loginState, type LoginStatusFields } from "./loginStatus";
 
 /**
- * A member's account state on the roster card (#94).
+ * A member's account state on the roster card.
  *
- * PILLS CARRY THE CALL TO ACTION, the date carries reference. The first
- * version of this was one muted sentence saying both, and the committee read
- * straight past it — which is the entire failure this component exists to fix.
+ * Pills carry the call to action and the date carries reference: one muted
+ * sentence saying both gets read straight past.
  *
- * SOLID PINK, matching the inbox count badge in Layout.tsx rather than
- * inventing a token. That badge is already this app's "something needs you"
- * affordance, so a second one should speak the same language. `--color-pink`
- * is documented in styles.css as emphasis only, never a whole surface; a pill
- * is emphasis. The text on it is ink, for contrast; styles.css says why.
- * `--color-danger` is NOT borrowed here: it is error-only by
- * construction, and a member who has not logged in is not an error.
+ * Solid pink, like the inbox count badge in Layout.tsx, which is already the
+ * app's "something needs you" mark. `--color-pink` is emphasis only, never a
+ * whole surface, and a pill is emphasis; the text on it is ink for contrast
+ * (styles.css says why). `--color-danger` is error-only, and a member who has
+ * not logged in is not an error.
  *
- * IT RENDERS NOTHING FOR AN ACCOUNT IN NORMAL USE beyond the date, like
- * EventMeta renders nothing when given nothing. A roster where every row
- * carries a pill is a roster where a pill means nothing.
+ * An account in normal use shows only the date. If every row carried a pill,
+ * a pill would mean nothing.
  */
 export function LoginState({ member }: { member: LoginStatusFields }) {
   const { pills, lastLogin } = loginState(member);
@@ -30,8 +26,7 @@ export function LoginState({ member }: { member: LoginStatusFields }) {
             <span
               key={pill.key}
               data-testid={`member-login-pill-${pill.key}`}
-              // The visible label is the short one; the accessible name is the
-              // one that stands on its own, because a screen reader reaches
+              // The accessible name stands on its own: a screen reader reaches
               // `Provisoire` without the card around it to supply the noun.
               aria-label={pill.accessibleName}
               className="rounded-full bg-pink px-2 py-0.5 text-xs font-semibold text-ink"

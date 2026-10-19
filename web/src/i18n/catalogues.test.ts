@@ -15,10 +15,9 @@ function keyPaths(value: unknown, prefix = ""): string[] {
 }
 
 /**
- * TypeScript already fails the build on a missing or extra key, because de.ts
- * is declared `typeof fr`. This runs anyway, because a deep structural TS
- * error on a 250-line nested object is close to unreadable, and this prints
- * the offending paths.
+ * TypeScript already fails the build on a missing or extra key (de.ts is
+ * `typeof fr`), but its deep structural error is close to unreadable; this
+ * prints the offending paths.
  */
 test("the two catalogues carry exactly the same keys", () => {
   const french = keyPaths(fr);
@@ -29,26 +28,16 @@ test("the two catalogues carry exactly the same keys", () => {
 });
 
 /*
- * THERE IS DELIBERATELY NO "every German value differs from its French one"
- * TEST HERE.
- *
- * It was written and removed. Several values are legitimately identical in both
- * languages — "Adresse", "Option", "Galerie", "Team Direction" — so the test
- * only passes against an allowlist of them, and that allowlist has to grow with
- * every slice PR. api/tests/Feature/ApiErrorVocabularyTest.php argues the same
- * point at length about its own deleted KNOWN_GAPS constant: an exemption list
- * is an invitation to add the next entry.
- *
- * The failure it was reaching for — French pasted into de.ts and left there —
- * is caught by the German rendering assertions each slice adds beside its
- * French ones, which is where a human is already reading the copy.
+ * There is no "every German value differs from its French one" test. Several
+ * values are legitimately identical ("Adresse", "Option", "Galerie", "Team
+ * Direction"), so it would need an allowlist, and an exemption list invites
+ * the next entry. French left in de.ts is caught by the German rendering
+ * assertions beside the French ones.
  */
 
 /**
  * Each language picks the words its home page hero highlights, and a
  * highlight that is not in the sentence renders nothing without complaint.
- * So the pair is checked for both catalogues rather than trusted to whoever
- * edits one of them.
  */
 test.each([
   ["fr", fr.home],
@@ -87,34 +76,20 @@ test("German uses ss, never the German-German eszett", () => {
 });
 
 /**
- * NOTHING OUTSIDE i18n/ MAY IMPORT A CATALOGUE DIRECTLY.
- *
- * This is the third distinct way French reached a German page, and the only
- * one a reader could not see: `Inbox.tsx` and `ContactMessages.tsx` rendered
- * `fr.contactMessages.delete` and friends — thirty direct reads between them —
- * so those two screens showed French at `/de/*` however they were reached,
- * even though #151 had already written every German string they needed. The
- * German was live and unreachable.
- *
- * The other two ways are caught elsewhere: a module-scope `t()` is caught by
- * the German rendering assertions each slice adds, and French punctuation
- * composed in JSX is caught by reading the page. This one had no such
- * backstop, because the values ARE the correct French — it fails only in the
- * other language, and only at a URL nobody was asserting.
- *
- * So: import `t` from ../i18n. The catalogues are data for i18next, not
- * modules for screens.
+ * Nothing outside i18n/ may import a catalogue directly. A screen reading
+ * `fr.contactMessages.delete` shows correct French at `/de/*` too, which no
+ * French assertion can catch. Import `t` from ../i18n; the catalogues are data
+ * for i18next.
  */
 test("no screen imports a catalogue directly — t() is the only door", async () => {
-  // Synchronous reads on purpose. Awaiting about 200 readFile calls in turn
-  // means one event-loop round trip per file, and while the rest of the
-  // suite loads every worker, each round trip waits its turn: this test took
-  // 4.5 s of its 5 s timeout that way, against 20 ms read synchronously.
+  // Synchronous reads: about 200 awaited readFile calls each wait an
+  // event-loop turn while the suite loads every worker, which nearly exhausts
+  // the 5 s timeout.
   const { readdirSync, readFileSync } = await import("node:fs");
   const { join } = await import("node:path");
 
-  // process.cwd() rather than import.meta.url: vitest does not hand this
-  // file a real file:// URL, and the resolved path came out as "/web/src".
+  // process.cwd() rather than import.meta.url, which vitest does not hand
+  // this file as a real file:// URL.
   const root = join(process.cwd(), "web", "src");
 
   function sources(dir: string): string[] {

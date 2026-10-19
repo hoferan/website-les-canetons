@@ -17,13 +17,10 @@ const LeaveGuardContext = createContext<Register | null>(null);
 /**
  * The app's one navigation blocker, which every `useLeaveGuard` reports to.
  *
- * ONE BLOCKER FOR EVERY GUARD. React Router consults only the blocker that
- * registered last and warns "A router only supports one blocker at a time".
- * A page can hold several guards: the home page has a photo slot per picture,
- * each with its own upload queue. With a blocker each, a busy queue in the
- * first slot would be ignored because the idle one in the last slot is the
- * one asked. So the guards register here, and this blocker asks whether any
- * of them is active.
+ * One blocker for every guard, because React Router consults only the blocker
+ * that registered last. A page can hold several guards (the home page has a
+ * photo slot per picture, each with its own upload queue), so the guards
+ * register here and this blocker asks whether any of them is active.
  *
  * It sees every navigation the router makes: a link, Back and Forward, and a
  * call to `navigate()`. Closing or reloading the tab never reaches the router;
@@ -31,10 +28,9 @@ const LeaveGuardContext = createContext<Register | null>(null);
  * the same pathname and query is let through, because it does not leave the
  * page.
  *
- * MOUNTED ONLY WHILE A GUARD IS ACTIVE. While any blocker exists, React Router
- * warns on every `popstate` it did not create, and a fragment link such as a
- * register chip on /band makes one. With no guard active, no blocker is mounted
- * and those links are left alone.
+ * Mounted only while a guard is active: while any blocker exists, React Router
+ * warns on every `popstate` it did not create, such as a register chip's
+ * fragment link on /band.
  *
  * Needs a data router (`createBrowserRouter`), which is why App.tsx has one.
  */

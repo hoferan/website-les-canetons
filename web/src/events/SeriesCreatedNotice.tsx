@@ -18,19 +18,18 @@ function countFrom(state: unknown): number | null {
 /**
  * "5 événements créés." on the planning, after the series generator saved.
  *
- * THE COUNT ARRIVES AFTER MOUNT, into a live region that is already there.
- * A region rendered with its text already inside is not announced, so a
- * screen-reader user would land on the planning and never hear that the save
- * worked. That is also why this wraps a Notice in role="status" when Notice's
- * own docblock rules a live region out: those notices are on the page before
- * the reader arrives, and this one answers something they just did.
+ * The count arrives after mount, into a live region that is already there: a
+ * region rendered with its text inside is not announced. That is why this
+ * wraps a Notice in role="status" although Notice's docblock rules a live
+ * region out; those notices are there before the reader arrives, and this one
+ * answers something they just did.
  *
- * READ ONCE, THEN CLEARED FROM THE HISTORY ENTRY. Left there, a reload or a
- * "back" onto the planning would report the same season as created again.
+ * Read once, then cleared from the history entry, so a reload or "back" does
+ * not report the same season as created again.
  *
- * IT STAYS UNTIL DISMISSED. The season has two rehearsal variants, so the
- * link to a second series is the usual next step and must not time out
- * the way a toast does.
+ * It stays until dismissed. The season has two rehearsal variants, so the
+ * link to a second series is the usual next step and must not time out like
+ * a toast.
  */
 export function SeriesCreatedNotice() {
   const location = useLocation();
@@ -52,9 +51,9 @@ export function SeriesCreatedNotice() {
   return (
     <div role="status" className="empty:hidden mt-block">
       {count !== null ? (
-        /* A GRID, so the close control stays beside the count at 390px,
-           where the link does not fit on the same line and takes a row of
-           its own. From `sm` all three sit on one line. */
+        /* A grid, so the close control stays beside the count at 390px,
+           where the link takes a row of its own. From `sm` all three sit on
+           one line. */
         <Notice className="grid grid-cols-[1fr_auto] items-center gap-x-related sm:grid-cols-[1fr_auto_auto]">
           <span>{t("seriesForm.createdCount", { count })}</span>
           <Link

@@ -5,25 +5,16 @@ import { Button } from "@/components/ui/button";
 /**
  * A link that looks like a button.
  *
- * It exists because four separate places used to repeat the primary or secondary
- * button class string by hand on a Link. Button already carries the variants and
- * the 44px floor, and shadcn's `asChild` (Radix Slot) puts them onto whatever
- * element it wraps, so this is the whole component.
+ * Button carries the variants and the 44px floor, and `asChild` (Radix Slot)
+ * puts them onto the link, so this is the whole component.
  *
- * NO COUNT OF CALL SITES HERE, deliberately. This comment used to say "four
- * places … today" and was wrong twice over: it named three, and there are five
- * (SouperCta, NotFound, SignupThanks and /planning_repet's two Résumé links).
- * A tally in a comment is a fact that rots on the next call site; `grep` for
- * `<ButtonLink` answers it correctly forever.
+ * `external` exists so an outbound link cannot be added without
+ * rel="noreferrer": target="_blank" without it hands the destination a
+ * window.opener it can navigate.
  *
- * `external` exists so an outbound link cannot be added without rel="noreferrer":
- * target="_blank" without it hands the destination a window.opener it can
- * navigate.
- *
- * THE `external` BRANCH EMITS A RAW <a href>, which the router never sees — so
- * it does NOT get the locale basename. No call site passes it an app-internal
- * path today, and none should: an internal destination belongs in the <Link>
- * branch, or it silently leaves the visitor's locale behind.
+ * The `external` branch emits a raw <a href>, which the router never sees, so
+ * it does not get the locale basename. Never pass it an app-internal path, or
+ * the visitor silently leaves their locale.
  */
 export function ButtonLink({
   to,
@@ -41,9 +32,8 @@ export function ButtonLink({
   className?: string;
   /**
    * A fuller accessible name than the visible text, for a control repeated
-   * once per row: five links all called "Modifier" are five identical entries
-   * in a screen reader's list of links, and nothing says which event each
-   * belongs to. The visible text stays the FIRST WORDS of this string, so a
+   * once per row, so a screen reader's list of links says which row each
+   * belongs to. The visible text stays the first words of this string, so a
    * voice-control user saying "Modifier" still matches (WCAG 2.5.3).
    */
   ariaLabel?: string;

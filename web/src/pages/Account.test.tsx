@@ -7,10 +7,7 @@ import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Account } from "./Account";
 
-/**
- * Who you are, before what you can change (#100). Read from the card by its
- * labels, so a value printed under the wrong label fails.
- */
+/** Reads a value by its label, so a value under the wrong label fails. */
 function field(label: string): string {
   const card = screen.getByRole("region", { name: /identité|identität/i });
   const term = within(card).getByText(label, { selector: "dt" });
@@ -26,7 +23,7 @@ test("shows who the member is: name, identifiant, pupitre, seat and roles", asyn
   expect(field("Identifiant")).toBe("demo.committee");
   expect(field("Pupitre")).toBe("Trombones");
   expect(field("Fonction au comité")).toBe("Responsable intendance");
-  // Translated by key through roleLabel, never the raw key.
+  // Translated by key through roleName, never the raw key.
   expect(field("Rôles")).toBe("Comité, Membre, Musicien·ne");
 });
 
@@ -39,8 +36,7 @@ test("says so when the member sits on no committee seat", async () => {
 });
 
 test("says so when the session holds no role at all", async () => {
-  // No seeded persona is role-less any more: each one holds the baseline. The
-  // card still has to handle an empty list rather than print a blank.
+  // Every seeded persona holds the baseline role, so the empty list is forced.
   setMockUser("demo.young");
   server.use(
     http.get("/api/v1/me", () =>
@@ -73,9 +69,8 @@ test("names a role by what the committee typed, in the page's language", async (
 });
 
 test("says so when the member is in no register, without claiming they do not play", async () => {
-  // A register is display only (#192). Ulysse holds musician and answers for
-  // events in no register, so "Ne joue pas" would be wrong for him; the
-  // roster's own words are not.
+  // A register is display only (#192). Ulysse holds musician and answers
+  // events in no register, so "Ne joue pas" would be wrong for him.
   setMockUser("demo.unplaced");
   await renderWithSession(<Account />, { route: "/account" });
 
@@ -93,11 +88,7 @@ test("shows the identity card in German", async () => {
   expect(field("Rollen")).toBe("Vorstand, Mitglied, Musiker·in");
 });
 
-/**
- * #125: changing the password is rare, so it gets one row and a button, and
- * the form lives on its own page. Asserting the absence of every password
- * field is what stops the form creeping back onto this page.
- */
+/** The absence of any password field keeps the form off this page. */
 test("offers the password change as a link to its own page, with no field here", async () => {
   setMockUser("demo.player");
   await renderWithSession(<Account />, { route: "/account" });

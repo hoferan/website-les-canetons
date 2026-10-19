@@ -9,10 +9,7 @@ import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Members } from "./Members";
 
-/**
- * Every assertion here depends on the roster having arrived, so the helper
- * waits for it rather than each test remembering to.
- */
+/** Renders the roster and waits for it to arrive. */
 async function renderRoster(locale: Locale = "fr") {
   setMockUser("demo.direction");
   const result = await renderWithSession(<Members />, { route: "/members", locale });
@@ -20,12 +17,7 @@ async function renderRoster(locale: Locale = "fr") {
   return result;
 }
 
-/**
- * The roster. ONE LAYOUT since #130 — cards at every width, in a grid that
- * widens. There was a table above `md` as well until 2026-09-18, and since
- * jsdom applies no CSS every person appeared twice in this file, so every
- * query had to say which of the two it meant.
- */
+/** The roster's cards, the one layout at every width. */
 function cards() {
   return within(screen.getByTestId("roster-cards"));
 }
@@ -47,12 +39,10 @@ function lastNamesIn(scope: ReturnType<typeof within>): string[] {
 
 /**
  * Opens one person's overflow menu and returns it, so `Mot de passe` and
- * `Supprimer` — which moved behind it — can be queried inside.
+ * `Supprimer` can be queried inside.
  *
- * Takes the trigger's WHOLE accessible name rather than building it from
- * French, the same reason Events.test.tsx's own `openMenuFor` does: a German
- * test below opens the same menu by its German name, and a helper that
- * concatenated "Autres actions pour" itself could never serve it.
+ * Takes the trigger's whole accessible name, so the German tests below can
+ * open the same menu by its German name.
  */
 async function openMenuFor(
   user: ReturnType<typeof userEvent.setup>,
@@ -75,10 +65,8 @@ test("lists everybody on the roster, ordered by name", async () => {
 });
 
 test("the heading counts the roster the server holds, not the rows on screen", async () => {
-  // `meta.total` rather than members.length. The two agree today, and the
-  // reason to read the server's number is that they would stop agreeing the
-  // moment this list were ever cut short — at which point counting what
-  // arrived would quietly under-report the band.
+  // `meta.total` rather than members.length, which would under-report the
+  // band if the list were ever cut short.
   await renderRoster();
 
   expect(screen.getByTestId("roster-count")).toHaveTextContent("5 membres");
@@ -87,8 +75,7 @@ test("the heading counts the roster the server holds, not the rows on screen", a
 test("shows each person's register, and says plainly when they are in none", async () => {
   await renderRoster();
 
-  // LABELLED, since the column head that said what this is went with the
-  // table (#130).
+  // Labelled, since a card has no column heads.
   expect(rowFor("Player")).toHaveTextContent("Pupitre : Cloches");
   // Dominique organises and does not play, so there is no register. A blank
   // line reads as missing data; this is a fact about them.
@@ -99,11 +86,8 @@ test("shows roles by their French label, never the key or the permissions", asyn
   await renderRoster();
 
   const direction = rowFor("Direction");
-  // "why does she have this?" is answered with "because she is in Team
-  // Direction" (ADR 0014) — never the key "direction", and never the raw
-  // permission strings.
-  // On the whole line, because the card labels its fields — "Rôles : Team
-  // Direction" — since #130 took the column heads away with the table.
+  // "Why does she have this?" is answered with "because she is in Team
+  // Direction" (ADR 0014), never the key or the raw permission strings.
   expect(direction).toHaveTextContent("Rôles : Team Direction");
   expect(direction.textContent).not.toContain("members.manage");
 
@@ -131,8 +115,8 @@ test("shows the new person's password once, as text that can be read aloud", asy
   await userEvent.type(screen.getByLabelText("Identifiant"), "lea.nouvelle");
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  // The fixed value the mock returns. Shown as TEXT — not in a password field,
-  // which would defeat the entire point of a credential meant to be dictated.
+  // The fixed value the mock returns, shown as text: a credential meant to be
+  // dictated has no business in a password field.
   const shown = await screen.findByTestId("generated-password");
   expect(shown).toHaveTextContent("kanu-7rex-mp34");
   expect(shown.tagName).not.toBe("INPUT");
@@ -148,8 +132,7 @@ test("reports a taken username against its own field, in French", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
   expect(await screen.findByText("Identifiant est déjà utilisé")).toBeInTheDocument();
-  // The panel stays OPEN: a rejected username has to be corrected where it was
-  // typed, and closing the form would throw away everything else too.
+  // The panel stays open, so nothing else typed is thrown away.
   expect(screen.getByLabelText("Prénom")).toHaveValue("Autre");
 });
 
@@ -157,10 +140,8 @@ test("disables the role checkboxes on the create form, and says roles are assign
   await renderRoster();
   await userEvent.click(screen.getByRole("button", { name: "Ajouter une personne" }));
 
-  // The API ignores roleIds on create deliberately — granting a permission is
-  // exactly one operation, and accepting it here would make the unguarded path
-  // easier than the guarded one. An inert checkbox with no explanation is
-  // worse than either, so the form says so.
+  // The API ignores roleIds on create: granting a permission is one guarded
+  // operation. An inert checkbox needs an explanation.
   const role = screen.getByLabelText("Team Direction");
   expect(role).toBeDisabled();
   expect(screen.getByText(/après avoir enregistré/i)).toBeInTheDocument();
@@ -179,9 +160,8 @@ test("assigns a role to somebody who already exists", async () => {
 });
 
 test("says plainly when a person holds no role at all", async () => {
-  // The API refuses to take the baseline from anybody, so no screen can leave
-  // an account role-less. A hand edit in the database still can, and the
-  // roster has to say so instead of printing an empty line.
+  // The API never takes the baseline from anybody, but a hand edit in the
+  // database can, and the roster must not print an empty line.
   setMemberRoles(2, []);
   await renderRoster();
 
@@ -247,7 +227,7 @@ test("the create form pre-ticks nothing, because its roles are not saved", async
 });
 
 test("opening the form ticks nothing by itself", async () => {
-  // Only CHOOSING a register pre-ticks the role. Somebody already in one
+  // Only choosing a register pre-ticks the role. Somebody already in one
   // without it may be that way on purpose, and opening the form to fix a
   // typo in their name must not grant them anything.
   setMemberRoles(2, [3]);
@@ -270,9 +250,8 @@ test("only a register without a role that answers events raises the warning", as
 });
 
 test("the baseline role stays ticked and cannot be unticked", async () => {
-  // The API answers 409 to a role list without it. A checkbox that can be
-  // unticked only to have the save refused is a trap, so the form does not
-  // offer it.
+  // The API answers 409 to a role list without it, so the form does not offer
+  // an untick the save would refuse.
   await renderRoster();
 
   await userEvent.click(
@@ -286,11 +265,10 @@ test("the baseline role stays ticked and cannot be unticked", async () => {
 });
 
 test("changing a name and a role in one save does both", async () => {
-  // THE CHAINED TAG. Roles travel on their own endpoint, so this save is two
-  // conditional writes: the PATCH moves the member's tag, and the roles call
-  // that follows has to quote the tag the PATCH handed BACK. Sending the one
-  // the form opened with answers 412 and the role change is silently lost —
-  // silently, because the name was already saved by then.
+  // The chained tag. Roles travel on their own endpoint, so this save is two
+  // conditional writes, and the roles call has to quote the tag the PATCH
+  // handed back. The form's original tag answers 412, and the role change is
+  // lost silently because the name was already saved.
   await renderRoster();
 
   await userEvent.click(
@@ -310,10 +288,8 @@ test("changing a name and a role in one save does both", async () => {
 });
 
 test("seats somebody on the committee by picking from the list, not by typing", async () => {
-  // FREE TEXT UNTIL 2026-09-14, and all three of its problems were invisible
-  // from this screen: a typo here was published on a page the band hands out,
-  // nothing beside the text ranked the seats so /committee could only sort
-  // alphabetically, and a typed name is content no translation layer reaches.
+  // A list, not free text: a typo would be published on /committee, and the
+  // list carries the rank /committee sorts by.
   await renderRoster();
 
   await userEvent.click(
@@ -325,10 +301,9 @@ test("seats somebody on the committee by picking from the list, not by typing", 
   await userEvent.selectOptions(seat, "Présidente");
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  // RE-OPENING THE FORM IS THE ROUND TRIP. Nothing on the roster table renders
-  // the seat, so reading it back is the only way to prove the value survived
-  // the PATCH — whose allow-list mirrors what UpdateMemberRequest validates,
-  // and would silently drop a field the API does not accept.
+  // Re-opening the form is the round trip: the card does not render the
+  // seat, and the mock's PATCH allow-list mirrors UpdateMemberRequest, so a
+  // field the API does not accept would be dropped silently.
   await screen.findByRole("button", { name: "Ajouter une personne" });
   await userEvent.click(
     within(rowFor("Player")).getByRole("button", { name: "Modifier Perrine Player" }),
@@ -338,9 +313,8 @@ test("seats somebody on the committee by picking from the list, not by typing", 
 });
 
 test("refuses to save over a change somebody else made while the form was open", async () => {
-  // THE WHOLE POINT OF If-Match (ADR 0013), at the screen. Two administrators have the roster
-  // open, one corrects a register while the other is typing a name, and before
-  // this the second save discarded the first silently.
+  // If-Match at the screen (ADR 0013): two administrators have the roster
+  // open, and the second save must not silently discard the first.
   await renderRoster();
 
   await userEvent.click(
@@ -362,8 +336,8 @@ test("refuses to save over a change somebody else made while the form was open",
 
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  // In French, from the `if_match_failed` token — and the form stays open, so
-  // the typing is not thrown away along with the save.
+  // In French, from the `if_match_failed` token, and the form stays open so
+  // the typing is not thrown away.
   expect(await screen.findByText(/modifié cet élément entre-temps/i)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Enregistrer" })).toBeInTheDocument();
 });
@@ -375,13 +349,10 @@ test("names the person and the consequence before deleting them", async () => {
   const menu = await openMenuFor(user, "Autres actions pour Perrine Player");
   await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Perrine Player" }));
 
-  // "Êtes-vous sûr ?" is a question nobody reads. The name is what makes the
-  // dialog worth stopping for.
   const dialog = await screen.findByRole("alertdialog");
   expect(dialog).toHaveAccessibleName(expect.stringContaining("Perrine Player"));
   expect(within(dialog).getByText(/accès au site/i)).toBeInTheDocument();
-  // And what else goes with them. A member's answers cascade, so the planning
-  // loses them, and the committee should read that before they press.
+  // A member's answers cascade, so the planning loses them.
   expect(within(dialog).getByText(/réponses de présence seront effacées/i)).toBeInTheDocument();
 });
 
@@ -393,9 +364,8 @@ test("requires the person's name to be typed before deleting", async () => {
   await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Perrine Player" }));
   const dialog = await screen.findByRole("alertdialog");
 
-  // ADR 0017: the server no longer re-authenticates a delete, so this typed
-  // confirmation is the ONLY guard against a mis-aimed tap. Pressing the button
-  // with the box empty must do nothing at all.
+  // The server does not re-authenticate a delete (ADR 0017), so the typed
+  // confirmation is the only guard against a mis-aimed tap.
   await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
   expect(screen.getByRole("alertdialog")).toBeInTheDocument();
@@ -418,11 +388,8 @@ test("deletes the person once their name is typed", async () => {
 
 /**
  * Members.tsx passes `confirmPhrase` to `ConfirmByTypingName`, unlike the
- * planning's own delete dialog — so this is the one place in the branch that
- * exercises the menu -> dialog focus handoff against a field somebody actually
- * has to type into. The planning's equivalent test says explicitly
- * why it could carry no field: "typing a title back is friction with nothing
- * behind it."
+ * planning's delete dialog, so this is where the menu-to-dialog focus handoff
+ * meets a field somebody has to type into.
  */
 test("the delete dialog opens from the menu with a field that accepts the typed name", async () => {
   await renderRoster();
@@ -432,9 +399,8 @@ test("the delete dialog opens from the menu with a field that accepts the typed 
   await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Perrine Player" }));
 
   const dialog = await screen.findByRole("alertdialog");
-  // THE MENU IS GONE, not merely closed in spirit: a dialog placed inside the
-  // menu's own subtree would unmount with it, which is what the equivalent
-  // planning test guards against by a different route.
+  // The menu is gone: a dialog placed inside the menu's subtree would unmount
+  // with it.
   await expect.poll(() => screen.queryByRole("menu")).toBeNull();
 
   const confirm = within(dialog).getByRole("button", { name: "Supprimer" });
@@ -455,10 +421,8 @@ test("keeps the person and explains, when the server refuses", async () => {
   await user.type(within(dialog).getByLabelText(/Dominique Direction/), "Dominique Direction");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
-  // The API's cannot_delete_self, translated. The UI does NOT pre-empt this:
-  // the server owns the invariant and the screen reports what it says, because
-  // a duplicated rule drifts and then the two disagree in front of somebody
-  // trying to fix a lockout.
+  // The API's cannot_delete_self, translated. The server owns the invariant;
+  // a copy of the rule here would drift.
   expect(
     await screen.findByText("Vous ne pouvez pas supprimer votre propre compte."),
   ).toBeInTheDocument();
@@ -470,19 +434,15 @@ test("keeps the person and explains, when the server refuses", async () => {
 /**
  * A row goes busy while the read behind `Modifier` and `Supprimer` is in
  * flight (`opening === member.id` in Members.tsx), and both carry
- * `disabled: busy` on their `RowAction`. This proves the guard survives being
- * reached by keyboard, not only by a disabled click handler's early return.
- *
- * MUTATION TEST: drop `disabled: busy` from the "delete" action in
- * MemberActions and this fails — Radix stops excluding the item from roving
- * focus, so the second ArrowDown lands on it.
+ * `disabled: busy` on their `RowAction`, so the guard holds by keyboard too.
+ * Without `disabled: busy` on the delete action, Radix no longer skips the
+ * item in roving focus and the second ArrowDown lands on it.
  */
 test("does not delete while a mutation is in flight, by keyboard either", async () => {
   await renderRoster();
   const user = userEvent.setup();
 
-  // Held open, and never released: nothing here needs the read to finish,
-  // only for `opening` to stay set to Perrine's id for the rest of the test.
+  // Never released, so `opening` stays set to Perrine's id.
   server.use(http.get("/api/v1/members/2", () => new Promise(() => {})));
 
   await user.click(
@@ -511,8 +471,8 @@ test("issues a replacement password and shows it once", async () => {
 });
 
 /**
- * The text Radix points `aria-describedby` at — the dialog's description, as
- * distinct from its title and the confirmation field's label, both of which
+ * The text Radix points `aria-describedby` at: the dialog's description, as
+ * distinct from its title and the confirmation field's label, which both
  * carry the person's name on purpose.
  */
 function descriptionOf(dialog: HTMLElement): string {
@@ -525,16 +485,10 @@ function descriptionOf(dialog: HTMLElement): string {
 }
 
 /**
- * #91: both dialogs interpolated a first name into a fixed masculine participle
- * — "Amélie sera déconnecté partout" — and four of the seven members seeded on
- * TEST are women.
- *
- * The fix writes round the agreement rather than asking the roster for a gender
- * field the band has no reason to hold, so what each test pins is that the
- * sentence agrees with "personne" and carries NO name at all. The second
- * assertion is the one that survives a copy rewrite: a name back in the
- * description is a masculine participle back with it, because that is the only
- * reason to put one there.
+ * #91: a first name in the description needs a participle agreeing with the
+ * person's gender, which the roster does not hold. Each test pins that the
+ * sentence agrees with "personne" and carries no name; the second assertion
+ * survives a copy rewrite.
  */
 test("the reset dialog does not agree in the masculine over the person it names", async () => {
   await renderRoster();
@@ -563,13 +517,9 @@ test("the delete dialog does not agree in the masculine over the person it names
 });
 
 /**
- * #94. The roster said nothing about whether a person could actually log in,
- * so a member still holding a committee-issued password looked identical to
- * one using the site every week.
- *
- * The first version said it in a muted sentence and was read straight past,
- * so what an administrator may have to ACT on is a pill and the rest is
- * reference text. These tests pin that split, not just the words.
+ * #94: the roster shows whether a person can actually log in. What an
+ * administrator may have to act on is a pill, and the rest is reference text;
+ * these tests pin that split, not just the words.
  */
 test("an account in normal use raises no pill, only its last login", async () => {
   await renderRoster();
@@ -597,7 +547,7 @@ test("an account nobody has ever used is pilled, and reports no date", async () 
 test("a member still on a committee-issued password gets both pills", async () => {
   await renderRoster();
 
-  // demo.both — the one fixture member still on a committee-issued password;
+  // demo.both, the one fixture member still on a committee-issued password;
   // see initialMembers() in mocks/handlers.ts for why.
   const row = within(rowFor("Both"));
 
@@ -623,35 +573,25 @@ test("the card's labels are German, and their colons lose the French space", asy
   expect(screen.getByRole("heading", { level: 1, name: "Mitglieder" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Person hinzufügen" })).toBeInTheDocument();
 
-  // FOUND BY READING THE RENDERED PAGE, not the diff: this said "5 membres"
-  // beside a German heading for the whole first pass. It was
-  // `rosterCount > 1 ? "s" : ""` — the French rule, which is right in French
-  // ("0 membre") and wrong in German ("0 Mitglieder"). No accented character
-  // in it, so no grep over the file would have found it either.
+  // The catalogue pluralises: French counts zero as singular ("0 membre"),
+  // German does not ("0 Mitglieder").
   expect(screen.getByTestId("roster-count")).toHaveTextContent("5 Mitglieder");
 
   const card = rowFor("Player");
-  // "Benutzername:", not "Benutzername :". These were `Identifiant&nbsp;:`
-  // composed in JSX, which is French typography reaching a German card — the
-  // same bug as #152's Tbd separator, found in a fourth place.
+  // "Benutzername:", not "Benutzername :": no French typography on a German
+  // card.
   expect(card).toHaveTextContent("Benutzername: demo.player");
   expect(card).toHaveTextContent("Register: Cloches");
   // Every seeded account holds the member role, and Perrine plays in a register.
   expect(card).toHaveTextContent("Rollen: Mitglied, Musiker·in");
 });
 
-test("EVERY ACCESSIBLE NAME STILL CARRIES THE PERSON, in German", async () => {
-  // The property Members.tsx's MemberActions docblock demands: a screen-reader
-  // user must hear which row they are on, not the twelfth bare "Löschen" on
-  // the page. Translating the three actions is exactly where that gets lost,
-  // because the shortest German word is the tempting one.
+test("every accessible name still carries the person, in German", async () => {
+  // A screen-reader user must hear which row they are on, not the twelfth
+  // bare "Löschen" (see MemberActions in Members.tsx).
   //
-  // `Bearbeiten` stays a page-level query, being the designated inline
-  // action; the other two moved behind the overflow menu (#118) and are read
-  // from inside it once open.
-  //
-  // MUTATION TEST: swap any of these for a bare t("common.delete") and the
-  // matching query finds two items instead of one, once the menu is open.
+  // `Bearbeiten` is the inline action; the other two sit behind the overflow
+  // menu (#118) and are read from inside it once open.
   await renderRoster("de-CH");
   const user = userEvent.setup();
 
@@ -676,20 +616,18 @@ test("the delete dialog reuses the button's own key for its title", async () => 
   await user.click(within(menu).getByRole("menuitem", { name: "Perrine Player löschen" }));
 
   const dialog = await screen.findByRole("alertdialog");
-  // ONE KEY, TWO PLACES — the button's accessible name and the dialog's title
-  // are members.deleteTitle, so they cannot come to disagree.
+  // The button's accessible name and the dialog's title are both
+  // members.deleteTitle, so they cannot disagree.
   expect(dialog).toHaveAccessibleName("Perrine Player löschen");
 
-  // The typed confirmation, from common.typeToConfirm (#167) — its first
-  // German outing, since the planning's delete asks for no phrase.
+  // The typed confirmation, from common.typeToConfirm (#167); the planning's
+  // delete asks for no phrase.
   expect(
     within(dialog).getByLabelText("Tippen Sie «Perrine Player», um zu bestätigen"),
   ).toBeInTheDocument();
 
-  // "Diese Person", not the name: the title already says who, and saying it
-  // twice in one dialog reads worse in both languages. In French the same
-  // sentence additionally avoids a participle agreeing over the person (#91)
-  // — see the two tests above, which are unchanged.
+  // "Diese Person", not the name: the title already says who. In French the
+  // same sentence also avoids a gendered participle (#91).
   const description = descriptionOf(dialog);
   expect(description).toContain("Diese Person wird aus der Liste entfernt");
   expect(description).not.toContain("Perrine");
@@ -718,9 +656,8 @@ test("the reset dialog and the one-time password reveal are German", async () =>
 test("the login pills render on the card in German", async () => {
   await renderRoster("de-CH");
 
-  // Perrine's fixture has never logged in, which is the state the pills exist
-  // to make the committee look at (#94). Not Nadia: a parent uses her login
-  // (#148).
+  // Perrine's fixture has never logged in, the state the pills exist to flag
+  // (#94). Not Nadia: a parent uses her login (#148).
   const card = rowFor("Player");
   expect(within(card).getByTestId("member-login-pill-never-used")).toHaveTextContent("Nie benutzt");
   expect(within(card).getByTestId("member-login-pill-never-used")).toHaveAccessibleName(

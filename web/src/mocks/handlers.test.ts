@@ -35,16 +35,15 @@ async function rowsOf<T>(url: string): Promise<T[]> {
 }
 
 /**
- * The mocked backend is a layer the whole suite and the whole dev loop rest on,
- * so it gets its own tests. Going through the GENERATED client rather than
- * fetch() directly is the point: it exercises the same path the app takes,
- * including the mutator's envelope.
+ * The whole suite and the dev loop rest on the mocked backend, so it gets its
+ * own tests. They go through the generated client rather than fetch() where
+ * they can, to exercise the path the app takes, mutator included.
  */
 
 test("GET /config answers with the shape the boot gate reads", async () => {
   const result = await configShow();
-  // Narrowed rather than asserted-then-read: the declared union now includes
-  // the 503 every route behind RunPendingMigrations can answer with, so
+  // Narrowed rather than asserted-then-read: the declared union includes the
+  // 503 every route behind RunPendingMigrations can answer with, so
   // `result.data` is not a config until `status` picks a branch.
   expect(result.status).toBe(200);
   if (result.status !== 200) {
@@ -83,7 +82,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
       "members.manage",
       "registrations.view",
       "registrations.manage",
-      // Granted by 2026_09_15_000002, alongside the seeded set above.
+      // Granted by migration 2026_09_15_000002.
       "messages.view",
       "messages.manage",
       "history.manage",
@@ -95,9 +94,9 @@ test("GET /me reports whoever setMockUser logged in", async () => {
   });
 });
 
-// The whole reason /api/v1/contact is hand-written is its reject branch — both
-// failure tests in Contact.test.tsx replace the handler outright, so nothing
-// else exercised it.
+// /api/v1/contact is hand-written for its reject branch, and both failure
+// tests in Contact.test.tsx replace the handler outright, so this is the test
+// that exercises it.
 test("POST /contact rejects a missing field the way the real API does", async () => {
   const error = (await contactStore(
     {
@@ -107,28 +106,27 @@ test("POST /contact rejects a missing field the way the real API does", async ()
       subject: "",
       message: "Coin",
       // The honeypot. Present and empty is what a person's browser sends; the
-      // generated type now requires it, which is the point — a client that
-      // omits it used to compile and then 422 on every submission.
+      // generated type requires it, so a client cannot compile without it and
+      // then 422 on every submission.
       website: "",
-      // THE GUARD RUNS BEFORE VALIDATION, so a bare POST never reaches the
-      // missing-field branch this test is about — it is refused as automated
-      // first. That ordering is not a detail of the mock: `npm run smoke`
-      // asserted a 400 here for a week and was getting the 422.
+      // The guard runs before validation, as on the server, so a bare POST
+      // is refused as automated before it reaches the missing-field branch
+      // this test is about. Hence the headers.
     },
     publicWriteHeaders("mock-form-token", "handlers-test-idempotency-key"),
   ).catch((thrown: unknown) => thrown)) as ApiError;
 
   expect(error).toBeInstanceOf(ApiError);
   // 400, not Laravel's default 422: every validation failure in this API goes
-  // through ApiError::validation(), which ends `self::json(400, ...)`.
+  // through ApiError::validation(), which answers 400.
   expect(error.status).toBe(400);
   expect(error.code).toBe("validation_failed");
   expect(error.fields).toEqual([{ field: "subject", reason: "required" }]);
 });
 
 /**
- * The other half of that ordering, pinned so the mock cannot quietly start
- * validating first and let a screen ship having never sent a form token.
+ * The other half of that ordering, so the mock cannot start validating first
+ * and let a screen ship without ever sending a form token.
  */
 test("POST /contact refuses a submission with no form token before it validates", async () => {
   const error = (await contactStore({
@@ -197,9 +195,9 @@ test("every member on the roster has an account", async () => {
   setMockUser("demo.direction");
   const roster = await rowsOf<{ username: string }>("/api/v1/members");
 
-  // 2026_09_08_000001 made credentials NOT NULL: people the band merely
-  // displays are content, not members. A mock carrying a login-less row would
-  // let a screen be built around a state the database cannot hold.
+  // Migration 2026_09_08_000001 makes credentials NOT NULL: people the band
+  // only displays are content, not members. A login-less row in the mock
+  // would let a screen be built around a state the database cannot hold.
   expect(roster.every((member) => member.username.length > 0)).toBe(true);
 });
 
@@ -207,7 +205,7 @@ test("refuses the roster to a member without members.manage", async () => {
   setMockUser("demo.player");
   const response = await fetch("/api/v1/members");
 
-  // 403, not 401: they ARE logged in. The real routes get this split by pairing
+  // 403, not 401: they are logged in. The real routes get this split by pairing
   // auth:sanctum with permission:, and the SPA's guards depend on it.
   expect(response.status).toBe(403);
   expect(((await response.json()) as { code: string }).code).toBe("access_denied");
@@ -263,7 +261,7 @@ test("forgets a created member between tests", async () => {
 
 test("refuses to delete the last member who can administer members", async () => {
   setMockUser("demo.direction");
-  // demo.both holds `direction` too, so remove them first — then Dominique is
+  // demo.both holds `direction` too, so remove them first; then Dominique is
   // the last holder and deleting anyone who holds it is refused.
   await fetch("/api/v1/members/3", {
     method: "DELETE",
@@ -274,8 +272,8 @@ test("refuses to delete the last member who can administer members", async () =>
     headers: await ifMatchFor("/api/v1/members/1"),
   });
 
-  // 409, not 403: the caller HAS the permission. The request conflicts with
-  // the state of the system.
+  // 409, not 403: the caller has the permission, and the request conflicts
+  // with the state of the system.
   expect(response.status).toBe(409);
   expect(((await response.json()) as { code: string }).code).toBe(
     "cannot_remove_last_administrator",
@@ -321,10 +319,9 @@ test("refuses a role list without the baseline role", async () => {
 
 test("a destructive roster call needs no password, only the session", async () => {
   setMockUser("demo.direction");
-  // ADR 0017: the cookie is trusted here, as it already is for reading the
-  // whole roster and editing anyone. Mistake-prevention is the type-the-name
-  // confirmation in the UI. If re-authentication is ever reintroduced on the
-  // roster, this test is what says so.
+  // ADR 0017: the cookie is trusted here, as it is for reading the whole
+  // roster and editing anyone. Mistake-prevention is the type-the-name
+  // confirmation in the UI.
   const response = await fetch("/api/v1/members/2", {
     method: "DELETE",
     headers: await ifMatchFor("/api/v1/members/2"),
@@ -358,10 +355,9 @@ test("changing your own password does need the current one", async () => {
  * -------------------------------------------------------------------------- */
 
 test("every mocked collection carries the envelope the real API sends", async () => {
-  // The mock earns its keep by RESHAPING the way the server does. A handler
-  // still answering a bare array would let every screen typecheck against a
-  // shape the API stopped sending, and the component tests would then agree
-  // with the mock rather than with the contract.
+  // A handler answering a bare array would let every screen typecheck against
+  // a shape the API does not send, and the component tests would agree with
+  // the mock rather than with the contract.
   setMockUser("demo.direction");
 
   for (const url of ["/api/v1/members", "/api/v1/sections", "/api/v1/roles", "/api/v1/events"]) {
@@ -406,8 +402,8 @@ test("the register list is the one the migration seeds", async () => {
   setMockUser("demo.direction");
   const sections = await rowsOf<{ name: string }>("/api/v1/sections");
 
-  // Mirrors 2026_09_07_000001 exactly. A synthetic list here would mean every
-  // mocked screenshot showed pupitres no server has.
+  // Mirrors migration 2026_09_07_000001, so mocked screenshots show the
+  // registers a real server has.
   expect(sections.map((section) => section.name)).toEqual([
     "Batteurs",
     "Grosses-caisses",
@@ -449,10 +445,10 @@ test("editing a member changes only what the real request validates", async () =
   const response = await fetch("/api/v1/members/2", {
     method: "PATCH",
     headers: { "Content-Type": "application/json", ...(await ifMatchFor("/api/v1/members/2")) },
-    // roleIds is not an editable field — it has its own endpoint, its own
-    // invariants and its own audit. Laravel's validated() drops it silently,
-    // so the mock must too, or a screen could be built on a write that does
-    // nothing at all in production.
+    // roleIds is not an editable field here: it has its own endpoint and
+    // invariants. Laravel's validated() drops it silently, so the mock must
+    // too, or a screen could be built on a write that does nothing in
+    // production.
     body: JSON.stringify({ sectionId: null, roleIds: [1] }),
   });
   const member = (await response.json()) as {
@@ -549,8 +545,8 @@ test("patching only the end still compares against the stored start", async () =
   // request carries no startsAt, so a mock comparing input against input
   // would pass it vacuously.
   setMockUser("demo.direction");
-  // A PUBLISHED, dated event: the list now opens with the drafts, and an
-  // undated one has no stored start to compare against.
+  // A published, dated event: the list opens with the drafts, and an undated
+  // one has no stored start to compare against.
   const planning = await rowsOf<{ id: number; publishedAt: string | null }>("/api/v1/events");
   const target = planning.find((event) => event.publishedAt !== null);
 
@@ -622,11 +618,10 @@ test("forgets a created event between tests", async () => {
   setMockUser("demo.direction");
   const before = (await rowsOf<unknown>("/api/v1/events")).length;
 
-  // If resetMockState() misses the events store, an event created by an
-  // earlier test leaks into this count and it fails only when the whole file
-  // runs — which reads as flakiness and is not.
-  // Six upcoming of the seven published; the seventh is the past one. A
-  // manager's list also carries the two seeded drafts.
+  // If resetMockState() misses the events store, an earlier test's event
+  // leaks into this count, which fails only when the whole file runs.
+  // Six upcoming of the seven published, plus the two seeded drafts a
+  // manager's list carries.
   expect(before).toBe(8);
 });
 
@@ -841,7 +836,7 @@ test("a generated season is created as drafts", async () => {
 });
 
 /* ------------------------------------------------------------------------ *
- * The image library (#105)
+ * The image library
  */
 
 /** The smallest byte string the mock accepts as a JPEG: SOI, one SOF0 carrying the size, EOI. */

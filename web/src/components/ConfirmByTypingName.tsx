@@ -17,40 +17,24 @@ import { t, type TranslatedError } from "../i18n";
 /**
  * The dialog every destructive privileged action goes through.
  *
- * TWO THINGS IT REFUSES TO SEPARATE, because separating them is how each gets
- * skipped:
+ * It keeps two things together so neither gets skipped: `title` and
+ * `description` name the person and what will happen to them ("Êtes-vous
+ * sûr ?" is a question nobody reads), and the confirmation sits in the same
+ * dialog, performed while reading what it authorises.
  *
- *   - NAMING THE DAMAGE. "Êtes-vous sûr ?" is a question nobody reads. `title`
- *     and `description` carry the person's actual name and what will happen to
- *     them: no destructive action without naming the damage.
- *   - THE CONFIRMATION ITSELF, in the same dialog as the warning, so it is
- *     performed while reading what it authorises rather than as a separate step
- *     that becomes muscle memory.
+ * A typed name, not a password (ADR 0017): the session is already trusted for
+ * everything else, and what a confirmation guards against is a mis-aimed tap.
+ * A name does that better because it names the specific person. The server
+ * cannot tell a typed confirmation from an automated one, so this check lives
+ * in the browser only and is the only guard on a delete.
  *
- * WHY TYPING A NAME AND NOT A PASSWORD. Until 2026-09-08 (ADR 0017) this
- * dialog took the actor's password and the server verified it. The server no
- * longer does: the session cookie is already trusted to read the whole roster
- * and edit anyone, so re-authentication was an extra lock on three doors out of
- * seventeen. What it actually bought was protection against a mis-aimed tap —
- * and a typed name buys that better, because it names the specific person while
- * a password prompt is the same prompt every time. A server cannot tell a typed
- * confirmation from an automated one, which is why GitHub enforces this in the
- * browser only, and why this is now the ONLY guard on a delete.
+ * `confirmPhrase` is optional, decided by what a mis-aimed tap would cost.
+ * Deleting a member destroys their whole history, so it asks for the name.
+ * Issuing a new password can be done again, and an event deleted a minute
+ * after creation costs a minute, so those only ask for a press.
  *
- * `confirmPhrase` is optional, and what decides it is what the action costs if
- * it was a mis-aimed tap. Deleting a member destroys their whole history, so
- * it asks for the name. Issuing a new password can simply be done again, and
- * deleting an event the committee mistyped a minute ago costs them the minute
- * — both name the damage and ask for a press. Typing a title back would be
- * friction with nothing behind it.
- *
- * It lives in components/ rather than members/ because it has a second
- * consumer: the planning deletes events through it. One dialog, because the
- * two halves above are exactly what a second one would separate.
- *
- * The action button is never `disabled` — that would blur focus to <body>
- * mid-submit. `aria-disabled` plus the early return in the handler is what
- * prevents a double submit.
+ * The action button is never `disabled`, which would blur focus to <body>
+ * mid-submit. `aria-disabled` plus the early return prevents a double submit.
  */
 export function ConfirmByTypingName({
   open,
@@ -122,10 +106,9 @@ export function ConfirmByTypingName({
             {dismissLabel ?? t("common.cancel")}
           </AlertDialogCancel>
           {/*
-            A plain Button, NOT AlertDialogAction: the Radix action closes the
-            dialog on click, and this action can fail — a 409 invariant, or a
-            server error — so the message has to be readable where it happened.
-            The caller closes the dialog on success.
+            A plain Button, not AlertDialogAction, which closes the dialog on
+            click: this action can fail (a 409, a server error) and the message
+            must stay readable. The caller closes the dialog on success.
           */}
           <Button
             type="button"

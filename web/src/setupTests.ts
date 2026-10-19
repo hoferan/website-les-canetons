@@ -7,70 +7,45 @@ import { setLocale } from "./i18n";
 import { resetMockState } from "./mocks/handlers";
 import { server } from "./mocks/node";
 
-// Guarded on `typeof window`: this file is the global setupFiles entry for
-// EVERY test, including any that opt into `@vitest-environment node` (for a
-// real WebCrypto SubtleCrypto, say) and so have no window/document at all.
-// Referencing them unguarded turned "window is not defined" into a failure of
-// that whole file.
+// Guarded on `typeof window`: this setup file also runs for tests that opt
+// into `@vitest-environment node`, which have no window or document.
 if (typeof window !== "undefined") {
-  // jsdom does not implement window.scrollTo — calling it logs
-  // "Error: Not implemented: window.scrollTo" to stderr instead of doing
-  // nothing. ScrollToTop (mounted in Layout, so in every test that renders it)
-  // calls it on every navigation, so without this stub every such test prints
-  // a line that looks like a failure and is not. A plain no-op, not a mock: no
-  // test needs its call history for free, and one that does can vi.spyOn it
-  // itself (see ScrollToTop.test.tsx — spying on a stub function works, and
-  // afterEach's vi.restoreAllMocks() below restores it back to this stub).
+  // jsdom logs "Error: Not implemented: window.scrollTo", and ScrollToTop
+  // (in Layout) calls it on every navigation. A plain no-op; a test that needs
+  // the calls can vi.spyOn it (ScrollToTop.test.tsx), and vi.restoreAllMocks()
+  // below puts the stub back.
   window.scrollTo = () => {};
 
-  // Pointer capture is not implemented in jsdom either, and a component that
-  // reaches for it throws rather than degrading: sonner calls
-  // setPointerCapture on pointerdown so a toast can be swiped away, which
-  // takes down the whole test file as an unhandled exception the moment
-  // userEvent clicks anything inside one. No-ops, because nothing here is
-  // testing a swipe.
+  // jsdom has no pointer capture either, and sonner calls setPointerCapture on
+  // pointerdown so a toast can be swiped, which throws as soon as userEvent
+  // clicks inside one.
   Element.prototype.setPointerCapture ??= () => {};
   Element.prototype.releasePointerCapture ??= () => {};
   Element.prototype.hasPointerCapture ??= () => false;
 }
 
-// onUnhandledRequest: "error", not "bypass". In a test an unhandled request is
-// a missing handler, and letting it reach the network produces a confusing
-// timeout much later instead of a clear failure here.
+// In a test an unhandled request is a missing handler; letting it reach the
+// network gives a confusing timeout instead of a clear failure.
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
 afterEach(async () => {
-  // Testing Library only registers its own auto-cleanup when the test
-  // framework's globals are exposed. This project imports test/expect
-  // explicitly (no `globals: true`), so without this every render stays in
-  // document.body and the next test fails with "Found multiple elements" —
-  // which reads like a component bug and is not one.
+  // Testing Library registers its auto-cleanup only with `globals: true`,
+  // which this project does not use. Without this, renders pile up in
+  // document.body and the next test finds multiple elements.
   cleanup();
 
-  // Both are needed: resetHandlers() drops per-test server.use() overrides,
-  // resetMockState() clears the session the handlers keep in module state.
-  // Forget the second and a test that logs in leaks into the next one.
+  // resetHandlers() drops per-test server.use() overrides; resetMockState()
+  // clears the session the handlers keep, or a login leaks into the next test.
   server.resetHandlers();
   resetMockState();
 
-  // A test that rendered in German otherwise leaks that locale into the next
-  // one, which then fails only when the whole file runs and passes in
-  // isolation — the same shape of false flakiness vi.restoreAllMocks() below
-  // exists to prevent.
-  //
-  // AWAITED, not fired and forgotten: changeLanguage returns a promise, and an
-  // unawaited one can settle after the next test's first render, which is the
-  // very race this reset exists to close.
+  // A test that rendered in German would otherwise leak the locale into the
+  // next one. Awaited, or it can settle after the next test's first render.
   await setLocale("fr");
 
-  // Spies on globals otherwise survive the test that installed them, and so do
-  // their call counts. A later test asserting toHaveBeenCalledTimes(1) then
-  // counts an earlier test's calls and fails only when the whole file runs,
-  // passing in isolation. That reads as flakiness and is not.
-  //
-  // This used to name window.confirm and window.alert, which the event controls
-  // used. They are gone -- a real dialog and a toast replaced them -- but the
-  // reset still earns its place: http.test.ts mocks global fetch.
+  // Spies on globals (http.test.ts mocks fetch) otherwise survive their test,
+  // call counts included, and a later toHaveBeenCalledTimes fails only when
+  // the whole file runs.
   vi.restoreAllMocks();
 });
 

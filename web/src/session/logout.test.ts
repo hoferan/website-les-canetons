@@ -8,11 +8,10 @@ afterEach(async () => {
 });
 
 /**
- * THE DESTINATION IS THE SEAM, because the navigation is not testable here:
+ * The destination is the seam, because the navigation is not testable here:
  * window.location is non-configurable in this jsdom setup, so a spy on
- * .assign throws "Cannot redefine property: assign" rather than recording
- * anything. the docblock above `ends the session on the server` in web/src/components/Layout.test.tsx documents that, having hit it. The
- * navigation itself is proven in a real browser.
+ * .assign throws "Cannot redefine property: assign". A real browser proves
+ * the navigation.
  */
 test("logging out in French lands on the site root", () => {
   expect(logoutDestination()).toBe("/");

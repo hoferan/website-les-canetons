@@ -32,10 +32,10 @@ import { Roles } from "./pages/Roles";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
 
-// The library's two pages are a chunk of their own (#294): only `images.manage`
-// opens them, and they bring the upload queue and the shrink step with them.
-// A navigation here is a transition, so the previous page stays up while the
-// chunk loads; only a fresh load of the URL shows the empty fallback.
+// The library's two pages are a chunk of their own: only `images.manage` opens
+// them, and they bring the upload queue and the shrink step. A navigation here
+// is a transition, so the previous page stays up while the chunk loads; only a
+// fresh load of the URL shows the empty fallback.
 const Media = lazy(() => import("./pages/Media").then((module) => ({ default: module.Media })));
 const MediaDetail = lazy(() =>
   import("./pages/MediaDetail").then((module) => ({ default: module.MediaDetail })),
@@ -44,47 +44,31 @@ const MediaDetail = lazy(() =>
 /**
  * The route table.
  *
- * URLs ARE RESOURCE-ORIENTED, and there is deliberately no `/admin` or
- * `/manage` namespace: under real RBAC there is no single privileged area —
- * `events.manage` and `members.manage` are different people — and a namespace
- * named after a permission level is a lie about the model (ADR 0014). The nav
- * still groups Direction screens under one heading; nav grouping and URL
- * structure are different problems, and only one of them has to encode
- * authorization.
+ * URLs are resource-oriented, with no `/admin` or `/manage` namespace:
+ * `events.manage` and `members.manage` are different people, so there is no
+ * single privileged area to name (ADR 0014). The nav may still group screens;
+ * only the URL would encode authorization. `/events/:id/book`,
+ * `/events/:id/registrations` and `/events/:id/registration-options` share a
+ * prefix and answer to three different guards.
  *
- * MustChangePassword wraps everything INSIDE the layout: a committee-issued
- * password must be replaced before any other screen is usable, and the gate has
- * to see the pathname to exempt /account/password from its own redirect. `/login` sits
- * inside it on purpose — a member who must change their password and navigates
- * there is already logged in, so sending them to /account/password is right. It cannot
- * trap anyone, because logging out is a button in the chrome rather than a
- * route.
+ * MustChangePassword wraps the members' routes inside the layout: a
+ * committee-issued password must be replaced before any of them is usable,
+ * and the gate sees the pathname to exempt /account/password. `/login` sits
+ * inside it because a member in that state is already logged in. It cannot
+ * trap anyone, because logging out is a button in the chrome.
  *
- * Legacy French paths are NOT redirected — the rebuild owes no backwards
- * compatibility (ADR 0003) — so they fall through to the 404 view like
- * every other unknown path.
+ * The public pages sit outside MustChangePassword: they are what a stranger
+ * sees, so a member in that state who taps "Histoire" is not bounced to a
+ * password form.
  *
- * THE PUBLIC PAGES SIT OUTSIDE MustChangePassword, and that is the one thing
- * about this table worth reading twice. The gate holds a member on /account/password
- * until they have replaced a committee-issued password — which is right for
- * the members' tool and wrong for the public site: a member in that state who
- * taps "Histoire" has no business being bounced to a password form, because
- * that page is what a stranger sees and owes nothing to who is logged in. The
- * gate still covers everything the password actually unlocks.
- *
- * Registration adds three: `/events/:id/book` above with the public pages, and
- * `/events/:id/registrations` and `/events/:id/registration-options` below
- * with the committee's. The three sit under one prefix and answer to three
- * different guards, which is the argument against an `/admin` namespace made
- * concrete: "who may book", "who may read the guest list" and "who may
- * configure the event" are three different people.
+ * Legacy French paths are not redirected (ADR 0003); they get the 404 view
+ * like every other unknown path.
  */
 export function AppRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        {/* THE PUBLIC FACE. No session, no gate, no guard — see the note
-            above on why these sit outside MustChangePassword. */}
+        {/* The public pages: no session, no gate, no guard. */}
         <Route index element={<Home />} />
         <Route path="/agenda" element={<Agenda />} />
         <Route path="/band" element={<Band />} />
@@ -93,18 +77,13 @@ export function AppRoutes() {
         <Route path="/join" element={<Join />} />
         <Route path="/contact" element={<Contact />} />
 
-        {/* THE BOOKING FORM IS A PUBLIC PAGE under a path whose other
-            segments are not, and that is deliberate rather than untidy:
-            registration is a property of an EVENT (ADR 0020), so the event is
-            what the URL is about, and inventing /booking/:id would say the
-            souper is a feature of its own, which is the shape that decision
-            removed.
-            Nothing leaks by sitting here: the endpoint behind it answers 404
-            for an event that takes no bookings, whether or not it exists.
+        {/* The booking form is public under a path whose other segments are
+            not: registration is a property of an event (ADR 0020). Nothing
+            leaks, because the endpoint answers 404 for an event that takes no
+            bookings, whether or not it exists.
 
-            `book`, NOT `register`. In this project a register is a PUPITRE —
-            RegisterIndex, `sections`, "Trompettes" — so /events/:id/register
-            would read as the drummers' page. */}
+            `book`, not `register`: a register is a pupitre ("Trompettes"),
+            so /events/:id/register would read as a section's page. */}
         <Route path="/events/:id/book" element={<EventBooking />} />
 
         <Route element={<MustChangePassword />}>
@@ -118,89 +97,71 @@ export function AppRoutes() {
             <Route path="/account/password" element={<AccountPassword />} />
           </Route>
 
-          {/* Reading the planning, which everybody in the band does: the
-              baseline role grants `events.view` to every account. It still
-              sits behind login, because this planning is the members' tool
-              and the public agenda is a separate page. */}
+          {/* The baseline role grants `events.view` to every account, but
+              the planning still sits behind login; the public agenda is a
+              separate page. */}
           <Route element={<RequirePermission permission="events.view" />}>
             <Route path="/events" element={<Events />} />
           </Route>
 
-          {/* Entering the planning, which is the committee's job and nobody
-              else's. The static segments are written before the dynamic one
-              on purpose: React Router already ranks `/events/new` above
-              `/events/:id/edit` whatever the order, and relying on that
-              silently is how a route table acquires a collision nobody can
-              see. */}
+          {/* Static segments come before the dynamic one. React Router ranks
+              them correctly in any order, but the order shows it. */}
           <Route element={<RequirePermission permission="events.manage" />}>
             <Route path="/events/new" element={<EventNew />} />
             <Route path="/events/new/series" element={<EventSeriesNew />} />
             <Route path="/events/:id/edit" element={<EventEdit />} />
 
-            {/* What the event OFFERS, which is part of the event — hence
-                `events.manage` and not a registration permission. It writes on
-                its own entity-tag facet, `event.options`, so correcting a
-                dress code cannot refuse a pending options edit and changing an
-                option cannot slip past one. */}
+            {/* What the event offers is part of the event, hence
+                `events.manage`. It writes on its own entity-tag facet,
+                `event.options`, so a dress code fix cannot refuse a pending
+                options edit and an option change cannot slip past one. */}
             <Route path="/events/:id/registration-options" element={<EventRegistrationOptions />} />
 
-            {/* The tag list (#107), planning administration like the rest of
-                this group. Picking an event's tags is in the event's form. */}
+            {/* The tag list. Picking an event's tags is in the event's form. */}
             <Route path="/event-tags" element={<EventTags />} />
           </Route>
 
-          {/* The chase list. A SEPARATE PERMISSION from managing events:
-              seeing who has not answered and entering the planning are
-              different jobs, and the `permission:` route middleware
-              (App\Http\Middleware\RequirePermission) is what makes that
-              real — this guard only mirrors it. */}
+          {/* The chase list. Seeing who has not answered and entering the
+              planning are different jobs, so a separate permission. */}
           <Route element={<RequirePermission permission="attendance.view_all" />}>
             <Route path="/events/:id/attendance" element={<EventAttendance />} />
           </Route>
 
-          {/* The guest list. `registrations.view` is ALL the `committee` role
-              holds, so this route is guarded on it and nothing more — the
-              amend and cancel controls inside answer to `registrations.manage`
-              instead, which is a different act on somebody else's personal
-              data and a different set of people. */}
+          {/* The guest list, guarded on `registrations.view` alone, which the
+              `committee` role holds. The amend and cancel controls inside
+              answer to `registrations.manage`. */}
           <Route element={<RequirePermission permission="registrations.view" />}>
             <Route path="/events/:id/registrations" element={<EventRegistrations />} />
           </Route>
 
           <Route element={<RequirePermission permission="members.manage" />}>
             <Route path="/members" element={<Members />} />
-            {/* The register list (#276). The same people as the roster:
-                whoever puts somebody in a register decides which exist. */}
+            {/* Whoever puts somebody in a register decides which exist. */}
             <Route path="/registers" element={<Registers />} />
           </Route>
 
-          {/* messages.view, both routes: the worklist across every open
-              source and the archive for one of them. The
-              nav only offers either link to someone who holds the
-              permission, so guarding the routes on the same token keeps each
-              page consistent with its own entry. */}
           <Route element={<RequirePermission permission="history.manage" />}>
             <Route path="/history/new" element={<HistoryNew />} />
             <Route path="/history/:id/edit" element={<HistoryEdit />} />
           </Route>
+
+          {/* The worklist across every open source and the archive for one
+              of them, on the token the nav offers both links for. */}
           <Route element={<RequirePermission permission="messages.view" />}>
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/contact-messages" element={<ContactMessages />} />
           </Route>
 
-          {/* The role editor (#194): what each role is called and grants.
-              roles.manage, not members.manage, which gives roles to people
-              on /members: shaping a role and holding one are separate jobs. */}
+          {/* The role editor. roles.manage, not members.manage (which gives
+              roles to people): shaping a role and holding one are separate
+              jobs. */}
           <Route element={<RequirePermission permission="roles.manage" />}>
             <Route path="/roles" element={<Roles />} />
           </Route>
 
-          {/* The media library (#105): uploading, browsing and deleting
-              photos, and one photo's own page to rename, turn, replace,
-              download or delete it. Its own permission, because looking after the site's
-              pictures is not the same job as editing the roster or the
-              history, even though the history form offers the same picker to
-              whoever also holds this one. */}
+          {/* The media library and one photo's own page. Its own permission:
+              looking after the site's pictures is not the same job as editing
+              the roster or the history. */}
           <Route element={<RequirePermission permission="images.manage" />}>
             <Route
               path="/media"

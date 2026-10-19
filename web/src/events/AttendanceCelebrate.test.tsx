@@ -34,7 +34,7 @@ async function answerYes(title: string) {
 }
 
 test("a first Oui to an event whose tag celebrates throws confetti once", async () => {
-  // MUTATION TEST: drop the tag check in AttendanceControls and the next test
+  // Mutation test: drop the tag check in AttendanceControls and the next test
   // fails; drop the call and this one does.
   setMockTagCelebrates(SORTIE, true);
   await renderPlanning();

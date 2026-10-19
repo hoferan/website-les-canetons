@@ -15,9 +15,8 @@ test("says what the band is before anything else", async () => {
 });
 
 /**
- * THE DESTINATIONS ARE CURATED, NOT DERIVED FROM THE NAV. Every one of them
- * still has to point at a route that exists — a front door whose cards 404 is
- * worse than a front door with none.
+ * The destinations are curated rather than derived from the nav, so each one
+ * has to be checked against a route that exists.
  */
 test("points every destination card at a public page", async () => {
   await renderWithSession(<Home />, { route: "/" });
@@ -42,9 +41,8 @@ test("shows the next public appearance", async () => {
 });
 
 /**
- * A rehearsal is not an appearance. Five of the six seeded events are private,
- * and a page that listed them would publish the band's whole diary — addresses
- * included — to anybody who loaded the front page.
+ * A rehearsal is not an appearance. Listing private events would publish the
+ * band's whole diary, addresses included, on the front page.
  */
 test("keeps the private planning off the front page", async () => {
   await renderWithSession(<Home />, { route: "/" });
@@ -55,13 +53,9 @@ test("keeps the private planning off the front page", async () => {
 });
 
 /**
- * THE AGENDA IS ALLOWED TO RENDER NOTHING, and that is the design rather than
- * a missing empty state. "Aucun événement" on a band's front page reads as
- * "this band does nothing", and an error about a schedule the visitor never
- * asked for is noise on the page where noise is most visible.
- *
- * Mutation-tested: replacing the early return with an empty-state card fails
- * this test and no other.
+ * The agenda renders nothing when empty, by design: "Aucun événement" on a
+ * band's front page reads as "this band does nothing". Replacing the early
+ * return with an empty-state card fails this test and no other.
  */
 test("renders no agenda section at all when there is nothing public coming up", async () => {
   server.use(
@@ -88,9 +82,8 @@ test("renders no agenda section when the read is refused", async () => {
 });
 
 /**
- * The destination cards wait for the agenda, because the agenda sits above
- * them. Rendered while it loads, they were in the first screen of a phone and
- * were pushed down when the next dates arrived (#236). The hero does not wait.
+ * The destination cards wait for the agenda above them, or the arriving dates
+ * would push them out of a phone's first screen (#236). The hero does not wait.
  */
 test("holds the destination cards while the agenda is loading", async () => {
   server.use(http.get("/api/v1/agenda", () => delay("infinite")));

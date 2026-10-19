@@ -10,21 +10,18 @@ import { Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
 
 /**
- * A SOFT 404: the server answered 200 with the shell, because the .htaccess
- * fallback is a catch-all by design (see config/htaccess/site.htaccess), and
- * this is what the visitor sees. Same visible page as before the cutover,
- * different HTTP status — accepted deliberately, since the alternative is
- * enumerating every route in .htaccess where it would drift from the router.
+ * A soft 404: the server answers 200 with the shell, because the .htaccess
+ * fallback is a catch-all by design (see config/htaccess/site.htaccess).
+ * Answering 404 would mean enumerating every route in .htaccess, where the
+ * list would drift from the router.
  *
- * THE WHOLE PAGE IS POSTER, with three times the usual confetti. It has the
- * least to read of any page, so it can carry the most decoration (ADR 0029).
- * The words sit on a white card rather than on the gradient, which keeps them
- * at ink-on-white contrast wherever the card lands on the poster.
+ * The whole page is poster, with three times the usual confetti: it has the
+ * least to read, so it can carry the most decoration (ADR 0029). The words sit
+ * on a white card, which keeps ink-on-white contrast wherever it lands.
  *
- * The poster fills `main`, which is at least a screen tall, and its bumps hang
- * straight into the footer. Without that, a page this short left a band of
- * cream between the two. The edge it hands the footer is the stage, because
- * that is the colour its own Scallop paints along the bottom.
+ * The poster fills `main`, which is at least a screen tall, so no band of
+ * cream is left above the footer. The edge it hands the footer is the stage,
+ * the colour its own Scallop paints along the bottom.
  */
 export function NotFound() {
   useFooterEdge("var(--color-stage)");
@@ -51,10 +48,9 @@ export function NotFound() {
         >
           <h1 className="font-display text-3xl">{t("notFound.heading")}</h1>
           <p className="mt-related text-ink-muted">{t("notFound.body")}</p>
-          {/* A ButtonLink rather than an underlined text link: this is the
-              page's only way out and the one control on it, so it belongs
-              above the 44px floor. It measured 24px. Inline links inside prose
-              are a different case and stay as they are. */}
+          {/* A ButtonLink rather than a text link: the page's only control
+              belongs above the 44px floor. Inline links in prose are a
+              different case. */}
           <ButtonLink to="/" variant="raised" className="mt-block h-12 px-5 text-base">
             {t("common.backHome")}
           </ButtonLink>

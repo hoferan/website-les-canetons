@@ -3,20 +3,18 @@ import { fr } from "./fr";
 /**
  * The Swiss Standard German vocabulary, mirroring fr.ts key for key.
  *
- * TYPED `typeof fr` ON PURPOSE. A missing or extra key is then a build error,
- * which is the cheapest parity guarantee available and costs nothing to
- * maintain. web/src/i18n/catalogues.test.ts prints the offending paths, because
- * a deep structural TS error on this shape is close to unreadable.
+ * Typed `typeof fr`, so a missing or extra key is a build error.
+ * catalogues.test.ts prints the offending paths, since a deep structural TS
+ * error on this shape is close to unreadable.
  *
- * THE SAME PARSING RULES AS fr.ts APPLY. api/tests/Feature/
- * ApiErrorVocabularyTest.php reads this file too: keys must stay BARE
- * IDENTIFIERS and the object literal must stay free of TypeScript syntax. The
- * `: typeof fr` annotation sits outside the braces and is fine.
+ * The same parsing rules as fr.ts apply, because
+ * api/tests/Feature/ApiErrorVocabularyTest.php reads this file too: keys stay
+ * bare identifiers and the object literal stays free of TypeScript syntax.
+ * The `: typeof fr` annotation sits outside the braces and is fine.
  *
- * SWISS STANDARD GERMAN: `ss` and never `ß`. Formal `Sie` throughout, mirroring
- * the French, which is `vous` even in the members' area — so every string here
- * is a 1:1 translation of its French counterpart and the two stay mechanically
- * comparable.
+ * Swiss Standard German: `ss`, never `ß`. Formal `Sie` throughout, mirroring
+ * the French `vous` (the one exception is `join`), so every string is a 1:1
+ * translation of its French counterpart.
  */
 export const de: typeof fr = {
   roles: {
@@ -113,14 +111,14 @@ export const de: typeof fr = {
     cannot_remove_last_role_administrator: "Das ist die letzte Person, die Rollen verwalten kann.",
     baseline_role_is_fixed:
       "Die Rolle «Mitglied» kann weder entzogen noch geändert noch gelöscht werden. Alle Konten behalten sie.",
-    // Sagt, was zu tun ist, ohne die Regel zu erklären: ein vom Vorstand
-    // ausgegebenes Passwort wurde mündlich mitgeteilt, ein «Wechsel» auf
-    // dasselbe Passwort liesse das Konto also auf einem bereits gehörten.
+    // Says what to do without explaining the rule: a committee-issued
+    // password was read out loud, so "changing" to the same one would leave
+    // the account on a password somebody else has heard.
     password_unchanged: "Das ist bereits Ihr aktuelles Passwort. Wählen Sie ein anderes.",
 
     invalid_session: "Ungültige Sitzung",
-    // Eine Anfrage, die keine Sitzung eröffnen kann: ein erneuter Versuch
-    // bringt nichts, anders als bei invalid_session.
+    // A request that cannot open a session: unlike invalid_session, a retry
+    // does not help.
     stateful_request_required: "Diese Anfrage kann keine Sitzung eröffnen.",
     rate_limited: "Zu viele Anfragen. Bitte warten Sie, bevor Sie es erneut versuchen.",
     service_unavailable: "Dienst nicht verfügbar",
@@ -181,9 +179,8 @@ export const de: typeof fr = {
     too_short: "ist zu kurz (mindestens {{min}} Zeichen)",
     invalid_number: "ist keine gültige Zahl",
     must_be_after: "muss nach dem Beginn liegen",
-    // PARAMETERLOS, wie im Französischen: die Obergrenze kommt aus einem
-    // Closure-Validator, der nur `field` und `reason` liefert — ein
-    // interpoliertes {{max}} würde wörtlich auf dem Bildschirm stehen.
+    // No parameter, as in French: the limit comes from a closure validator
+    // that sends only `field` and `reason`, so a {{max}} would print as is.
     too_many_guests: "überschreitet die pro Anmeldung zulässige Personenzahl",
     image_not_jpeg: "muss ein JPEG-Bild sein",
     image_too_large: "hat zu viele Pixel",
@@ -279,9 +276,9 @@ export const de: typeof fr = {
     loading: "Wird geladen…",
     requiredLegend: "Pflichtfeld",
     backToPlanning: "← Zurück zur Planung",
-    // ABBRECHEN, NICHT RÜCKGÄNGIG: Das Französische sagt für beides
-    // «Annuler». Dieser Schlüssel schliesst einen Dialog, ohne etwas zu tun;
-    // das Zurücknehmen einer bereits erfassten Antwort ist attendance.undo.
+    // "Abbrechen", not "Rückgängig", though French says "Annuler" for both.
+    // This closes a dialog without doing anything; taking back a recorded
+    // answer is attendance.undo.
     cancel: "Abbrechen",
     save: "Speichern",
     busy: "Läuft…",
@@ -294,11 +291,8 @@ export const de: typeof fr = {
       "Die Website konnte nicht gestartet werden. Bitte versuchen Sie es in wenigen Augenblicken erneut.",
     typeToConfirm: "Tippen Sie «{{phrase}}», um zu bestätigen",
     clearSearch: "Suche löschen",
-    // RowActions' own trigger label. für, not zu -- see fr.ts for why the
-    // key moved here (M4/M5, #118 whole-branch review). The old
-    // events.moreActionsAria shipped zu on the reasoning that it matched
-    // registrationsAria ("Anmeldungen zu {{title}}"), which holds for an
-    // event and stops holding once the same string names a person.
+    // RowActions' trigger label. "für", not "zu": registrationsAria's "zu"
+    // fits an event, and this string also names a person.
     moreActionsAria: "Weitere Aktionen für {{name}}",
     showPassword: "Passwort anzeigen",
   },
@@ -306,8 +300,8 @@ export const de: typeof fr = {
   meta: {
     // Identical to the French on purpose; see the note in fr.ts.
     title: "Guggenmusik Les Canetons de Fribourg",
-    // "Freiburg", not "Fribourg": the city's German name, as everywhere else in
-    // this file. The band's own name keeps its French spelling above.
+    // "Freiburg", the city's German name, as everywhere else in this file.
+    // The band's own name keeps its French spelling above.
     description:
       "Die Kinder-Guggenmusik aus Freiburg, gegründet 2002. Von 7 bis 18 Jahren, ohne Notenkenntnisse — Proben in der Regel am Samstagvormittag.",
   },
@@ -348,7 +342,7 @@ export const de: typeof fr = {
     groupBand: "Die Gugge",
     language: "Sprache",
     pending: "{{n}} ausstehend",
-    // Identisch zum Französischen: siehe die Notiz in fr.ts.
+    // Identical to the French; see the note in fr.ts.
     switchToGerman: "Auf Deutsch wechseln",
     switchToFrench: "Passer en français",
     rights: "Alle Rechte vorbehalten.",
@@ -372,8 +366,7 @@ export const de: typeof fr = {
     deleteConfirmDescription:
       "Die Nachricht von {name} wird endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
     handledBy: "Erledigt von {name} am {date}",
-    // DER NORMALFALL, KEIN FEHLER: ein leerer Posteingang ist eine gute
-    // Nachricht.
+    // The normal case, not an error: an empty inbox is good news.
     empty: "Noch keine Nachrichten. Das Kontaktformular ist bereit.",
     emptyFiltered: "Keine Nachricht entspricht diesem Filter.",
     loadError: "Die Nachrichtenliste konnte nicht geladen werden.",
@@ -390,10 +383,9 @@ export const de: typeof fr = {
   },
 
   attendance: {
-    // JA UND NEIN BLEIBEN GROSSGESCHRIEBEN, auch mitten im Satz: Die Antwort
-    // steht hier als Wert neben einem Namen, nicht als Satzpartikel. Das
-    // Französische wechselt zwischen «Oui» und «oui», das Deutsche nicht —
-    // genau darum darf keine Sprache die eine Form aus der anderen ableiten.
+    // "Ja" and "Nein" stay capitalised mid-sentence: the answer is a value
+    // beside a name. French switches between "Oui" and "oui" and German does
+    // not, so neither language may derive one form from the other.
     answer: {
       yes: "Ja",
       no: "Nein",
@@ -419,13 +411,13 @@ export const de: typeof fr = {
     correctDescription:
       "Was {{name}} Ihnen gesagt hat. Die Begründung ist freiwillig, und die Rückmeldung bleibt als vom Vorstand erfasst markiert.",
     recordFailed: "Die Rückmeldung konnte nicht gespeichert werden.",
-    // OHNE LEERZEICHEN VOR DEM DOPPELPUNKT, anders als im Französischen.
+    // No space before the colon, unlike French.
     recordedYes: "{{name}}: Ja.",
     recordedNo: "{{name}}: Nein.",
 
     line: "{{name}} — {{answer}}",
-    // ENGE GUILLEMETS: «so», nicht « so ». {{note}} ist, was ein Mitglied
-    // geschrieben hat, und wird in beiden Sprachen wörtlich wiedergegeben.
+    // Tight guillemets: «so», not « so ». {{note}} is what a member wrote,
+    // quoted verbatim in both languages.
     lineWithNote: "{{name}} — {{answer}} — «{{note}}»",
     lineSilent: "{{name}} — ohne Rückmeldung",
 
@@ -438,7 +430,7 @@ export const de: typeof fr = {
     ownRecordFailed: "Ihre Rückmeldung konnte nicht gespeichert werden.",
     toastYes: "Sie kommen — {{title}}.",
     toastNo: "Sie kommen nicht — {{title}}.",
-    // RÜCKGÄNGIG, NICHT ABBRECHEN: siehe common.cancel.
+    // "Rückgängig", not "Abbrechen": see common.cancel.
     undo: "Rückgängig",
     undoFailed: "Das Zurücknehmen ist fehlgeschlagen. Versuchen Sie es erneut.",
 
@@ -450,12 +442,12 @@ export const de: typeof fr = {
   },
 
   events: {
-    // ANLASS, NICHT VERANSTALTUNG: das schweizerische Wort für einen Auftritt
-    // oder eine Probe, und das, was eine Guggenmusik selber sagt.
+    // "Anlass", not "Veranstaltung": the Swiss word for a performance or a
+    // rehearsal, and what a Guggenmusik says itself.
     heading: "Planung",
-    // Ein Entwurf hat unter Umständen noch kein Datum.
+    // A draft may have no date yet.
     dateMissing: "Datum noch offen",
-    // Entwürfe: geschrieben und bearbeitbar, nur für die Leitung sichtbar.
+    // Drafts: written and editable, visible to the direction only.
     draftsHeading: "Entwürfe",
     draftBadge: "Entwurf",
     publish: "Veröffentlichen",
@@ -465,17 +457,14 @@ export const de: typeof fr = {
     publishFailed: "Die Veröffentlichung ist fehlgeschlagen.",
     add: "Anlass hinzufügen",
     addSeries: "Serie hinzufügen",
-    // 131px gegen eine 152px breite Überschrift — passt, siehe fr.ts. #182.
+    // 131px beside a 152px heading: it fits (#182 phone budget, see fr.ts).
     addTrigger: "Hinzufügen",
-    // HINZUFÜGEN ZUERST, nicht am Ende: Der sichtbare Text muss am ANFANG des
-    // zugänglichen Namens stehen, sonst trifft die Spracheingabe auf
-    // «Hinzufügen» nicht zu (WCAG 2.5.3) — dieselbe Regel, die ButtonLink für
-    // die Zeilenaktionen festhält. Deutsche Wortstellung stellt das trennbare
-    // Verb sonst nach hinten. Und PLANUNG, nicht «Programm»: das ist das Wort,
-    // das dieser Katalog überall sonst verwendet.
+    // "Hinzufügen" first: the visible text must start the accessible name, or
+    // voice control on "Hinzufügen" misses it (WCAG 2.5.3), the rule
+    // ButtonLink keeps for row actions. German word order would otherwise
+    // push the separable verb to the end. "Planung", as everywhere else here.
     addTriggerAria: "Hinzufügen zur Planung",
-    // ANLASS, wie überall in diesem Katalog: "Vergangene Anlässe", nicht
-    // "Vergangenes". Ersetzt showPast/showPlanning — siehe fr.ts. #182.
+    // "Anlässe", as everywhere in this catalogue, not "Vergangenes".
     viewPlanning: "Planung",
     viewPast: "Vergangene Anlässe",
     viewSwitchAria: "Ansicht der Planung",
@@ -492,14 +481,14 @@ export const de: typeof fr = {
     noMatch: "Kein Anlass entspricht dieser Suche.",
     noTagMatch: "Kein Anlass in dieser Kategorie.",
     emptyPast: "Keine vergangenen Anlässe.",
-    // ENGE GUILLEMETS, und {{action}} ist der Wert eines anderen Schlüssels:
-    // Der Hinweis zitiert die Schaltfläche daneben.
+    // Tight guillemets, and {{action}} is another key's value: the hint quotes
+    // the button beside it.
     emptyHint:
       "Fügen Sie einen Anlass hinzu, oder erzeugen Sie mit «{{action}}» gleich eine ganze Saison.",
     owedHeading: "Zu beantworten",
     allAnswered: "Alles beantwortet.",
-    // DAS VERB WECHSELT MIT, «fehlt» gegen «fehlen». Genau das kann kein
-    // angehängtes «s» in einer Komponente leisten.
+    // The verb changes too, "fehlt" against "fehlen", which no "s" appended
+    // in a component can do.
     owedCount_one: "Es fehlt noch {{count}} Rückmeldung.",
     owedCount_other: "Es fehlen noch {{count}} Rückmeldungen.",
     pastHeading: "Vergangene Anlässe",
@@ -528,9 +517,8 @@ export const de: typeof fr = {
     meta: {
       public: "Öffentlich",
       answers: "{{answered}}/{{answerable}} Rückmeldungen",
-      // NULL IST HIER PLURAL, anders als im Französischen: «0 Rückmeldungen»,
-      // nicht «0 Rückmeldung». Die CLDR-Regel der aktiven Sprache entscheidet
-      // das, nicht die Komponente.
+      // Zero is plural here, unlike French: "0 Rückmeldungen". The active
+      // language's CLDR rule decides, not the component.
       answersAria_one: "{{count}} Rückmeldung von {{total}}",
       answersAria_other: "{{count}} Rückmeldungen von {{total}}",
       noGuests: "Keine Anmeldungen",
@@ -550,7 +538,7 @@ export const de: typeof fr = {
     newHeading: "Neuer Anlass",
     editHeading: "Anlass bearbeiten",
     saveFailed: "Das Speichern ist fehlgeschlagen.",
-    // Ein Entwurf wird so gespeichert, wie er ist; das Veröffentlichen ist ein zweiter Schritt.
+    // A draft is saved as it is; publishing is a second step.
     saveDraft: "Entwurf speichern",
     publish: "Veröffentlichen",
     draftHint:
@@ -558,8 +546,8 @@ export const de: typeof fr = {
     loadFailed: "Dieser Anlass konnte nicht geladen werden.",
     loadFailedReload: "Dieser Anlass konnte nicht geladen werden. Laden Sie die Seite neu.",
     poster: "Plakat",
-    // Der Anlass ist gespeichert, sein Plakat nicht: Das Formular bleibt auf
-    // dem gespeicherten Anlass offen, damit es erneut gewählt werden kann.
+    // The event is saved and its poster is not: the form stays open on the
+    // saved event so the poster can be chosen again.
     posterFailed:
       "Der Anlass ist gespeichert, sein Plakat aber nicht. Wählen Sie es erneut und speichern Sie.",
 
@@ -574,7 +562,7 @@ export const de: typeof fr = {
     endTime: "Endzeit",
     location: "Ort",
     attire: "Kleidung",
-    // ENGE GUILLEMETS, und {{unset}} ist genau der Text, den die Karte zeigt.
+    // Tight guillemets, and {{unset}} is exactly the text the card shows.
     attireHint:
       "Leer lassen, wenn die Kleidung noch nicht festgelegt ist: Die Karte zeigt dann «{{unset}}».",
     isPublic: "Auf der öffentlichen Website sichtbar",
@@ -604,8 +592,8 @@ export const de: typeof fr = {
       "Alle Termine erhalten denselben Titel, denselben Ort und dieselben Zeiten. Jeder wird ein eigenständiger Anlass: Einen später zu ändern berührt die anderen nicht.",
 
     weekday: "Wochentag",
-    // Im Deutschen ohnehin grossgeschrieben — anders als bei Intls «lundi»,
-    // weshalb das Französische diese Liste nicht aus Intl beziehen kann.
+    // Capitalised in German anyway. French cannot take this list from Intl,
+    // which gives "lundi".
     weekdays: {
       monday: "Montag",
       tuesday: "Dienstag",
@@ -630,8 +618,8 @@ export const de: typeof fr = {
     create_other: "{{count}} Anlässe erstellen",
     createNone: "Anlässe erstellen",
     noneChosen: "Wählen Sie mindestens einen Termin aus.",
-    // Eine Serie entsteht als Entwürfe: Eine falsche Wiederholung soll nicht auf einen Schlag
-    // in der Planung aller landen.
+    // A series is created as drafts, so a wrong repetition does not land in
+    // everybody's planning at once.
     draftsNote:
       "Die Anlässe werden als Entwürfe erstellt: Lesen Sie sie in der Planung durch und veröffentlichen Sie sie dann.",
     createdCount_one: "{{count}} Entwurf erstellt.",
@@ -642,7 +630,7 @@ export const de: typeof fr = {
 
   members: {
     heading: "Mitglieder",
-    // NULL IST HIER PLURAL: «0 Mitglieder», nicht «0 Mitglied».
+    // Zero is plural here: "0 Mitglieder", not "0 Mitglied".
     count_one: "{{count}} Mitglied",
     count_other: "{{count}} Mitglieder",
     add: "Person hinzufügen",
@@ -667,7 +655,7 @@ export const de: typeof fr = {
     roleFilter: "Rolle",
     allSections: "Alle Register",
     allRoles: "Alle Rollen",
-    // DATIV nach «von»: «3 von 45 Mitgliedern».
+    // Dative after "von": "3 von 45 Mitgliedern".
     filteredCount_one: "{{matches}} von {{count}} Mitglied",
     filteredCount_other: "{{matches}} von {{count}} Mitgliedern",
     noMatch: "Kein Mitglied entspricht dieser Suche.",
@@ -676,8 +664,8 @@ export const de: typeof fr = {
     editPerson: "{{name}} bearbeiten",
     password: "Passwort",
     deleteTitle: "{{name}} löschen",
-    // «DIESE PERSON» STATT DES NAMENS, wie im Französischen — dort aus
-    // Gründen der Grammatik, hier, weil der Titel die Person bereits nennt.
+    // "Diese Person" rather than the name, as in French (there for grammar),
+    // because the title already names the person.
     deleteDescription:
       "Diese Person wird aus der Liste entfernt und verliert sofort den Zugang zur Website. Ihre Rückmeldungen zur Teilnahme werden aus der Planung gelöscht. Diese Aktion ist endgültig.",
     reset: "Zurücksetzen",
@@ -690,8 +678,8 @@ export const de: typeof fr = {
       "Notieren Sie es oder lesen Sie es der Person jetzt vor: Es wird nie wieder angezeigt. Sie muss es bei der ersten Anmeldung ersetzen.",
     generatedAck: "Ich habe das Passwort notiert",
 
-    // Im Deutschen beugt sich hier kein Partizip, anders als im
-    // Französischen: «Nie benutzt» passt unabhängig davon, wer gemeint ist.
+    // No participle agrees here, unlike French: "Nie benutzt" fits whoever
+    // is meant.
     neverUsed: "Nie benutzt",
     neverUsedName: "Konto nie benutzt",
     provisional: "Provisorisch",
@@ -770,12 +758,12 @@ export const de: typeof fr = {
       "Alle vier Dateien enthalten genau dieselben Zeilen. Excel ist die, die der Vorstand öffnet; CSV funktioniert überall.",
     empty: "Es hat sich noch niemand angemeldet. Das öffentliche Formular ist unter",
 
-    // STORNIEREN, NICHT ABBRECHEN: Diese Schaltfläche storniert eine
-    // Anmeldung; common.cancel schliesst ein Formular, ohne etwas zu tun. Im
-    // Französischen heissen beide «Annuler».
+    // "Stornieren", not "Abbrechen": this cancels a booking, while
+    // common.cancel closes a form without doing anything. French says
+    // "Annuler" for both.
     cancel: "Stornieren",
     cancelAria: "Anmeldung von {{name}} stornieren",
-    // Ohne Leerzeichen vor dem Fragezeichen.
+    // No space before the question mark.
     cancelTitle: "Anmeldung von {{name}} stornieren?",
     cancelDescription:
       "Die Anmeldung und alles, was sie bestellt hat, werden gelöscht. Die Person wird nicht benachrichtigt. Diese Aktion ist endgültig.",
@@ -938,7 +926,7 @@ export const de: typeof fr = {
       concert: "Konzertfoto",
       godparents: "Götti und Gotte",
       history: "Geschichte: {{title}}",
-      // Zugleich der Alternativtext des Plakats, wo immer der Anlass es zeigt.
+      // Also the poster's alt text wherever the event shows it.
       event: "Plakat: {{title}}",
     },
     slotSaveFailed: "Das Foto konnte nicht geändert werden.",
@@ -1095,12 +1083,10 @@ export const de: typeof fr = {
     emptyNotice:
       "Die nächsten Termine sind noch nicht veröffentlicht. Schauen Sie bald wieder vorbei, oder schreiben Sie dem Vorstand, um uns zu buchen.",
     seeAll: "Alle Termine",
-    // "Jetzt anmelden", not the bare "Anmelden": German uses that one word
-    // for BOTH logging in and signing up for something, and nav.login is
-    // already "Anmelden" -- on /agenda the two would sit on the same screen
-    // meaning different things. French has no such collision ("Se connecter"
-    // against "S'inscrire"), so this is a place the mirror deliberately is
-    // not word-for-word.
+    // "Jetzt anmelden", not the bare "Anmelden", which German uses for both
+    // logging in and signing up: nav.login is "Anmelden", and on /agenda the
+    // two share a screen. French has no such collision, so the mirror is not
+    // word for word here.
     register: "Jetzt anmelden",
     registerFor: "Jetzt anmelden — {{title}}",
   },
@@ -1124,12 +1110,10 @@ export const de: typeof fr = {
   },
 
   join: {
-    // "du", NOT "Sie", and that is deliberate on BOTH sides. The French
-    // reads "Tu veux commencer la guggen ?" because this page addresses
-    // children directly -- the band takes players from 7 to 18. The rule is
-    // written up at web/src/pages/Home.tsx:65, which explains why the front
-    // page stays impersonal rather than following suit. It is the only
-    // informal address in either catalogue; do not "fix" it.
+    // "du", not "Sie", in both languages: this page addresses children
+    // directly (the band takes players from 7 to 18). Home.tsx explains why
+    // the front page stays impersonal. It is the only informal address in
+    // either catalogue.
     heading: "Willst du mit der Gugge anfangen?",
     headingHighlight: "Gugge",
     intro:
