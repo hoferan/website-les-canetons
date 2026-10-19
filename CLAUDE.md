@@ -643,7 +643,7 @@ looks like 29 red files and a catastrophic regression; it is neither, and the
 identical command from PowerShell is green. It is intermittent, which makes it
 worse — it has already sent two separate sessions hunting a phantom.
 
-`npm run check` deliberately does **not** build: `build:web` empties
+`npm run check` deliberately does **not** build: Vite empties
 `dist/build/`, which would delete `_api/` out from under a running stack.
 CI's `build` job covers the artifact.
 
