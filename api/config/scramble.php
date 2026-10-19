@@ -504,9 +504,12 @@ MARKDOWN,
         ValidationExceptionResponse::class,
         AuthenticationExceptionResponse::class,
         NotFoundExceptionResponse::class,
-        // A type-to-schema extension, which is what this array actually
-        // reaches. Operation transformers go through AppServiceProvider
-        // instead; one listed here is accepted and never called.
+        // A type-to-schema extension. This array takes every kind, operation
+        // extensions included (this project registers those in
+        // AppServiceProvider to keep their order in one list). An entry that
+        // names no existing class is dropped without a word, and this file has
+        // no namespace, so each one needs its `use` line above. See
+        // docs/traps.md.
         Iso8601ToSchema::class,
     ],
 

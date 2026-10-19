@@ -105,17 +105,16 @@ class AppServiceProvider extends ServiceProvider
         // that route's own middleware. See App\Support\Scramble\
         // DocumentsFailureModes for what it derives and why.
         //
-        // REGISTERED HERE, NOT IN config/scramble.php's `extensions` array.
-        // That array is documented as taking extensions and its filter does
-        // accept an OperationExtension, but one listed there is never called —
-        // verified by putting a `throw` in handle() and watching the export
-        // succeed anyway. The `extensions` array reaches the paths that build
-        // SCHEMAS and RESPONSES from types; operation transformers are a
-        // separate pipeline, and this is its documented entry point.
+        // Registered here so that all four sit in one ordered list.
+        // config/scramble.php's `extensions` array would work as well: Scramble
+        // appends every OperationExtension listed there to this same list.
+        // Those run BEFORE the ones below, because Scramble's provider boots
+        // ahead of this one, so splitting the four across both places would
+        // reorder them.
         //
-        // Cost an hour to find, so: if a Scramble extension of yours appears to
-        // do nothing, check which pipeline consumes it before debugging the
-        // extension itself.
+        // If a Scramble extension of yours appears to do nothing, put a `throw`
+        // in handle() before debugging its logic. docs/traps.md has the cause
+        // that cost an hour once.
         //
         // ConstrainsPathParameters joins it on the same footing and for the same
         // reason: a route's `->where()` is already the authority on what that

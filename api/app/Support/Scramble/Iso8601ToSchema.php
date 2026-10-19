@@ -22,9 +22,8 @@ use Dedoc\Scramble\Support\Type\Type;
  * usable here: a Resource returning a Carbon instance would serialise through
  * Carbon's own JSON form and lose the `+00:00` offset this API pins.
  *
- * Registered in config/scramble.php's `extensions` array, which IS the right
- * place for a type-to-schema extension — unlike an OperationExtension, which
- * that array accepts and never calls. See docs/traps.md.
+ * Registered in config/scramble.php's `extensions` array, where Scramble looks
+ * for type-to-schema extensions.
  */
 class Iso8601ToSchema extends TypeToSchemaExtension
 {
