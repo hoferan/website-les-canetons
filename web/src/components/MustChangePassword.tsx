@@ -8,28 +8,20 @@ const PASSWORD_PAGE = "/account/password";
  * Holds a member on `/account/password` until they have replaced a
  * committee-issued password.
  *
- * WHY A GATE AND NOT JUST A REDIRECT AT LOGIN. The password was read out loud
- * down a phone or written on a slip of paper, so it is not a secret — and a
- * member who logs in, gets sent to /account/password and then simply types another URL
- * would otherwise carry on using it indefinitely. Login sends them here as a
- * courtesy; this is what makes it hold.
+ * A gate, not only a redirect at login: the password was read out over the
+ * phone or written on a slip of paper, so it is no secret, and a member who
+ * simply typed another URL would keep using it. Login sends them here as a
+ * courtesy; this makes it hold.
  *
- * IT IS NOT AN AUTH GUARD. An anonymous visitor passes straight through: public
- * pages must not depend on being logged in, and there are several.
+ * It is not an auth guard: an anonymous visitor passes straight through, since
+ * public pages must not depend on being logged in.
  *
- * The password page itself is exempt, or the redirect targets the page it is
- * redirecting from and the app renders nothing at all. Only that page: the
- * rest of `/account` is a profile, and a member who must replace a
- * committee-issued password has no reason to sit reading it first (#125).
+ * Only the password page is exempt, or the redirect would target itself and
+ * render nothing. The rest of `/account` is a profile the member has no reason
+ * to read first (#125).
  *
- * Logout stays reachable throughout, because it lives in the layout
- * chrome rather than on a route — so nobody is trapped in a screen with no way
- * out.
- *
- * THAT SENTENCE WAS FALSE UNTIL 2026-09-14, and it is why nobody noticed: the
- * invariant was documented as satisfied by a control that had never been
- * written. `POST /api/v1/logout` existed and was tested; nothing on screen
- * called it. See web/src/session/logout.ts.
+ * Logout lives in the layout chrome rather than on a route, so it stays
+ * reachable and nobody is trapped. Layout.test.tsx holds that.
  */
 export function MustChangePassword() {
   const { user } = useSession();

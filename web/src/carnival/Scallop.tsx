@@ -23,8 +23,8 @@ const BUMP_DEPTH = 22;
  * as a style rather than a `fill` attribute.
  *
  * A pattern in pixels rather than one path stretched to the width, so a bump is
- * 40px at 390px and at 1280px alike. The stretched version squashed into a
- * zigzag on a phone.
+ * 40px at 390px and at 1280px alike; a stretched path squashes into a zigzag
+ * on a phone.
  */
 export function Scallop(props: { into: string } | { from: string }) {
   // React's ids carry punctuation that does not survive inside url(#…).

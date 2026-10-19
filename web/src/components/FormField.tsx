@@ -8,18 +8,12 @@ import { cn } from "@/lib/utils";
 import { t, type TranslatedError } from "../i18n";
 
 /**
- * The form-wide error, in a live region that is ALWAYS in the tree.
+ * The form-wide error, in a live region that is always in the tree.
  *
- * A `role="alert"` element inserted into the DOM is announced by most
- * browser/AT pairs and missed by some — reliably missed when the insertion
- * shares a commit with other churn, which is exactly when a form error appears:
- * the same commit releases the submit button. Rendering the region
- * unconditionally and changing only its contents is the shape that announces
- * everywhere.
- *
- * It lives beside FormField because the two are the same decision — wiring that
- * is trivially correct, just as trivially copy-pasted wrong, and worth writing
- * once. There were four byte-identical copies of the old block before this.
+ * Some browser and screen reader pairs miss a `role="alert"` element that is
+ * inserted in the same commit as other changes, which is exactly when a form
+ * error appears (the same commit releases the submit button). Rendering the
+ * region unconditionally and changing only its contents announces everywhere.
  */
 export function FormError({ error }: { error: TranslatedError | null }) {
   return (
@@ -32,10 +26,9 @@ export function FormError({ error }: { error: TranslatedError | null }) {
 /**
  * Whether a form may be sent, checked by the app rather than by the browser.
  *
- * Every form in the app is `noValidate` (#102). The browser's own bubble is
- * written in the browser's language, so an English browser said "Please fill
- * out this field." on a French page, and nothing in `web/src/i18n/` could
- * reach it. `noValidate` switches off the bubble but not the checks:
+ * Every form in the app is `noValidate` (#102), because the browser's own
+ * bubble speaks the browser's language, which `web/src/i18n/` cannot reach.
+ * `noValidate` switches off the bubble but not the checks:
  * `checkValidity()` still reads `required`, `type="email"` and `min`/`max`, and
  * fires `invalid` at every control that fails, which is where each FormField
  * picks up its own message (see `useBrowserProblem`).
@@ -99,9 +92,8 @@ function reasonFor(validity: ValidityState, type: string) {
 /**
  * The star beside a required label, and the line that says what it means.
  *
- * Both are `aria-hidden`. A screen reader already hears "required" from the
- * control's `required` attribute, and "astérisque" spoken after every label
- * would add nothing to it. The star sits BESIDE the label rather than inside
+ * Both are `aria-hidden`: a screen reader already hears "required" from the
+ * control's `required` attribute. The star sits beside the label, not inside
  * it, so the label's text stays "Nom" and every query by label still finds it.
  */
 export function RequiredMark() {
@@ -124,33 +116,26 @@ export function RequiredLegend() {
 /**
  * One labelled text control, and the three attributes that have to agree.
  *
- * `aria-invalid`, `aria-describedby` and the error span's `id` are trivially
- * correct and just as trivially copy-pasted wrong — a describedby pointing at
- * an id that does not exist announces nothing at all, and nothing in a test or
- * a browser complains. Every form in this app routes its text inputs through
- * here so that wiring is written once.
+ * `aria-invalid`, `aria-describedby` and the error span's `id` are easy to
+ * copy wrong, and a describedby pointing at a missing id announces nothing
+ * while no test or browser complains. Every text input goes through here so
+ * that wiring is written once. It renders one field and owns no mutation,
+ * submit handler or layout.
  *
- * It deliberately does NOT own the mutation, the submit handler or the page's
- * layout. It renders one field.
+ * Checkboxes are not handled: their value is a boolean and their label sits
+ * after the control. The forms that need one write it out by hand.
  *
- * Checkboxes are not handled: their value is a boolean, their label sits after
- * the control rather than before it, and there is exactly one in the whole app.
- * The event form writes that one out by hand.
+ * The input is shadcn's vendored one, which carries the 44px touch floor and
+ * the aria-invalid styling. The textarea keeps a hand-written class string
+ * because the vendored set has no Textarea, so the two are kept visually in
+ * step by hand.
  *
- * The INPUT is shadcn's vendored one, which carries the 44px touch floor and the
- * aria-invalid styling. The TEXTAREA keeps a hand-written class string, on
- * purpose: there is no Textarea in the vendored set, and one call site in the
- * whole app does not earn a component. The two therefore have to be kept
- * visually in step by hand, which is cheap at one.
+ * `type` applies to the input only: passing one with `as="textarea"`
+ * type-checks but is ignored.
  *
- * `type` applies to the input only — a textarea has none, and passing one
- * alongside `as="textarea"` type-checks but is silently ignored.
- *
- * `type="password"` brings a reveal toggle with it (#101), so no password
- * field in the app can be written without one. It goes back to hidden when the
- * field is emptied: the password page clears every field after a submit,
- * whatever the outcome, and a revealed box that stays revealed would show the
- * next password to whoever is looking over the member's shoulder.
+ * `type="password"` brings a reveal toggle (#101). It goes back to hidden when
+ * the field is emptied: the password page clears every field after a submit,
+ * and a box left revealed would show the next password to an onlooker.
  *
  * `hint` is the text that belongs to the field before anything goes wrong,
  * such as a rule. It is described ahead of `problem`, so a screen reader reads
@@ -160,7 +145,7 @@ export function RequiredLegend() {
  * shown only when the server has said nothing, because the server knows
  * things the browser cannot, "déjà utilisé" among them.
  *
- * `describedBy` names elements OUTSIDE the field that describe it too, such as
+ * `describedBy` names elements outside the field that describe it too, such as
  * a rule or an error about a group of fields, and `invalid` marks the field
  * as part of such an error when it has no problem of its own. The history
  * form's "at least one of four" is the case both exist for.

@@ -5,52 +5,35 @@ import { cn } from "@/lib/utils";
 import { t } from "../i18n";
 
 /**
- * THERE ARE TWO LOGOS, AND THE DIFFERENCE IS THE WHOLE POINT OF THIS FILE.
+ * There are two logos. `Logo` is the header lockup: the duck mark beside the
+ * band's name set in Bungee. `BrandLogo` is the original artwork, the
+ * black-and-red badge printed on the flyers, costumes and instruments, shown
+ * where it can be read.
  *
- * `Logo` is the header LOCKUP: the duck mark beside the band's name set in
- * Bungee. `BrandLogo` is the ORIGINAL ARTWORK — the black-and-red badge that is
- * printed on the flyers, the costumes and the instruments. That one is what
- * people actually recognize, so it is not retired; it is moved somewhere it can
- * be seen at a readable size.
- *
- * WHY THE HEADER STOPPED USING THE ARTWORK. It was rendered at 64px, where its
- * baked-in lettering — "GUGGENMUSIK / LES CANETONS / FRIBOURG" — is illegible,
- * and it sat directly beside live text saying the same words. So the header
- * showed the band's name twice, once as noise. Worse, the words inside a JPEG
- * are invisible to a screen reader and to search. Splitting the mark from the
- * wordmark fixes all three at once, and the duck is narrower than the badge, so
- * the name now fits on ONE line at 390px instead of wrapping to two.
- *
- * The duck is not new: it was extracted from that same artwork, and the site's
- * favicon has been the duck on black all along.
+ * The header does not use the artwork: at header size its baked-in lettering
+ * is illegible, it would repeat the live text beside it, and words inside a
+ * JPEG are invisible to a screen reader and to search. The duck is narrower
+ * than the badge, so the name fits on one line at 390px. It comes from the
+ * same artwork, as does the favicon.
  */
 export function Logo() {
   return (
-    // A link, because a header logo that does not go home is a small friction
-    // on every page. aria-label rather than the visible text alone so the
-    // accessible name stays one clean phrase rather than the wordmark and
+    // aria-label so the accessible name is one phrase, not the wordmark and
     // "Guggenmusik" run together.
     //
-    // THE LABEL MUST NOT CONTAIN "accueil". It said "… — accueil" first, and
-    // every e2e spec that resolves getByRole("link", { name: "Accueil" }) then
-    // matched TWO elements — the nav item and this — and failed on a strict
-    // mode violation. Accessible-name matching is substring and case
-    // insensitive, so the site name alone is both the convention and the only
-    // label that does not collide with the nav.
+    // The label must not contain "accueil": name matching can be substring
+    // and case insensitive, so a query for a link such as "Retour à
+    // l'accueil" would also match the logo and fail on strict mode.
     <Link
       to="/"
       aria-label="Les Canetons de Fribourg"
       className="focus-ring-stage flex items-center gap-3 rounded"
     >
-      {/* alt="", deliberately: the wordmark beside it is real text saying the
-          same thing, so describing the image repeats the band's name.
+      {/* alt="": the wordmark beside it is real text saying the same thing.
 
-          width/height ARE THE FILE'S INTRINSIC PIXELS (139x172), and they are
-          here to reserve the box rather than to size it — the CSS above still
-          decides how big it renders. Without them the browser knows no aspect
-          ratio until the bytes arrive, and `w-auto` computes to 0, so the
-          wordmark beside it starts flush against the duck and jumps right when
-          the image lands. Small, on every page of the site. */}
+          width/height are the file's intrinsic pixels, there to reserve the
+          box (the CSS sizes it). Without them `w-auto` computes to 0 until the
+          bytes arrive, and the wordmark jumps right when the image lands. */}
       <img
         src="/assets/img/duck-white.png"
         alt=""
@@ -59,15 +42,12 @@ export function Logo() {
         className="h-12 w-auto sm:h-16"
       />
 
-      {/* Spans, not an <h1>. The page's own title is the document's single h1;
-          a site name repeated in the header of every route is branding, not the
-          heading of the content below it. Two h1s per page is what this was
-          before, on all sixteen routes. */}
+      {/* Spans, not an <h1>: the page's own title is the document's single
+          h1, and the site name in the header is branding. */}
       <span className="flex flex-col leading-none">
-        {/* NO ACCENT COLOUR HERE, AND THAT IS A DECISION. "Canetons" used to be
-            pink, which put pink an inch from the duck's red beak — two accents
-            competing in one lockup. The rule now: colour in the header means
-            the MARK, colour in the nav means STATE. Pink keeps its one job. */}
+        {/* No accent colour: pink here would compete with the duck's red
+            beak. Colour in the header means the mark, colour in the nav means
+            state. */}
         <span className="font-display text-lg leading-tight sm:text-2xl sm:leading-none">
           Les Canetons de Fribourg
         </span>
@@ -82,23 +62,15 @@ export function Logo() {
 /**
  * The band's real badge, at a size where it can actually be read.
  *
- * Content, not decoration — hence a described `alt`. It is deliberately NOT in
- * the header: see the note above.
+ * Content, not decoration, hence a described `alt`. Kept out of the header:
+ * see the note above.
  *
- * width/height ARE THE FILE'S INTRINSIC PIXELS (237x174), and dropping them
- * costs 141px of layout shift on the front page. This renders with `h-auto` and
- * a caller-supplied width (`w-48 sm:w-64` on /accueil), so until the bytes
- * arrive the browser has no aspect ratio to work from, computes the height as 0,
- * and the whole hero — heading, sentence, photo slot, next event — sits 141px
- * higher and then jumps down when the image lands. Found on TEST: a measurement
- * taken a beat early read the badge as h=0 and the page looked like it had no
- * badge at all. With these attributes the box is reserved from the first paint.
+ * width/height are the file's intrinsic pixels. This renders with `h-auto` and
+ * a caller-supplied width, so without them the height is 0 until the bytes
+ * arrive and the front page's hero jumps down when the image lands.
  *
- * NO loading="lazy" — it used to be here and it was wrong. This is the front
- * page's hero image, above the fold on every viewport: lazy-loading defers the
- * one image a first-time visitor is meant to see, and on a slow connection it
- * guarantees the shift the attributes above exist to prevent. `lazy` is for
- * images below the fold, of which this site currently has none.
+ * No loading="lazy": this is the front page's hero image, above the fold on
+ * every viewport, and lazy-loading would defer it and bring back the shift.
  */
 export function BrandLogo({ className }: { className?: string }) {
   return (

@@ -15,20 +15,16 @@ import { t, type TranslatedError } from "../i18n";
 /**
  * Correcting one event.
  *
- * IT READS THE EVENT BEFORE SHOWING IT, rather than seeding the form from the
- * row the planning already had. The PATCH is a conditional write — refused
- * without an `If-Match`, refused with a stale one — and the tag has to
- * describe what the organiser was looking at when they decided what to change.
- * The planning hands out no tag at all, deliberately: one tag cannot validate
- * five rows. So this read is both where the form's values come from and where
- * the concurrency window opens — "while this form was open".
+ * It reads the event before showing it instead of seeding the form from the
+ * planning's row. The PATCH is a conditional write (refused without an
+ * `If-Match` or with a stale one), and the tag must describe what the
+ * organiser was looking at. The planning hands out no per-row tag, so this
+ * read supplies both the form's values and the tag.
  *
- * THE READ IS IMPERATIVE AND HAPPENS ONCE, not a `useQuery`. A query would
- * refetch in the background on a focus change, advancing the tag while the
- * form still shows the values it was opened with — which satisfies the server
- * and protects nobody, since the window it exists to cover is exactly the one
- * where somebody else was editing. The pair has to move together or not at
- * all.
+ * The read is imperative and happens once, not a `useQuery`: a background
+ * refetch would advance the tag while the form still shows the old values,
+ * which satisfies the server and protects nobody. Values and tag move
+ * together or not at all.
  */
 export function EventEdit() {
   const { id } = useParams();
@@ -50,21 +46,20 @@ export function EventEdit() {
   const [readError, setReadError] = useState<string | null>(null);
 
   // By hand over the generated function, because the `If-Match` differs per
-  // call and orval's mutation hooks fix their request options when the hook is
-  // created — see web/src/api/ifMatch.ts.
+  // call and orval's mutation hooks fix their request options at creation.
+  // See web/src/api/ifMatch.ts.
   const update = useMutation({
     mutationFn: ({ data, etag }: { data: UpdateEventRequest; etag: string }) =>
       eventUpdate(eventId, data, ifMatch(etag)),
   });
 
-  // BUSY FROM THE SAVE THROUGH THE POSTER AND THE PUBLISH, as on the create
-  // screen: `update.isPending` alone left the form open between the writes.
+  // Busy from the save through the poster and the publish, as on the create
+  // screen: `update.isPending` alone leaves the form open between the writes.
   const [working, setWorking] = useState(false);
 
   useEffect(() => {
-    // Guards a StrictMode double-invoke and a fast back-navigation alike: a
-    // response arriving after this effect is torn down must not set state on a
-    // screen the organiser has already left.
+    // Guards a StrictMode double-invoke and a fast back-navigation: a response
+    // arriving after teardown must not set state on a screen already left.
     let abandoned = false;
 
     async function open() {
@@ -74,8 +69,8 @@ export function EventEdit() {
           return;
         }
         if (response.status !== 200) {
-          // Unreachable: the mutator throws on every non-2xx. The declared
-          // union says otherwise and tsc is right that it does.
+          // Unreachable, since the mutator throws on every non-2xx, but the
+          // declared union includes it.
           setReadError(t("eventForm.loadFailed"));
           return;
         }
@@ -99,8 +94,8 @@ export function EventEdit() {
     setCarried(null);
 
     if (opened?.etag == null) {
-      // Without a tag the write is refused with 428, which reads on screen as
-      // a broken save. Saying so and stopping is the honest answer.
+      // Without a tag the write is refused with 428, which reads as a broken
+      // save, so say so and stop.
       setReadError(t("eventForm.loadFailedReload"));
       return;
     }
@@ -110,9 +105,8 @@ export function EventEdit() {
       const saved = await update.mutateAsync({ data: eventBodyFrom(draft), etag: opened.etag });
       await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
 
-      // The save handed out the tag of what it wrote. Keep it as the form's
-      // own tag first: if the poster or the publish fails, the next save must
-      // not be refused as stale.
+      // Keep the tag of what the save wrote first, so if the poster or the
+      // publish fails, the next save is not refused as stale.
       const fresh = saved.status === 200 ? entityTagOf(saved) : null;
       if (saved.status === 200) {
         setOpened({ event: saved.data, etag: fresh });
@@ -133,9 +127,8 @@ export function EventEdit() {
 
       navigate("/events");
     } catch (thrown) {
-      // Open, for the same reason as the create screen — and here it also
-      // matters for the 412: "quelqu'un a modifié cet élément entre-temps" is
-      // only useful next to the values it is about.
+      // The form stays open, as on the create screen, and a 412 is only
+      // useful next to the values it is about.
       form.setFromThrown(thrown);
     } finally {
       setWorking(false);

@@ -5,67 +5,37 @@ import { pathInLocale } from "../i18n/locale";
 /**
  * The way out.
  *
- * IT DID NOT EXIST UNTIL 2026-09-14. `POST /api/v1/logout` was built with the
- * login and has Laravel tests; nothing on screen had ever called it, so a member's
- * only way to end a session was to clear their cookies — on the shared family
- * computer a young member's parent logs in from, that is the whole problem.
- * Found by André during a manual pass over the public pages.
+ * It lives in the nav chrome, not on a page: a member held on /account by the
+ * forced-password gate (MustChangePassword) reaches the nav and nothing else.
  *
- * What kept it hidden is worth more than the bug: MustChangePassword's own
- * docblock argued its gate could trap nobody BECAUSE "logout is a button in
- * the layout chrome rather than a route". The invariant was documented as
- * satisfied by a control that was never written. That comment is true now.
+ * An action, not a link: it changes server state, so there is no /logout URL
+ * to bookmark, prefetch or land on by pressing Back.
  *
- * IN THE CHROME, NOT ON A PAGE, for exactly that reason. A member held on
- * /account by the forced-password gate reaches the nav and nothing else, so a
- * logout living on some other route would be unreachable by the one person who
- * most needs it. It sits in AccountMenu, which is in the nav.
- *
- * AN ACTION, NOT A LINK. It changes server state; there is no /logout URL to
- * bookmark, prefetch, or land on by pressing Back.
- *
- * A hook, because the logout is a menu item (#99) and the menu renders it.
- * All this owns is what selecting it does.
+ * A hook, because AccountMenu and PhoneNav render the control; this owns what
+ * selecting it does.
  */
 export function useLogout(onDone: () => void): { logOut: () => void; isPending: boolean } {
   const logout = useAuthLogout({
     mutation: {
-      // A FULL PAGE LOAD, NOT A ROUTER NAVIGATION, AND NOT CACHE SURGERY.
+      // A full page load, not a router navigation or cache surgery. In-app
+      // versions each rearrange a live app around a dead session:
       //
-      // Three in-app versions were built and measured first, because a reload
-      // costs a second and looks lazy. Each failed differently:
+      //   - `queryClient.clear()` leaves the chrome logged in, because
+      //     SessionProvider's mounted `staleTime: Infinity` observers do not
+      //     ask again when their query is removed.
+      //   - Clearing the session queries too blanks the document, since
+      //     SessionProvider renders `null` while they are pending.
+      //   - Invalidating `/me` races the navigation: RequirePermission sees an
+      //     anonymous user on the guarded page and lands on the login form.
       //
-      //   1. `queryClient.clear()` then `navigate("/")` LEFT THE CHROME LOGGED
-      //      IN — the nav still read "demo.direction" and still offered a
-      //      logout on the public front page. SessionProvider's two queries are
-      //      mounted with `staleTime: Infinity`, and removing a query does not
-      //      make a mounted observer go and ask again.
-      //   2. Clearing the SESSION queries as well blanks the document:
-      //      SessionProvider renders `null` while they are pending.
-      //   3. Removing the private data and INVALIDATING `/me` fixed the
-      //      chrome, and then lost a race. The member is on /members when they
-      //      click; the refetch resolves before the router has committed the
-      //      new location, RequirePermission sees an anonymous user on a page
-      //      it guards, and the logout lands on the LOGIN FORM. Measured, not
-      //      predicted.
-      //
-      // Every one of those is the same shape of problem: a live app being
-      // rearranged around a session that no longer exists. Throwing the
-      // document away removes the category. The heap goes with it, which is a
-      // stronger guarantee than any cache surgery on a shared computer — the
-      // roster, the planning and the chase list cannot be recovered from
-      // memory by pressing Back.
-      //
-      // TO `/` RATHER THAN `/login`, which is only possible now the public
-      // home page exists: before it the front page was the 404 view, so there was nowhere to
-      // land. Logging out is finishing, not starting again.
+      // The reload also drops the heap, so on a shared computer the roster
+      // cannot come back by pressing Back. It lands on the home page, not
+      // the login form.
       onSuccess: () => leave(onDone),
 
-      // A FAILED LOGOUT STILL ENDS THE SESSION HERE. The cookie may already be
-      // gone — an expired session answers 401 on this very call — and leaving
-      // somebody staring at a members' screen because the server disagreed
-      // about whether they were logged in is the worst of both. Whatever the
-      // server thinks, that session is unusable from this browser.
+      // A failed logout still ends the session here. An expired session
+      // answers 401 on this very call, and whatever the server thinks, the
+      // session is unusable from this browser.
       onError: () => leave(onDone),
     },
   });
@@ -80,24 +50,15 @@ export function useLogout(onDone: () => void): { logOut: () => void; isPending: 
 }
 
 /**
- * Where logging out lands: the CURRENT LOCALE'S root, not "/".
+ * Where logging out lands: the current locale's root.
  *
- * EXPORTED SO IT CAN BE TESTED AT ALL. The navigation below cannot be: this is
- * a real full page load, and window.location is non-configurable in this jsdom
- * setup, so a spy on .assign throws "Cannot redefine property: assign" instead
- * of recording the call. The docblock above `ends the session on the server`
- * in web/src/components/Layout.test.tsx documents that, having hit it,
- * and proves the server half only. Splitting the destination out gives the
- * decision a unit test and leaves the landing to a real browser, which is
- * where it was always checked.
+ * Exported so it can be tested. The navigation cannot be: window.location is
+ * non-configurable in this jsdom setup, so a spy on .assign throws "Cannot
+ * redefine property: assign". Layout.test.tsx's `ends the session on the
+ * server` proves the server half only, and a real browser checks the landing.
  *
- * (An earlier version of this file's docblock claimed Layout.test.tsx spied on
- * assign. It never did, and never could.)
- *
- * THE LOCALE MATTERS because this escapes the router's basename entirely — the
- * one place in web/src/ that does. A literal "/" would drop a German member on
- * the French home page, silently changing their language as a side effect of
- * logging out.
+ * This is the one place in web/src/ that escapes the router's basename, so a
+ * literal "/" would drop a German member on the French home page.
  */
 export function logoutDestination(): string {
   return pathInLocale("/", currentLocale());

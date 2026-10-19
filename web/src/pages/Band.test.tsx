@@ -9,12 +9,9 @@ import { renderWithSession } from "../test/renderWithSession";
 import { Band } from "./Band";
 
 /**
- * The band page, generated from the roster.
- *
  * The mocked roster mirrors DevSeeder: Nadia plays in Batteurs, Perrine in
  * Cloches, Bastien in Trompettes and teaches Batteurs, Camille in Trombones.
- * Dominique organises and plays in nothing, so she appears nowhere here — the
- * same absence that broke the attendance partition when it was assumed away.
+ * Dominique organises and plays in nothing, so she appears nowhere here.
  */
 test("lists each register with the people who play in it", async () => {
   await renderWithSession(<Band />, { route: "/band" });
@@ -26,8 +23,8 @@ test("lists each register with the people who play in it", async () => {
 test("lists an instructor under the register they teach, not the one they play in", async () => {
   await renderWithSession(<Band />, { route: "/band" });
 
-  // Bastien plays trumpet and teaches the drummers. Both are true at once, and
-  // the two columns behind them are separate for exactly this reason.
+  // Bastien plays trumpet and teaches the drummers, which is why the two
+  // columns behind them are separate.
   const drums = await screen.findByRole("article", { name: "Batteurs" });
   expect(within(drums).getByText(/Moniteurs/)).toHaveTextContent("Bastien");
 
@@ -37,9 +34,8 @@ test("lists an instructor under the register they teach, not the one they play i
 });
 
 /**
- * THE CONSENT TEST, on the screen side. The API has its own; this one proves
- * the page renders whatever the API sends rather than the roster it might have
- * cached from somewhere else.
+ * The screen side of consent (the API has its own test): the page renders
+ * what the API sends, not a roster cached from elsewhere.
  */
 test("drops somebody who has withdrawn their consent to appear", async () => {
   setMemberVisibility(2, false); // Perrine, in Cloches.
@@ -52,12 +48,9 @@ test("drops somebody who has withdrawn their consent to appear", async () => {
 });
 
 /**
- * A register nobody has consented to appear in KEEPS ITS HEADING. Dropping it
- * would tell a visitor the band has no lyre, and it would let a reader infer
- * that a particular child said no.
- *
- * Mutation-tested: filtering empty registers out of the map fails this test
- * and no other.
+ * A register nobody has consented to appear in keeps its heading; dropping it
+ * would let a reader infer that a particular child said no. Filtering empty
+ * registers out of the map fails this test and no other.
  */
 test("keeps a register whose members have all withheld consent", async () => {
   await renderWithSession(<Band />, { route: "/band" });
@@ -67,11 +60,9 @@ test("keeps a register whose members have all withheld consent", async () => {
 });
 
 /**
- * EVERY link in the index has to land on something, INCLUDING the registers
- * nobody has consented to appear in. Those are the two lists that can drift
- * apart — the index is built from the whole answer and the page body could
- * easily be built from a filtered one — and a link to an anchor that is not on
- * the page scrolls nowhere and throws nothing.
+ * Every index link has to land on something, including empty registers. The
+ * index is built from the whole answer and the body could be built from a
+ * filtered one, and a link to a missing anchor fails silently.
  */
 test("offers a jump link per register, each landing on that register", async () => {
   await renderWithSession(<Band />, { route: "/band" });
@@ -98,8 +89,7 @@ test("publishes first names and no account details", async () => {
 
   await screen.findByRole("article", { name: "Cloches" });
   expect(screen.queryByText(/demo\.player/)).not.toBeInTheDocument();
-  // The surname travels in the response, for the committee page; this page
-  // renders one half of a name on purpose.
+  // The surname travels in the response, for the committee page.
   expect(screen.queryByText(/Sansconnexion/)).not.toBeInTheDocument();
 });
 
@@ -204,9 +194,8 @@ test("keeps the band placeholder when the photo slots cannot be read", async () 
 });
 
 /**
- * The godparents card waits for the roster, because the registers sit above
- * it. Rendered while they load, it was in the first screen of a phone and was
- * pushed off it when the six registers arrived (#236).
+ * The godparents card waits for the roster: rendered while the registers
+ * above it load, it would be pushed out of a phone's first screen (#236).
  */
 test("holds the godparents card while the roster is loading", async () => {
   server.use(http.get("/api/v1/band", () => delay("infinite")));

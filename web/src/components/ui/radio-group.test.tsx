@@ -45,10 +45,8 @@ describe("RadioGroup", () => {
   });
 
   /**
-   * THE REASON NO CALL SITE NEEDS AN EMPTY-VALUE GUARD. A ToggleGroup would
-   * have fired onValueChange("") here, which for /events would have meant a
-   * planning that is neither upcoming nor past. A radio group cannot be
-   * cleared by its user, and this is what says so.
+   * Why no call site needs an empty-value guard: a radio group cannot be
+   * cleared by its user.
    */
   it("keeps the checked option checked when it is pressed again", async () => {
     const user = userEvent.setup();
@@ -60,17 +58,8 @@ describe("RadioGroup", () => {
   });
 });
 
-// TWO ASSERTIONS DELIBERATELY ABSENT, both tried first:
-//
-// THE 44px FLOOR. jsdom computes no layout, so all this file could check is
-// that the token "min-h-touch" appears in a className — which passes just as
-// happily if the token is misspelled, if styles.css stops defining
-// --spacing-touch, or if a later class in the cascade overrides the height.
-//
-// ARROW-KEY SELECTION. Radix selects on arrow by calling click() from the
-// item's onFocus while an arrow is held, and that needs real focus events:
-// under jsdom {ArrowRight} leaves aria-checked false. It is the behaviour this
-// primitive was chosen FOR, so it is asserted rather than dropped —
-// just not here.
-//
-// Both live in web/e2e/members.spec.ts, measured in a real browser.
+// Two behaviours are asserted in web/e2e/members.spec.ts instead, in a real
+// browser. The 44px floor, because jsdom computes no layout and a className
+// check passes even when the token is misspelled or overridden. Arrow-key
+// selection, because Radix needs real focus events for it and under jsdom
+// {ArrowRight} leaves aria-checked false.

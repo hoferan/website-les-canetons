@@ -12,9 +12,8 @@ type User = ReturnType<typeof userEvent.setup>;
 
 /**
  * Pastes each value into the field with that label. Typing re-renders the form
- * once per key, about 80 keys for a whole message, which cost 1.5 s of the
- * 5 s test timeout on an idle machine and ran out in a loaded full-suite run.
- * No test here is about keystrokes.
+ * once per key, and a whole message can run out the 5 s test timeout in a
+ * loaded full-suite run. No test here is about keystrokes.
  */
 async function fill(user: User, values: Record<string, string>) {
   for (const [label, value] of Object.entries(values)) {
@@ -53,15 +52,14 @@ test("sends the message and answers in place, without navigating", async () => {
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
 
   expect(await screen.findByRole("heading", { name: "Message envoyé" })).toBeInTheDocument();
-  // The form is GONE, not merely covered: a success panel above a live form
-  // invites a second send of the same message.
+  // The form is gone: a success panel above a live form invites a second send.
   expect(screen.queryByLabelText("Nom")).not.toBeInTheDocument();
 });
 
 /**
- * The sent panel replaces the form in place, and the window kept the submit
- * button's offset: at 390px the sender was left looking at the footer with
- * the heading 318px above the screen and focus on <body>.
+ * The sent panel replaces the form in place, and the window would keep the
+ * submit button's offset, leaving the sender on the footer at 390px with
+ * focus on <body>.
  */
 test("brings the sent panel into view and moves focus to its heading", async () => {
   const user = userEvent.setup();
@@ -78,11 +76,8 @@ test("brings the sent panel into view and moves focus to its heading", async () 
 });
 
 /**
- * THE THREE HEADERS THE GUARD REQUIRES, asserted on the wire rather than on
- * the helper that builds them. `publicWriteHeaders` returning the right object
- * proves nothing if the screen forgets to pass it — which is the whole failure
- * mode, since `contactStore` compiles perfectly well without its second
- * argument.
+ * The guard's headers, asserted on the wire rather than on the helper that
+ * builds them: `contactStore` compiles fine without its second argument.
  */
 test("carries the form token and an idempotency key on the request itself", async () => {
   const user = userEvent.setup();
@@ -101,14 +96,14 @@ test("carries the form token and an idempotency key on the request itself", asyn
 
   const headers = seen as Headers | null;
   expect(headers?.get("X-Form-Token")).toBe("mock-form-token");
-  // Not the value — that is a fresh UUID every mount — but the window the API
-  // enforces. A key under 16 characters answers 400 idempotency_key_invalid.
+  // The value is a fresh UUID every mount, so assert the API's minimum: a key
+  // under 16 characters answers 400 idempotency_key_invalid.
   expect((headers?.get("Idempotency-Key") ?? "").length).toBeGreaterThanOrEqual(16);
 });
 
 /**
- * The honeypot must be SENT and EMPTY. An absent field is refused exactly like
- * a filled one, so "we just don't render it" is not an implementation of this.
+ * The honeypot must be sent and empty. An absent field is refused exactly
+ * like a filled one, so not rendering it is no implementation.
  */
 test("sends the honeypot present and empty, and hides it from assistive technology", async () => {
   const user = userEvent.setup();
@@ -126,8 +121,7 @@ test("sends the honeypot present and empty, and hides it from assistive technolo
   await screen.findByRole("heading", { name: "Message envoyé" });
 
   expect(body).toHaveProperty("website", "");
-  // Nothing a person can reach: not in the accessibility tree, so a
-  // screen-reader user is never asked to leave a field blank.
+  // Out of the accessibility tree, so a screen reader never offers it.
   expect(screen.queryByLabelText(/website/i)).not.toBeInTheDocument();
 });
 
@@ -150,7 +144,7 @@ test("shows the refusal in French when the guard rejects the submission", async 
       "Envoi refusé. Rechargez la page et réessayez.",
     ),
   );
-  // NOTHING English reaches the screen: `title` is for a log.
+  // No English reaches the screen: `title` is for a log.
   expect(screen.queryByText(/Submission looks automated/)).not.toBeInTheDocument();
 });
 
@@ -175,10 +169,7 @@ test("keeps what was typed when the send fails", async () => {
   expect(screen.getByLabelText("Sujet")).toHaveValue("Mon fils aimerait essayer");
 });
 
-/**
- * Every field is required, `subject` included — which the legacy markup was
- * not, even though the API has always required it.
- */
+/** Every field is required, `subject` included, as the API requires it. */
 test("marks every field required, subject included", async () => {
   await renderWithSession(<Contact />, { route: "/contact" });
 
@@ -188,13 +179,9 @@ test("marks every field required, subject included", async () => {
 });
 
 /**
- * THE MEMBERS' HALF, and note what it does NOT do. A member already in the
- * band has a faster route to the committee than a form that makes them retype
- * a name the session is holding and go through three anonymous-visitor
- * protections. But the site carries no direct contact detail at all —
- * comite@lescanetons.org was pulled from /committee in the 2026-08-31 audit
- * and /join's contacts are placeholders — so a member who has not got the
- * number has only this form. It is signposted, never taken away.
+ * A member usually has a faster route to the committee, but the site carries
+ * no direct contact detail, so a member without the number has only this
+ * form. It is signposted, never taken away.
  */
 test("tells a member the committee is reachable directly, and leaves the form alone", async () => {
   setMockUser("demo.player");
@@ -243,8 +230,8 @@ test("shows the refusal in German when the guard rejects the submission", async 
   );
 });
 
-// #102. An English browser used to answer this with its own "Please fill out
-// this field." bubble, and the submit never reached the app at all.
+// #102: validated by the app, so an English browser shows no "Please fill out
+// this field." bubble of its own.
 test("an empty submission is refused in French, before anything is sent", async () => {
   const user = userEvent.setup();
   let posted = false;

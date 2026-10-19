@@ -360,8 +360,9 @@ function NewRole({ onCreated }: { onCreated: () => Promise<void> }) {
 
 /**
  * The two names and the permissions, shared by the new-role form and a card
- * being edited. Each permission's hint is DESCRIBED BY, not part of the
- * label, for the reason the roster form's role checkboxes give.
+ * being edited. Each permission's hint is its description (aria-describedby),
+ * not part of the label, for the reason the roster form's role checkboxes
+ * give.
  */
 function RoleFields({
   idPrefix,

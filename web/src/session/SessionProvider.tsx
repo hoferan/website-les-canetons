@@ -15,15 +15,11 @@ type Session = {
   config: ConfigShow200;
   user: AuthMe200 | null;
   /**
-   * UX ONLY. Laravel's `permission:` middleware is the sole enforcement — a
-   * mistake here shows a wrong button, it does not open a hole. That is not a
-   * licence to be sloppy: a member shown an admin form that then 403s is a bug
-   * report either way.
+   * UX only. Laravel's `permission:` middleware is the sole enforcement, so a
+   * mistake here shows a wrong button rather than opening a hole.
    *
-   * It takes the permission STRING the API sends, never a role name. Roles
-   * merely group permissions, and nothing in the UI may branch on WHICH role
-   * granted one (ADR 0014) — the same rule the middleware follows, which is
-   * what keeps "why can she do this?" answerable in one place.
+   * It takes the permission string the API sends, never a role name: nothing
+   * in the UI may branch on which role granted a permission (ADR 0014).
    */
   can: (permission: string) => boolean;
 };
@@ -41,22 +37,17 @@ export function useSession(): Session {
 /**
  * The boot gate.
  *
- * Nothing below renders until GET /api/config has resolved. That is deliberate,
- * not a loading-state convenience: the env ribbon and the feature flags come
- * from it, so rendering first would flash the wrong chrome — on PROD, a
- * non-prod ribbon, which is exactly the thing the ribbon exists to prevent
- * anyone believing.
+ * Nothing below renders until GET /api/config has resolved: the env ribbon and
+ * the feature flags come from it, and rendering first would flash the wrong
+ * ribbon.
  *
- * A 401 from GET /api/me is a NORMAL answer meaning "anonymous", not a
- * failure. `retry: false` keeps Query from retrying it three times before
- * settling, which would delay the first paint for every logged-out visitor —
- * i.e. almost all of them.
+ * A 401 from GET /api/me is the normal answer for an anonymous visitor.
+ * `retry: false` keeps Query from retrying it three times and delaying every
+ * logged-out first paint.
  *
- * Both queries are staleTime: Infinity. Neither changes without a navigation
- * that reloads the app (login and logout both invalidate explicitly, and so
- * does a session expiring under an open page; see useForgetExpiredSession), and
- * refetching config on every window focus would put a request behind every
- * tab switch for no benefit.
+ * Both queries are staleTime: Infinity. Login, logout and a session expiring
+ * under an open page (useForgetExpiredSession) invalidate explicitly, and a
+ * refetch on every window focus would buy nothing.
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const config = useConfigShow({ query: { retry: false, staleTime: Infinity } });
@@ -67,13 +58,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return null;
   }
 
-  // `status !== 200` beside isError, and it is what narrows the union rather
-  // than merely guarding it. orval types this as ConfigShow200 |
-  // Problem503Response — the 503 every route behind RunPendingMigrations can
-  // answer with, declared since 2026-09-12 — so `config.data.data` is not a
-  // config until the status picks a branch. The mutator throws on a 503, so
-  // isError already covers it at runtime; tsc is right that the type does not
-  // say so, and the site refusing to start is the correct answer either way.
+  // `status !== 200` narrows the union: orval types this as ConfigShow200 |
+  // Problem503Response (the 503 of RunPendingMigrations), so
+  // `config.data.data` is not a config until the status picks a branch. The
+  // mutator throws on a 503, so isError covers it at runtime.
   if (config.isError || config.data.status !== 200) {
     return <p role="alert">{t("common.bootFailed")}</p>;
   }
@@ -84,22 +72,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     console.error("Unexpected failure reading the session:", user.error);
   }
 
-  // Narrowed on status, not on isError alone. orval types this response as a
-  // discriminated union of every declared response — authMeResponse200 |
-  // authMeResponse401 — so `.data` is `AuthMe200 | AuthenticationException`
-  // until `status` picks a branch. In practice the mutator throws on 401 so the
-  // error branch never arrives as a resolved value, but the type is honest that
-  // it could, and narrowing costs one comparison.
+  // Narrowed on status for the same reason: `.data` is
+  // `AuthMe200 | AuthenticationException` until `status` picks a branch, even
+  // though the mutator throws on 401.
   const currentUser = !user.isError && user.data.status === 200 ? user.data.data : null;
 
   const value: Session = {
-    // The double .data is not a typo: the outer one is TanStack Query's, the
-    // inner one is orval's { data, status, headers } envelope. See http.ts.
+    // The outer .data is TanStack Query's, the inner one orval's envelope.
     config: config.data.data,
     user: currentUser,
-    // An anonymous visitor holds nothing, so this answers false rather than
-    // throwing: every caller is a render deciding whether to draw a control,
-    // and the logged-out case is the common one on the public pages.
+    // False for an anonymous visitor: every caller is a render deciding
+    // whether to draw a control.
     can: (permission) => currentUser?.permissions.includes(permission) ?? false,
   };
 
@@ -107,30 +90,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * A session that expires while a page is open (#296).
+ * A session that expires while a page is open.
  *
  * `/me` is cached forever, so without this the SPA goes on believing in a
- * session the server has dropped: the guards keep the member on the page, and
- * every write fails with a "Non authentifié" toast and no way to the login
- * form. Whichever call is first to answer 401 makes `/me` ask again. That
- * answers 401 too, the user above becomes null, and RequirePermission redirects
- * to the login form with `from` set, which is what brings the member back.
+ * session the server has dropped, and every write fails with no way to the
+ * login form. The first call to answer 401 makes `/me` ask again; that
+ * answers 401 too, the user becomes null, and RequirePermission redirects to
+ * the login form with `from` set.
  *
- * Invalidated rather than cleared, so the server decides: the refetch keeps the
- * old answer until the new one arrives, and a removed query would leave the
- * mounted observer holding it anyway (see logout.ts).
+ * Invalidated rather than cleared, so the refetch keeps the old answer until
+ * the new one arrives; a removed query would stay held by the mounted observer
+ * anyway (see logout.ts).
  *
  * Two kinds of 401 are left alone:
  *
- *  - any while `/me` does not hold a user. A visitor who was never logged in
- *    gets 401s as a matter of course, and so does the member once the refetch
- *    has answered, so a burst of failing calls asks `/me` once. This is also
- *    what stops `/me` reacting to its own 401, the normal anonymous answer,
- *    and refetching forever: the cache records the error before it tells
- *    anybody, so by the time this hears of it `/me` holds no user. A separate
- *    check for the `/me` key would never decide anything.
- *  - logout's. logout.ts expects it and answers with a full page load, and a
- *    redirect to the login form here would race that load.
+ *  - any while `/me` holds no user. That covers an anonymous visitor, a burst
+ *    of failing calls after the refetch has answered, and `/me`'s own 401: the
+ *    cache records the error before notifying, so `/me` already holds no user
+ *    and cannot refetch itself forever.
+ *  - logout's. logout.ts answers it with a full page load, which a redirect
+ *    here would race.
  */
 function useForgetExpiredSession(): void {
   const queryClient = useQueryClient();

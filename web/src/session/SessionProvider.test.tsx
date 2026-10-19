@@ -20,8 +20,7 @@ function Probe() {
 }
 
 test("nothing renders until config has resolved", () => {
-  // Deliberately NOT renderWithSession: the point is the state BEFORE the boot
-  // gate opens, which that helper exists to wait past.
+  // Not renderWithSession, which waits past the boot gate this test is about.
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
@@ -52,17 +51,14 @@ test("a logged-in user's identity reaches the context", async () => {
 });
 
 test("useSession outside the provider fails loudly rather than returning undefined", () => {
-  // Without the throw this returns null and every consumer crashes on a
-  // property access somewhere far away from the actual mistake.
+  // Without the throw, every consumer crashes on a property access far from
+  // the actual mistake.
   expect(() => render(<Probe />)).toThrow(/outside SessionProvider/);
 });
 
 /**
- * can() is UX only — Laravel's `permission:` middleware is the sole
- * enforcement. These tests pin that it reads the permission STRINGS the API
- * sends and never a role name: which role granted a permission is not a
- * question any part of the UI may ask (ADR 0014), the same rule the
- * middleware follows.
+ * can() reads the permission strings the API sends, never a role name
+ * (ADR 0014).
  */
 function CanProbe() {
   const { can } = useSession();
@@ -95,16 +91,10 @@ test("a permission the member does not hold is refused", async () => {
 /**
  * The boot gate's refusal, in both locales.
  *
- * NOT renderWithSession: this is the one path where the gate never opens, so
- * the helper's wait for its `booted` marker would hang rather than fail — the
- * marker is a CHILD of the provider, and on this branch the provider renders
- * the refusal instead of its children.
- *
- * `setLocale` therefore has to be called by hand here. setupTests.ts resets it
- * to French after every test, so this leaks nothing into the next one.
- *
- * Untested until #153, which is how the sentence stayed a French literal: the
- * page a German reader meets when the site cannot start at all.
+ * Not renderWithSession: its `booted` marker is a child of the provider, which
+ * renders the refusal instead, so the helper would hang rather than fail.
+ * `setLocale` is called by hand; setupTests.ts resets it to French after every
+ * test.
  */
 async function renderBootFailure() {
   server.use(http.get("/api/v1/config", () => new HttpResponse(null, { status: 503 })));

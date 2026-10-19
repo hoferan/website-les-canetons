@@ -50,9 +50,9 @@ export type ShownEntry = {
 /**
  * Which language an entry is shown in on a page in `locale`.
  *
- * PER ENTRY, NEVER PER FIELD: an entry shows its own-language fields if it has
+ * Per entry, never per field: an entry shows its own-language fields if it has
  * either of them, otherwise the other language's, so a French title never sits
- * over a German text. ADR 0026.
+ * over a German text (ADR 0026).
  */
 export function shownIn(entry: HistoryEntryResource, locale: Locale): ShownEntry {
   const fr = { lang: "fr" as Locale, title: entry.titleFr, body: entry.bodyFr };
@@ -69,9 +69,10 @@ function formatter(locale: Locale, precision: "month" | "day"): Intl.DateTimeFor
   const key = `${locale}|${precision}`;
   let found = formatters.get(key);
   if (!found) {
-    // IN UTC, because `occurredOn` is a bare calendar date read back at UTC
-    // midnight; formatting it in Fribourg, or in the test suite's New York,
-    // would show the previous day. SeriesForm's previewDate does the same.
+    // In UTC, because `occurredOn` is a bare calendar date read back at UTC
+    // midnight; formatting it in a zone behind UTC, like the test suite's New
+    // York, would show the previous day. SeriesForm's previewDate does the
+    // same.
     found = new Intl.DateTimeFormat(intlTag(locale), {
       timeZone: "UTC",
       ...(precision === "month"

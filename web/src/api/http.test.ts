@@ -1,13 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError, customFetch, parseRetryAfter, resetCsrfPriming } from "./http";
 
-// A Response body can only be read once, ever. Every fetch mock below is
-// built with mockImplementation (never mockResolvedValue) so each call to
-// fetch() gets a FRESH Response instance, matching how a real fetch() never
-// returns the same Response object twice. Sharing one instance across calls
-// would only work by the accident of which of those calls happen to read the
-// body — invisible when reading a single test in isolation, and one added
-// body read away from "Body is unusable: Body has already been read".
+// A Response body can be read only once, so every fetch mock below uses
+// mockImplementation (never mockResolvedValue) and hands each call a fresh
+// Response. A shared one fails with "Body is unusable: Body has already been
+// read" as soon as a second call reads it.
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
@@ -98,11 +95,9 @@ describe("customFetch", () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(400);
     expect(error.code).toBe("validation_failed");
-    // `errors` on the wire, `fields` on the object: the wire name follows
-    // RFC 9457 convention, this one follows what the UI does with it.
+    // `errors` on the wire, `fields` on the object.
     expect(error.fields).toEqual([{ field: "email", reason: "required" }]);
-    // The string a member reads out. Dropping it would make every reported
-    // failure unfindable in the log, silently.
+    // The string a member reads out, which finds the failure in the log.
     expect(error.requestId).toBe("01JB3K7QW8ZX7VN4S2QK9J0M1P");
   });
 
@@ -125,10 +120,9 @@ describe("customFetch", () => {
     expect(error.code).toBe("unknown_error");
   });
 
-  // These two pin the ONE thing none of the tests above checked: what a
-  // successful call actually returns. orval's generated signatures all declare
-  // the { data, status, headers } envelope, so returning the bare body
-  // type-checked at every call site and was undefined at runtime.
+  // These two pin what a successful call returns. Every generated signature
+  // declares the envelope, so a bare body would type-check and be undefined
+  // at runtime (contract.test.ts pins the generated half).
   it("returns orval's { data, status, headers } envelope, which every generated type declares", async () => {
     vi.stubGlobal(
       "fetch",

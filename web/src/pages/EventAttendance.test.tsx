@@ -10,16 +10,14 @@ import { renderWithSession } from "../test/renderWithSession";
 import { EventAttendance } from "./EventAttendance";
 
 /**
- * The chase list is reached through a route parameter, so it has to be
- * rendered behind one — `useParams` returns nothing at all for a component
- * mounted outside a matching Route, and the screen then reads event NaN.
+ * Rendered behind a matching Route: outside one `useParams` returns nothing
+ * and the screen reads event NaN.
  *
- * THIS BARE ROUTE TREE IS ALSO WHAT EXEMPTS `demo.both` FROM THE FORCED
- * PASSWORD CHANGE. That fixture carries `mustChangePassword: true` (it is the
- * roster's provisional-password case — see web/src/mocks/handlers.ts), and
- * MustChangePassword is wired in routes.tsx, not here, so the gate has no
- * ancestor to fire from. Route this screen through the real table and that
- * actor starts redirecting to /account instead.
+ * This bare route tree also exempts `demo.both` from the forced password
+ * change. That fixture carries `mustChangePassword: true` (see
+ * web/src/mocks/handlers.ts), and MustChangePassword is wired in routes.tsx,
+ * so here the gate has no ancestor. Through the real route table that actor
+ * redirects to /account instead.
  */
 async function renderChaseList(
   as: "demo.direction" | "demo.both" = "demo.direction",
@@ -37,12 +35,8 @@ async function renderChaseList(
 }
 
 /**
- * The one answer card for this person.
- *
- * There was a table beside these cards until #130, both layouts in the DOM at
- * once, and every query in this file had to say which it meant. The card fuses
- * name, answer and reason into one sentence on purpose — `answerLine` — so a
- * card is found by the name it contains rather than by a cell of its own.
+ * The one answer card for this person, found by the name it contains: the
+ * card fuses name, answer and reason into one sentence (`answerLine`).
  */
 function cardFor(name: string) {
   const card = within(screen.getByTestId("chase-cards"))
@@ -70,15 +64,12 @@ test("the people who have not answered come before the people who have", async (
   const answers = screen.getByRole("region", { name: "Réponses" });
 
   expect(within(silent).getByText(/Bastien Both/)).toBeInTheDocument();
-  // The DOM order IS the argument of this screen: a report of who said yes is
-  // what it must not be.
+  // The chase comes first in the DOM.
   expect(silent.compareDocumentPosition(answers)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 });
 
 test("a withdrawal is shown with its reason beside the name", async () => {
-  // What the direction should be able to read: a
-  // name, an answer, and the reason for it, in one sentence — not a count that
-  // dropped by one.
+  // A name, an answer and the reason for it, in one sentence.
   await renderChaseList();
 
   expect(cardFor("Camille Committee")).toHaveTextContent("Camille Committee — non — « Malade »");
@@ -91,9 +82,7 @@ test("an answer the committee entered says so", async () => {
 });
 
 test("an answer card names the pupitre it belongs to", async () => {
-  // LABELLED, not bare. The column head that used to carry this went with the
-  // table (#130), so "Trompettes" alone under a name would be a word rather
-  // than a fact.
+  // Labelled, since "Trompettes" alone under a name does not say what it is.
   await renderChaseList();
 
   expect(cardFor("Camille Committee")).toHaveTextContent("Pupitre : Trombones");
@@ -114,14 +103,13 @@ test("the committee can answer for somebody who has not", async () => {
 });
 
 test("the on-behalf controls are absent from the caller's own row", async () => {
-  // Bastien plays AND holds attendance.record_for_others — the case the whole
-  // rule exists for. The on-behalf endpoint answers him 409
-  // cannot_record_for_self, because that route is exempt from the reason a
-  // withdrawal costs, so aiming it at yourself walks around that reason.
+  // Bastien plays and holds attendance.record_for_others. The on-behalf
+  // endpoint answers him 409 cannot_record_for_self, because that route is
+  // exempt from the reason a withdrawal costs, and aiming it at yourself would
+  // walk around that reason.
   //
-  // MUTATION TEST: drop the `entry.memberId === user?.id` branch in
-  // EventAttendance and this fails on the first assertion — the buttons are
-  // rendered for him like anybody else, and every tap 409s.
+  // Mutation test: drop the `entry.memberId === user?.id` branch in
+  // EventAttendance and the first assertion fails.
   await renderChaseList("demo.both");
 
   const silent = screen.getByRole("region", { name: "Sans réponse" });
@@ -135,8 +123,7 @@ test("the on-behalf controls are absent from the caller's own row", async () => 
 });
 
 test("an answer already recorded can be changed", async () => {
-  // The case the screen exists for and did not handle: "non, malade", then a
-  // phone call to say they can come after all.
+  // "Non, malade", then a phone call to say they can come after all.
   await renderChaseList();
 
   await userEvent.click(
@@ -153,8 +140,7 @@ test("an answer already recorded can be changed", async () => {
     .poll(() => screen.getByTestId("chase-counts").textContent)
     .toContain("3 oui · 0 non");
 
-  // The reason went with the answer it was given for: "malade" against a
-  // "oui" is worse than no reason at all.
+  // The reason goes with the answer it was given for.
   const corrected = cardFor("Camille Committee");
   expect(corrected).toHaveTextContent("Camille Committee — oui");
   expect(corrected).not.toHaveTextContent("Malade");
@@ -170,8 +156,8 @@ test("the reason can be corrected without touching the answer", async () => {
   );
 
   const dialog = await screen.findByRole("alertdialog");
-  // PRE-FILLED with what is stored: a correction starts from the answer being
-  // corrected, or saving it would silently erase the other half.
+  // Pre-filled with what is stored, or saving would silently erase the other
+  // half.
   const reason = within(dialog).getByLabelText("Raison");
   expect(reason).toHaveValue("Malade");
 
@@ -185,9 +171,7 @@ test("the reason can be corrected without touching the answer", async () => {
 });
 
 test("the correction is offered once, not once per layout", async () => {
-  // There were two of this button until #130 — one per layout — and a control
-  // added to only one of them was invisible to whichever half of the band was
-  // on the other. The count is what a second layout coming back changes first.
+  // One layout only: a second one would double this count first.
   await renderChaseList();
 
   expect(
@@ -196,10 +180,9 @@ test("the correction is offered once, not once per layout", async () => {
 });
 
 test("the correction is absent from the caller's own answered row", async () => {
-  // Bastien plays AND holds the permission, so once he has an answer his own
-  // row appears among the Réponses — where a correction control would 409
-  // exactly as one in the Sans réponse block would. The direction records
-  // that answer first, because he cannot record it for himself.
+  // Once Bastien has an answer his row appears among the Réponses, where a
+  // correction control would 409 as well. The direction records that answer
+  // first, because he cannot record it for himself.
   setMockUser("demo.direction");
   await memberAttendanceUpdate(1, 3, { status: "yes" });
 
@@ -214,10 +197,8 @@ test("the correction is absent from the caller's own answered row", async () => 
 });
 
 test("the whole chase list reads in German, punctuation included", async () => {
-  // THE ASSERTIONS THAT MATTER HERE ARE THE PUNCTUATION ONES. Every word on
-  // this screen was already in a catalogue after a mechanical extraction; what
-  // a mechanical extraction leaves behind is the French typography the
-  // components composed around it, and that is what breaks on a German page.
+  // The punctuation assertions matter most: French typography composed in a
+  // component is what breaks on a German page.
   await renderChaseList("demo.direction", "de-CH");
 
   expect(screen.getByRole("heading", { name: "Wer kommt?" })).toBeInTheDocument();
@@ -229,16 +210,11 @@ test("the whole chase list reads in German, punctuation included", async () => {
 
   const card = cardFor("Camille Committee");
 
-  // TIGHT GUILLEMETS, «so». French sets them « comme ça », and that spacing
-  // was hardcoded in chaseList.ts, so a German reader read a French sentence's
-  // punctuation around their own words. The answer is "Nein", capitalised: it
-  // was `answerLabel(status).toLowerCase()`, which is French grammar applied
-  // to every locale at once.
+  // Tight guillemets, where French spaces them. The answer is "Nein",
+  // capitalised: lowercasing it is French grammar.
   expect(card).toHaveTextContent("Camille Committee — Nein — «Malade»");
 
-  // NO SPACE BEFORE THE COLON, where French takes a no-break one. Same class
-  // of bug as the Tbd separator (#152), found the same way: by reading the
-  // rendered page rather than the diff.
+  // No space before the colon, where French takes a no-break one.
   expect(card).toHaveTextContent("Register: Trombones");
 
   expect(cardFor("Nadia Sansconnexion")).toHaveTextContent("Vom Vorstand erfasst.");
@@ -254,16 +230,16 @@ test("correcting an answer is German down to the dialog's buttons", async () => 
   );
 
   const dialog = await screen.findByRole("alertdialog");
-  // The dialog's title IS the button's accessible name, so the dialog confirms
-  // what was clicked instead of paraphrasing it.
+  // The dialog's title is the button's accessible name, so it confirms what
+  // was clicked.
   expect(
     within(dialog).getByText("Rückmeldung von Camille Committee korrigieren"),
   ).toBeInTheDocument();
   expect(within(dialog).getByLabelText("Begründung")).toHaveValue("Malade");
 
-  // ABBRECHEN, NOT RÜCKGÄNGIG. Both are "Annuler" in French, and this is the
-  // one that closes a dialog without doing anything. The toast's undo is the
-  // other word; AttendanceUndo.test.tsx pins that one.
+  // Abbrechen, not Rückgängig: both are "Annuler" in French, and this one
+  // closes a dialog without doing anything. AttendanceUndo.test.tsx pins the
+  // toast's undo.
   expect(within(dialog).getByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
 
   await userEvent.click(within(dialog).getByRole("button", { name: "Ja" }));

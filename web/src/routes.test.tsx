@@ -19,9 +19,7 @@ test("an unknown URL renders the 404 view rather than nothing", async () => {
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
 });
 
-// Legacy French paths are NOT redirected — the rebuild owes no backwards
-// compatibility (ADR 0003) — so the old login URL now falls through to 404
-// like any other unknown path.
+// Legacy French paths are not redirected (ADR 0003).
 test("the legacy login URL is not redirected and falls through to 404", async () => {
   await renderWithSession(<AppRoutes />, { route: "/authentification_inscription" });
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
@@ -52,8 +50,8 @@ test("holds a member with a committee-issued password on /account/password", asy
   ).toBeInTheDocument();
 });
 
-// The catch-all must survive the new nesting. Apache serves the SPA shell for
-// every unknown path by design, so this view IS the site's 404.
+// The catch-all sits inside MustChangePassword. Apache serves the SPA shell
+// for every unknown path, so this view is the site's 404.
 test("still answers an unknown path with the 404 view", async () => {
   await renderWithSession(<AppRoutes />, { route: "/rien-du-tout" });
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
@@ -66,17 +64,16 @@ test("renders the planning at /events for a member who may read it", async () =>
 });
 
 test("refuses /events in place for an account without events.view", async () => {
-  // Every account holds it through the baseline role, so being logged in used
-  // to be enough. It is the permission the API checks, though, and this
-  // account holds no role at all.
+  // Every real account holds it through the baseline role, but it is the
+  // permission the API checks, and this account holds no role at all.
   setMockUser("demo.nobaseline");
   await renderWithSession(<AppRoutes />, { route: "/events" });
   expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
 });
 
 test("sends an anonymous visitor from /events to the login page", async () => {
-  // A guard REDIRECTS an anonymous visitor rather than refusing in place:
-  // logging in is a thing they can actually do.
+  // A guard redirects an anonymous visitor rather than refusing in place,
+  // because logging in is something they can do.
   await renderWithSession(<AppRoutes />, { route: "/events" });
   expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
 });
@@ -129,10 +126,9 @@ test("sends an anonymous visitor from /account to the login page", async () => {
 });
 
 /**
- * THE PUBLIC PAGES. Each is asserted by the heading it renders rather than by
- * "something appeared", because the catch-all below answers 200 for every
- * unknown path — a route that is not registered renders the 404 view, which is
- * a page, and a laxer assertion would pass for a URL that does not exist.
+ * The public pages, each asserted by its heading: an unregistered route
+ * renders the 404 view, which is a page too, so "something appeared" would
+ * pass for a URL that does not exist.
  */
 test("/history renders the band's history", async () => {
   await renderWithSession(<AppRoutes />, { route: "/history" });
@@ -154,13 +150,10 @@ test("/contact renders the contact form", async () => {
 });
 
 /**
- * The public pages sit OUTSIDE MustChangePassword, deliberately — see
- * routes.tsx. A member holding a committee-issued password is held away from
- * the members' tool (the test above proves it) and is NOT bounced off a page
- * that a stranger can read anyway.
- *
- * Mutation-tested: moving these three routes back inside the gate fails this
- * test and nothing else.
+ * The public pages sit outside MustChangePassword (routes.tsx): a member with
+ * a committee-issued password is held away from the members' tool, not from a
+ * page a stranger can read. Moving them inside the gate fails this test and
+ * nothing else.
  */
 test("does not hold a member with a committee-issued password away from the public pages", async () => {
   setMockUser("demo.mustchange");
@@ -170,12 +163,8 @@ test("does not hold a member with a committee-issued password away from the publ
   ).toBeInTheDocument();
 });
 
-/**
- * THE FRONT DOOR. Until the public pages were rebuilt there was no `/` at all:
- * the site's own address fell through to the catch-all and answered 200 with
- * the 404 view, which is the worst possible first impression and was invisible
- * to every test because a page did render.
- */
+// Without a `/` route the site's own address would answer with the 404 view,
+// and a test that only checked for a page would still pass.
 test("/ renders the home page rather than the 404 view", async () => {
   await renderWithSession(<AppRoutes />, { route: "/" });
   expect(

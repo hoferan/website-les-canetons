@@ -1,28 +1,19 @@
 import { ApiError } from "./http";
 
 /**
- * The one place this app fetches an API endpoint without the generated client,
- * and the reason it has to.
+ * The one place this app fetches an API endpoint without the generated client.
  *
- * `customFetch` — the mutator every generated function goes through — ends with
- * `await response.json()`. That is right for an API whose every other response
- * is JSON, and fatal for these four: the guest list downloads answer with an
- * XLSX workbook, a semicolon-separated CSV and a Markdown table, none of which
- * parse. So `registrationExport` compiles, types beautifully, and throws on
- * three formats out of four.
+ * `customFetch`, the mutator, ends with `await response.json()`, and three of
+ * the guest list formats (XLSX, a semicolon-separated CSV, a Markdown table)
+ * are not JSON. So `registrationExport` compiles and throws on them.
  *
- * CLAUDE.md's rule against calling `fetch("/api/…")` by hand is about MUTATING
- * requests: Sanctum's stateful SPA mode puts /api/v1/* behind the `web`
- * middleware group, so a POST without the replayed `X-XSRF-TOKEN` comes back
- * 419. This is a GET, needs no CSRF priming, and needs `credentials` for the
- * session cookie — which is the whole of what the mutator would have added.
+ * The rule against calling `fetch("/api/…")` by hand is about writes, which
+ * need the replayed `X-XSRF-TOKEN` or answer 419. This is a GET and needs only
+ * `credentials` for the session cookie.
  *
- * NOT AN `<a download>` EITHER, which would be less code. A plain link cannot
- * read a status: a committee member whose server lacks ext-zip would have the
- * 503 problem document saved to their Downloads folder as a file named
- * souper-inscriptions.xlsx, and would open it in Excel to find JSON. Fetching
- * it means `xlsx_unavailable` can be said in French, which is the one refusal
- * this endpoint has that the operator can actually act on.
+ * A plain `<a download>` cannot read a status: a server without ext-zip would
+ * save its 503 problem document as a file named souper-inscriptions.xlsx.
+ * Fetching lets `xlsx_unavailable` be shown in the UI's language.
  */
 const API_BASE = "/api/v1";
 
@@ -32,10 +23,8 @@ export type ExportFormat = "xlsx" | "csv" | "md" | "json";
 /**
  * Downloads one file and hands it to the browser, or throws an `ApiError`.
  *
- * The filename comes from the server's `Content-Disposition` when it sends
- * one, because that is where the event's own name is; `fallback` covers a
- * proxy that strips the header, since a file called "download" in somebody's
- * Downloads folder is a file they cannot find again.
+ * The filename comes from the server's `Content-Disposition`, which carries
+ * the event's name; `fallback` covers a proxy that strips the header.
  */
 export async function downloadGuestList(
   eventId: number,
@@ -45,9 +34,7 @@ export async function downloadGuestList(
   const response = await fetch(`${API_BASE}/events/${eventId}/registrations.${format}`, {
     method: "GET",
     credentials: "include",
-    // No `Accept: application/json`, unlike every other request this app
-    // makes: three of these four are not JSON, and saying otherwise to a
-    // server that honoured it would be asking for the refusal.
+    // Not `application/json`: three of the four formats are not JSON.
     headers: { Accept: "*/*" },
   });
 
@@ -68,8 +55,7 @@ export async function downloadGuestList(
     link.click();
     link.remove();
   } finally {
-    // Freed on the next tick rather than immediately: revoking the URL in the
-    // same task as the click races the browser's own read of it in Safari.
+    // Revoking in the same task as the click races Safari's read of the URL.
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 }
@@ -77,10 +63,9 @@ export async function downloadGuestList(
 /**
  * The refusal, in the shape the French layer translates.
  *
- * A failure here IS still a problem document — only the success bodies are
- * binary — so this is `toApiError`'s job done again rather than differently.
- * It is not exported from http.ts, and exporting it to share four lines would
- * widen that module's surface for one caller.
+ * A failure is still a problem document; only the success bodies are binary.
+ * This repeats `toApiError` rather than exporting it from http.ts for one
+ * caller.
  */
 async function asApiError(response: Response): Promise<ApiError> {
   try {
@@ -104,9 +89,7 @@ function filenameOf(response: Response): string | null {
     return null;
   }
 
-  // Only the plain `filename="…"` form: this API sends nothing else, and a
-  // half-implemented RFC 5987 parser for a header we control would be more
-  // code than the case deserves.
+  // Only the plain `filename="…"` form, the one this API sends; no RFC 5987.
   const match = /filename="([^"]+)"/.exec(disposition);
 
   return match?.[1] ?? null;

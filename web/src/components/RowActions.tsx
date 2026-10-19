@@ -15,23 +15,17 @@ import { ButtonLink } from "./ButtonLink";
 /**
  * One row's actions: the frequent one inline, the rest behind a "..." menu.
  *
- * WHY A MENU AND NOT ICONS. All three candidates measured identically at
- * 390px — one 44px line, the souper's card 388px -> 284px — so the choice was
- * never about space. The menu is the only one that answers the FREQUENCY
- * mismatch instead of compressing it: five identical icon squares give
- * "Qui vient ?", opened weekly, the same weight as "Supprimer", used twice a
- * season. See #118.
+ * A menu rather than icons because the actions differ in frequency: identical
+ * icon squares would give "Qui vient ?", opened weekly, the same weight as
+ * "Supprimer", used twice a season (#118).
  *
- * THE SCREEN DECIDES WHICH ACTIONS EXIST; this decides how they are laid out.
- * It never calls can() — EventCard's docblock explains why that separation is
- * load-bearing, and the same reasoning applies here.
+ * The screen decides which actions exist; this only lays them out and never
+ * calls can(), for the reason given in EventCard's docblock.
  *
- * THE MENU NEEDS TWO ITEMS TO EXIST. A single item behind a "..." is a tap to
- * reveal a button, which is worse than the button. That is why this counts
- * what would be left rather than trusting a fixed inline slot: three
- * permissions gate the planning's actions independently, so demo.committee —
- * registrations.view and nothing else — reaches the souper with one action
- * and would otherwise get a bare "..." over it.
+ * The menu needs at least two items, since a lone item behind "..." is a tap
+ * to reveal a button. Three permissions gate the planning's actions
+ * independently, so a caller with registrations.view alone reaches the souper
+ * with one action, and this counts what is left instead of assuming a menu.
  */
 type RowActionCommon = {
   key: string;
@@ -43,15 +37,10 @@ type RowActionCommon = {
 };
 
 /**
- * A DISCRIMINATED UNION, not "exactly one of these two" left to a comment.
- * The `onSelect` branch may carry `disabled`; the `to` branch forbids both
- * `onSelect` and `disabled` via `?: never`, so a live-disabled-link cannot be
- * constructed at all. It matters because `InlineAction` has no way to honour
- * `disabled` on a link-shaped action — `ButtonLink` has no `aria-disabled`
- * pass-through — so `{ to, disabled: true }` used to render fully live
- * inline while the identical action behind the menu was correctly inert.
- * Nothing constructed that shape, but nothing stopped it either. #118
- * whole-branch review, M6/M7.
+ * A link-shaped action cannot be disabled: `InlineAction` renders it through
+ * `ButtonLink`, which has no `aria-disabled` pass-through, so it would stay
+ * live inline while the same action in the menu was inert. The `?: never`
+ * fields make `{ to, disabled: true }` a type error.
  */
 export type RowAction =
   | (RowActionCommon & { onSelect: () => void; to?: never; disabled?: boolean })
@@ -64,10 +53,8 @@ export function RowActions({
 }: {
   actions: RowAction[];
   inlineKey: string;
-  /** The row's own name (a person's or an event's), never a full label:
-   * the trigger's accessible name is assembled here, from
-   * `common.moreActionsAria`, so every call site says WHO this row's
-   * actions belong to and nothing about HOW that reaches the screen. */
+  /** The row's own name (a person's or an event's), never a full label: the
+   * trigger's accessible name is built here from `common.moreActionsAria`. */
   rowName: string;
 }) {
   if (actions.length === 0) {
@@ -82,17 +69,14 @@ export function RowActions({
   );
   const inline = actions[inlineIndex];
   if (!inline) {
-    // Cannot happen: inlineIndex is clamped into [0, actions.length) and
-    // actions is non-empty above. noUncheckedIndexedAccess still needs this
-    // narrowed explicitly — see the same idiom in
-    // EventRegistrationOptions.tsx's move().
+    // Unreachable (inlineIndex is clamped and actions is non-empty), but
+    // noUncheckedIndexedAccess needs the narrowing.
     return null;
   }
   const rest = actions.filter((_, i) => i !== inlineIndex);
 
-  // Fewer than two items is not a menu. Everything goes inline and no trigger
-  // is drawn; the row still fits, because two text buttons were what these
-  // screens had before.
+  // With fewer than two left over, everything goes inline and no trigger is
+  // drawn.
   const hasMenu = rest.length >= 2;
   const inMenu = hasMenu ? rest : [];
   const alsoInline = hasMenu ? [] : rest;
@@ -154,28 +138,15 @@ function InlineAction({ action }: { action: RowAction }) {
 }
 
 function ItemFor({ action, first }: { action: RowAction; first: boolean }) {
-  // `asChild` STRAIGHT TO react-router's `Link`, NOT via `ButtonLink`. A menu
-  // item needs no button styling — DropdownMenuItem already carries it, plus
-  // the 44px floor — so the extra layer buys nothing and costs everything:
-  // ButtonLink destructures a closed prop list and does not spread the rest,
-  // so DropdownMenuItem's Slot-merged props (role="menuitem", tabIndex,
-  // Radix's pointer/keyboard wiring) land on ButtonLink's own props and are
-  // dropped there before they ever reach an element. Verified by watching the
-  // test fail exactly that way. `Link` itself spreads its rest props onto the
-  // `<a>`, so ONE Slot layer (DropdownMenuItem -> Link) is enough for all of
-  // it to land, `aria-label` included. This keeps the four link-shaped
-  // actions on /events as real anchors in the menu, not a `useNavigate` call —
-  // middle-click and open-in-new-tab on the guest list and the attendance
-  // sheet are things committee members actually do.
+  // `asChild` goes straight to react-router's `Link`, never through
+  // `ButtonLink`: ButtonLink does not spread unknown props, so the Slot-merged
+  // role="menuitem", tabIndex and Radix's pointer and keyboard handlers would
+  // be dropped. `Link` spreads them onto the `<a>`. Link-shaped actions stay
+  // real anchors so middle-click and open-in-new-tab work.
   const { to } = action;
 
-  // textValue set explicitly rather than left to Radix's fallback (the
-  // rendered node's own textContent). Today the two are identical — this
-  // item's children are always the plain `label` — so deleting this line
-  // changes nothing observable, confirmed by mutation-testing it. It is kept
-  // as a safety net: aria-label is NOT part of textContent, so if this
-  // item's children ever grow past the plain label, textValue is what keeps
-  // typeahead on the short word rather than whatever ends up rendered.
+  // textValue is explicit so typeahead stays on the short label if the
+  // children ever grow past it. Today it equals Radix's textContent fallback.
   const common = {
     textValue: action.label,
     disabled: action.disabled,

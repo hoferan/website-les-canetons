@@ -3,14 +3,11 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * VENDORED from shadcn/ui, plus `min-h-touch` — the same 44px floor as Button,
- * replacing its `h-9` so the floor is not fought by a fixed height — and with
- * every `dark:` utility stripped, for the reason button.tsx records.
+ * Vendored from shadcn/ui, with `min-h-touch` (the 44px floor) in place of its
+ * fixed `h-9`, and every `dark:` utility stripped for the reason button.tsx
+ * records.
  *
- * NOT wired up directly by pages. web/src/components/FormField.tsx is the only
- * entry point for a text field in this app, because it owns the aria-invalid /
- * aria-describedby / error-id wiring that is trivially correct and just as
- * trivially copy-pasted wrong. FormField renders this.
+ * A form's text fields go through FormField, which owns the error wiring.
  */
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (

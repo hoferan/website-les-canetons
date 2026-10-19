@@ -13,26 +13,18 @@ import { RAISED_CARD } from "../carnival/raised";
 import { t } from "../i18n";
 
 /**
- * The committee — who to write to, and who holds which seat.
+ * The committee: who to write to, and who holds which seat.
  *
- * GENERATED FROM THE ROSTER, unlike the legacy page, which carried eight
- * hardcoded offices and eight placeholders where the names should have been.
- * A seat is a row in `committee_functions` that a member points at: the
- * committee maintains the list, and nobody has to ship a deploy to add a ninth.
+ * Generated from the roster. A seat is a row in `committee_functions` that a
+ * member points at, so the committee maintains the list without a deploy.
  *
- * THE SEATS ARE IN THE BAND'S OWN RANK ORDER, which they were not until
- * 2026-09-14. A seat was free text on the member row with nothing beside it
- * ranking one above another, so this page could only sort alphabetically and
- * printed the caissière above the présidente. `sort_order` on the reference
- * table is the missing fact; the ordering itself is the API's, and this
- * component deliberately does no sorting of its own — re-sorting here is how
- * the two would come to disagree.
+ * The seats come in the band's rank order (`sort_order` on that table), and
+ * the ordering is the API's. This component does no sorting of its own, so
+ * the two cannot disagree.
  *
- * THE EMAIL ADDRESS IS GONE. The 2026-08-31 audit flagged comite@lescanetons.org
- * appearing on page after page; this one now sends people to the contact form
- * instead, which stores the message for the committee and cannot be harvested.
- * The booking number stays a placeholder: a wrong number on a booking page
- * sends a caller to a stranger, which is worse than no number at all.
+ * No email address is published: the contact form stores the message for the
+ * committee and cannot be harvested. The booking number stays a placeholder,
+ * because a wrong number sends a caller to a stranger.
  */
 export function Committee() {
   const committee = useCommitteeIndex();
@@ -64,10 +56,8 @@ export function Committee() {
             {seats.map((seat) => (
               <Card key={seat.id} asChild className={cn(RAISED_CARD, "gap-0 p-4")}>
                 <li>
-                  {/* The seat, then the person. That order is the legacy page's
-                      and it is the one a visitor reads: they arrive looking for
-                      "the person who handles costumes", not for a name they
-                      already know. */}
+                  {/* The seat, then the person: a visitor looks for "the
+                      person who handles costumes", not a name they know. */}
                   <p className="text-xs font-semibold tracking-wide text-violet uppercase">
                     {seat.function}
                   </p>
@@ -79,10 +69,8 @@ export function Committee() {
             ))}
           </ul>
         ) : (
-          // NOT "aucun membre du comité", which would be a claim about the band.
-          // The committee exists; nobody has been entered with a seat and a
-          // consent to appear yet, and this page says so in the same voice as
-          // every other gap on the public site.
+          // A gap, in the voice of every other gap on the public site.
+          // "Aucun membre du comité" would be a false claim about the band.
           <p className="mt-block">
             <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
           </p>

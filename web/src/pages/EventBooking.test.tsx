@@ -16,7 +16,7 @@ beforeEach(() => {
   vi.mocked(celebrate).mockClear();
 });
 
-/** The seeded souper — the only event in the mocked planning that takes bookings. */
+/** The seeded souper, the only event in the mocked planning that takes bookings. */
 const SOUPER = 7;
 
 /** A rehearsal, which takes none. */
@@ -59,16 +59,15 @@ test("shows what is on offer, and what each thing costs", async () => {
   expect(screen.getByLabelText(/Repas adulte/)).toBeInTheDocument();
   expect(screen.getByText(/Repas adulte/)).toHaveTextContent("CHF 45.00");
 
-  // The per-booking cap is worth saying BEFORE somebody types seven, not as a
-  // refusal after they have.
+  // The per-booking cap is stated before somebody types seven.
   expect(screen.getByText(/au maximum 6 personnes/)).toBeInTheDocument();
 });
 
 /**
  * The one option with no price at all.
  *
- * `priceCents: null` means the price is not stated here, which is a different
- * thing from free — and "CHF 0.00" beside an option would assert the second.
+ * `priceCents: null` means the price is not stated here, which is not the
+ * same as free.
  */
 test("an option with no price says nothing rather than claiming to be free", async () => {
   await renderBooking();
@@ -78,10 +77,8 @@ test("an option with no price says nothing rather than claiming to be free", asy
 });
 
 /**
- * THE RUNNING TOTAL, which is why prices are integers on the wire.
- *
- * A guest deciding between two adult meals and three should read what each
- * costs before submitting rather than after.
+ * The running total, which is why prices are integers on the wire: a guest
+ * reads what a choice costs before submitting.
  */
 test("adds up what has been chosen as it is chosen", async () => {
   const user = userEvent.setup();
@@ -112,26 +109,24 @@ test("books a place and answers in place, without navigating", async () => {
     await screen.findByRole("heading", { name: "Inscription enregistrée" }),
   ).toBeInTheDocument();
 
-  // What was booked, read back from the SERVER's answer rather than from the
-  // form's own state: the totals are the API's, so the screen, the guest list
-  // and the confirmation mail cannot disagree about them.
+  // Read back from the server's answer, not the form's state, so the screen,
+  // the guest list and the confirmation mail cannot disagree.
   const summary = screen.getByTestId("booking-summary");
   expect(within(summary).getByText("2 × Repas adulte")).toBeInTheDocument();
   expect(within(summary).getByText("3 × Repas enfant")).toBeInTheDocument();
 
-  // The form is GONE rather than covered: a success panel above a live form
-  // invites a second booking of the same five people.
+  // The form is gone, not covered: a live form under the success panel
+  // invites a second booking of the same people.
   expect(screen.queryByLabelText("Prénom")).not.toBeInTheDocument();
 
-  // Confetti for the guest who has just booked, once (#108).
+  // Confetti for the guest who has just booked, once.
   expect(celebrate).toHaveBeenCalledTimes(1);
 });
 
 /**
  * The confirmation replaces a form several screens long, and the window keeps
- * the offset the submit button had: on a phone the guest landed on the footer,
- * 477px below the heading, with focus on <body>. Focus on the h1 is what a
- * screen reader announces; the scroll is what everyone else sees.
+ * the submit button's offset. Focus on the h1 is what a screen reader
+ * announces; the scroll is what everyone else sees.
  */
 test("brings the confirmation into view and moves focus to its heading", async () => {
   const user = userEvent.setup();
@@ -149,12 +144,9 @@ test("brings the confirmation into view and moves focus to its heading", async (
 });
 
 /**
- * THE THREE PROTECTIONS, asserted on the wire.
- *
- * `publicWriteHeaders` returning the right object proves nothing if the screen
- * forgets to pass it, which is the whole failure mode: `registrationStore`
- * compiles perfectly well without its third argument. Same test as the contact
- * form's, for the same reason.
+ * The three protections, asserted on the wire: `registrationStore` compiles
+ * without its third argument, so only the request proves the screen passes
+ * `publicWriteHeaders`. Same test as the contact form's.
  */
 test("carries the form token, an idempotency key and an empty honeypot", async () => {
   const user = userEvent.setup();
@@ -168,10 +160,8 @@ test("carries the form token, an idempotency key and an empty honeypot", async (
         key: request.headers.get("Idempotency-Key"),
         website: body.website,
       };
-      // A REAL RegistrationResource, not `{ok: true}`. The success view
-      // renders the server's own answer, so a stub of the wrong shape crashes
-      // it — which the first draft of this test did, and which is worth
-      // knowing: a handler override is a promise about the contract too.
+      // A real RegistrationResource: the success view renders the server's
+      // answer, so a stub of the wrong shape crashes it.
       return HttpResponse.json(
         {
           id: 9,
@@ -200,18 +190,17 @@ test("carries the form token, an idempotency key and an empty honeypot", async (
   expect(sent!.token).toBe("mock-form-token");
   // 36 characters, a crypto.randomUUID, inside the API's 16-255 window.
   expect(sent!.key).toHaveLength(36);
-  // PRESENT AND EMPTY. A body that merely omits it is refused exactly like one
-  // that fills it in, which is what stops a hand-written POST walking past the
-  // guard by leaving the field out.
+  // Present and empty: a body that omits it is refused like one that fills it
+  // in, so a hand-written POST cannot skip the guard by leaving it out.
   expect(sent!.website).toBe("");
 });
 
 /**
  * The cap, refused by the server against `choices` and rendered there.
  *
- * The token is PARAMLESS on purpose: the closure validator that raises it
- * emits field and reason only, so a French string interpolating the maximum
- * would print a literal {{max}} on a guest's screen.
+ * The token takes no parameters: the closure validator that raises it emits
+ * field and reason only, so a string interpolating the maximum would print a
+ * literal {{max}}.
  */
 test("a booking over the cap is refused in French, against the choice list", async () => {
   const user = userEvent.setup();
@@ -225,8 +214,7 @@ test("a booking over the cap is refused in French, against the choice list", asy
   expect(refusal).toBeInTheDocument();
   expect(refusal.textContent).not.toMatch(/\{\{/);
 
-  // The form stays OPEN and keeps what was typed: a rejected booking must not
-  // make somebody fill it in again.
+  // The form stays open and keeps what was typed.
   expect(screen.getByLabelText("Prénom")).toHaveValue("Aline");
   expect(celebrate).not.toHaveBeenCalled();
 });
@@ -247,10 +235,9 @@ test("an event that takes no bookings says so without saying it exists", async (
 });
 
 /**
- * MUTATION TEST: render the form whenever `closesAt` is in the future and this
- * fails. `open` is computed by the SERVER, and a browser with a wrong clock is
- * exactly the case the server computing it exists for — the guest would fill
- * the whole thing in and be refused on submit.
+ * Mutation test: render the form whenever `closesAt` is in the future and this
+ * fails. `open` is computed by the server, so a browser with a wrong clock
+ * cannot offer a form that is refused on submit.
  */
 test("a window that has not opened yet says when it will, and offers no form", async () => {
   server.use(
@@ -307,17 +294,14 @@ test("a window that has shut says so rather than naming a date", async () => {
 });
 
 /* ---------------------------------------------------------------------------
- * The public form in German (#157)
+ * The public form in German
  * -------------------------------------------------------------------------- */
 
-test("THE PUBLIC BOOKING FORM IS GERMAN, which is what this whole effort is for", async () => {
-  // A German speaker in Fribourg booking a seat at the souper, on a phone, at
-  // the hall. It is the one screen in this slice a stranger reaches.
+test("the public booking form is German", async () => {
+  // The field array holds `labelKey`, not `label`: a module-scope label is
+  // frozen at import, before any locale is chosen.
   await renderBooking(SOUPER, "de-CH");
 
-  // The field labels were a module-scope array of French `label`s, frozen at
-  // import — `labelKey`, not `label`, the third file with this (after
-  // Layout's NAV and SeriesForm's WEEKDAYS).
   expect(screen.getByLabelText("Name")).toBeInTheDocument();
   expect(screen.getByLabelText("Vorname")).toBeInTheDocument();
   expect(screen.getByLabelText("E-Mail")).toBeInTheDocument();
@@ -327,12 +311,9 @@ test("THE PUBLIC BOOKING FORM IS GERMAN, which is what this whole effort is for"
   expect(screen.getByRole("group", { name: "Ihre Kontaktangaben" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Anmelden" })).toBeInTheDocument();
 
-  // MUTATION TEST: put `label` back on the array and these read French,
-  // because the module body runs before any locale is chosen.
+  // Mutation test: put `label` back on the array and these read French.
   expect(screen.queryByLabelText("Prénom")).toBeNull();
 
-  // The legend was a bare JSX text node with no accent in it — "Votre choix"
-  // survived the first pass for exactly the reason "5 membres" did in #156.
   expect(screen.getByRole("group", { name: "Ihre Auswahl" })).toBeInTheDocument();
 });
 
@@ -348,9 +329,8 @@ test("the running total counts in German and prices in Swiss German", async () =
   await userEvent.clear(boxes[0] as HTMLElement);
   await userEvent.type(boxes[0] as HTMLElement, "1");
 
-  // "1 Person", singular. `guests > 1` in the component gave the right French
-  // ("0 personne") and the wrong German, which is the fifth instance of that
-  // exact rule in this effort.
+  // "1 Person", singular, from the catalogue: a `guests > 1` rule is French
+  // and wrong in German.
   await expect.poll(() => screen.getByTestId("booking-total").textContent).toContain("1 Person");
 });
 
@@ -367,14 +347,14 @@ test("the confirmation counts the guests in German", async () => {
 
   await screen.findByTestId("booking-summary");
 
-  // The confirmation spelled the count out by hand, "personne" plus an "s"
-  // above one, so a German guest read "1 personne" right after booking.
+  // From the catalogue, like the running total: "personne" plus an "s" above
+  // one is the French rule.
   expect(screen.getByTestId("booked-guests")).toHaveTextContent(/^1 Person — CHF/);
   expect(screen.queryByText(/personne/)).toBeNull();
 });
 
-// #102. The four required fields say so, and an empty form is refused by the
-// app in the page's language rather than by the browser in its own.
+// The four required fields say so, and an empty form is refused by the app in
+// the page's language, not by the browser in its own.
 test("marks the four required fields, and refuses an empty form in French", async () => {
   const user = userEvent.setup();
   let posted = false;

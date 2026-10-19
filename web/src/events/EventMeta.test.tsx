@@ -73,20 +73,12 @@ test("pluralises the head count and names the empty case", () => {
   expect(screen.getByText("Aucune inscription")).toBeInTheDocument();
 });
 
-test("ZERO IS SINGULAR IN FRENCH AND PLURAL IN GERMAN, which no ternary can do", async () => {
-  // THE TEST THIS WHOLE SLICE IS FOR. The aria-label was built in the
-  // component as `answered === 0 || answered === 1 ? "réponse" : "réponses"`,
-  // which is the French CLDR rule written out in JavaScript. The French
-  // assertion for it is four tests above this one and is UNCHANGED — it still
-  // reads "0 réponse sur 18".
+test("zero is singular in French and plural in German, which no ternary can do", async () => {
+  // The French half is "shows the zero fraction" above ("0 réponse sur 18").
+  // German counts zero as plural, so the plural rule lives in the catalogue
+  // and i18next picks the form from the active language.
   //
-  // German counts zero as plural. So that ternary rendered "0 Rückmeldung",
-  // and the obvious repair — `=== 1` — would have rendered "0 réponses".
-  // There is no single expression in the component that is right in both
-  // languages, which is why the rule now lives in the catalogue and i18next
-  // picks the form from the ACTIVE language.
-  //
-  // MUTATION TEST: collapse events.meta.answersAria_one and _other into one
+  // Mutation test: collapse events.meta.answersAria_one and _other into one
   // key and this fails on one of the two locales, whichever form is kept.
   await setLocale("de-CH");
 

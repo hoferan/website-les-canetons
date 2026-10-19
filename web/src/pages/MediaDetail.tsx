@@ -114,9 +114,8 @@ export function MediaDetail({
 
   /**
    * The write's answer becomes the read, and everything else that names the
-   * photo is read again: the library and its summary, the placements, and the
-   * three public reads that carry a photo's URL (the band and its registers,
-   * the two site photos, the history).
+   * photo is read again: the library and its summary (`/images`), and the
+   * photo slots every page shows its photos through (`/photo-slots`).
    */
   function written(response: Written) {
     const own = getImageShowQueryKey(imageId)[0];

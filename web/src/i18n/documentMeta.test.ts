@@ -43,8 +43,7 @@ test("German replaces all three, manifest included", async () => {
     description: de.meta.description,
     manifest: "/assets/icons/manifest.de.json",
   });
-  // The one that matters to a person: an installed app launching in the
-  // language they installed it from.
+  // An installed app launches in the language it was installed from.
   expect(head().manifest).not.toBe("/assets/icons/manifest.json");
 });
 
@@ -62,10 +61,8 @@ test("French leaves the shell exactly as it shipped", async () => {
 });
 
 /**
- * THE ATTRIBUTE THIS MUST NOT LOSE. crossorigin="use-credentials" is
- * load-bearing: without it the manifest fetch fails behind TEST/QA Basic Auth,
- * a bug this project has already fixed once. Repointing the existing element
- * keeps it; replacing the element would silently drop it, and nothing else in
+ * Without crossorigin="use-credentials" the manifest fetch fails behind
+ * TEST/QA Basic Auth. Replacing the element would drop it, and nothing else in
  * the suite looks at that attribute.
  */
 test("repoints the manifest link rather than replacing it", async () => {
@@ -81,16 +78,10 @@ test("repoints the manifest link rather than replacing it", async () => {
 });
 
 /**
- * THE DRIFT GUARD, and the reason this file reads index.html at all.
- *
- * The French title and description exist twice — once in the static shell,
- * which is what a crawler and the first paint get, and once in fr.ts, which is
- * what applyDocumentMeta writes over them. Let those two diverge and a FRENCH
- * visitor watches one title be replaced by a different one on every page load.
- *
- * Nothing else in the suite can catch that: both values are separately valid,
- * every other test renders components rather than the shell, and the e2e specs
- * assert on German. Only comparing the two files does it.
+ * The French title and description exist twice: in the static shell (a
+ * crawler and the first paint) and in fr.ts (what applyDocumentMeta writes).
+ * If they diverge, a French visitor sees the title change on every page load,
+ * and only comparing the two files catches it.
  */
 test("the shell ships exactly the French values this module writes back", () => {
   expect(shell).toContain(`<title>${fr.meta.title}</title>`);
@@ -100,9 +91,8 @@ test("the shell ships exactly the French values this module writes back", () => 
 /**
  * The German manifest, checked as a file rather than through the link swap.
  *
- * `start_url` is the entire point of the second file — an installed app that
- * always launched at "/" would put a German member back into French every
- * time they opened it.
+ * An installed app that always launched at "/" would put a German member back
+ * into French every time they opened it.
  */
 test("the German manifest launches under /de and differs only there", () => {
   const read = (name: string) =>
@@ -119,10 +109,8 @@ test("the German manifest launches under /de and differs only there", () => {
   expect(french.start_url).toBe("/");
   expect(french.lang).toBe("fr-CH");
 
-  // Everything else is identical, which is the claim documentMeta.ts makes:
-  // the band's name is a proper noun after a German word, so only the launch
-  // URL and the language tag are locale-specific. A later edit to one file
-  // that forgets the other fails here.
+  // Everything else is identical, as documentMeta.ts claims, so an edit to
+  // one file that forgets the other fails here.
   const withoutLocaleFields = (manifest: Record<string, unknown>) =>
     Object.fromEntries(
       Object.entries(manifest).filter(([key]) => key !== "start_url" && key !== "lang"),
@@ -131,17 +119,9 @@ test("the German manifest launches under /de and differs only there", () => {
 });
 
 /**
- * THE DECISION, RECORDED AS A TEST.
- *
  * The site title is identical in both catalogues on purpose: "Les Canetons de
- * Fribourg" is the band's name — this file never translates it, and `band` is
- * "Die Canetons" rather than "Die Entlein" — while "Guggenmusik" is already a
- * German word. There is nothing French left in the string to render.
- *
- * Asserted rather than merely commented because the pressure runs the other
- * way: a future reader meeting a "German title" that reads the same as the
- * French one will assume it was forgotten. If somebody deliberately changes
- * it, this test is what makes them say so.
+ * Fribourg" is the band's name and "Guggenmusik" is already German. Asserted
+ * because an identical "German title" looks forgotten.
  */
 test("the site title is the same in both languages, and that is the decision", () => {
   expect(de.meta.title).toBe(fr.meta.title);

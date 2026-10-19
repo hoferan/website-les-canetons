@@ -13,7 +13,7 @@ import { SlotPhoto } from "./SlotPhoto";
 import type { ShrinkFn, UploadFn } from "./uploadQueue";
 
 /**
- * The photo slot (#105): a name on a page, which shows what is placed there
+ * The photo slot: a name on a page, which shows what is placed there
  * and lets whoever holds images.manage change it in place.
  *
  * The mock places image 1 in `band` and image 2 in `register-5` (Trompettes)
@@ -81,7 +81,7 @@ test("picking a photo for a register writes that slot alone, with its label and 
 });
 
 /**
- * MUTATION TEST: drop the refocus effect and focus stays on <body>, because
+ * Drop the refocus effect and focus stays on <body>, because
  * the add button the dialog returned focus to is gone.
  */
 test("after a pick, focus is on the slot's pencil and the result is read out", async () => {
@@ -257,7 +257,7 @@ test("a visitor sees the photo and the placeholder without any control", async (
   expect(trumpets.querySelector("[data-photo-frame]")).toBeNull();
 });
 
-/** MUTATION TEST: give PhotoPending back its 3:2 frame and this fails. */
+/** Give PhotoPending a 3:2 frame and this fails. */
 test("a visitor's empty slot is one quiet line, not a photo-sized box", async () => {
   setMockUser(null);
   await renderWithSession(<Band />, { route: "/band" });
@@ -423,7 +423,7 @@ test("two files, or a file that is not a photo, are refused with a message", asy
 });
 
 /**
- * MUTATION TEST: react-dropzone ignores a drop that carries no file. Remove
+ * react-dropzone ignores a drop that carries no file. Remove
  * the frame's own onDrop and the alert stays empty.
  */
 test("a dragged link or text alone is refused with a message", async () => {
@@ -513,7 +513,7 @@ test("with nothing placed, the godparents' slot shows the placeholder like any o
     expect(document.querySelector('[data-photo-pending="godparents"]')).not.toBeNull(),
   );
   expect(screen.queryByRole("img", { name: "Le parrain et la marraine des Canetons" })).toBeNull();
-  // Nothing on the band page is served from the static images any more.
+  // Nothing on the band page is served from the static images.
   expect(document.querySelector('img[src^="/assets/img/"]')).toBeNull();
 });
 

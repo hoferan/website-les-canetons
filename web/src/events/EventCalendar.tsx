@@ -9,28 +9,18 @@ import { bandZoneParts } from "./bandTime";
 import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
- * THE THREE DISPLAY FORMATTERS, BUILT PER CALL AND CACHED BY SHAPE.
+ * The three display formatters, built per call and cached by locale and
+ * shape. A module-scope formatter stays bound to the locale active when the
+ * file was first imported, so a later switch to German would keep French
+ * month names. The weekday names are computed per call for the same reason.
  *
- * All three were module-scope `new Intl.DateTimeFormat("fr-CH", …)` constants
- * — the anti-pattern #151 removed from web/src/lib/date.ts and did not reach
- * here. A module-scope formatter is bound to whatever locale was active when
- * the file was first imported, and no later locale change moves it, so the
- * German calendar rendered French month names.
+ * The key includes the shape because several shapes share one Intl tag, so a
+ * cache keyed on the tag alone would hand back the wrong formatter. The shape
+ * key in formatEventWhen.ts does the same.
  *
- * `WEEKDAYS` was the worst of the three and is the reason this is a function
- * rather than three swapped tags: it was a module-scope ARRAY of seven
- * already-formatted strings. Nothing about it could be fixed by making the
- * formatter locale-aware, because by the time any locale was chosen the
- * strings existed.
- *
- * KEYED BY SHAPE, NOT BY TAG. Two shapes can resolve to the same Intl tag —
- * both French kinds are `fr-CH` here — so a cache keyed on the tag alone
- * would hand the month formatter back when the day formatter was asked for.
- * Same bug the shape key in formatEventWhen.ts exists to prevent.
- *
- * ARITHMETIC STAYS IN UTC, and `bandTime`'s `en-US` parts extractor stays
- * fixed: it is a machine formatter, not a display one, and following the
- * active locale would break it silently.
+ * Arithmetic stays in UTC, and `bandTime`'s `en-US` parts extractor stays
+ * fixed: it is a machine formatter, and following the active locale would
+ * break it silently.
  */
 const cache = new Map<string, Intl.DateTimeFormat>();
 
@@ -76,26 +66,21 @@ function shiftMonth(month: string, by: number): string {
 /**
  * A month grid over the planning, for somebody looking at a season at a desk.
  *
- * NOT THE MAIN FEATURE, and the constraints say so. It is behind a flag that is
- * off on every server until it has been looked at on TEST, it is hidden below
- * `md` by the screen that mounts it, and clicking a day FILTERS THE LIST rather
- * than navigating — so the list stays the one way to do the primary job and
- * this stays an overview.
+ * An overview, not the main feature. It sits behind the `calendar` feature
+ * flag (off unless a server's .env enables it), the screen hides it below
+ * `md`, and clicking a day filters the list instead of navigating, so the
+ * list stays the one way to do the primary job.
  *
- * HAND-ROLLED, with CSS grid and Intl.DateTimeFormat. The project has no
- * runtime dependency beyond two fonts; a calendar library would bring a
- * stylesheet to fight with the design tokens for the sake of a table of
- * numbers.
+ * Hand-rolled with CSS grid and Intl.DateTimeFormat. The project's only
+ * runtime dependencies are two fonts, and a calendar library would bring a
+ * stylesheet to fight the design tokens for a table of numbers.
  *
- * ARITHMETIC IN UTC, display in Fribourg. The two are separate on purpose: a
- * month walked with local Dates crosses the October DST change and lands an
- * hour short, while the DAY an event belongs to has to be the Fribourg one —
- * an event at 00:30 here is the previous day in UTC, which is what
- * bandZoneParts exists to get right.
+ * Arithmetic in UTC, display in Fribourg. A month walked with local Dates
+ * crosses the October DST change and lands an hour short, while the day an
+ * event belongs to has to be the Fribourg one (see bandZoneParts).
  *
- * A MULTI-DAY EVENT IS MARKED ON THE DAY IT STARTS, once. The musical weekend
- * runs Saturday to Sunday, and painting both days would say there are two
- * events when the planning below would show one.
+ * A multi-day event is marked once, on the day it starts. Painting both days
+ * of a weekend would show two events where the planning below shows one.
  */
 export function EventCalendar({
   events,
@@ -108,7 +93,7 @@ export function EventCalendar({
   onSelect: (day: string | null) => void;
 }) {
   const [month, setMonth] = useState(() => {
-    // The first event WITH a date: a draft that has none has no month to open on.
+    // The first event with a date: a draft without one has no month to open on.
     const first = events.find((event) => event.startsAt !== null);
     return first?.startsAt ? monthOf(first.startsAt) : monthOf(new Date().toISOString());
   });
@@ -173,9 +158,8 @@ export function EventCalendar({
           const count = counts.get(day) ?? 0;
           const chosen = selected === day;
 
-          // A day with nothing on it is not a control. Rendering it as a
-          // button that answers nothing is how a grid teaches people that
-          // tapping it does not work.
+          // A day with nothing on it is not a control: a button that answers
+          // nothing teaches people that tapping the grid does not work.
           if (count === 0) {
             return (
               <div key={day} className="py-2 text-center text-sm text-ink-muted">

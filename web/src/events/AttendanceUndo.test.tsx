@@ -12,12 +12,10 @@ import { renderWithSession } from "../test/renderWithSession";
  * The undo, which lives in a toast and therefore needs the Toaster the layout
  * normally mounts.
  *
- * ITS OWN FILE, because sonner keeps its toasts in MODULE STATE that no render
- * resets. Every other test that answers an event queues a toast nothing draws;
- * mount a Toaster in the same file afterwards and they all arrive at once, and
- * a query for "Annuler" finds four of them. Here only these two tests raise
- * one, and each assertion is still scoped to the toast carrying its own text
- * rather than to the page.
+ * Its own file, because sonner keeps its toasts in module state that no render
+ * resets. Other tests that answer an event queue toasts nothing draws; a
+ * Toaster mounted later in the same file shows them all at once. Each
+ * assertion here is still scoped to the toast carrying its own text.
  */
 async function renderPlanning(locale: Locale = "fr") {
   setMockUser("demo.player");
@@ -33,10 +31,9 @@ async function renderPlanning(locale: Locale = "fr") {
 }
 
 /**
- * The answer button for an event, inside the block that holds it (#95).
- *
- * The block's own name is a parameter because it is translated (#154) and
- * these tests run in both locales.
+ * The answer button for an event, inside the block that holds it. The block's
+ * name is a parameter because it is translated and these tests run in both
+ * locales.
  */
 function owedButton(name: string, block = "À répondre"): HTMLElement {
   return within(screen.getByRole("region", { name: block })).getByRole("button", { name });
@@ -60,16 +57,13 @@ test("a first answer can be taken back from the toast", async () => {
     .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
     .toBe("true");
 
-  // Named, so somebody who tapped the wrong card can see that they did — the
-  // undo beside it is only usable by a reader who knows they need it.
+  // Named, so somebody who tapped the wrong card can see that they did.
   const toast = await toastSaying("Vous venez — Vendanges Cheyres.");
   await userEvent.click(within(toast).getByRole("button", { name: "Annuler" }));
 
-  // Back to UNANSWERED rather than to the opposite answer — the state a second
-  // PUT cannot express, and the whole reason DELETE exists at all. It happens
-  // WHERE THE CARD ALREADY IS (#95): the undo is offered from a toast at the
-  // bottom of the screen, so a card flying back up into a block the reader is
-  // no longer looking at said nothing to anybody.
+  // Back to unanswered, the state a second PUT cannot express. The card stays
+  // where it is (#95): the undo is in a toast at the bottom of the screen, and
+  // a card moving into a block out of view would say nothing to the reader.
   await expect
     .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
     .toBe("false");
@@ -78,10 +72,9 @@ test("a first answer can be taken back from the toast", async () => {
 });
 
 test("a change offers no undo, because undo would erase the answer it changed", async () => {
-  // MUTATION TEST: make the toast's action unconditional and this fails. The
-  // only thing behind undo is DELETE, which returns the event to UNANSWERED —
-  // so on a withdrawal it would throw away the `oui` and the reason just
-  // collected for it, in one tap, and record neither.
+  // Mutation test: make the toast's action unconditional and this fails. Undo
+  // is a DELETE, which on a withdrawal would throw away both the `oui` and the
+  // reason just collected.
   await renderPlanning();
 
   const rest = screen.getByRole("region", { name: "Le reste du planning" });
@@ -97,20 +90,16 @@ test("a change offers no undo, because undo would erase the answer it changed", 
 });
 
 test("the German toast offers Rückgängig, which is not the dialog's Abbrechen", async () => {
-  // #155 wrote this against a French page, because only the control was
-  // translated then; #154 translated the block headings, so `owedButton` now
-  // needs the German one. The toast and the undo are unchanged.
   await renderPlanning("de-CH");
 
   await userEvent.click(owedButton("Ich komme zu Vendanges Cheyres", "Zu beantworten"));
 
   const toast = await toastSaying("Sie kommen — Vendanges Cheyres.");
 
-  // THE HALF THE DIALOG TEST CANNOT SEE. French calls both of these "Annuler":
-  // this one takes an answer back, and the dialog's closes without doing
-  // anything. Merging them into one catalogue key renders correctly in French
-  // and wrongly in German, which is why there are two — and why each is
-  // asserted where it lives, with the other one asserted absent.
+  // French calls both of these "Annuler": this one takes an answer back, and
+  // the dialog's closes without doing anything. One catalogue key for both
+  // would be right in French and wrong in German, so each is asserted where it
+  // lives, with the other asserted absent.
   expect(within(toast).queryByRole("button", { name: "Abbrechen" })).toBeNull();
   await userEvent.click(within(toast).getByRole("button", { name: "Rückgängig" }));
 

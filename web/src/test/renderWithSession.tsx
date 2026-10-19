@@ -9,36 +9,29 @@ import { type Locale } from "../i18n/locale";
 import { SessionProvider } from "../session/SessionProvider";
 
 /**
- * Renders a node behind the real providers and WAITS FOR THE BOOT GATE.
+ * Renders a node behind the real providers and waits for the boot gate.
  *
  * SessionProvider renders null until config and user have resolved, so a test
- * that asserts immediately after render() sees an empty tree and fails looking
- * like a component bug. Awaiting the marker here means every test starts from a
- * booted app.
+ * asserting straight after render() would see an empty tree.
  *
- * A fresh QueryClient per call, with retry off: tests must not share a cache
- * (one test's /events would satisfy the next one's), and a request that reaches
- * no handler should fail at once rather than after three retries.
+ * A fresh QueryClient per call, with retry off: tests must not share a cache,
+ * and a request that reaches no handler should fail at once.
  */
 export async function renderWithSession(
   ui: ReactNode,
   { route = "/", state, locale = "fr" }: { route?: string; state?: unknown; locale?: Locale } = {},
 ) {
-  // DEFAULTS TO FRENCH so that every existing test renders exactly what it
-  // rendered before this parameter existed. Awaited rather than fired: i18next
-  // resolves synchronously with preloaded resources, but changeLanguage is
-  // promise-returning and an unawaited one would race the first render.
+  // Awaited: changeLanguage returns a promise, and an unawaited one would race
+  // the first render.
   await setLocale(locale);
 
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
 
-  // A plain string entry is parsed by the router into pathname/search/hash; an
-  // OBJECT entry is not — its `pathname` is taken literally, so
-  // "/login?returnTo=/x" would arrive with the query buried in the path and
-  // `location.search` empty. Since state can only be supplied through the
-  // object form, the split has to happen here.
+  // An object entry's `pathname` is taken literally, so "/login?x=1" would
+  // bury the query in the path. State needs the object form, so the split
+  // happens here.
   const [pathname = "/", query] = route.split("?");
   const entry = { pathname, search: query ? `?${query}` : "", state };
 

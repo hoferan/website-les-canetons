@@ -5,28 +5,18 @@ import { t } from "../i18n";
 /**
  * Stands in for a photograph the band has yet to retake.
  *
- * WHY EVERY PHOTO WENT AT ONCE. The instructors' picture was already missing
- * nine of its seventeen subjects, and on 2026-08-31 the band's instruction was
- * to treat the rest the same way, "because we have to assume that those are
- * out of date". A youth band turns over yearly, so a group photograph is a
- * claim about who is in the band, and a wrong claim is worse than an honest
- * gap.
+ * A youth band turns over yearly, so a group photograph is a claim about who
+ * is in the band, and a wrong claim is worse than an honest gap. The header
+ * logo is the band's identity and never goes stale, so it is not one of these.
  *
- * The header LOGO is deliberately not one of these: it is the band's identity,
- * not a photograph that can go stale.
+ * One sentence for every slot: the placeholder sits under the heading it
+ * belongs to, so naming the slot adds nothing.
  *
- * ONE SENTENCE FOR EVERY SLOT. It used to name what was missing ("Nouvelle
- * photo du registre X à venir !"), which took a sentence per case and a
- * register's name glued into French grammar. The placeholder sits under the
- * heading it belongs to, so the name added nothing.
+ * One line, not a box: a photo-sized frame per empty slot would fill /band at
+ * 390px with empty boxes. The editor's add button in `SlotPhotoControl` is the
+ * full frame, because for them the frame is the thing to tap.
  *
- * ONE LINE, NOT A BOX. A photo-sized frame per empty slot made /band at 390px
- * about 1,700px of empty boxes, and put a large empty box first on the home
- * page. A line is enough to tell a visitor a photo is coming. The editor's add
- * button in `SlotPhotoControl` is the full frame, because for them the frame
- * is the thing to tap.
- *
- * `token` is a STABLE, ENGLISH identifier for the slot ("band", "concert",
+ * `token` is a stable English identifier for the slot ("band", "concert",
  * "register"), carried on `data-photo-pending` so tests and the e2e specs can
  * tell the slots apart in either locale.
  */

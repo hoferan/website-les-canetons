@@ -37,7 +37,7 @@ test("search and hash travel with the switch", () => {
   expect(switchDestination("fr", at("/de/events", "?past=1", "#bas"))).toBe("/events?past=1#bas");
 });
 
-test("A PATH THAT MERELY STARTS WITH THOSE LETTERS IS NOT THE GERMAN MOUNT", () => {
+test("a path that merely starts with those letters is not the German mount", () => {
   // `/design` and `/demo/x` are French pages. Matching `/de` without the
   // segment boundary would strip two letters off each of them.
   expect(switchDestination("fr", at("/design"))).toBe("/design");
@@ -48,10 +48,9 @@ test("A PATH THAT MERELY STARTS WITH THOSE LETTERS IS NOT THE GERMAN MOUNT", () 
  * The control
  * -------------------------------------------------------------------------- */
 
-// The way out is named in the TARGET's language, in both directions: somebody
-// who cannot read the current page has to recognise it. The visible label is
-// the code. Two tests rather than two renders in one, because render() does
-// not unmount the previous tree mid-test and both would then be on the page.
+// The way out is named in the target's language: somebody who cannot read the
+// current page has to recognise it. Two tests rather than two renders in one,
+// because render() does not unmount the previous tree mid-test.
 test("a French page offers German, named in German", async () => {
   await renderWithSession(<LanguageSwitch />);
   const link = screen.getByRole("link", { name: "Auf Deutsch wechseln" });
@@ -67,7 +66,6 @@ test("a German page offers French, named in French", async () => {
 });
 
 /**
- * SHOWS WHERE YOU ARE, which the single "Deutsch" link it replaced never did.
  * The current language is marked and is not a link, since it would point at
  * the page you are on; exactly one link remains.
  */
@@ -91,18 +89,11 @@ test("the link declares the target's language, not the page's", async () => {
   expect(link).toHaveAttribute("lang", "de-CH");
 });
 
-test("THE PREFERENCE IS WRITTEN BEFORE THE NAVIGATION, or the switch bounces", async () => {
+test("the preference is written before the navigation, or the switch bounces", async () => {
   // main.tsx sends a bare "/" to "/de" whenever the stored preference is
-  // German. Switching to French from /de lands on "/" — so if the write did
-  // not happen first, shouldRedirectToGerman() would bounce the visitor
-  // straight back to the page they just left.
-  //
-  // localStorage is synchronous, so a click handler that writes and returns
-  // has finished before the browser navigates. What this asserts is that the
-  // write happens at all, and with the right value.
-  //
-  // MUTATION TEST: drop rememberLocale from the handler and this fails with
-  // null — and the app gets a switcher that cannot leave German.
+  // German, and switching to French from /de lands on "/". localStorage is
+  // synchronous, so this asserts that the write happens, with the right value.
+  // Dropping rememberLocale from the handler fails it with null.
   await renderWithSession(<LanguageSwitch />, { locale: "de-CH" });
 
   await userEvent.click(screen.getByRole("link", { name: "Passer en français" }));

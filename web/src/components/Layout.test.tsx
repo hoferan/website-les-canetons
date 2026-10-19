@@ -14,10 +14,8 @@ test.each([
   ["test", true],
   ["qa", true],
   ["prod", false],
-  // The last two matter most: an env nobody configured must NOT get a ribbon,
-  // or the live site eventually shows one and everyone learns to ignore
-  // ribbons. Asserted on the rendered output rather than by text — querying for
-  // the empty string matches every node.
+  // An env nobody configured gets no ribbon, or the live site would show one.
+  // Asserted on textContent because querying for "" matches every node.
   ["", false],
   ["something-else", false],
 ])("env %s shows a ribbon: %s", (env, shown) => {
@@ -31,8 +29,8 @@ test.each([
 });
 
 /**
- * THE BAND'S ACCOUNTS ELSEWHERE (#224): the gallery and the two networks in the
- * nav, and all three again in the footer. Each opens a new tab and says so in
+ * The band's accounts elsewhere (#224): the gallery and the two networks in
+ * the nav, and all three again in the footer. Each opens a new tab and says so in
  * its name.
  */
 test.each([
@@ -114,13 +112,11 @@ test("the auth link says Connexion when nobody is logged in", async () => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
   const link = screen.getByRole("link", { name: "Connexion" });
   expect(link).toBeInTheDocument();
-  // Pins the destination, not just the accessible name: without this, the
-  // link could be repointed at any dead URL and this test would still pass.
   expect(link).toHaveAttribute("href", "/login");
 });
 
 /**
- * THE NAV HAS TWO SHAPES (#99): a desktop bar with the account under an avatar,
+ * The nav has two shapes (#99): a desktop bar with the account under an avatar,
  * and a phone list that exists only while the Menu is open. jsdom applies no
  * CSS, so the desktop bar is always in the tree here; a phone test opens the
  * Menu first, and names the phone account row by the username it shows.
@@ -163,8 +159,8 @@ test("the desktop menu names who is logged in, then the account, the committee's
 });
 
 /**
- * THE COMMITTEE'S SCREENS LEFT THE BAR (#99), so the bar keeps to pages and
- * fits on one line. Their count moved onto the avatar.
+ * The committee's screens live under the avatar (#99), so the bar keeps to
+ * pages and fits on one line. Their count shows on the avatar.
  */
 test("the committee's screens are under the avatar, not in the desktop bar", async () => {
   setMockUser("demo.direction");
@@ -184,14 +180,14 @@ test("a member with no committee screen gets only the account and the way out", 
 
   await user.click(screen.getByRole("button", { name: "Compte de demo.player" }));
 
-  // ABSENT, not refused: a link that leads to "Accès refusé" teaches people
+  // Absent, not refused: a link that leads to "Accès refusé" teaches people
   // that parts of the site are broken for them.
   const items = await screen.findAllByRole("menuitem");
   expect(items.map((item) => item.textContent)).toEqual(["Mon compte", "Déconnexion"]);
 });
 
 /**
- * THE PHONE MENU IS A FULL-SCREEN LAYER (#99, "Scène"): the member's own
+ * The phone menu is a full-screen layer (#99): the member's own
  * screens first, then the public pages, and the account in a footer, last.
  */
 test("the phone layer puts the member's screens first and the account last", async () => {
@@ -242,9 +238,8 @@ test("logged out, the phone list has no headings and ends with Connexion", async
 });
 
 /**
- * #99's whole point: the name and the logout used to sit side by side as nav
- * items, one stray click apart. Until a menu is opened there is no logout
- * anywhere in the tree.
+ * #99: the logout sits behind a menu, never one stray click from the name.
+ * Until a menu is opened there is no logout anywhere in the tree.
  */
 test("keeps the logout out of reach until a menu is opened", async () => {
   setMockUser("demo.player");
@@ -349,14 +344,8 @@ test("hides Événements from an anonymous visitor", async () => {
 });
 
 /**
- * THE WAY OUT, which did not exist until 2026-09-14.
- *
- * `POST /api/v1/logout` shipped with the login, with Laravel tests and nothing on
- * screen ever called it, so a member's only way to end a session was to clear
- * their cookies. What hid it was MustChangePassword's docblock, which argued
- * its gate could trap nobody BECAUSE logout was a button in the chrome — an
- * invariant documented as satisfied by a control that was never written. These
- * tests are what make that sentence true.
+ * The way out. MustChangePassword relies on the logout being in the chrome,
+ * so its gate traps nobody; these tests hold that.
  */
 test("offers no way out to somebody who is not logged in", async () => {
   await renderWithSession(<AppRoutes />, { route: "/" });
@@ -375,19 +364,15 @@ test("offers a logout to every logged-in member, whatever they can do", async ()
 });
 
 /**
- * THE SERVER HALF. The browser half — landing on `/` — is a full page load,
- * which jsdom does not perform and cannot be faked here: `window.location` is
- * non-configurable, so the spy that would watch it throws "Cannot redefine
- * property: assign". Rather than bend the component into a testable shape for
- * one assertion, the landing is proven in a real browser by
- * web/e2e/members.spec.ts, and this holds the part jsdom can actually see.
+ * The server half only. Landing on `/` is a full page load, which jsdom
+ * cannot perform or spy on (`window.location` is non-configurable), so
+ * web/e2e/members.spec.ts proves it in a real browser.
  */
 test("ends the session on the server", async () => {
   const user = userEvent.setup();
   setMockUser("demo.direction");
-  // FROM /members, which is where somebody actually finishes and logs out, and
-  // which is the page that made three in-app versions of this fail — see
-  // session/logout.ts.
+  // From /members, the page that breaks an in-app logout (see
+  // session/logout.ts).
   await renderWithSession(<AppRoutes />, { route: "/members" });
 
   await user.click(await screen.findByRole("button", { name: /^Compte de demo\.direction/ }));
@@ -409,13 +394,10 @@ test("ends the session from the phone layer too", async () => {
 });
 
 /**
- * IT IS REACHABLE FROM INSIDE THE FORCED-PASSWORD GATE, which is the case the
- * whole "in the chrome, not on a page" decision exists for: that member can
- * reach /account/password and nothing else, so a logout living on any other route would
- * be unreachable by the one person most likely to want it.
- *
- * Mutation-tested: moving the button onto the password page fails this test
- * and nothing else.
+ * The logout is reachable from inside the forced-password gate. That member
+ * can reach /account/password and nothing else, which is why the logout is
+ * in the chrome and not on a page. This is the only test that fails if the
+ * button moves onto a page.
  */
 test("stays reachable for a member held on /account/password by the password gate", async () => {
   const user = userEvent.setup();
@@ -466,7 +448,7 @@ test("the nav is still French by default", async () => {
 });
 
 /**
- * THE FOOTER'S SCALLOPED EDGE is drawn in the colour the page ends on (ADR
+ * The footer's scalloped edge is drawn in the colour the page ends on (ADR
  * 0029). The home page ends on its yellow band once the agenda has answered,
  * and leaving the page has to put the cream back, or every page after it
  * shows yellow bumps under a cream body.

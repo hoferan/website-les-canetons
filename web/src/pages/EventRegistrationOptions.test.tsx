@@ -45,11 +45,8 @@ test("loads what the event offers, prices included", async () => {
 });
 
 /**
- * An option with no price at all comes back as an EMPTY field, not "0".
- *
- * The two are different answers — no price stated, against free — and the
- * copy on the screen says so, because a committee member typing 0 into an
- * empty field would be making a claim about money.
+ * An option with no price comes back as an empty field, not "0": no price
+ * stated is not the same as free, and the copy on the screen says so.
  */
 test("an option with no price has an empty price field", async () => {
   await renderEditor();
@@ -60,14 +57,12 @@ test("an option with no price has an empty price field", async () => {
 });
 
 /**
- * THE CONDITIONAL WRITE, on its OWN facet.
+ * The conditional write, on its own facet: the tag is the one
+ * `GET /registration-options` handed out as the screen opened, not the
+ * event's, because the options are absent from EventResource.
  *
- * MUTATION TEST: drop `ifMatch(etag)` from the PUT and this fails with the
- * mocked backend's 428, exactly as the real API would answer. The tag is the
- * one `GET /registration-options` handed out as the screen opened — a
- * different facet from the event's, because the options are absent from
- * EventResource and a tag over the event would neither move when an option
- * changed nor survive a correction to the dress code.
+ * Mutation test: drop `ifMatch(etag)` from the PUT and this fails with the
+ * mocked backend's 428, as the real API would answer.
  */
 test("saves quoting the tag the screen opened with", async () => {
   const user = userEvent.setup();
@@ -96,8 +91,7 @@ test("adds an option, and reads the saved list back", async () => {
 
   await user.click(screen.getByRole("button", { name: "Ajouter une option" }));
   await user.type(row(4).getByLabelText("Intitulé"), "Dessert supplémentaire");
-  // A COMMA, which is what a French keyboard's numeric pad produces. Refusing
-  // it would be correct and useless.
+  // A comma, which is what a French keyboard's numeric pad produces.
   await user.type(row(4).getByLabelText("Prix en francs"), "5,50");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
@@ -108,21 +102,17 @@ test("adds an option, and reads the saved list back", async () => {
 });
 
 /**
- * THE TAG THE WRITE HANDED BACK.
+ * The tag the write handed back.
  *
- * MUTATION TEST: stop re-seeding `etag` from the save's response and this
- * fails on the second save with 412 — which on screen reads as somebody else
- * editing, when it was this screen a second ago.
+ * Mutation test: stop re-seeding `etag` from the save's response and this
+ * fails on the second save with 412.
  */
 test("can be saved twice without a reload", async () => {
   const user = userEvent.setup();
   await renderEditor();
 
-  // BOTH SAVES CHANGE SOMETHING, and that is what makes this test able to
-  // fail. The first draft saved the list unaltered twice — and a save that
-  // changes nothing does not move the entity tag, so a screen that never
-  // re-seeded its tag passed anyway. The mutation survived until the two
-  // edits below were added.
+  // Both saves change something, or this test cannot fail: a save that
+  // changes nothing does not move the entity tag.
   await user.clear(row(1).getByLabelText("Prix en francs"));
   await user.type(row(1).getByLabelText("Prix en francs"), "50");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
@@ -138,11 +128,10 @@ test("can be saved twice without a reload", async () => {
 });
 
 /**
- * ICON-ONLY, SO THE LABEL IS ALL A SCREEN READER HAS. Each control is found
- * by the name that carries the option, and has no visible text of its own.
+ * Icon-only, so the label is all a screen reader has. Each control is found
+ * by the name that carries the option, and has no visible text.
  *
- * MUTATION TEST: drop any one `aria-label` and its lookup fails, because the
- * button's name falls back to nothing at all.
+ * Mutation test: drop any one `aria-label` and its lookup fails.
  */
 test("the reorder and remove controls are icons named for their option", async () => {
   await renderEditor();
@@ -156,9 +145,8 @@ test("the reorder and remove controls are icons named for their option", async (
 });
 
 /**
- * The invariant the whole replace-all shape exists for: removing an option
- * people have already booked would silently rewrite what those people
- * ordered, so it is refused instead.
+ * Removing an option people have already booked would silently rewrite what
+ * they ordered, so it is refused.
  */
 test("refuses to drop an option somebody has booked, and keeps the edit", async () => {
   const user = userEvent.setup();
@@ -171,15 +159,13 @@ test("refuses to drop an option somebody has booked, and keeps the edit", async 
   expect(
     await screen.findByText(/Impossible de supprimer une option déjà réservée/),
   ).toBeInTheDocument();
-  // The row stays removed: a refused save must not throw away the rest of the
-  // edit either.
+  // The row stays removed: a refused save keeps the rest of the edit.
   expect(screen.queryByRole("heading", { name: "Option 3" })).not.toBeInTheDocument();
 });
 
 /**
- * A price is parsed BEFORE anything is sent, so a malformed one lands on the
- * row it was typed in. The API would refuse it against `options.2.priceCents`,
- * a path the committee cannot map back to a row on screen.
+ * A price is parsed before anything is sent, so a malformed one lands on the
+ * row it was typed in.
  */
 test("reports a price that is not a price against its own row", async () => {
   const user = userEvent.setup();
@@ -202,11 +188,9 @@ test("reports a price that is not a price against its own row", async () => {
       /Indiquez un montant/,
     ),
   ).toBeInTheDocument();
-  // Nothing left the browser: the rest of the list is not saved under a
-  // half-valid edit.
+  // Nothing left the browser.
   expect(sent).toBe(false);
-  // And the other rows are clean, which is the half a bare `messageFor` would
-  // get wrong.
+  // And the other rows are clean.
   expect(row(1).queryByText(/Indiquez un montant/)).not.toBeInTheDocument();
 });
 
@@ -225,7 +209,6 @@ test("reports a price that is not a price in German", async () => {
   await user.type(price[1] as HTMLElement, "zwanzig Franken");
   await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-  // The message was a French literal in the component.
   expect(
     await screen.findByText("Geben Sie einen Betrag ein, zum Beispiel 45 oder 45.50."),
   ).toBeInTheDocument();

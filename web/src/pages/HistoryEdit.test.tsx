@@ -24,10 +24,9 @@ async function renderAt(route: string) {
 }
 
 /**
- * The saved text is looked for INSIDE THE TIMELINE, not anywhere on screen.
- * React keeps a controlled textarea's text content in step with its value, so
- * an unscoped findByText can match the form's own textarea while the save is
- * in flight, and then lose it when the navigation unmounts the form.
+ * Saved text is looked for inside the timeline. React keeps a controlled
+ * textarea's text content in step with its value, so an unscoped findByText
+ * can match the form's textarea mid-save and lose it when the form unmounts.
  */
 async function timeline() {
   return screen.findByTestId("history-timeline");
@@ -48,9 +47,8 @@ test("a new entry with only a German text and an exact date is saved and appears
 });
 
 /**
- * A YEAR IS ASKED FOR AS A YEAR (#104's review). A full date field for a year
- * entry made the committee invent a day, which was then silently dropped and
- * came back as 01.01 on the next edit.
+ * A year is asked for as a year. A full date field would make the committee
+ * invent a day, silently dropped and shown as 01.01 on the next edit.
  */
 test("a year entry asks for the year only, previews it, and saves it", async () => {
   const user = userEvent.setup();
@@ -91,8 +89,8 @@ test("editing a year entry opens on its year, with no day to invent", async () =
 });
 
 /**
- * MUTATION TEST: drop the client-side all-empty check and the message still
- * arrives, from the mock's 422, but the fields are not marked or described.
+ * Without the client-side all-empty check the message still arrives, from the
+ * mock's 422, but the fields are not marked or described.
  */
 test("four empty text fields are refused before sending, next to the fields", async () => {
   const user = userEvent.setup();
@@ -136,7 +134,7 @@ test("the chosen icon is named where a sighted user can read it", async () => {
   expect(screen.getByTestId("icon-chosen")).toHaveTextContent("Trophée");
 });
 
-/** MUTATION TEST: drop `ifMatch(etag)` from the update and the mock answers 428. */
+/** Without `ifMatch(etag)` on the update the mock answers 428. */
 test("editing opens with the entry's values and saves with its tag", async () => {
   const user = userEvent.setup();
   await renderAt("/history/3/edit");
@@ -197,7 +195,7 @@ test("the German form punctuates its labels the German way", async () => {
   expect(screen.getByTestId("icon-chosen").parentElement).toHaveTextContent(/^: Keines$/);
 });
 
-/** A MISSING MONTH SAYS SO (the second review). It used to fail in silence. */
+/** A missing month is reported at the month. */
 test("a month entry without its month says so at the month", async () => {
   const user = userEvent.setup();
   await renderAt("/history/new");
@@ -213,9 +211,8 @@ test("a month entry without its month says so at the month", async () => {
 });
 
 /**
- * SWITCHING THE PRECISION KEEPS WHAT IS KNOWN. An exact date typed and then
- * narrowed to its month used to leave the month and year empty, and the
- * preview could show a date nobody had entered.
+ * Switching the precision keeps what is known, so the preview never shows a
+ * date nobody entered.
  */
 test("narrowing an exact date keeps its month and year, and widening it back keeps the day", async () => {
   const user = userEvent.setup();
@@ -245,7 +242,7 @@ test("the form keys its required marks", async () => {
   expect(await screen.findByText(/champ obligatoire/)).toBeInTheDocument();
 });
 
-/** ONE MESSAGE, NOT TWO: the rule itself turns into the error. */
+/** One message: the rule itself turns into the error. */
 test("an empty save turns the rule into the error rather than repeating it", async () => {
   const user = userEvent.setup();
   await renderAt("/history/new");
@@ -390,8 +387,8 @@ test("an editor without images.manage sees the photo, cannot change it, and writ
 });
 
 /**
- * MUTATION TEST: navigate without `photoFailed` and the editor lands on a
- * timeline that never says the photo is missing.
+ * Navigating without `photoFailed` would land the editor on a timeline that
+ * never says the photo is missing.
  */
 test("a photo that fails to save after its entry did is reported on the timeline", async () => {
   const user = userEvent.setup();

@@ -10,10 +10,8 @@ test("renders what it was given", () => {
 });
 
 /**
- * THE POINT OF THE COMPONENT, pinned: a notice informs and never gates. It is
- * not an error, so it must not claim the error's semantics — `role="alert"` is
- * an assertive live region, which interrupts a screen-reader user mid-sentence
- * for a paragraph that was on the page before they arrived.
+ * A notice is not an error and must not be a live region, which would
+ * interrupt a screen-reader user for a paragraph already on the page.
  */
 test("is not an alert and not a live region", () => {
   render(<Notice>Ce formulaire est destiné aux visiteurs du site.</Notice>);

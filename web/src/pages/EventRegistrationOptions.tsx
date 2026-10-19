@@ -55,27 +55,22 @@ function blankDraft(): Draft {
 /**
  * What can be booked at one event.
  *
- * `events.manage`, NOT a registration permission: configuring what an event
- * offers is configuring the event, the same act as setting its date. The two
- * registration permissions are about the people who booked.
+ * Gated on `events.manage`, not a registration permission: configuring what
+ * an event offers is configuring the event. The registration permissions are
+ * about the people who booked.
  *
- * REPLACE-ALL, matching `PUT /members/{member}/roles`. The whole list is sent
- * every time — an entry with an id updates, one without creates, and anything
- * missing is deleted — because an "add one" API cannot express removal, which
- * is the half the booked-option invariant exists for. Removing something
- * people have already booked is refused rather than silently rewriting what
- * those people ordered.
+ * Replace-all, like `PUT /members/{member}/roles`: the whole list is sent
+ * every time (an entry with an id updates, one without creates, anything
+ * missing is deleted), because an "add one" API cannot express removal.
+ * Removing an option people have already booked is refused.
  *
- * THE LIST IS READ ONCE, IMPERATIVELY, AND THE TAG IS KEPT. This screen IS the
- * form, so `useQuery` would be wrong for the same reason it is wrong behind a
- * dialog: a refetch on a focus change advances the tag while the form still
- * shows what it opened with, which satisfies the server and protects nobody.
+ * The list is read once, imperatively, and the tag is kept: a `useQuery`
+ * refetch would advance the tag while the form still shows what it opened
+ * with, which satisfies the server and protects nobody.
  *
- * ITS OWN FACET, `etag:event.options`, and not the event's. The options are
- * absent from EventResource, so conditioning this write on the event's tag
- * would miss every option change — a lost update would go straight through —
- * and would refuse a perfectly good options edit because somebody corrected
- * the dress code.
+ * The write has its own facet, `etag:event.options`. The options are absent
+ * from EventResource, so the event's tag would miss every option change and
+ * refuse an options edit because somebody corrected the dress code.
  */
 export function EventRegistrationOptions() {
   const { id } = useParams();
@@ -88,9 +83,8 @@ export function EventRegistrationOptions() {
   const [loading, setLoading] = useState(true);
   const [readError, setReadError] = useState<string | null>(null);
   const [priceProblems, setPriceProblems] = useState<Record<string, string>>({});
-  // Beside the button rather than in a toast, for the same reason the guest
-  // list's refusal is: this screen's whole answer to "did that work?" is one
-  // line, and a toast is gone by the time somebody looks up from the form.
+  // Beside the button, not in a toast: a toast is gone by the time somebody
+  // looks up from the form.
   const [saved, setSaved] = useState(false);
 
   const form = useApiFormError(t("registrationOptions.saveFailed"));
@@ -136,8 +130,8 @@ export function EventRegistrationOptions() {
   }, [eventId]);
 
   function update(key: string, patch: Partial<Draft>) {
-    // Any edit retracts the confirmation: "Enregistré" over a form somebody
-    // has since changed is a claim about the wrong list.
+    // Any edit retracts the confirmation, which would otherwise describe a
+    // list that has since changed.
     setSaved(false);
     setDrafts((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   }
@@ -147,9 +141,8 @@ export function EventRegistrationOptions() {
       const next = [...current];
       const row = next[index];
       const swap = next[index + by];
-      // Reading both rows IS the bounds check: noUncheckedIndexedAccess makes
-      // each `Draft | undefined`, which replaces an index comparison rather
-      // than sitting after one.
+      // Reading both rows is the bounds check: noUncheckedIndexedAccess makes
+      // each `Draft | undefined`.
       if (!row || !swap) {
         return current;
       }
@@ -167,10 +160,9 @@ export function EventRegistrationOptions() {
 
     form.clear();
 
-    // Prices are parsed BEFORE anything is sent, because a malformed one has
-    // to be reported against the row it was typed in. The API takes integer
-    // centimes and would refuse "quarante-cinq" against `options.2.priceCents`,
-    // which is a path the committee cannot map back to a row on screen.
+    // Prices are parsed before anything is sent, so a malformed one is
+    // reported against its row. The API takes integer centimes, so the typed
+    // text never reaches it.
     const problems: Record<string, string> = {};
     const options: ReplaceRegistrationOptionsRequestOptionsItem[] = [];
 
@@ -199,16 +191,14 @@ export function EventRegistrationOptions() {
     try {
       const written = await replace.mutateAsync({ options, tag: etag });
 
-      // The write hands back the new list and the new tag, so the screen can
-      // be saved twice without a reload. Without this the second save quotes
-      // a tag the first one moved and answers 412 — which reads as somebody
-      // else editing, when it was this screen.
+      // The write hands back the new list and tag, so a second save does not
+      // quote a stale tag and get a 412 for this screen's own edit.
       setDrafts(rowsOf<RegistrationOptionResource>(written).map(draftFrom));
       setEtag(entityTagOf(written));
       setSaved(true);
     } catch (thrown) {
-      // The form stays as it is. A refused save — a booked option removed, or
-      // a stale tag — must not throw away the rest of the edit.
+      // The form stays as it is: a refused save (a booked option removed, or
+      // a stale tag) must not throw away the rest of the edit.
       form.setFromThrown(thrown);
     }
   }
@@ -221,7 +211,7 @@ export function EventRegistrationOptions() {
         {t("common.backToPlanning")}
       </Link>
 
-      {/* THE SAME KEY AS THE LINK THAT OPENS THIS, on the planning. */}
+      {/* The same key as the planning's link to this screen. */}
       <h1 className="mt-tight font-display text-3xl">{t("events.options")}</h1>
 
       {title ? (
@@ -253,12 +243,9 @@ export function EventRegistrationOptions() {
           <ul className="mt-block grid gap-related">
             {drafts.map((row, index) => (
               <li key={row.key} className={`${OUTLINED_CARD} flex flex-col gap-related p-4`}>
-                {/* THE ROW IS NUMBERED, and it earns its place on a screen
-                    that repeats "Intitulé / Description / Prix" once per
-                    option: without it the third block is reachable only by
-                    counting, and by keyboard it is three identical labels in a
-                    row. The number is the position, which is also what
-                    `sortOrder` is sent as. */}
+                {/* Numbered, because the same three labels repeat per option.
+                    The number is the position, which is also what `sortOrder`
+                    is sent as. */}
                 <h2 className="font-display text-lg">
                   {t("registrationOptions.optionNumber", { n: index + 1 })}
                 </h2>
@@ -268,13 +255,9 @@ export function EventRegistrationOptions() {
                   label={t("registrationOptions.label")}
                   value={row.label}
                   onChange={(value) => update(row.key, { label: value })}
-                  // THE FULL PATH, INDEX AND ALL. `translateApiError` keeps
-                  // `field` as the server sent it — `options.2.label` — and
-                  // reduces only the LOOKUP to its last segment, precisely so
-                  // a screen can highlight the right input. Matching on a bare
-                  // "label" was the first version of this and lit every row at
-                  // once, which tells the committee a refusal happened and not
-                  // where.
+                  // The full path, index and all: `translateApiError` keeps
+                  // `field` as sent (`options.2.label`), so a bare "label"
+                  // would light every row at once.
                   problem={form.messageFor(`options.${index}.label`)}
                   required
                 />
@@ -291,15 +274,13 @@ export function EventRegistrationOptions() {
                   value={row.price}
                   onChange={(value) => update(row.key, { price: value })}
                   // The local parse failure first: when it fires, nothing was
-                  // sent, so there is no server answer to show underneath it.
+                  // sent.
                   problem={priceProblems[row.key] ?? form.messageFor(`options.${index}.priceCents`)}
                 />
 
-                {/* ICON-ONLY, and the aria-label is the whole name: it carries
-                    the option, so a screen reader hears which row moves.
-                    Remove sits at the far end, away from the arrows, so a
-                    thumb aiming for "down" does not land on it. See
-                    docs/adr/0025-icons-on-controls.md. */}
+                {/* Icon-only, so the aria-label carries the option and a
+                    screen reader hears which row moves. Remove sits at the far
+                    end, away from the arrows. See ADR 0025. */}
                 <div className="flex gap-tight">
                   <Button
                     type="button"
@@ -323,11 +304,10 @@ export function EventRegistrationOptions() {
                   >
                     <ArrowDown aria-hidden="true" />
                   </Button>
-                  {/* REMOVING IS LOCAL UNTIL THE SAVE, because the write is
-                      replace-all: a row taken out here is simply absent from
-                      the list that is sent. Somebody may still have booked it,
-                      and the SERVER is what refuses that — this screen does
-                      not keep a second copy of the rule to drift from it. */}
+                  {/* Removing is local until the save: the write is
+                      replace-all, so the row is absent from the list sent. The
+                      server refuses removing a booked option; this screen
+                      keeps no copy of that rule. */}
                   <Button
                     type="button"
                     variant="raised-light"

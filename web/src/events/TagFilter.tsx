@@ -21,14 +21,14 @@ export function shownTag(
 }
 
 /**
- * One row of chips that narrows the planning to a tag (#107).
+ * One row of chips that narrows the planning to a tag.
  *
  * A radio group for the reason ui/radio-group.tsx gives: one choice, arrow
  * keys that select, and no way to be left with nothing chosen. Built on the
  * primitive rather than on ToggleOption because each option has to look like
  * the chip it filters by.
  *
- * ONE ROW THAT SCROLLS SIDEWAYS on a phone instead of wrapping. Wrapped, four
+ * One row that scrolls sideways on a phone instead of wrapping. Wrapped, four
  * tags and "Tous" take two rows at 390px, and the planning's first card is
  * held to a height budget (web/e2e/members.spec.ts).
  */

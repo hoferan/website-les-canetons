@@ -1,24 +1,20 @@
 /**
  * Where the wire's UTC and the band's wall clock meet, on the browser side.
  *
- * The server has `App\Support\BandTime` and makes exactly this commitment for
- * exactly this reason: a rehearsal is at 10:00 in Fribourg whether the page is
- * read from Fribourg, from Sydney, or from a CI runner set to UTC.
- * Europe/Zurich is not "the member's timezone", it is a property of the band,
- * so it is a constant here rather than anything read from the browser.
+ * The server's `App\Support\BandTime` makes the same commitment: a rehearsal
+ * is at 10:00 in Fribourg whether the page is read from Fribourg, from Sydney
+ * or from a CI runner set to UTC. Europe/Zurich is a property of the band,
+ * not the member's timezone, so it is a constant here.
  *
- * THE FORM IS WHY THIS DIRECTION EXISTS. Rendering only ever goes one way —
- * `formatEventWhen` turns an instant into French — but a form has to go both:
- * split a stored instant into the date and time boxes an organiser edits, and
- * compose what they typed back into an instant. Getting the second one wrong
- * is silent: every event lands an hour out for half the season, and nobody
- * finds out until somebody arrives at the wrong time.
+ * Rendering goes one way (`formatEventWhen`), but a form goes both: it splits
+ * a stored instant into the date and time boxes an organiser edits, and
+ * composes what they typed back into an instant. Getting the second wrong is
+ * silent: every event lands an hour out for half the season.
  *
- * WHY NOT `new Date("2026-09-05T10:00")`. An offsetless string is read in the
- * BROWSER's zone, so the same typed rehearsal becomes a different instant for
- * a committee member travelling, and a different one again in a test runner.
- * Nor can the offset be hard-coded: the season runs September to January, so
- * both +02:00 and +01:00 occur in every planning ever entered here.
+ * `new Date("2026-09-05T10:00")` reads an offsetless string in the browser's
+ * zone, so the same typed rehearsal becomes a different instant for a member
+ * travelling, or in a test runner. Nor can the offset be hard-coded: the
+ * season runs September to January, so both +02:00 and +01:00 occur.
  */
 
 const ZONE = "Europe/Zurich";
@@ -26,10 +22,9 @@ const ZONE = "Europe/Zurich";
 /**
  * The zone's own reading of an instant, field by field.
  *
- * `formatToParts` rather than parsing a formatted string: the separators,
- * the order and the padding of a locale's output are all free to change, and
- * `hourCycle: "h23"` is what stops midnight being rendered as hour 24 — which
- * `Date.UTC` would silently roll into the next day.
+ * `formatToParts` rather than parsing a formatted string, whose separators,
+ * order and padding are free to change. `hourCycle: "h23"` stops midnight
+ * being read as hour 24, which `Date.UTC` would roll into the next day.
  */
 const PARTS = new Intl.DateTimeFormat("en-US", {
   timeZone: ZONE,
@@ -75,22 +70,17 @@ function pad(value: number): string {
  * A `Y-m-d` date and an `H:i` time, as typed for a Fribourg event, as an ISO
  * string carrying the offset that applied on that date.
  *
- * TWO PASSES, NOT ONE, and the second is the whole reason this is a function
- * rather than a template string. The first guess reads the offset at the wrong
- * instant — it uses the wall-clock numbers as though they were UTC, which is
- * off by the offset itself — so on the two days a year the clocks change, the
- * guess can land on the wrong side of the transition. Re-reading the offset at
- * the corrected instant settles it.
+ * Two passes. The first reads the offset at the wall-clock numbers taken as
+ * UTC, which is off by the offset itself, so on the two days a year the clocks
+ * change it can land on the wrong side of the transition. Re-reading the
+ * offset at the corrected instant settles it.
  *
- * The offset is sent rather than a bare local string because the wire format
- * would otherwise be ambiguous: the server honours an offset it is given and
- * reads an offsetless string as UTC, so an omission is an error that looks
- * like a two-hour scheduling mistake.
+ * The offset is always sent: the server reads an offsetless string as UTC, so
+ * an omission looks like a two-hour scheduling mistake.
  *
  * A time in the spring-forward gap or the autumn overlap resolves to one of
- * the two plausible instants rather than being refused, matching what
- * `BandTime::compose` does on the server for the same reason: no band event is
- * ever scheduled in the 02:00–03:00 window this affects.
+ * the two plausible instants instead of being refused, as `BandTime::compose`
+ * does on the server: no band event is scheduled between 02:00 and 03:00.
  */
 export function composeInBandZone(date: string, time: string): string {
   const wallClockAsUtc = Date.parse(`${date}T${time}:00Z`);
@@ -108,8 +98,8 @@ export function composeInBandZone(date: string, time: string): string {
  * A stored instant as the date and time boxes an organiser reads and edits.
  *
  * The Fribourg day, never the UTC one: an event at 00:30 in Fribourg is the
- * previous day in UTC, and slicing the ISO string — which is the obvious thing
- * to reach for — puts it in the form a day early.
+ * previous day in UTC, and slicing the ISO string puts it in the form a day
+ * early.
  */
 export function bandZoneParts(iso: string): { date: string; time: string } {
   const local = fieldsAt(new Date(iso));

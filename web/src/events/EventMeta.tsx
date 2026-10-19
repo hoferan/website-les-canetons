@@ -3,13 +3,11 @@ import { t } from "../i18n";
 import { TagChip } from "./TagChip";
 
 /**
- * The metadata strip under an event's title (#93).
+ * The metadata strip under an event's title.
  *
- * PERMISSION-BLIND, like EventCard itself. Every prop is optional and the
- * screen decides which to pass: the API has already withheld what the caller
- * may not see, and this component never asks who is reading.
- *
- * IT RENDERS NOTHING WHEN GIVEN NOTHING, so a player's card grows no empty row.
+ * Permission-blind, like EventCard. Every prop is optional and the screen
+ * decides which to pass; the API has already withheld what the caller may not
+ * see. Given nothing, it renders nothing, so a player's card has no empty row.
  */
 export function EventMeta({
   tags,
@@ -33,7 +31,7 @@ export function EventMeta({
 
   return (
     <div data-testid="event-meta" className="mt-tight flex flex-wrap gap-tight text-sm">
-      {/* First, because they say what the event IS; everything after them is
+      {/* First, because they say what the event is; everything after them is
           a fact about it. Everybody sees them, unlike the chips that follow. */}
       {(tags ?? []).map((tag) => (
         <TagChip key={tag.id} tag={tag} />
@@ -49,14 +47,10 @@ export function EventMeta({
         <span
           className="text-ink-muted"
           /*
-           * THE PLURAL IS THE CATALOGUE'S, NOT THIS COMPONENT'S. This read
-           * `answered === 0 || answered === 1 ? "réponse" : "réponses"`, which
-           * is the FRENCH plural rule written out in JavaScript: French counts
-           * zero as singular and German does not. The same ternary therefore
-           * renders "0 Rückmeldung" on a German page, and changing it to
-           * `=== 1` would render "0 réponses" on a French one. i18next picks
-           * _one/_other from `count` using the active language's own rule, so
-           * each locale is right without the other being wrong.
+           * The plural comes from the catalogue. French counts zero as
+           * singular and German does not, so no ternary here can be right in
+           * both; i18next picks _one/_other from `count` by the active
+           * language's rule.
            */
           aria-label={t("events.meta.answersAria", { count: answered, total: answerable })}
         >
@@ -66,9 +60,9 @@ export function EventMeta({
 
       {guests !== undefined ? (
         <span className="text-ink-muted">
-          {/* Zero says something ELSE here, so it is its own key rather than a
-              plural form -- neither language has a `_zero` category, and
-              "Aucune inscription" is not the singular of anything. */}
+          {/* Zero is its own key, not a plural form: neither language has a
+              `_zero` category, and "Aucune inscription" is not the singular
+              of anything. */}
           {guests === 0 ? t("events.meta.noGuests") : t("events.meta.guests", { count: guests })}
         </span>
       ) : null}

@@ -119,18 +119,17 @@ function monthNames(): string[] {
 /**
  * One history entry, new or edited.
  *
- * THE PRECISION COMES FIRST, AND DECIDES WHAT IS ASKED FOR: a year entry asks
- * for a year, a month entry for a month and a year, an exact date for a date.
- * A single date field for all three made the committee invent a day for
- * "2007", which the server then dropped and the next edit showed as 01.01.
- * The preview prints the date as the timeline will.
+ * The precision comes first and decides what is asked for: a year entry asks
+ * for a year, a month entry for a month and a year, an exact date for a date,
+ * so nobody has to invent a day for "2007". The preview prints the date as
+ * the timeline will.
  *
- * NO TEXT FIELD IS MARKED REQUIRED, because none is on its own: at least one
+ * No text field is marked required, because none is on its own: at least one
  * of the four is. The rule sits above the fields and describes each of them,
  * and when it is broken the message appears in the same place and marks all
  * four, with focus on the first. It is checked here before sending, so the
- * refusal is in the page's language (#209), and again on the server, which
- * answers history_entry_empty.
+ * refusal is in the page's language, and again on the server, which answers
+ * history_entry_empty.
  */
 export function HistoryForm({
   entry,
@@ -166,7 +165,7 @@ export function HistoryForm({
   }
 
   /**
-   * SWITCHING THE PRECISION KEEPS WHAT IS KNOWN. Narrowing an exact date takes
+   * Switching the precision keeps what is known. Narrowing an exact date takes
    * its year and month from it; widening back to an exact date keeps a day
    * only if it still agrees with the year and month, and never invents one.
    */
@@ -198,8 +197,8 @@ export function HistoryForm({
     if (busy) {
       return;
     }
-    // BEFORE formIsValid, which would focus the select and say nothing: the
-    // select is not a FormField, so no message of the browser reaches it.
+    // Before formIsValid, which would focus the select and say nothing: the
+    // select is not a FormField, so no browser message reaches it.
     if (draft.precision === "month" && draft.month === "") {
       setMonthProblem(t("historyForm.monthMissing"));
       document.getElementById("occurredMonth")?.focus();
@@ -332,8 +331,8 @@ export function HistoryForm({
         </span>
       </p>
 
-      {/* ONE ELEMENT FOR THE RULE AND ITS BREACH: when the four texts are
-          empty the rule itself turns into the error, rather than a second
+      {/* One element for the rule and its breach: when the four texts are
+          empty the rule itself turns into the error, instead of a second
           message saying nearly the same one line below. It describes each of
           the four fields, and focus moves to the first, which reads it. */}
       <p id={RULE_ID} className={`text-sm ${empty ? "text-danger" : "text-ink-muted"}`}>
@@ -410,10 +409,9 @@ export function HistoryForm({
             const Icon = key === "none" ? null : HISTORY_ICONS[key];
             const name = t(`history.icons.${key}`);
             return (
-              // RING OFFSET, because the checked circle is filled with the
+              // A ring offset, because the checked circle is filled with the
               // same violet as the ring: without the gap, focus on the
-              // selected icon, which is where focus nearly always is, was
-              // invisible.
+              // selected icon, where focus nearly always is, is invisible.
               <label
                 key={key}
                 title={name}

@@ -7,9 +7,8 @@ test("a September evening composes with the summer offset", () => {
 });
 
 test("a December evening composes with the winter offset", () => {
-  // The season runs September to January, so both offsets are in every
-  // planning the committee ever enters. A hard-coded +02:00 would put every
-  // winter rehearsal an hour early.
+  // The season runs September to January, so every planning has both
+  // offsets. A hard-coded +02:00 would put every winter rehearsal an hour out.
   expect(composeInBandZone("2026-12-05", "10:00")).toBe("2026-12-05T10:00:00+01:00");
 });
 
@@ -28,9 +27,8 @@ test("it splits a stored UTC instant into the date and time a Fribourg member re
 });
 
 test("a late event belongs to the Fribourg day, not the UTC one", () => {
-  // 23:30 in Fribourg in December is 22:30 UTC the same day; in summer it is
-  // 21:30. The trap is the other direction — 00:30 Fribourg is the previous
-  // day in UTC — and splitting on the raw ISO string gets it wrong.
+  // 23:30 UTC in September is 01:30 the next day in Fribourg, so splitting
+  // the raw ISO string puts the event on the wrong day.
   expect(bandZoneParts("2026-09-05T23:30:00.000Z")).toEqual({
     date: "2026-09-06",
     time: "01:30",

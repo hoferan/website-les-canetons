@@ -3,33 +3,23 @@ import { t } from "../i18n";
 /**
  * A visible placeholder for content the band has not yet confirmed.
  *
- * WHY THIS EXISTS. The 2026-08-31 content audit asked fourteen questions about
- * the site's factual claims. For the committee, the register rosters, the
- * instructors and the published phone numbers the answer was "don't know yet —
- * replace them with placeholders so I know exactly what to update later". A
- * stale name is worse than an obvious gap: a parent who rings the wrong person
- * gets a wrong answer, whereas a parent who sees a gap asks.
+ * A stale name is worse than an obvious gap: a parent who rings the wrong
+ * person gets a wrong answer, whereas a parent who sees a gap asks. So facts
+ * the band has not confirmed render as something no reader can mistake for
+ * real content. What is still missing is tracked in #106, counted by rendering
+ * the public pages: a grep over call sites miscounts, because some sit in a
+ * loop and others render only for an empty roster.
  *
- * So this renders something no reader can mistake for real content. What is
- * still missing is tracked in #106, counted by rendering the public pages: a
- * grep over call sites miscounts, because some sit in a loop and others render
- * only for an empty roster.
+ * None may remain before PROD. TEST and QA are behind HTTP Basic Auth, so only
+ * the band sees placeholders there; PROD is public.
  *
- * IT MUST BE EMPTY BEFORE PROD. TEST and QA are behind HTTP Basic Auth, so
- * placeholders there are seen only by the band. PROD is public and has never
- * been deployed with the rebuild. Deploying it while any of these remain would
- * publish "à compléter" where the committee should be.
+ * `what` is an already-translated string, never a fragment glued together
+ * outside the catalogue. A caller resolves its own
+ * `placeholders.*` key with `t()`; this component supplies only the leading
+ * marker and wording from `placeholders.tbd`.
  *
- * `what` IS AN ALREADY-TRANSLATED STRING, never a fragment glued together
- * outside the catalogue — the same fix `PhotoPending` gets for the same
- * reason. A caller resolves its own `placeholders.*` key with `t()` and hands
- * the rendered sentence in; this component only supplies the bullet and the
- * leading "à compléter"/"noch zu ergänzen" wording, which is its own
- * `placeholders.tbd` key.
- *
- * `token` is a STABLE, ENGLISH identifier for what is missing, carried on
- * `data-tbd` so it does not change per locale. It used to be the French `what`
- * fragment itself.
+ * `token` is a stable English identifier for what is missing, carried on
+ * `data-tbd` so it does not change per locale.
  */
 export function Tbd({ what, token }: { what?: string; token?: string }) {
   return (

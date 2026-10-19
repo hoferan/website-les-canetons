@@ -14,23 +14,18 @@ import { t, translateApiError } from "../i18n";
 /**
  * Adding one event to the planning.
  *
- * A PAGE, NOT A PANEL ON `/events`. The roster opens its form inline because
- * an administrator adding people adds several in a row against the list they
- * are reading; an event is entered once, from a phone, often while somebody
- * reads the date out loud — and a URL that can be opened, bookmarked and
- * returned to after a wrong turn is worth more here than staying beside the
- * list.
+ * A page, not a panel on `/events`: the roster adds several people in a row
+ * against its list, while an event is entered once, and a URL can be
+ * bookmarked and returned to after a wrong turn.
  *
- * EVERY EVENT IS CREATED AS A DRAFT, and the form offers two ways to finish:
- * save it as it is, or publish it. Publishing is a second call after the save,
- * so an incomplete form is saved and then refused with the fields it lacks;
- * the organiser lands on the saved draft's own edit screen with that refusal
- * carried along, because staying here would offer a second save that makes a
- * second event.
+ * Every event is created as a draft; the form saves it as it is or publishes
+ * it. Publishing is a second call after the save, so an incomplete form is
+ * saved and then refused with the fields it lacks. The organiser then lands
+ * on the draft's edit screen with that refusal, because staying here would
+ * offer a second save that makes a second event.
  *
- * The whole screen is behind `events.manage` in the route table, so there is
- * no permission check in here: the form is unreachable without it and a second
- * copy of the rule would be one more thing to drift.
+ * The route table puts the screen behind `events.manage`, so there is no
+ * permission check in here.
  */
 export function EventNew() {
   const navigate = useNavigate();
@@ -38,9 +33,9 @@ export function EventNew() {
   const form = useApiFormError(t("eventForm.saveFailed"));
   const create = useEventStore();
 
-  // BUSY FROM THE CREATE THROUGH THE PUBLISH. The create finishes before the
-  // publish starts, and `create.isPending` alone left the form open in the gap:
-  // a second tap on Publier saved a second event.
+  // Busy from the create through the publish: `create.isPending` alone leaves
+  // the form open in the gap, and a second tap on Publier would save a second
+  // event.
   const [working, setWorking] = useState(false);
 
   async function submit(draft: EventDraft, intent: "save" | "publish", poster: PosterChange) {
@@ -52,8 +47,7 @@ export function EventNew() {
 
       // The poster before the publish, so the band never sees the event
       // without it. A poster that fails leaves a saved draft, so the organiser
-      // goes to it, like a refused publish, rather than staying on a form
-      // whose next save would make a second event.
+      // goes to it, like a refused publish.
       if (
         created.status === 201 &&
         !(await saveEventPoster(created.data.id, created.data.title, poster, queryClient))
@@ -90,8 +84,8 @@ export function EventNew() {
 
       navigate("/events");
     } catch (thrown) {
-      // The form STAYS OPEN. A refused date has to be corrected where it was
-      // typed, and navigating away would throw the other five fields away too.
+      // The form stays open, so a refused date is corrected where it was typed
+      // and the other fields are kept.
       form.setFromThrown(thrown);
     } finally {
       setWorking(false);

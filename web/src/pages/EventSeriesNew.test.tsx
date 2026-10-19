@@ -76,8 +76,8 @@ test("every date starts ticked, because the common case is all of them", async (
 });
 
 test("unticking a holiday removes it from what gets created", async () => {
-  // The real planning skips four Saturdays for school holidays. This is the
-  // whole reason the preview exists rather than a straight generate.
+  // The real planning skips four Saturdays for school holidays, which is why
+  // the preview exists.
   await renderGenerator();
   await fillSeptember();
 
@@ -96,13 +96,11 @@ test("the button counts what will actually be created", async () => {
 });
 
 /**
- * THE URL SAYS IT WORKED (#103). The generator used to report the count in
- * place, on the form's own path, and a check that read the URL concluded the
- * save had failed and ran it again: two identical seasons on TEST, cleaned up
- * by id. Landing on the planning puts the reader where the new rehearsals are.
+ * The URL says it worked (#103), and the reader lands where the new
+ * rehearsals are.
  *
  * The count is then cleared from the history entry, or a reload would report
- * the same season as created again. MUTATION TEST: drop the replacing
+ * the same season as created again. Mutation test: drop the replacing
  * navigate() in SeriesCreatedNotice and the last assertion fails.
  */
 test("creating a season goes to the planning and says how many were created", async () => {
@@ -150,13 +148,12 @@ test("the count on the planning goes away when dismissed", async () => {
 });
 
 /**
- * PRESENT BUT INERT before there is anything to create (#103). The page used
- * to open with "Annuler" as its only action, which reads as a broken form.
- * The button is there from the start and points at the line saying what it
- * still needs.
+ * Present but inert before there is anything to create, because a page with
+ * "Annuler" as its only action reads as a broken form. The button points at
+ * the line saying what it still needs.
  *
- * MUTATION TEST: go back to rendering the button only once a date is chosen
- * and this lookup fails.
+ * Mutation test: render the button only once a date is chosen and this
+ * lookup fails.
  */
 test("before a range is chosen, the button is there, inert, and says why", async () => {
   await renderGenerator();
@@ -169,9 +166,9 @@ test("before a range is chosen, the button is there, inert, and says why", async
 });
 
 /**
- * THE ONE STATE WHERE ONLY onSubmit's EARLY RETURN STOPS THE POST. Every
+ * The one state where only onSubmit's early return stops the POST: every
  * field is filled, so the browser's own checks pass, and nothing is chosen.
- * MUTATION TEST: drop `chosen.length === 0` from that return and a request
+ * Mutation test: drop `chosen.length === 0` from that return and a request
  * for zero events is sent.
  */
 test("with every date unticked, the button says to tick one and sends nothing", async () => {
@@ -199,9 +196,8 @@ test("with every date unticked, the button says to tick one and sends nothing", 
 });
 
 test("changing the range unticks nothing and re-ticks everything", async () => {
-  // A tick state that survived a new range would be applied to whichever dates
-  // happen to sit at those positions now, and the season would be quietly
-  // missing a rehearsal nobody chose to skip.
+  // A tick state that survived a new range would apply to whichever dates sit
+  // at those positions now, silently skipping a rehearsal nobody chose to.
   await renderGenerator();
   await fillSeptember();
 
@@ -216,16 +212,11 @@ test("changing the range unticks nothing and re-ticks everything", async () => {
 });
 
 /* ---------------------------------------------------------------------------
- * The generator in German (#166)
+ * The generator in German
  * -------------------------------------------------------------------------- */
 
-test("the preview date is fr-CH in French — pinned, because the formatter moved", async () => {
-  // NO FRENCH ASSERTION PINNED THIS UNTIL #166, and PREVIEW_DATE stopped being
-  // a module-scope constant in that slice. The risk then was intlTag's `long`
-  // kind, which handed back `fr-FR` and drops the comma after the weekday.
-  // That kind is gone (#161) and intlTag now returns `fr-CH` for French with
-  // nothing to choose — so this assertion is no longer guarding a choice, it
-  // is guarding the comma itself, which is what a reader sees.
+test("the preview date is fr-CH in French, comma after the weekday included", async () => {
+  // `fr-FR` drops the comma after the weekday; this pins what a reader sees.
   await renderGenerator();
   await fillSeptember();
 
@@ -237,9 +228,8 @@ test("the generator, its weekdays and its preview dates are German", async () =>
   await renderGenerator("de-CH");
   await fillSeptember("de-CH");
 
-  // THE WEEKDAY SELECT WAS A MODULE-SCOPE ARRAY OF FRENCH LABELS — `label`,
-  // not `labelKey`, the one rule Layout.tsx's NAV follows and this file did
-  // not. Frozen at import, it read "Samedi" on a German page forever.
+  // The weekday options use `labelKey`, not `label`: a module-scope label is
+  // frozen at import and would read "Samedi" on a German page.
   const weekdays = screen.getByLabelText("Wochentag");
   expect(within(weekdays).getByRole("option", { name: "Samstag" })).toBeInTheDocument();
   expect(within(weekdays).queryByRole("option", { name: "Samedi" })).toBeNull();
@@ -257,8 +247,7 @@ test("the create button counts in German, singular and plural", async () => {
 
   expect(await screen.findByRole("button", { name: "4 Anlässe erstellen" })).toBeInTheDocument();
 
-  // Down to one, which is the form i18next has to pick rather than the
-  // component.
+  // Down to one, a form i18next picks, not the component.
   const preview = screen.getByTestId("series-preview");
   for (const box of within(preview).getAllByRole("checkbox").slice(1)) {
     await userEvent.click(box);

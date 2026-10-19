@@ -8,17 +8,15 @@ import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
- * Who I am, at /account. The account menu links here.
+ * Who I am, at /account.
  *
- * The password is one row with a button, and the form lives on its own page,
- * /account/password (#125). Changing it is a rare act, and a member who opens
- * this page to see who they are logged in as should not be looking at three
- * empty password fields. A committee-issued password never shows this page at
- * all: MustChangePassword sends that member straight to the form.
+ * The password is one row with a button; the form lives on
+ * /account/password, because changing it is rare and a member checking who
+ * they are logged in as should not face three empty fields.
+ * MustChangePassword sends a committee-issued password straight to the form.
  *
- * THERE IS NO "DELETE MY ACCOUNT" AND NO PROFILE EDITING. A member's name and
- * register are roster data the committee owns, and a child removing
- * themselves from the band's roster is not a thing this site should offer.
+ * There is no profile editing and no account deletion: name and register are
+ * roster data the committee owns.
  */
 export function Account() {
   const { user } = useSession();
@@ -35,8 +33,8 @@ export function Account() {
       >
         <div>
           <p className="text-sm text-ink-muted">{t("account.password")}</p>
-          {/* Eight dots whatever the length: the page cannot know it, and a
-              screen reader has the label and the button already. */}
+          {/* Eight dots whatever the length, which the page cannot know.
+              Hidden from screen readers, which have the label and button. */}
           <p aria-hidden="true" className="tracking-widest text-ink">
             ••••••••
           </p>
@@ -54,9 +52,9 @@ export function Account() {
  * Each label sits above its value, because a seat name like
  * "Vice-présidente - secrétaire" wraps badly beside its label on a phone.
  *
- * Register and seat names are data the committee typed, so they are rendered
- * as typed: a register in the page's language when it has a German name
- * (#276), a seat verbatim. Roles are translated by key, as everywhere else.
+ * Register and seat names are data the committee typed: a register in the
+ * page's language when it has a German name, a seat verbatim. Roles go
+ * through roleName, the typed name if any, else the catalogue's by key.
  */
 function Identity({ user }: { user: AuthMe200 }) {
   const register = user.sectionName;

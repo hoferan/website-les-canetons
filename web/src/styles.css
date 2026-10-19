@@ -1,6 +1,5 @@
-/* Font faces first: a CSS @import has to precede every rule, and Vite resolves
-   these bare specifiers to the packages in node_modules. Self-hosted on
-   purpose — see ADR 0022. */
+/* A CSS @import must precede every rule. The fonts are self-hosted (ADR
+   0022). */
 @import "tailwindcss";
 @import "@fontsource-variable/karla";
 @import "@fontsource/bungee";
@@ -8,24 +7,22 @@
 /**
  * The "Scène" palette.
  *
- * Chosen for who uses this site rather than for how it photographs: the nine
- * public pages are read once by a stranger, while the members' area is read
- * every week, on a phone, outdoors, by someone checking whether they play on
- * Saturday. So the CHROME is black and neon — the header is the stage — and the
- * page body is light: cream, which the carnival colours below sit well on.
+ * The members' area is read every week, on a phone, outdoors. So the chrome
+ * is black and neon (the header is the stage) and the page body is light:
+ * cream, which the carnival colours sit well on.
  *
- * The public pages add a carnival layer on top (ADR 0029): a violet-to-pink
- * poster hero, yellow, cyan, lime and lilac surfaces, raised buttons and cards,
- * and confetti on the coloured surfaces only. The members' area takes the
- * colours and the raised controls and leaves the confetti out.
+ * The public pages add a carnival layer (ADR 0029): a violet-to-pink poster
+ * hero, yellow, cyan, lime and lilac surfaces, raised buttons and cards, and
+ * confetti on the coloured surfaces only. The members' area takes the colours
+ * and the raised controls, without the confetti.
  *
- * --color-* is Tailwind 4's theme namespace, so --color-violet gives you
- * bg-violet, text-violet, border-violet and so on. There is no
- * tailwind.config.ts in this project and there should not be one.
+ * --color-* is Tailwind 4's theme namespace: --color-violet gives bg-violet,
+ * text-violet and so on. There is no tailwind.config.ts, and there should not
+ * be one.
  */
 @theme {
-  /* Cream rather than the grey it replaced: the carnival colours below look
-     muddy on a cool grey (ADR 0029). Ink-muted on it is 6.4:1. */
+  /* Cream, because the carnival colours look muddy on a cool grey (ADR 0029).
+     Ink-muted on it is 6.4:1. */
   --color-ground: #fff7ec;
   --color-panel: #fff;
   --color-ink: #14121c;
@@ -38,15 +35,12 @@
   /* The interface accent: links, the active nav item, primary buttons. */
   --color-violet: #4b2ed6;
 
-  /* Emphasis only — never a whole surface. Text ON it is ink, never white:
-     white is 3.28:1 here and ink is 5.6:1, and the badges carry 12px text,
-     which needs 4.5:1 (#15). */
+  /* Emphasis only, never a whole surface. Text on it is ink (5.6:1), never
+     white (3.28:1): the badges carry 12px text, which needs 4.5:1. */
   --color-pink: #ff3d9a;
 
-  /* Errors, and the non-prod ribbon, which is the same meaning. This replaces
-     --color-canetons-red, which did double duty as brand AND error. In this
-     palette red is not a brand colour — violet is — so red is free to mean
-     exactly one thing. */
+  /* Errors, and the non-prod ribbon, which means the same. Red is not a brand
+     colour here (violet is), so it means exactly one thing. */
   --color-danger: #e0201a;
 
   /* The carnival colours (ADR 0029). Surfaces and confetti, never text on
@@ -64,11 +58,9 @@
   --shadow-raised-sm: 3px 3px 0 var(--color-ink);
   --shadow-raised-stage: 4px 4px 0 var(--color-pink);
 
-  /* Event tag chips (#107): a tint and an ink per name in
-     App\Support\TagColour. Each ink is at least 7:1 on its tint, well past
-     the 4.5:1 the 12px chip text needs. None of them is the brand violet or
-     the error red at full strength, so a tag never reads as a link or a
-     fault. */
+  /* Event tag chips: a tint and an ink per name in App\Support\TagColour.
+     Each ink is at least 7:1 on its tint. None is the brand violet or the
+     error red at full strength, so a tag never reads as a link or a fault. */
   --color-tag-violet: #eeedfe;
   --color-tag-violet-ink: #3c3489;
   --color-tag-teal: #e1f5ee;
@@ -86,35 +78,30 @@
   --color-tag-gray: #f1efe8;
   --color-tag-gray-ink: #444441;
 
-  /* The floor for every interactive control: 44px. Applied through Button and
-     Input's base variants rather than by hand, so it is a rule rather than a
-     convention that lasts until the next page is written. */
+  /* The floor for every interactive control: 44px, applied through Button and
+     Input's base variants rather than by hand. */
   --spacing-touch: 2.75rem;
 
-  /* The vertical scale. Four steps, named for RELATIONSHIPS rather than
-     sizes, because "is this a label or a section?" has an answer where "mt-3
-     or mt-4?" does not:
+  /* The vertical scale, named for relationships rather than sizes, because
+     "is this a label or a section?" has an answer where "mt-3 or mt-4?" does
+     not:
        tight    0.5rem  a label to the thing it labels
        related  1rem    items within one block
        block    2rem    between blocks inside a section
        section  4rem    between major sections of a page
-     Pages use these instead of choosing a number. A CONVENTION, not a lint
-     rule: the vendored ui/ components keep their own spacing, and the
-     recorded one-offs stay (the footer's mt-16, Logo's lockup mt-1.5,
-     scroll-mt-*). The four steps replaced ten ad hoc mt-* values. */
+     A convention, not a lint rule: the vendored ui/ components keep their own
+     spacing, as do the footer's mt-16, Logo's lockup mt-1.5 and scroll-mt-*. */
   --spacing-tight: 0.5rem;
   --spacing-related: 1rem;
   --spacing-block: 2rem;
   --spacing-section: 4rem;
 
-  /* The reveal: a 150ms fade-and-settle that REPLAYS each time the element
+  /* The reveal: a 150ms fade-and-settle that replays each time the element
      re-enters the rendering tree, because display:none -> visible restarts a
-     CSS animation. That is the whole mechanism: the phone nav (hidden/block
-     class) and the past-events disclosure (the hidden attribute) both toggle
-     display, so `animate-reveal` on them animates every OPEN with no JS and
-     no DOM change. Closing snaps DELIBERATELY: the acknowledgement matters on
-     reveal, animating collapse needs measured heights (or interpolate-size,
-     which Firefox lacks), and jsdom/Playwright stay untouched either way. */
+     CSS animation. The phone nav (hidden/block class) and the past-events
+     disclosure (the hidden attribute) both toggle display, so every open
+     animates with no JS. Closing snaps: animating collapse needs measured
+     heights (or interpolate-size, which Firefox lacks). */
   --animate-reveal: reveal 150ms ease-out;
 
   @keyframes reveal {
@@ -141,62 +128,36 @@
     }
   }
 
-  /* ONE width for the chrome and for page shells, with prose constrained
-     INSIDE it by --container-text.
-
-     Before this, the header/nav/footer were max-w-5xl while most pages were
-     max-w-3xl, so at 1280 the nav's first item started at x=143 and the page
-     content at x=272 -- a visible misalignment on every page. Pages used five
-     different widths between them. PageSection owns these now. */
+  /* One width for the chrome and the page shells, so the nav and the page
+     content start on the same line; prose is constrained inside it by
+     --container-text. PageSection owns these. */
   --container-shell: 72rem;
   --container-text: 44rem;
   --font-sans: "Karla Variable", "Segoe UI", system-ui, sans-serif;
 
-  /* The display face. Bungee replaced Lilita One on 2026-08-31 — not for looks,
-     but because Lilita One's woff2 ships incorrect glyf bounding boxes on 104 of
-     its 210 outline glyphs, so Firefox logged a sanitiser warning for every
-     heading glyph it drew. Nothing rendered wrong; it was console noise. Bungee
-     is a signage face in the same heavy-display register, measures 0 incorrect
-     bboxes, and carries latin-ext (which Lilita One's shipped subset did not).
-     Karla stays the fallback, and Karla is also clean.
-
-     IF YOU CHANGE THIS FACE, CHECK ITS GLYPH DATA FIRST. Most Google Fonts
-     display faces are fine, but several in this register are not — Bowlby One
-     fails on 13 glyphs, Titan One on 9. The check is in docs/traps.md; it
-     needs fontTools and takes about a minute. */
+  /* The display face. Before changing it, check its glyph data: several
+     display faces ship incorrect glyf bounding boxes, which Firefox logs for
+     every glyph drawn. The check is in docs/traps.md. */
   --font-display: "Bungee", "Karla Variable", system-ui, sans-serif;
 }
 
 /**
- * shadcn/ui's token vocabulary, mapped ONTO the Scène palette.
+ * shadcn/ui's token vocabulary, mapped onto the Scène palette.
  *
- * This mapping is ONE-DIRECTIONAL on purpose: every name here is an ALIAS of a
- * --color-* token defined in the @theme block above, and none of them
- * introduces a colour of its own. The palette therefore keeps exactly one
- * source of truth and cannot drift as vendored components are added.
+ * Every name here aliases a --color-* token from the @theme block and none
+ * introduces a colour, so the palette has one source of truth as vendored
+ * components are added. Read ADR 0022 before editing it.
  *
- * This is the single point at which a component library could quietly
- * neutralise a palette that IS the band's identity. Anyone editing it should
- * read docs/adr/0022-one-light-theme-and-vendored-components.md first.
+ * --color-pink is absent: shadcn spends --accent on hover surfaces, and pink
+ * is never a whole surface, so --accent is a violet tint.
  *
- * --color-pink is DELIBERATELY ABSENT. shadcn spends --accent on hover
- * SURFACES, and the palette's rule is "emphasis only -- never a whole
- * surface", so --accent gets a violet tint instead and pink stays hand-applied
- * where it already is: the band name in the header.
+ * There is no .dark block, and there must not be one: dark mode was rejected
+ * (ADR 0022). A `shadcn` run that rewrites this file will try to add one, and
+ * nothing in the test suite would notice a stray `dark` class.
  *
- * THERE IS NO .dark BLOCK, and there must not be one. Scène commits to a single
- * look, and dark mode was rejected explicitly (ADR 0022): a second theme
- * would double the surface for nobody who has asked. shadcn writes a .dark
- * block by default, so a future `shadcn` run that offers to rewrite this file
- * will try to put one back. Leaving it would mean a stray `dark` class renders
- * a design nobody approved, and nothing in the test suite would notice.
- *
- * This block was written BY HAND rather than by `shadcn init`. The CLI (4.19.1)
- * now insists on a preset -- Nova, Vega, Maia and the rest -- and every one of
- * them installs its own font and icon set. Bungee and Karla are the band's
- * identity and are self-hosted deliberately, so the init was skipped and the
- * two files it exists to produce, components.json and lib/utils.ts, were
- * written directly. `shadcn add` validates components.json on every use.
+ * Written by hand, not by `shadcn init`, whose presets each install their own
+ * font and icon set. components.json and lib/utils.ts were written directly;
+ * `shadcn add` validates components.json on every use.
  */
 :root {
   --radius: 0.5rem;
@@ -254,16 +215,14 @@ body {
   font-family: var(--font-sans);
 }
 
-/* The sticky footer, ported from the old site's main.css and then briefly lost.
-   Without it a short page — /confirmation, the 404 — leaves the dark footer
-   floating halfway up with ground below it, which reads as a broken page. It
-   was invisible before only because the footer had no background of its own.
+/* The sticky footer. Without it a short page such as the 404 leaves the dark
+   footer floating halfway up with ground below it.
 
-   The chain has to run through #root as well: React mounts there, so body's
-   flex child is that div rather than the header/main/footer themselves.
+   The chain runs through #root, because React mounts there and body's flex
+   child is that div.
 
-   dvh after vh so mobile browsers use the dynamic viewport and the footer does
-   not sit under the address bar; a browser that does not know dvh keeps vh. */
+   dvh after vh so mobile browsers use the dynamic viewport and the footer
+   does not sit under the address bar; a browser without dvh keeps vh. */
 body,
 #root {
   display: flex;
@@ -284,9 +243,8 @@ h2 {
   text-wrap: balance;
 }
 
-/* One visible focus ring, from one place.
-   focus-visible rather than focus, so a mouse click on a button does not leave
-   a ring behind while a keyboard tab does. */
+/* One visible focus ring, from one place. focus-visible, so a mouse click
+   leaves no ring while a keyboard tab does. */
 @utility focus-ring {
   &:focus-visible {
     outline: 2px solid var(--color-violet);
@@ -335,19 +293,16 @@ h2 {
 
 /* The yellow highlight on a heading's words, trimmed to the capitals. A plain
    background fills the font's whole content area, about 1.33em in Bungee, so
-   a phrase that wraps at 390px became one solid block and the box sat on the
-   line below. Trimmed, each line gets its own bar at leading 1.18. */
+   a phrase that wraps turns into one solid block. Trimmed, each line gets its
+   own bar at leading 1.18. */
 @utility bg-highlight {
   background: linear-gradient(transparent 12%, var(--color-yellow) 12% 86%, transparent 86%);
 }
 
-/* Every duration to near-zero under reduced motion. This covers the
-   Button press transition, the reveal animation, and sonner's own toast
-   animation, in one place — a per-site motion-reduce: variant would be a
-   convention that lasts until the next transition is written. 0.01ms rather
-   than 0 so transitionend/animationend still fire for anything listening.
-   Not optional politeness: the band's audience includes children and the
-   members' area is used one-handed outdoors. */
+/* Every duration to near-zero under reduced motion, in one place rather than
+   a motion-reduce: variant per site. This covers the Button press, the
+   reveal and sonner's toasts. 0.01ms rather than 0, so transitionend and
+   animationend still fire. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

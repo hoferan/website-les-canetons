@@ -5,18 +5,16 @@ import { expect, test, vi } from "vitest";
 
 import { ScrollToTop } from "./ScrollToTop";
 
-/** Renders the current location as text, so a test can `findByText` it to know
- * a same-pathname navigation (hash-only, search-only) actually landed —
- * neither one remounts the route, so there is otherwise nothing to await. */
+/** Renders the current location as text, so a test can await a hash-only or
+ * search-only navigation, which remounts nothing. */
 function ShowLocation() {
   const location = useLocation();
   return <p data-testid="location">{location.pathname + location.search + location.hash}</p>;
 }
 
 /**
- * A throwaway route pair, in the manner of guards.test.tsx's ShowState: one
- * page linking to another (a pathname change), plus links that change only
- * the hash or only the search string off the same page.
+ * One page linking to another (a pathname change), plus links that change
+ * only the hash or only the search string on the same page.
  */
 function Harness() {
   return (
@@ -31,10 +29,7 @@ function Harness() {
               <Link to="/b">to b</Link>
               <Link to="/a#section">to hash</Link>
               <Link to="/a?tab=2">to search only</Link>
-              {/* The target of "to hash" above, so that navigation is a
-                  realistic one rather than a dangling fragment. What is being
-                  pinned is that ScrollToTop leaves it ALONE — see its doc
-                  comment for the fresh-load jump that was tried and reverted. */}
+              {/* The target of "to hash", so the fragment is not dangling. */}
               <div id="section">section content</div>
             </>
           }

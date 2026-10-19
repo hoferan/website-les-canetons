@@ -4,43 +4,27 @@ import { intlTag, type Locale } from "../i18n/locale";
 /**
  * When an event happens, as one short line.
  *
- * ALWAYS Europe/Zurich, NEVER the browser's zone. This is the single most
- * likely thing for a later change to get wrong, so it is stated here and
- * pinned by a test: a rehearsal is at 10:00 in Fribourg whether it is read
- * from Fribourg, from Sydney, or from a CI runner set to UTC. The member's own
- * location is not a fact about the event. `App\Support\BandTime` makes the
- * same commitment on the server, and for the same reason.
+ * Always Europe/Zurich, never the browser's zone, pinned by a test: a
+ * rehearsal is at 10:00 in Fribourg whether it is read from Fribourg, from
+ * Sydney or from a CI runner set to UTC. `App\Support\BandTime` makes the same
+ * commitment on the server.
  *
- * A two-day event renders as a date RANGE rather than one date and two times.
- * That falls straight out of comparing the two dates, which is what the old
- * `weekend` boolean was faking — see the events migration, which made
- * `ends_at` required.
+ * An event crossing days renders as a date range, found by comparing the two
+ * Fribourg dates.
  *
- * SHORT, AND COMPOSED BY Intl RATHER THAN BY HAND (#162). This file used to
- * build the weekday and the date itself, because `fr-CH` puts a comma between
- * them and long-form French does not — "samedi, 5 septembre 2026" was
- * tolerable and its two-day form was not. That is no longer a problem worth
- * solving: in the SHORT form the comma is idiomatic in both French and German,
- * so each locale's own punctuation is simply correct.
- *
- * Deleting that composition took the whole French sentence with it. The
- * two-day form was "du … à … au … à …", where each `à` existed only to mark
- * where the date stopped once the comma had been removed. `formatRange` now
- * supplies the separator, so there is no French grammar left in this file and
- * nothing here needs a translation key.
+ * The short form is composed by Intl, not by hand: its weekday comma is
+ * idiomatic in both French and German, and `formatRange` supplies the range
+ * separator, so this file holds no grammar and needs no translation key.
  *
  *   fr-CH   sam., 03.10.2026 09:00 – dim., 04.10.2026 16:00
  *   de-CH   Sa., 03.10.2026, 09:00 – So., 04.10.2026, 16:00
  *
- * The year is kept in the range even though dropping it would save eight more
- * characters: the one-day form carries it, and a Guggenmusik season runs
- * across New Year, so a two-day event in January is genuinely ambiguous
- * without it.
+ * The range keeps the year: the one-day form carries it, and a season runs
+ * across New Year, so a two-day event in January is ambiguous without it.
  *
- * A NUMERIC DATE IS ONLY SAFE BECAUSE BOTH SHIPPED LOCALES READ DD.MM.YYYY.
- * `05.12.2026` is 5 December in fr-CH and de-CH alike. An `en` locale would
- * read it as 12 May, so a third locale needs this decision revisited rather
- * than extended.
+ * A numeric date is only safe because both locales read DD.MM.YYYY. An `en`
+ * locale would read `05.12.2026` as 12 May, so a third locale needs this
+ * decision revisited.
  */
 
 const ZONE = "Europe/Zurich";
@@ -48,21 +32,19 @@ const ZONE = "Europe/Zurich";
 /**
  * The separator between two times, and between the two halves of a range.
  *
- * EN DASH BETWEEN TWO THIN SPACES (U+2009), NOT ORDINARY SPACES, and written
- * as escapes because the difference is invisible in a diff, in a test failure
- * and in an editor. This is not a preference: `formatRange` below emits
- * exactly this, so the one-day form -- which is composed here -- has to match
- * it or the same screen shows two different dashes. A test asserting the
- * range with ordinary spaces fails with "expected X to be X".
+ * An en dash between two thin spaces (U+2009), written as escapes because the
+ * difference is invisible in a diff, a test failure and an editor.
+ * `formatRange` emits exactly this, so the one-day form composed here has to
+ * match it. A test asserting ordinary spaces fails with "expected X to be X".
  */
 const RANGE_SEPARATOR = "\u2009\u2013\u2009";
 
 /**
  * Built per call and cached per locale, never held in a module-level const.
  *
- * A module-scope `new Intl.DateTimeFormat(...)` is bound to whatever locale was
- * active when this file was first imported, and a later locale change does not
- * move it — the rule the whole i18n effort follows: format at render time.
+ * A module-scope `new Intl.DateTimeFormat(...)` stays bound to the locale
+ * active when this file was first imported, so formatting happens at render
+ * time.
  */
 const cache = new Map<string, Intl.DateTimeFormat>();
 
@@ -94,16 +76,15 @@ const OPTIONS: Record<"date" | "time" | "range", Intl.DateTimeFormatOptions> = {
 };
 
 /**
- * The calendar day IN FRIBOURG, as a sortable string.
+ * The calendar day in Fribourg, as a sortable string.
  *
- * Compared this way rather than on the raw ISO strings, or on Date's own
- * getDate(), because both answer in the wrong zone: an event running
- * 23:00–01:00 in Fribourg is two days in UTC and one day here, and it is the
- * Fribourg reading that decides how it should be described.
+ * Not the raw ISO strings or Date's getDate(), which both answer in the wrong
+ * zone: an event from 23:00 to 01:00 in Fribourg is two days here and one day
+ * in UTC, and the Fribourg reading decides how it is described.
  *
- * `en-CA` IS NOT A DISPLAY LOCALE AND MUST NOT FOLLOW THE ACTIVE ONE. It is
- * chosen because it yields YYYY-MM-DD, which sorts and compares as a string.
- * Making this locale-aware would silently break the comparison.
+ * `en-CA` is not a display locale and must not follow the active one. It
+ * yields YYYY-MM-DD, which compares as a string; making it locale-aware would
+ * silently break the comparison.
  */
 function dayIn(zone: string, value: string): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -133,9 +114,8 @@ export function formatEventDay(startsAt: string): { day: string; month: string }
 }
 
 export function formatEventWhen(startsAt: string | null, endsAt: string | null): string {
-  // A DRAFT MAY HAVE NEITHER, or only a start. Saying so beats an "Invalid
-  // Date" the committee has to interpret, and a start with no end is still
-  // worth showing.
+  // A draft may have neither, or only a start. Saying so beats an "Invalid
+  // Date", and a start with no end is still worth showing.
   if (startsAt === null) {
     return t("events.dateMissing");
   }
