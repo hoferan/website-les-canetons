@@ -6,10 +6,12 @@
 [![PROD](https://img.shields.io/github/deployments/hoferan/website-les-canetons/prod?label=PROD)](https://github.com/hoferan/website-les-canetons/deployments)
 
 Public website and members' area for the Guggenmusik **Les Canetons de Fribourg**,
-a Fribourg carnival brass band. Public pages present the band (history, sections,
-committee, sponsors, media, contact). A login-gated members' area lets members
-respond to events (participate / not); the admin ("Team Direction") manages events
-and views attendance summaries.
+a Fribourg carnival brass band. The public pages present the band (history,
+registers, committee, agenda, contact) and take bookings for events such as the
+souper. Behind a login, members answer events (participate or not), and the
+people whose roles allow it manage events, members, photos and history, chase
+answers, and read the guest lists and the contact inbox. The interface is in
+French at `/` and German under `/de/`.
 
 ## Tech stack
 
@@ -54,22 +56,25 @@ up source edits. That is the point — it is the parity check.
 Seeded test logins (synthetic data, all passwords `demo`). Every member has an
 account, because the roster is the people the band tracks for events. Roles are
 editable data grouping permissions, so what a login can do is listed rather than
-named:
+named. Every account holds the baseline `member` role (see the events, manage
+one's own account). A register only groups and displays; answering for events
+comes from the `musician` role, which the seeder grants to everyone it puts in
+a register.
 
 | Username         | What they can do                                                    |
 | ---------------- | --------------------------------------------------------------------- |
-| `demo.direction` | Holds the `direction` role: manage events, view and record attendance for others, manage members. No section, so never appears in an attendance list. |
-| `demo.player`    | Plays in Cloches, so answers for events. Holds no role at all. |
-| `demo.both`      | Plays in Trompettes **and** holds `direction` — answers for events *and* manages them. The case an either/or role matrix cannot express. |
-| `demo.committee` | Plays in Trombones and holds the `committee` role, whose one permission is `registrations.view`. |
-| `demo.young`     | Plays in Batteurs. The account a parent uses on the child's behalf. |
+| `demo.direction` | Holds `direction`, which grants every permission except the three account-level ones. Has no register and no `musician`, so never appears in an attendance list. |
+| `demo.player`    | Plays in Cloches and holds `musician`, so answers for events, and nothing more. |
+| `demo.both`      | Plays in Trompettes and holds both `musician` and `direction`, so answers for events and manages them. The case an either/or role matrix cannot express. |
+| `demo.committee` | Plays in Trombones, holds `musician`, and holds `committee`, which grants `registrations.view` and `messages.view`: the guest lists and the inbox, read only. |
+| `demo.young`     | Plays in Batteurs and holds `musician`. The account a parent uses on the child's behalf. |
 
 A sixth account, `comite.local`, is created on a fresh database by the
 `bootstrap_first_administrator` migration rather than by the seeder — migrations
 run first, so without it nobody would hold `members.manage`.
 
 ```bash
-npm run smoke     # HTTP smoke checks against the built artifact (9 checks)
+npm run smoke     # HTTP smoke checks against the built artifact (11 checks)
 npm run dev:down  # stop
 ```
 
@@ -86,8 +91,8 @@ docs/           Architecture decision records (docs/adr/), traps, web-session no
 .github/        CI workflows, PR & issue templates
 ```
 
-`web/` and `api/` are the source you edit. `dist/build/` is what gets deployed —
-always rebuild it (`npm run build`) before an FTP upload.
+`web/` and `api/` are the source you edit. `dist/build/` is what gets deployed,
+and `npm run deploy:<env>` rebuilds it before every upload.
 
 ## Development
 
@@ -96,11 +101,16 @@ npm run check   # typecheck, Pint, both test suites, eslint, stylelint, prettier
 npm run fix     # auto-fix
 ```
 
-`npm run check` does not run the Laravel suite — it needs a live database:
+`npm run check` does not run the Laravel suite, because it needs a live
+database, and it does not run the browser specs either:
 
 ```bash
-npm run test:api
+npm run test:api  # Laravel suite, against the stack's database
+npm run test:e2e  # Playwright, against the MSW-mocked backend; no Docker needed
 ```
+
+`npm run dev:mock` serves the SPA against that same mocked backend, with its own
+fixture accounts, when you want to click through without the stack.
 
 PHP commands run in the compose `php` service when the stack is up:
 `npm run artisan -- <command>`, `npm run composer -- <command>`,
@@ -131,8 +141,10 @@ approvals in that same run:
   QA — refusing to proceed otherwise. Rolling back is redeploying an older tag;
   there is no separate rollback mechanism.
 - Each deploy writes a `deployment.json` to the site root recording the deployed
-  commit, ref, and time — e.g. `https://<prod-host>/deployment.json` — so you can
-  always see what is live where. Per-env status is also on the badges above.
+  commit, ref, time and run URL. The site's catch-all answers that URL with the
+  SPA shell, so read it through `GET /api/health`, which also reports whether
+  the database answers and which migrations are pending. Per-env status is also
+  on the badges above.
 
 The server-owned files (`.htaccess`, `robots.txt`, `_api/.env`) are never
 uploaded, so promotion never touches a server's config. For the full server
