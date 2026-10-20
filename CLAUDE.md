@@ -235,7 +235,7 @@ npm run dev         # generate the docker .htaccess overlay, then bring the stac
 npm run dev:web     # Vite dev server on :5173, where you actually work
 npm run dev:mock    # the SPA against the MSW-mocked backend, no Docker
 npm run build       # refresh the artifact the :8090 stack serves
-npm run smoke       # HTTP smoke checks against the built artifact (11 checks)
+npm run smoke       # HTTP smoke checks against the built artifact (12 checks)
 npm run dev:down    # stop
 ```
 

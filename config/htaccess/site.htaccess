@@ -204,7 +204,14 @@ RewriteRule ^sanctum(/|$) _api/public/index.php [L]
 #     standing in front of _api/.env and _api/vendor/; on a server that does
 #     not, it is the ONLY thing. Either way it is still what makes an unknown
 #     URL answer the SPA instead of whatever happens to be on disk.
+#
+# /robots.txt is the one file outside /assets/ let through, by its exact path.
+# Each server keeps its own (server-owned, never deployed). Without this
+# condition the catch-all answers it with the shell, and no crawler can read
+# TEST's or QA's `Disallow: /`. Where none exists, as locally and on PROD, it
+# is a real 404, which a crawler reads as "nothing disallowed".
 RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_URI} !^/robots\.txt$
 RewriteCond %{ENV:REDIRECT_STATUS} ^$
 RewriteRule ^ index.html [L]
 

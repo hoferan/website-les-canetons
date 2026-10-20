@@ -143,7 +143,21 @@ test('the docker run does not print the server upload hint', () => {
   assert.doesNotMatch(stdout, /Upload each env overlay/);
 });
 
-test('the SPA fallback keeps both of its guards', () => {
+/** The RewriteCond lines bound to the SPA fallback, nearest first. */
+const fallbackGuards = () => {
+  const lines = readFileSync('config/htaccess/site.htaccess', 'utf8').split(/\r?\n/);
+  const fallback = lines.findIndex((line) => /^RewriteRule \^ index\.html \[L\]/.test(line));
+  assert.notEqual(fallback, -1, 'the SPA fallback rule is gone');
+
+  // A RewriteCond applies only to the rule that follows it, so only the
+  // unbroken run of conditions IMMEDIATELY above counts: a blank line or
+  // another rule in between silently detaches them.
+  const guards = [];
+  for (let i = fallback - 1; i >= 0 && lines[i].startsWith('RewriteCond '); i--) guards.push(lines[i]);
+  return guards;
+};
+
+test('the SPA fallback keeps its guards', () => {
   // The REDIRECT_STATUS guard is what stops the fallback re-matching its own
   // output and looping until Apache gives up with "Request exceeded the limit
   // of 10 internal redirects" — on EVERY url of the site, not one page. The
@@ -151,17 +165,33 @@ test('the SPA fallback keeps both of its guards', () => {
   //
   // Neither had a test until 2026-09-07. That gap came to light while this
   // file's other assertions were being deleted.
-  const template = readFileSync('config/htaccess/site.htaccess', 'utf8');
-  const lines = template.split(/\r?\n/);
+  const guards = fallbackGuards();
 
-  const fallback = lines.findIndex((line) => /^RewriteRule \^ index\.html \[L\]/.test(line));
-  assert.notEqual(fallback, -1, 'the SPA fallback rule is gone');
+  assert.match(guards[0], /^RewriteCond %\{ENV:REDIRECT_STATUS\} \^\$/);
+  assert.ok(
+    guards.some((line) => /^RewriteCond %\{REQUEST_URI\} !\^\/assets\//.test(line)),
+    'the !^/assets/ guard is gone or detached'
+  );
+});
 
-  // Both guards must be the two lines IMMEDIATELY above it: a RewriteCond
-  // applies only to the rule that follows it, so a blank line or another rule
-  // in between silently detaches them.
-  assert.match(lines[fallback - 1], /^RewriteCond %\{ENV:REDIRECT_STATUS\} \^\$/);
-  assert.match(lines[fallback - 2], /^RewriteCond %\{REQUEST_URI\} !\^\/assets\//);
+test('the SPA fallback lets /robots.txt through, and nothing else by that name', () => {
+  // Without the exclusion the catch-all answers /robots.txt with the shell, and
+  // no crawler reads a server's own robots.txt (issue #113). It must stay an exact
+  // path: anything looser re-opens the fallback to files that must not be
+  // served, which is the reason it is a catch-all at all.
+  //
+  // Compile the real condition and run paths through it, rather than assert
+  // on its spelling.
+  const robots = fallbackGuards()
+    .map((line) => line.match(/^RewriteCond %\{REQUEST_URI\} !(\S+)$/)?.[1])
+    .filter(Boolean)
+    .map((pattern) => new RegExp(pattern))
+    .filter((pattern) => pattern.test('/robots.txt'));
+  assert.equal(robots.length, 1, 'no fallback guard excludes /robots.txt');
+
+  for (const path of ['/robots.txt.bak', '/robotsXtxt', '/de/robots.txt', '/robots.txt/x', '/config.php']) {
+    assert.ok(!robots[0].test(path), `${path} must still get the SPA shell`);
+  }
 });
 
 test('the canonical-host redirect fires only on the browser pass, and only for www.', () => {

@@ -102,6 +102,16 @@ check('the shell is served must-revalidate, so a deploy is picked up', async () 
     : `expected a must-revalidate Cache-Control on the shell, got "${cacheControl}"`;
 });
 
+check('/robots.txt is not swallowed by the SPA fallback', async () => {
+  // The local stack has no robots.txt, so a real 404 is the pass. The shell
+  // here means the fallback's /robots.txt exclusion is gone, and each server's
+  // own robots.txt is unreadable again.
+  const res = await request('/robots.txt');
+  const body = await res.text();
+  if (body.includes('<div id="root">')) return `the SPA shell answered /robots.txt (${res.status})`;
+  return res.status === 404 ? null : `expected 404 with no robots.txt on disk, got ${res.status}`;
+});
+
 check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
   // Three things at once. 401 rather than a 404 proves the dispatch rule won
   // against the SPA fallback (it says nothing about [L] specifically —
