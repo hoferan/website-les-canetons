@@ -8,7 +8,7 @@
 //   test / qa : .htaccess = staging auth block + the current site.htaccess
 //               front controller (auto-merged), staging robots.txt (noindex),
 //               and .htpasswd if one exists locally.
-//   prod      : plain site.htaccess + the real app/robots.txt (no auth).
+//   prod      : plain site.htaccess, no auth and no robots.txt.
 //   docker    : .htaccess = plain site.htaccess, same as prod; a local build
 //               artifact (feeds the local Docker document root), not a server
 //               overlay — never uploaded anywhere.
@@ -98,12 +98,10 @@ for (const env of targets) {
     // the local stack is not crawled.
     writeFileSync(`${outDir}/.htaccess`, `${frontController}\n`);
   } else if (env === 'prod') {
+    // No robots.txt: prod is meant to be crawled, and with none on disk the
+    // SPA fallback lets /robots.txt answer a real 404, which a crawler reads as
+    // "nothing disallowed".
     writeFileSync(`${outDir}/.htaccess`, `${frontController}\n`);
-    // Prod's public robots.txt is part of the site content (app/), if one
-    // exists yet. No app/robots.txt -> prod simply serves none (fully crawlable).
-    if (existsSync('app/robots.txt')) {
-      cpSync('app/robots.txt', `${outDir}/robots.txt`);
-    }
   } else {
     writeFileSync(`${outDir}/.htaccess`, mergedHtaccess(env));
     cpSync(`staging/${env}/robots.txt`, `${outDir}/robots.txt`);

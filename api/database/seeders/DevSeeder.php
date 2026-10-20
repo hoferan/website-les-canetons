@@ -32,7 +32,11 @@ class DevSeeder extends Seeder
         // real server. The build artifact leaves database/seeders/ out
         // (tools/artifact-excludes.mjs) and nothing on a server runs db:seed;
         // this guard holds if either of those changes.
-        if (app()->isProduction()) {
+        //
+        // An allowlist of the two environments that may hold demo logins.
+        // TEST runs APP_ENV=test and QA runs qa, so isProduction() alone would
+        // let both through.
+        if (! app()->environment('local', 'testing')) {
             return;
         }
 

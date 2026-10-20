@@ -74,7 +74,7 @@ A sixth account, `comite.local`, is created on a fresh database by the
 run first, so without it nobody would hold `members.manage`.
 
 ```bash
-npm run smoke     # HTTP smoke checks against the built artifact (11 checks)
+npm run smoke     # HTTP smoke checks against the built artifact (12 checks)
 npm run dev:down  # stop
 ```
 
