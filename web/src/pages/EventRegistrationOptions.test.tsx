@@ -240,3 +240,56 @@ test("reorders the list, and the order is what is saved", async () => {
   // sent as each row's position.
   expect(row(1).getByLabelText("Intitulé")).toHaveValue("Repas enfant");
 });
+
+test("shows each option's capacity, and how many places it has left", async () => {
+  await renderEditor();
+
+  await expect.poll(() => row(2).getByLabelText("Nombre de places")).toHaveValue("6");
+  expect(row(2).getByLabelText("Nombre de places")).toHaveAccessibleDescription(
+    /Il reste 3 places\./,
+  );
+  expect(row(1).getByLabelText("Nombre de places")).toHaveValue("");
+});
+
+test("saves a capacity, and an emptied one as no limit", async () => {
+  const user = userEvent.setup();
+  let sent: { capacity?: number | null }[] | null = null;
+
+  server.use(
+    http.put("/api/v1/events/:id/registration-options", async ({ request }) => {
+      sent = ((await request.json()) as { options: { capacity?: number | null }[] }).options;
+      return HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } });
+    }),
+  );
+
+  await renderEditor();
+  await user.type(row(1).getByLabelText("Nombre de places"), "120");
+  await user.clear(row(2).getByLabelText("Nombre de places"));
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => sent).not.toBeNull();
+  expect(sent!.map((option) => option.capacity)).toEqual([120, null, null]);
+});
+
+test("reports a capacity that is not a whole number of places against its own row", async () => {
+  const user = userEvent.setup();
+  let sent = false;
+
+  server.use(
+    http.put("/api/v1/events/:id/registration-options", () => {
+      sent = true;
+      return HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } });
+    }),
+  );
+
+  await renderEditor();
+  await user.type(row(1).getByLabelText("Nombre de places"), "0");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect(
+    await within(row(1).getByLabelText("Nombre de places").closest("div")!).findByText(
+      /Indiquez un nombre entier/,
+    ),
+  ).toBeInTheDocument();
+  expect(sent).toBe(false);
+});

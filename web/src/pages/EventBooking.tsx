@@ -141,6 +141,10 @@ export function EventBooking() {
   const chosen = useMemo(
     () =>
       (offer?.options ?? [])
+        // A sold-out option leaves the booking even if the guest chose it
+        // before it sold out: its box is disabled, so it could not be
+        // cleared, and every retry would be refused again.
+        .filter((option) => option.remaining !== 0)
         .map((option) => ({ option, quantity: Number(quantities[option.id] ?? "0") }))
         .filter((line) => Number.isInteger(line.quantity) && line.quantity > 0),
     [offer, quantities],
@@ -182,7 +186,12 @@ export function EventBooking() {
         celebrate();
       }
     },
-    onError: setFromThrown,
+    onError: (thrown) => {
+      setFromThrown(thrown);
+      // Somebody may have taken the last places since the form loaded; a
+      // refusal is when the guest needs the count as it is now.
+      void form.refetch();
+    },
   });
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -339,6 +348,11 @@ export function EventBooking() {
                     <QuantityField
                       key={option.id}
                       option={option}
+                      // The server names the line by its position in what was
+                      // sent, `choices.N.quantity`, not by option id.
+                      problem={messageFor(
+                        `choices.${chosen.findIndex((line) => line.option.id === option.id)}.quantity`,
+                      )}
                       value={quantities[option.id] ?? ""}
                       onChange={(value) =>
                         setQuantities((current) => ({ ...current, [option.id]: value }))
@@ -409,18 +423,26 @@ export function EventBooking() {
  */
 function QuantityField({
   option,
+  problem,
   value,
   onChange,
 }: {
   option: RegistrationOptionResource;
+  /** The server's refusal of this line, such as `not_enough_places`. */
+  problem: string | undefined;
   value: string;
   onChange: (value: string) => void;
 }) {
   const id = `option-${option.id}`;
   const errorId = `${id}-error`;
+  const placesId = `${id}-places`;
   // Outside FormField, so the browser's finding is picked up by hand. `max` is
   // 50, and without this a 99 typed here blocks the submit with no message.
   const browser = useBrowserProblem(option.label);
+  const shown = browser.problem ?? problem;
+  const soldOut = option.remaining === 0;
+  // Null `remaining` is no capacity, so only the API's own cap of 50 applies.
+  const max = Math.min(50, option.remaining ?? 50);
 
   return (
     // A grid, not `flex flex-wrap justify-between`: wrapping at 390px moved a
@@ -439,6 +461,15 @@ function QuantityField({
         {option.description ? (
           <span className="text-sm text-ink-muted">{option.description}</span>
         ) : null}
+        {option.remaining === null ? null : (
+          <span
+            id={placesId}
+            className={cn("text-sm", soldOut ? "font-semibold text-danger" : "text-ink-muted")}
+            data-testid="places-left"
+          >
+            {soldOut ? t("booking.soldOut") : t("booking.placesLeft", { count: option.remaining })}
+          </span>
+        )}
       </div>
 
       {/* The vendored Input, which carries the 44px floor (`min-h-touch`); a
@@ -448,22 +479,30 @@ function QuantityField({
         id={id}
         type="number"
         min={0}
-        max={50}
+        max={max}
         inputMode="numeric"
         className="w-20"
-        value={value}
+        // Disabled rather than hidden: a sold-out menu is still worth seeing,
+        // and a guest who came for it learns why it cannot be chosen.
+        disabled={soldOut}
+        // Empty when sold out, matching `chosen`, which leaves it out.
+        value={soldOut ? "" : value}
         placeholder="0"
-        aria-invalid={browser.problem ? true : undefined}
-        aria-describedby={browser.problem ? errorId : undefined}
+        aria-invalid={shown ? true : undefined}
+        aria-describedby={
+          [option.remaining === null ? null : placesId, shown ? errorId : null]
+            .filter(Boolean)
+            .join(" ") || undefined
+        }
         onInvalid={browser.onInvalid}
         onChange={(changed) => {
           browser.clear();
           onChange(changed.target.value);
         }}
       />
-      {browser.problem ? (
-        <span id={errorId} className="col-span-2 text-sm text-danger">
-          {browser.problem}
+      {shown ? (
+        <span id={errorId} className="col-span-2 text-sm text-danger" role="alert">
+          {shown}
         </span>
       ) : null}
     </div>

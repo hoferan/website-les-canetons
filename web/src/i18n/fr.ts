@@ -202,6 +202,9 @@ export const fr = {
     // App\Exceptions\ApiError's closure-added branch emits `field` and
     // `reason` only, so a {{max}} would print as is.
     too_many_guests: "dépasse le nombre de personnes autorisé par inscription",
+    // Against `choices.N.quantity`, when an option's capacity has fewer
+    // places left. No parameter, for the same reason as too_many_guests.
+    not_enough_places: "dépasse les places encore libres",
     // The photo checks, on each size and on the set. No parameters, as with
     // too_many_guests. The browser shrinks and re-encodes a photo before
     // sending it, so only a failed or bypassed shrink reaches these.
@@ -304,6 +307,7 @@ export const fr = {
     label: "Intitulé",
     description: "Description",
     priceCents: "Prix",
+    capacity: "Nombre de places",
     sortOrder: "Ordre",
   },
 
@@ -988,6 +992,10 @@ export const fr = {
     // the others; what "table" means here is not said anywhere else.
     tableHint: "Avec qui vous aimeriez être placé.",
     nothingOffered: "Rien n’est encore proposé pour cette soirée. Revenez d’ici quelques jours.",
+    // Only for an option with a capacity; the server counts, see `remaining`.
+    placesLeft_one: "Plus qu’une place",
+    placesLeft_other: "Plus que {{count}} places",
+    soldOut: "Complet",
 
     chooseSomeone: "Choisissez au moins une personne.",
     // The running total and the confirmation, when an option carries a price. {{guests}} is
@@ -1081,6 +1089,12 @@ export const fr = {
     addOption: "Ajouter une option",
     price: "Prix en francs",
     priceInvalid: "Indiquez un montant, par exemple 45 ou 45.50.",
+    capacity: "Nombre de places",
+    capacityHint: "Vide : pas de limite.",
+    // Beside the field, so lowering the number shows what is already booked.
+    capacityRemaining_one: "Vide : pas de limite. Il reste {{count}} place.",
+    capacityRemaining_other: "Vide : pas de limite. Il reste {{count}} places.",
+    capacityInvalid: "Indiquez un nombre entier, au moins 1.",
 
     // The only names these icon-only controls have. {{option}} is what the
     // committee typed, or `thisOption` for a row with no title yet.

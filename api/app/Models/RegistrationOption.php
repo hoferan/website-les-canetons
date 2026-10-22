@@ -17,7 +17,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `price_cents` is nullable: a free option, or one whose price is in the
  * description, must not store a zero that means "unknown".
  *
+ * `capacity` caps the bookings across every guest; null is no limit (ADR
+ * 0031). RegistrationController counts against it under a lock.
+ *
  * @property int|null $price_cents
+ * @property int|null $capacity
  */
 class RegistrationOption extends Model
 {
@@ -31,6 +35,7 @@ class RegistrationOption extends Model
         'label',
         'description',
         'price_cents',
+        'capacity',
         'sort_order',
     ];
 
@@ -56,5 +61,29 @@ class RegistrationOption extends Model
     public function isBooked(): bool
     {
         return $this->choices()->exists();
+    }
+
+    /**
+     * How many more can be booked, or null when there is no limit.
+     *
+     * Never below zero: the committee may lower a capacity under what is
+     * already booked, to stop further bookings, and the form should read
+     * "sold out" rather than a negative number.
+     *
+     * Reads `choices_sum_quantity` when the query loaded it with
+     * withSum('choices', 'quantity'), so a list costs one query, not one per
+     * option.
+     */
+    public function remaining(): ?int
+    {
+        if ($this->capacity === null) {
+            return null;
+        }
+
+        $booked = array_key_exists('choices_sum_quantity', $this->attributes)
+            ? (int) $this->attributes['choices_sum_quantity']
+            : (int) $this->choices()->sum('quantity');
+
+        return max(0, $this->capacity - $booked);
     }
 }

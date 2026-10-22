@@ -269,6 +269,9 @@ final class ErrorVocabulary
         'must_be_after',
         // StoreRegistrationRequest::after(), against `choices`.
         'too_many_guests',
+        // RegistrationController, against `choices.N.quantity`, when an
+        // option's capacity has fewer places left.
+        'not_enough_places',
         // What ReceivesImageSizes::after() adds against `files.N` and `files`.
         ...JpegInspector::PROBLEMS,
         ...ImageSet::PROBLEMS,

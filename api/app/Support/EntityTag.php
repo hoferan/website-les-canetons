@@ -180,9 +180,14 @@ final class EntityTag
                 ['poster' => true],
             ),
 
-            'event.options' => RegistrationOptionResource::collection(
-                self::event($model)->registrationOptions()->orderBy('sort_order')->orderBy('id')->get()
-            )->toArray(self::bare()),
+            // Without `remaining`, which every booking changes: a guest booking
+            // while the editor is open must not 412 the committee's save.
+            'event.options' => array_map(
+                fn (array $option): array => array_diff_key($option, ['remaining' => true]),
+                RegistrationOptionResource::collection(
+                    self::event($model)->registrationOptions()->withSum('choices', 'quantity')->get()
+                )->toArray(self::bare()),
+            ),
 
             'member' => (new MemberResource($model->load(['roles', 'section'])))->toArray(self::bare()),
 

@@ -320,6 +320,16 @@ export interface RegistrationOptionResource {
    * @nullable
    */
   priceCents: number | null;
+  /**
+   * How many of this option can be booked across every guest. Null when there is no limit.
+   * @nullable
+   */
+  capacity: number | null;
+  /**
+   * Places still free under `capacity`, never below 0; 0 is sold out. Null when there is no limit.
+   * @nullable
+   */
+  remaining: number | null;
   /** Ascending display order. */
   sortOrder: number;
 }

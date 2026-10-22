@@ -1853,7 +1853,9 @@ function refuseIfEndsBeforeStart(startsAt: string | null, endsAt: string | null)
  * As a field of the resource, every handler could typecheck against a shape
  * the server does not send.
  */
-type MockOption = RegistrationOptionResource & { eventId: number };
+// `remaining` is not stored: optionsFor() counts it from the bookings, as
+// the server does, so a booking made here moves it.
+type MockOption = Omit<RegistrationOptionResource, "remaining"> & { eventId: number };
 type MockRegistration = RegistrationResource & { eventId: number };
 
 /**
@@ -1863,6 +1865,9 @@ type MockRegistration = RegistrationResource & { eventId: number };
  * an option whose price lives in its description or which is not sold, which
  * differs from a free one, and a booking total must not print it as
  * "CHF 0.00".
+ *
+ * The children's meal has a capacity of 6 against the 3 already booked, so
+ * the form shows places left and a fourth child can be refused.
  */
 function initialOptions(): MockOption[] {
   return [
@@ -1872,6 +1877,7 @@ function initialOptions(): MockOption[] {
       label: "Repas adulte",
       description: "Jambon, gratin et salade",
       priceCents: 4500,
+      capacity: null,
       sortOrder: 0,
     },
     {
@@ -1880,6 +1886,7 @@ function initialOptions(): MockOption[] {
       label: "Repas enfant",
       description: "Jusqu’à 12 ans",
       priceCents: 2000,
+      capacity: 6,
       sortOrder: 1,
     },
     {
@@ -1888,6 +1895,7 @@ function initialOptions(): MockOption[] {
       label: "Sans repas",
       description: "Vous venez écouter, vous ne mangez pas",
       priceCents: null,
+      capacity: null,
       sortOrder: 2,
     },
   ];
@@ -1975,7 +1983,22 @@ function optionsFor(eventId: number): RegistrationOptionResource[] {
   return options
     .filter((option) => option.eventId === eventId)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
-    .map(published);
+    .map((option) => ({ ...published(option), remaining: remainingOf(option) }));
+}
+
+/** Places still free under the option's capacity, never below 0. */
+function remainingOf(option: MockOption): number | null {
+  if (option.capacity === null) {
+    return null;
+  }
+
+  const booked = registrations
+    .filter((registration) => registration.eventId === option.eventId)
+    .flatMap((registration) => registration.choices)
+    .filter((choice) => choice.optionId === option.id)
+    .reduce((sum, choice) => sum + choice.quantity, 0);
+
+  return Math.max(0, option.capacity - booked);
 }
 
 /**
@@ -1987,7 +2010,9 @@ function optionsFor(eventId: number): RegistrationOptionResource[] {
  * screen quoting the wrong one.
  */
 function optionsTag(eventId: number): string {
-  return mockEntityTag(optionsFor(eventId));
+  // Without `remaining`, as App\Support\EntityTag has it: a guest booking
+  // must not 412 the committee's save.
+  return mockEntityTag(optionsFor(eventId).map((option) => ({ ...option, remaining: undefined })));
 }
 
 function registrationTag(registration: MockRegistration): string {
@@ -4258,6 +4283,21 @@ const overrides = [
       });
     }
 
+    // Against `choices.N.quantity`, N the position in what was sent, as
+    // RegistrationController::refuseBeyondCapacity reports it.
+    const short = (body.choices ?? []).flatMap((choice, index) => {
+      const remaining = eventOptions.find(
+        (candidate) => candidate.id === choice.optionId,
+      )?.remaining;
+
+      return remaining !== null && remaining !== undefined && choice.quantity > remaining
+        ? [{ field: `choices.${index}.quantity`, reason: "not_enough_places" }]
+        : [];
+    });
+    if (short.length > 0) {
+      return problem(400, "validation_failed", "Invalid form submission", short);
+    }
+
     const booking: MockRegistration = {
       eventId: event.id,
       id: nextRegistrationId++,
@@ -4550,6 +4590,7 @@ const overrides = [
           label: option.label,
           description: option.description ?? null,
           priceCents: option.priceCents ?? null,
+          capacity: option.capacity ?? null,
           // Falls back to the entry's position, so a client sending the list
           // in order gets that order without numbering it.
           sortOrder: option.sortOrder ?? index,

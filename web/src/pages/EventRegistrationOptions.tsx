@@ -32,6 +32,10 @@ type Draft = {
   description: string;
   /** Francs as typed, not centimes: see web/src/money.ts. */
   price: string;
+  /** Whole places as typed; empty is no limit. */
+  capacity: string;
+  /** Places still free, as the server last counted; null without a capacity. */
+  remaining: number | null;
   /** A stable key for React, since a new row has no id. */
   key: string;
 };
@@ -44,12 +48,33 @@ function draftFrom(option: RegistrationOptionResource): Draft {
     label: option.label,
     description: option.description ?? "",
     price: francsInput(option.priceCents),
+    capacity: option.capacity === null ? "" : String(option.capacity),
+    remaining: option.remaining,
     key: `option-${option.id}`,
   };
 }
 
 function blankDraft(): Draft {
-  return { id: null, label: "", description: "", price: "", key: `new-${nextKey++}` };
+  return {
+    id: null,
+    label: "",
+    description: "",
+    price: "",
+    capacity: "",
+    remaining: null,
+    key: `new-${nextKey++}`,
+  };
+}
+
+/** Empty is no limit; anything else must be a whole number of at least 1. */
+function parseCapacity(typed: string): number | null | "invalid" {
+  const trimmed = typed.trim();
+
+  if (trimmed === "") {
+    return null;
+  }
+
+  return /^\d+$/.test(trimmed) && Number(trimmed) >= 1 ? Number(trimmed) : "invalid";
 }
 
 /**
@@ -83,6 +108,7 @@ export function EventRegistrationOptions() {
   const [loading, setLoading] = useState(true);
   const [readError, setReadError] = useState<string | null>(null);
   const [priceProblems, setPriceProblems] = useState<Record<string, string>>({});
+  const [capacityProblems, setCapacityProblems] = useState<Record<string, string>>({});
   // Beside the button, not in a toast: a toast is gone by the time somebody
   // looks up from the form.
   const [saved, setSaved] = useState(false);
@@ -160,17 +186,24 @@ export function EventRegistrationOptions() {
 
     form.clear();
 
-    // Prices are parsed before anything is sent, so a malformed one is
-    // reported against its row. The API takes integer centimes, so the typed
-    // text never reaches it.
+    // Prices and capacities are parsed before anything is sent, so a
+    // malformed one is reported against its row. The API takes integer
+    // centimes, so the typed price never reaches it.
     const problems: Record<string, string> = {};
+    const capacityFaults: Record<string, string> = {};
     const options: ReplaceRegistrationOptionsRequestOptionsItem[] = [];
 
     drafts.forEach((row, index) => {
       const price = parseFrancs(row.price);
+      const capacity = parseCapacity(row.capacity);
 
       if (price === "invalid") {
         problems[row.key] = t("registrationOptions.priceInvalid");
+      }
+      if (capacity === "invalid") {
+        capacityFaults[row.key] = t("registrationOptions.capacityInvalid");
+      }
+      if (price === "invalid" || capacity === "invalid") {
         return;
       }
 
@@ -179,12 +212,14 @@ export function EventRegistrationOptions() {
         label: row.label,
         description: row.description.trim() === "" ? null : row.description,
         priceCents: price,
+        capacity,
         sortOrder: index,
       });
     });
 
     setPriceProblems(problems);
-    if (Object.keys(problems).length > 0) {
+    setCapacityProblems(capacityFaults);
+    if (Object.keys(problems).length > 0 || Object.keys(capacityFaults).length > 0) {
       return;
     }
 
@@ -276,6 +311,23 @@ export function EventRegistrationOptions() {
                   // The local parse failure first: when it fires, nothing was
                   // sent.
                   problem={priceProblems[row.key] ?? form.messageFor(`options.${index}.priceCents`)}
+                />
+                <FormField
+                  id={`capacity-${row.key}`}
+                  label={t("registrationOptions.capacity")}
+                  value={row.capacity}
+                  inputMode="numeric"
+                  onChange={(value) => update(row.key, { capacity: value })}
+                  // The count is the one the screen opened with, or the last
+                  // save's: it does not follow bookings made meanwhile.
+                  hint={
+                    row.remaining === null
+                      ? t("registrationOptions.capacityHint")
+                      : t("registrationOptions.capacityRemaining", { count: row.remaining })
+                  }
+                  problem={
+                    capacityProblems[row.key] ?? form.messageFor(`options.${index}.capacity`)
+                  }
                 />
 
                 {/* Icon-only, so the aria-label carries the option and a

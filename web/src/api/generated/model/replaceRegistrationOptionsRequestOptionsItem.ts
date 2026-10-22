@@ -334,6 +334,13 @@ export type ReplaceRegistrationOptionsRequestOptionsItem = {
    */
   priceCents?: number | null;
   /**
+   * How many of this option can be booked across every guest, at least 1. Omit or send `null` for no limit. Lowering it below what is booked already stops further bookings and changes none.
+   * @minimum 1
+   * @maximum 100000
+   * @nullable
+   */
+  capacity?: number | null;
+  /**
    * Where this option sits on the form, lowest first, ties broken by id. Omitted, it takes the entry position in the list you send.
    * @minimum 0
    * @maximum 1000

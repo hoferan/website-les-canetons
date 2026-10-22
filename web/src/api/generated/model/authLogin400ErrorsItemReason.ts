@@ -327,6 +327,7 @@ export const AuthLogin400ErrorsItemReason = {
   already_taken: "already_taken",
   must_be_after: "must_be_after",
   too_many_guests: "too_many_guests",
+  not_enough_places: "not_enough_places",
   image_not_jpeg: "image_not_jpeg",
   image_too_large: "image_too_large",
   image_too_heavy: "image_too_heavy",

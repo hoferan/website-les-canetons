@@ -3596,6 +3596,11 @@ export const getRegistrationStoreUrl = (event: number) => {
  * than the event's per-booking cap fails validation against `choices`
  * with `too_many_guests`. Options must belong to this event, and each
  * may appear at most once.
+ *
+ * An option with a `capacity` takes no more than its `remaining` places.
+ * Asking for more fails validation against `choices.N.quantity` with
+ * `not_enough_places`, and nothing is booked. Read the form again for
+ * the places now left.
  * @summary Book a place at an event
  */
 export const registrationStore = async (
@@ -5147,7 +5152,9 @@ export const getRegistrationOptionReplaceUrl = (event: number) => {
  *
  * `priceCents` is a whole number of centimes and may be null, for an
  * option that is free or whose price lives in its description.
- * `sortOrder` may be left out, in which case the entry's position in the
+ * `capacity` caps how many of an option can be booked in all, and null
+ * or omitted is no limit. Each option comes back with `remaining`, the
+ * places still free. `sortOrder` may be left out, in which case the entry's position in the
  * list is used.
  *
  * Returns the event's options as they now stand, in sort order.
