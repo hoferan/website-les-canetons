@@ -39,7 +39,7 @@ class RegistrationOptionController extends Controller
     public function index(Event $event): AnonymousResourceCollection
     {
         return RegistrationOptionResource::collection(
-            $event->registrationOptions()->orderBy('sort_order')->orderBy('id')->get()
+            $event->registrationOptions()->withSum('choices', 'quantity')->get()
         );
     }
 
@@ -56,7 +56,9 @@ class RegistrationOptionController extends Controller
      *
      * `priceCents` is a whole number of centimes and may be null, for an
      * option that is free or whose price lives in its description.
-     * `sortOrder` may be left out, in which case the entry's position in the
+     * `capacity` caps how many of an option can be booked in all, and null
+     * or omitted is no limit. Each option comes back with `remaining`, the
+     * places still free. `sortOrder` may be left out, in which case the entry's position in the
      * list is used.
      *
      * Returns the event's options as they now stand, in sort order.
@@ -130,6 +132,7 @@ class RegistrationOptionController extends Controller
                     'label' => $option['label'],
                     'description' => $option['description'] ?? null,
                     'price_cents' => $option['priceCents'] ?? null,
+                    'capacity' => $option['capacity'] ?? null,
                     // Falls back to the position in the submitted array, so a
                     // client need not number the list.
                     'sort_order' => $option['sortOrder'] ?? $index,
@@ -167,7 +170,7 @@ class RegistrationOptionController extends Controller
         );
 
         return response()->json(
-            RegistrationOptionResource::collection($event->registrationOptions()->get())
+            RegistrationOptionResource::collection($event->registrationOptions()->withSum('choices', 'quantity')->get())
         );
     }
 }

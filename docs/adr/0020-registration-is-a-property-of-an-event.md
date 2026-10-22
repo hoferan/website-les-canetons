@@ -30,7 +30,9 @@ Any event can take bookings. An event takes them exactly when
 such as menus and prices, are rows the committee fills in.
 
 - There is no capacity limit, which also avoids a count-then-insert race on an
-  anonymous endpoint.
+  anonymous endpoint. *Replaced on 2026-10-22 by
+  [ADR-0031](0031-cap-an-option-under-a-lock.md): an option may now have a capacity,
+  counted under a lock.*
 - Guests cannot change their own booking. The committee corrects it.
 - Prices are integer centimes.
 - An option that has bookings cannot be deleted (`409 option_has_registrations`).

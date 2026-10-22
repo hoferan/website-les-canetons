@@ -286,6 +286,7 @@
                                                             "already_taken",
                                                             "must_be_after",
                                                             "too_many_guests",
+                                                            "not_enough_places",
                                                             "image_not_jpeg",
                                                             "image_too_large",
                                                             "image_too_heavy",
@@ -2065,7 +2066,7 @@
         "/events/{event}/registrations": {
             "post": {
                 "operationId": "registration.store",
-                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field\nthat is present and empty, or the request answers\n`422 spam_suspected`. Rate limited to 10 a minute per IP.\n\nReturns the booking with its line items, the number of people it\ncovers and what it comes to in centimes. A confirmation email is sent\nto the address given; a mail failure does not fail the booking.\n\nRefuses with `registration_not_open` before the window opens and\n`registration_closed` after it shuts, both `409`. A booking larger\nthan the event's per-booking cap fails validation against `choices`\nwith `too_many_guests`. Options must belong to this event, and each\nmay appear at most once.",
+                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field\nthat is present and empty, or the request answers\n`422 spam_suspected`. Rate limited to 10 a minute per IP.\n\nReturns the booking with its line items, the number of people it\ncovers and what it comes to in centimes. A confirmation email is sent\nto the address given; a mail failure does not fail the booking.\n\nRefuses with `registration_not_open` before the window opens and\n`registration_closed` after it shuts, both `409`. A booking larger\nthan the event's per-booking cap fails validation against `choices`\nwith `too_many_guests`. Options must belong to this event, and each\nmay appear at most once.\n\nAn option with a `capacity` takes no more than its `remaining` places.\nAsking for more fails validation against `choices.N.quantity` with\n`not_enough_places`, and nothing is booked. Read the form again for\nthe places now left.",
                 "summary": "Book a place at an event",
                 "tags": [
                     "Registration"
@@ -2184,6 +2185,7 @@
                                                             "already_taken",
                                                             "must_be_after",
                                                             "too_many_guests",
+                                                            "not_enough_places",
                                                             "image_not_jpeg",
                                                             "image_too_large",
                                                             "image_too_heavy",
@@ -2924,7 +2926,7 @@
             },
             "put": {
                 "operationId": "registrationOption.replace",
-                "description": "Requires `events.manage`, because configuring what an event offers is\nconfiguring the event.\n\nSend the complete list. An entry carrying an `id` updates that option,\nan entry without one creates it, and an option missing from the list\nis deleted. Replaying the same body converges on the same list, so a\nretry after a timeout is safe.\n\n`priceCents` is a whole number of centimes and may be null, for an\noption that is free or whose price lives in its description.\n`sortOrder` may be left out, in which case the entry's position in the\nlist is used.\n\nReturns the event's options as they now stand, in sort order.\n\nRemoving an option somebody has already booked answers\n`409 option_has_registrations`, names the options in the way, and\nchanges nothing. An `id` belonging to another event's option, more\nthan 50 entries, or a missing label answers `400 validation_failed`.",
+                "description": "Requires `events.manage`, because configuring what an event offers is\nconfiguring the event.\n\nSend the complete list. An entry carrying an `id` updates that option,\nan entry without one creates it, and an option missing from the list\nis deleted. Replaying the same body converges on the same list, so a\nretry after a timeout is safe.\n\n`priceCents` is a whole number of centimes and may be null, for an\noption that is free or whose price lives in its description.\n`capacity` caps how many of an option can be booked in all, and null\nor omitted is no limit. Each option comes back with `remaining`, the\nplaces still free. `sortOrder` may be left out, in which case the entry's position in the\nlist is used.\n\nReturns the event's options as they now stand, in sort order.\n\nRemoving an option somebody has already booked answers\n`409 option_has_registrations`, names the options in the way, and\nchanges nothing. An `id` belonging to another event's option, more\nthan 50 entries, or a missing label answers `400 validation_failed`.",
                 "summary": "Replace an event's bookable options",
                 "tags": [
                     "Registration"
@@ -6769,6 +6771,7 @@
                                                             "already_taken",
                                                             "must_be_after",
                                                             "too_many_guests",
+                                                            "not_enough_places",
                                                             "image_not_jpeg",
                                                             "image_too_large",
                                                             "image_too_heavy",
@@ -9096,6 +9099,20 @@
                         ],
                         "description": "Price in centimes: 4500 is CHF 45.00. Null when the option is free or priced in its description."
                     },
+                    "capacity": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "How many of this option can be booked across every guest. Null when there is no limit."
+                    },
+                    "remaining": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Places still free under `capacity`, never below 0; 0 is sold out. Null when there is no limit."
+                    },
                     "sortOrder": {
                         "type": "integer",
                         "description": "Ascending display order."
@@ -9106,6 +9123,8 @@
                     "label",
                     "description",
                     "priceCents",
+                    "capacity",
+                    "remaining",
                     "sortOrder"
                 ],
                 "title": "RegistrationOptionResource"
@@ -9297,7 +9316,7 @@
             },
             "ReplaceRegistrationOptionsRequest": {
                 "type": "object",
-                "description": "The complete list of things that can be booked at one event.\n\nThis is a replacement, not a partial update. Send the whole list every\ntime: an entry carrying an `id` updates that option, an entry without one\ncreates a new option, and any existing option missing from the list is\ndeleted. Deleting an option somebody has already booked is refused with\n`option_has_registrations` rather than rewriting what that person ordered.\n\nSend `options: []` to leave the event with nothing bookable. At most 50\nentries. An `id` must belong to this event.\n\n`priceCents` is an integer number of centimes, so 4500 is CHF 45.00. Zero\nis a free option; `null` means the option carries no price at all, for\ninstance when the price is spelled out in the description.",
+                "description": "The complete list of things that can be booked at one event.\n\nThis is a replacement, not a partial update. Send the whole list every\ntime: an entry carrying an `id` updates that option, an entry without one\ncreates a new option, and any existing option missing from the list is\ndeleted. Deleting an option somebody has already booked is refused with\n`option_has_registrations` rather than rewriting what that person ordered.\n\nSend `options: []` to leave the event with nothing bookable. At most 50\nentries. An `id` must belong to this event.\n\n`priceCents` is an integer number of centimes, so 4500 is CHF 45.00. Zero\nis a free option; `null` means the option carries no price at all, for\ninstance when the price is spelled out in the description.\n\n`capacity` caps how many of an option can be booked in all; `null` is no\nlimit. Zero is refused, because an option nobody can book is a removed one.",
                 "properties": {
                     "options": {
                         "type": "array",
@@ -9349,6 +9368,15 @@
                                     "description": "Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own.",
                                     "minimum": 0,
                                     "maximum": 1000000
+                                },
+                                "capacity": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "How many of this option can be booked across every guest, at least 1. Omit or send `null` for no limit. Lowering it below what is booked already stops further bookings and changes none.",
+                                    "minimum": 1,
+                                    "maximum": 100000
                                 },
                                 "sortOrder": {
                                     "type": [
@@ -10423,6 +10451,7 @@
                                                     "already_taken",
                                                     "must_be_after",
                                                     "too_many_guests",
+                                                    "not_enough_places",
                                                     "image_not_jpeg",
                                                     "image_too_large",
                                                     "image_too_heavy",

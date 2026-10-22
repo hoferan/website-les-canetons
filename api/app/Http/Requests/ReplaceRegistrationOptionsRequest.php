@@ -21,6 +21,9 @@ use Illuminate\Validation\Rule;
  * `priceCents` is an integer number of centimes, so 4500 is CHF 45.00. Zero
  * is a free option; `null` means the option carries no price at all, for
  * instance when the price is spelled out in the description.
+ *
+ * `capacity` caps how many of an option can be booked in all; `null` is no
+ * limit. Zero is refused, because an option nobody can book is a removed one.
  */
 class ReplaceRegistrationOptionsRequest extends FormRequest
 {
@@ -79,6 +82,8 @@ class ReplaceRegistrationOptionsRequest extends FormRequest
 
             /** Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own. */
             'options.*.priceCents' => ['nullable', 'integer', 'gte:0', 'max:1000000'],
+            /** How many of this option can be booked across every guest, at least 1. Omit or send `null` for no limit. Lowering it below what is booked already stops further bookings and changes none. */
+            'options.*.capacity' => ['nullable', 'integer', 'gte:1', 'max:100000'],
             /** Where this option sits on the form, lowest first, ties broken by id. Omitted, it takes the entry position in the list you send. */
             'options.*.sortOrder' => ['nullable', 'integer', 'gte:0', 'max:1000'],
         ];

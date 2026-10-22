@@ -14,6 +14,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * formatting happens in web/src/i18n/, and a string like "CHF 45.-" could not
  * be summed.
  *
+ * `remaining` changes with every booking, so the `event.options` tag leaves
+ * it out (App\Support\EntityTag): a guest booking must not refuse the
+ * committee's save.
+ *
  * @mixin RegistrationOption
  */
 class RegistrationOptionResource extends JsonResource
@@ -27,6 +31,10 @@ class RegistrationOptionResource extends JsonResource
             'description' => $this->description,
             /** Price in centimes: 4500 is CHF 45.00. Null when the option is free or priced in its description. */
             'priceCents' => $this->price_cents,
+            /** How many of this option can be booked across every guest. Null when there is no limit. */
+            'capacity' => $this->capacity,
+            /** Places still free under `capacity`, never below 0; 0 is sold out. Null when there is no limit. */
+            'remaining' => $this->remaining(),
             /** Ascending display order. */
             'sortOrder' => $this->sort_order,
         ];

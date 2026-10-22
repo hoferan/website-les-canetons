@@ -326,6 +326,9 @@ import type { ReplaceRegistrationOptionsRequestOptionsItem } from "./replaceRegi
  * `priceCents` is an integer number of centimes, so 4500 is CHF 45.00. Zero
  * is a free option; `null` means the option carries no price at all, for
  * instance when the price is spelled out in the description.
+ *
+ * `capacity` caps how many of an option can be booked in all; `null` is no
+ * limit. Zero is refused, because an option nobody can book is a removed one.
  */
 export interface ReplaceRegistrationOptionsRequest {
   /**

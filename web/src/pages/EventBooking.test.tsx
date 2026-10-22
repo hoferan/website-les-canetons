@@ -396,3 +396,99 @@ test("a quantity out of range is refused against its own option", async () => {
   );
   expect(screen.getByLabelText(/Repas adulte/)).toHaveFocus();
 });
+
+/**
+ * Another guest booking through the mocked API, as if from another browser,
+ * so the count moves under a form that is already open.
+ */
+async function somebodyElseBooks(optionId: number, quantity: number) {
+  const response = await fetch(`/api/v1/events/${SOUPER}/registrations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Form-Token": "mock-form-token",
+      "Idempotency-Key": crypto.randomUUID(),
+    },
+    body: JSON.stringify({
+      firstName: "Autre",
+      lastName: "Invité",
+      email: "autre@example.ch",
+      phone: "079 111 11 11",
+      choices: [{ optionId, quantity }],
+      website: "",
+    }),
+  });
+  expect(response.status).toBe(201);
+}
+
+/** The children's meal: a capacity of 6, with 3 booked in the seed. */
+const CHILDREN = 2;
+
+test("says how many places are left, and only under an option that has a limit", async () => {
+  await renderBooking();
+
+  expect(screen.getByLabelText(/Repas enfant/)).toHaveAccessibleDescription("Plus que 3 places");
+  expect(screen.getByLabelText(/Repas adulte/)).not.toHaveAccessibleDescription();
+  expect(screen.getAllByTestId("places-left")).toHaveLength(1);
+});
+
+test("a sold-out option is shown as such, and cannot be chosen", async () => {
+  await somebodyElseBooks(CHILDREN, 3);
+  await renderBooking();
+
+  expect(screen.getByText("Complet")).toBeInTheDocument();
+  expect(screen.getByLabelText(/Repas enfant/)).toBeDisabled();
+});
+
+/**
+ * The race the lock is there for, seen from the guest: the form said three
+ * were left, somebody took two meanwhile, and the server refuses against the
+ * line that ran out and the form re-reads the count.
+ */
+test("places taken meanwhile are refused against that option, and the count is read again", async () => {
+  const user = userEvent.setup();
+  await renderBooking();
+
+  await fillInContact(user);
+  await order(user, /Repas adulte/, 1);
+  await order(user, /Repas enfant/, 2);
+  await somebodyElseBooks(CHILDREN, 2);
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  const children = screen.getByLabelText(/Repas enfant/);
+  await expect.poll(() => children).toHaveAccessibleDescription(/dépasse les places encore libres/);
+  await expect.poll(() => children).toHaveAccessibleDescription(/Plus qu’une place/);
+  // Only the line that ran out.
+  expect(screen.getByLabelText(/Repas adulte/)).not.toHaveAccessibleDescription();
+  expect(screen.getByLabelText("Prénom")).toHaveValue("Aline");
+  expect(celebrate).not.toHaveBeenCalled();
+});
+
+test("the places left are counted in German", async () => {
+  await renderBooking(SOUPER, "de-CH");
+
+  expect(screen.getByText("Noch 3 Plätze frei")).toBeInTheDocument();
+});
+
+/**
+ * An option that sells out while the guest has it chosen. Its box is
+ * disabled, so the guest could not clear it: the quantity has to leave the
+ * total and the next submit by itself, or every retry is refused again.
+ */
+test("an option that sells out under the guest drops out of the booking", async () => {
+  const user = userEvent.setup();
+  await renderBooking();
+
+  await fillInContact(user);
+  await order(user, /Repas adulte/, 1);
+  await order(user, /Repas enfant/, 3);
+  await somebodyElseBooks(CHILDREN, 3);
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  await screen.findByText("Complet");
+  expect(screen.getByLabelText(/Repas enfant/)).toHaveValue(null);
+  expect(screen.getByTestId("booking-total")).toHaveTextContent("1 personne — CHF 45.00");
+
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+  await expect.poll(() => vi.mocked(celebrate).mock.calls.length).toBe(1);
+});

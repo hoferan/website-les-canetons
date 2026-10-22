@@ -182,6 +182,7 @@ export const de: typeof fr = {
     // No parameter, as in French: the limit comes from a closure validator
     // that sends only `field` and `reason`, so a {{max}} would print as is.
     too_many_guests: "überschreitet die pro Anmeldung zulässige Personenzahl",
+    not_enough_places: "übersteigt die noch freien Plätze",
     image_not_jpeg: "muss ein JPEG-Bild sein",
     image_too_large: "hat zu viele Pixel",
     image_too_heavy: "ist zu gross",
@@ -269,6 +270,7 @@ export const de: typeof fr = {
     label: "Bezeichnung",
     description: "Beschreibung",
     priceCents: "Preis",
+    capacity: "Anzahl Plätze",
     sortOrder: "Reihenfolge",
   },
 
@@ -736,6 +738,9 @@ export const de: typeof fr = {
     tableHint: "Neben wem Sie gerne sitzen möchten.",
     nothingOffered:
       "Für diesen Abend wird noch nichts angeboten. Schauen Sie in ein paar Tagen wieder vorbei.",
+    placesLeft_one: "Noch {{count}} Platz frei",
+    placesLeft_other: "Noch {{count}} Plätze frei",
+    soldOut: "Ausgebucht",
 
     chooseSomeone: "Wählen Sie mindestens eine Person.",
     guestsWithTotal: "{{guests}} — {{total}}",
@@ -804,6 +809,11 @@ export const de: typeof fr = {
     addOption: "Option hinzufügen",
     price: "Preis in Franken",
     priceInvalid: "Geben Sie einen Betrag ein, zum Beispiel 45 oder 45.50.",
+    capacity: "Anzahl Plätze",
+    capacityHint: "Leer: keine Begrenzung.",
+    capacityRemaining_one: "Leer: keine Begrenzung. Noch {{count}} Platz frei.",
+    capacityRemaining_other: "Leer: keine Begrenzung. Noch {{count}} Plätze frei.",
+    capacityInvalid: "Geben Sie eine ganze Zahl ein, mindestens 1.",
 
     moveUp: "{{option}} nach oben",
     moveDown: "{{option}} nach unten",
