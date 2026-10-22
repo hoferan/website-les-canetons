@@ -12,7 +12,8 @@ use Throwable;
 
 /**
  * Whether this server answers, whether its database does, and which deploy it
- * is running (#110).
+ * is running (#110). Also the host's limits on an upload's size (#229), which
+ * nothing else in the API can tell an operator without shell access.
  *
  * The deploy writes deployment.json to the document root, where the SPA
  * fallback serves the shell in its place, so this is the only way to ask a
@@ -48,7 +49,28 @@ class HealthController extends Controller
                 // Reading the ledger needs the database that just failed.
                 'pendingMigrations' => $database ? PendingMigrations::names() : null,
             ],
+            'limits' => [
+                'uploadMaxFilesize' => ini_get('upload_max_filesize'),
+                'postMaxSize' => ini_get('post_max_size'),
+                'maxAllowedPacket' => $database ? $this->maxAllowedPacket() : null,
+            ],
         ], $database ? 200 : 503)->header('Cache-Control', 'no-store');
+    }
+
+    /**
+     * The largest single statement MariaDB accepts, in bytes. One image size
+     * is one INSERT (ADR 0028), so this caps a photo. The host owns the value
+     * and a shared account cannot read it any other way (#229).
+     */
+    private function maxAllowedPacket(): ?int
+    {
+        try {
+            return (int) DB::selectOne('SELECT @@max_allowed_packet AS bytes')->bytes;
+        } catch (Throwable $e) {
+            report($e);
+
+            return null;
+        }
     }
 
     private function databaseAnswers(): bool

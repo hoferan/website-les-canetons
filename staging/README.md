@@ -163,7 +163,10 @@ What the deploy does:
 - **It writes `deployment.json`** at the site root (commit, ref, time, run URL).
   The catch-all answers that URL with the SPA shell, so read it through
   `GET /api/health`, which also says whether the database answers and which
-  migrations are pending. Any status but 200 means unhealthy.
+  migrations are pending. Any status but 200 means unhealthy. Its `limits`
+  block shows the host's `upload_max_filesize`, `post_max_size` and
+  `max_allowed_packet`, which decide whether a photo upload fits
+  (`docs/traps.md`).
 
 The protected paths are exact. **A rename of the deployed `_api/` directory has
 to be mirrored in `PROTECTED_PATHS`**, or the next `--relist` or bootstrap
