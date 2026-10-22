@@ -67,6 +67,11 @@ class HealthTest extends TestCase
                     'database' => 'ok',
                     'pendingMigrations' => [],
                 ],
+                'limits' => [
+                    'uploadMaxFilesize' => ini_get('upload_max_filesize'),
+                    'postMaxSize' => ini_get('post_max_size'),
+                    'maxAllowedPacket' => (int) DB::selectOne('SELECT @@max_allowed_packet AS bytes')->bytes,
+                ],
             ]);
     }
 
@@ -139,6 +144,20 @@ class HealthTest extends TestCase
         $response->assertStatus(503)
             ->assertJsonPath('status', 'fail')
             ->assertJsonPath('checks.database', 'fail')
-            ->assertJsonPath('checks.pendingMigrations', null);
+            ->assertJsonPath('checks.pendingMigrations', null)
+            ->assertJsonPath('limits.maxAllowedPacket', null)
+            ->assertJsonPath('limits.postMaxSize', ini_get('post_max_size'));
+    }
+
+    public function test_the_upload_limits_are_real_values(): void
+    {
+        // An image upload is up to three 600 KB parts in one request (ADR
+        // 0028), and the host decides whether PHP and MariaDB take it (#229).
+        $limits = $this->getJson('/api/health')->assertOk()->json('limits');
+
+        $this->assertMatchesRegularExpression('/^\d+[KMG]?$/i', $limits['uploadMaxFilesize']);
+        $this->assertMatchesRegularExpression('/^\d+[KMG]?$/i', $limits['postMaxSize']);
+        $this->assertIsInt($limits['maxAllowedPacket']);
+        $this->assertGreaterThan(0, $limits['maxAllowedPacket']);
     }
 }
