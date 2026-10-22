@@ -312,6 +312,33 @@ recorded which extensions the host loads, and without `fileinfo` the rule fails
 on a valid file or throws. `App\Support\JpegInspector` needs only
 `getimagesize()`, which is core PHP; use it (ADR 0028).
 
+## The host's size limits fail an upload without naming themselves
+
+A photo is up to three 600 KB JPEG parts in one request, about 1.9 MB with
+the envelope, and each size is one `INSERT` into a `MEDIUMBLOB` (ADR 0028).
+Each limit fails it somewhere else. Over `post_max_size`, PHP drops the body
+and Laravel's global `ValidatePostSize` answers 413 before any controller runs.
+A part over `upload_max_filesize` reaches validation as a failed upload. A size
+over `max_allowed_packet` fails the `INSERT` with MariaDB error 1153, which
+`ImageController` reports as 507 `image_storage_full`, the same answer as a
+full disk.
+
+The host sets all three. `GET /api/health` reports them under `limits`:
+
+| Server | `upload_max_filesize` | `post_max_size` | `max_allowed_packet` | Read |
+| --- | --- | --- | --- | --- |
+| TEST | 32M | 32M | 64 MiB | 2026-10-22, deploy `45c3fd2` |
+| QA | not read | not read | not read | still the old site |
+| PROD | not read | not read | not read | still the old site |
+
+TEST clears what an upload needs (1.9 MB, 600 KB and 600 KB) many times over.
+Read QA and PROD the same way after their cutover, before anyone uploads a
+photo there. If a PHP value is too low, a `.user.ini` in `_api/public/` may
+raise it; `max_allowed_packet` is the host's to change.
+
+The account's disk quota is not on that list, because nothing in PHP can read
+it. A write refused for want of room also answers 507 `image_storage_full`.
+
 ## `inline-block` is 32px wide here
 
 `web/src/styles.css` names a spacing token `block` (`--spacing-block: 2rem`).
