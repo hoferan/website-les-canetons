@@ -1069,6 +1069,8 @@ export const fr = {
     // booking. Same shape as the per-card order line, so the two read alike.
     optionTotalsLabel: "Au total\u00a0:",
     optionTotal: "{{count}} × {{label}}",
+    // Above the tally of each question's answers.
+    answerTotalsLabel: "Réponses :",
 
     // Paying. Only a booking with a price shows any of this: a free evening
     // has nothing to collect. `paid` labels a manager's switch and fills a

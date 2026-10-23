@@ -58,7 +58,13 @@ function booking(
     phone: "079 000 00 00",
     address: null,
     tableName: null,
-    choices: choices.map((choice) => ({ ...choice, priceCents: 4500 })),
+    choices: choices.map((choice) => ({
+      ...choice,
+      kind: "quantity",
+      value: null,
+      answerLabel: null,
+      priceCents: 4500,
+    })),
     guestCount: choices.reduce((sum, choice) => sum + choice.quantity, 0),
     totalCents: 4500 * choices.reduce((sum, choice) => sum + choice.quantity, 0),
     paidAt: null,
@@ -673,4 +679,68 @@ test("cancelling names the guest, and the dialog asks where the button labels", 
   expect(button.getAttribute("aria-label")).toBe(`Anmeldung von ${name} stornieren`);
 
   expect(within(dialog).getByRole("button", { name: "Anmeldung stornieren" })).toBeInTheDocument();
+});
+
+test("a booking's answers appear on its card, under the order", async () => {
+  await renderGuestList();
+
+  const answers = within(cardFor("Aebischer Jeanne")).getByTestId("guest-answers");
+  expect(
+    within(answers)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent),
+  ).toEqual(["Végétarien ? : Non", "Dessert : Meringue et double crème"]);
+  // The order line keeps the quantities only.
+  expect(cardFor("Aebischer Jeanne")).toHaveTextContent("2 × Repas adulte, 3 × Repas enfant");
+});
+
+test("the totals count each answer of a choice and a yes/no", async () => {
+  await renderGuestList();
+
+  const totals = within(screen.getByTestId("answer-totals")).getAllByRole("listitem");
+  expect(totals.map((item) => item.textContent)).toEqual([
+    "Végétarien ? : 1 × Non",
+    "Dessert : 1 × Meringue et double crème",
+  ]);
+  // And the kitchen's quantities stay as they were.
+  expect(
+    within(screen.getByTestId("option-totals"))
+      .getAllByRole("listitem")
+      .map((item) => item.textContent),
+  ).toEqual(["2 × Repas adulte", "3 × Repas enfant", "1 × Sans repas"]);
+});
+
+test("a list that counts nobody states no number of people", async () => {
+  server.use(
+    http.get("*/api/v1/events/:id/registrations", () =>
+      HttpResponse.json({
+        data: [
+          {
+            ...booking(1, "Aebischer", []),
+            choices: [
+              {
+                optionId: 40,
+                kind: "text",
+                label: "Que nous apportez-vous ?",
+                quantity: null,
+                value: "Un gâteau",
+                answerLabel: null,
+                priceCents: null,
+              },
+            ],
+            guestCount: 0,
+            totalCents: null,
+          },
+        ],
+        meta: { total: 1, limit: 500, offset: 0 },
+      }),
+    ),
+  );
+
+  await renderGuestList();
+
+  expect(screen.getByTestId("guest-counts")).toHaveTextContent("1 inscription");
+  expect(screen.getByTestId("guest-counts")).not.toHaveTextContent("personne");
+  expect(cardFor("Aebischer Test")).not.toHaveTextContent("personne");
+  expect(cardFor("Aebischer Test")).toHaveTextContent("Que nous apportez-vous ? : Un gâteau");
 });

@@ -793,6 +793,7 @@ export const de: typeof fr = {
     keepBooking: "Anmeldung behalten",
 
     optionTotalsLabel: "Insgesamt:",
+    answerTotalsLabel: "Antworten:",
     optionTotal: "{{count}} × {{label}}",
 
     paid: "Bezahlt",
