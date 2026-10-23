@@ -3958,10 +3958,12 @@ export const getRegistrationFormUrl = (event: number) => {
  * `open` is computed by the server. Do not derive it from `opensAt` and
  * `closesAt` on the client, whose clock may be wrong.
  *
- * An event that takes no registrations answers `404`, whether or not it
- * exists. An event that is enabled but outside its window answers `200`
- * with `open: false`, so the form can say when bookings start or that
- * they have closed.
+ * An event that takes no registrations, or whose form the committee has
+ * not opened, answers `404`, whether or not it exists. An open form
+ * outside its window answers `200` with `open: false`, so the form can say
+ * when bookings start or that they have closed.
+ *
+ * `asksAddress` and `asksTable` say whether to show those two fields.
  * @summary Read a booking form
  */
 export const registrationForm = async (
@@ -5163,6 +5165,11 @@ export const getRegistrationOptionReplaceUrl = (event: number) => {
  * `409 option_has_registrations`, names the options in the way, and
  * changes nothing. An `id` belonging to another event's option, more
  * than 50 entries, or a missing label answers `400 validation_failed`.
+ *
+ * Each entry is one block of the form, by `kind`. A block somebody has
+ * answered keeps its kind and its `countsGuests`
+ * (`409 option_shape_locked`), and a choice keeps every answer somebody
+ * picked (`409 choice_answer_in_use`); its wording may change.
  * @summary Replace an event's bookable options
  */
 export const registrationOptionReplace = async (

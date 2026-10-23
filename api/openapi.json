@@ -286,7 +286,10 @@
                                                             "already_taken",
                                                             "must_be_after",
                                                             "too_many_guests",
+                                                            "no_guests",
+                                                            "not_an_answer",
                                                             "not_enough_places",
+                                                            "too_few_answers",
                                                             "image_not_jpeg",
                                                             "image_too_large",
                                                             "image_too_heavy",
@@ -2185,7 +2188,10 @@
                                                             "already_taken",
                                                             "must_be_after",
                                                             "too_many_guests",
+                                                            "no_guests",
+                                                            "not_an_answer",
                                                             "not_enough_places",
+                                                            "too_few_answers",
                                                             "image_not_jpeg",
                                                             "image_too_large",
                                                             "image_too_heavy",
@@ -2407,7 +2413,7 @@
         "/events/{event}/registration": {
             "get": {
                 "operationId": "registration.form",
-                "description": "Anonymous. Returns what a public form needs: the event's title, dates\nand location, the options that can be booked, the maximum number of\npeople one booking may cover, and whether the form is open right now.\n\n`open` is computed by the server. Do not derive it from `opensAt` and\n`closesAt` on the client, whose clock may be wrong.\n\nAn event that takes no registrations answers `404`, whether or not it\nexists. An event that is enabled but outside its window answers `200`\nwith `open: false`, so the form can say when bookings start or that\nthey have closed.",
+                "description": "Anonymous. Returns what a public form needs: the event's title, dates\nand location, the options that can be booked, the maximum number of\npeople one booking may cover, and whether the form is open right now.\n\n`open` is computed by the server. Do not derive it from `opensAt` and\n`closesAt` on the client, whose clock may be wrong.\n\nAn event that takes no registrations, or whose form the committee has\nnot opened, answers `404`, whether or not it exists. An open form\noutside its window answers `200` with `open: false`, so the form can say\nwhen bookings start or that they have closed.\n\n`asksAddress` and `asksTable` say whether to show those two fields.",
                 "summary": "Read a booking form",
                 "tags": [
                     "Registration"
@@ -2926,7 +2932,7 @@
             },
             "put": {
                 "operationId": "registrationOption.replace",
-                "description": "Requires `events.manage`, because configuring what an event offers is\nconfiguring the event.\n\nSend the complete list. An entry carrying an `id` updates that option,\nan entry without one creates it, and an option missing from the list\nis deleted. Replaying the same body converges on the same list, so a\nretry after a timeout is safe.\n\n`priceCents` is a whole number of centimes and may be null, for an\noption that is free or whose price lives in its description.\n`capacity` caps how many of an option can be booked in all, and null\nor omitted is no limit. Each option comes back with `remaining`, the\nplaces still free. `sortOrder` may be left out, in which case the entry's position in the\nlist is used.\n\nReturns the event's options as they now stand, in sort order.\n\nRemoving an option somebody has already booked answers\n`409 option_has_registrations`, names the options in the way, and\nchanges nothing. An `id` belonging to another event's option, more\nthan 50 entries, or a missing label answers `400 validation_failed`.",
+                "description": "Requires `events.manage`, because configuring what an event offers is\nconfiguring the event.\n\nSend the complete list. An entry carrying an `id` updates that option,\nan entry without one creates it, and an option missing from the list\nis deleted. Replaying the same body converges on the same list, so a\nretry after a timeout is safe.\n\n`priceCents` is a whole number of centimes and may be null, for an\noption that is free or whose price lives in its description.\n`capacity` caps how many of an option can be booked in all, and null\nor omitted is no limit. Each option comes back with `remaining`, the\nplaces still free. `sortOrder` may be left out, in which case the entry's position in the\nlist is used.\n\nReturns the event's options as they now stand, in sort order.\n\nRemoving an option somebody has already booked answers\n`409 option_has_registrations`, names the options in the way, and\nchanges nothing. An `id` belonging to another event's option, more\nthan 50 entries, or a missing label answers `400 validation_failed`.\n\nEach entry is one block of the form, by `kind`. A block somebody has\nanswered keeps its kind and its `countsGuests`\n(`409 option_shape_locked`), and a choice keeps every answer somebody\npicked (`409 choice_answer_in_use`); its wording may change.",
                 "summary": "Replace an event's bookable options",
                 "tags": [
                     "Registration"
@@ -3064,7 +3070,9 @@
                                             "type": "string",
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
-                                                "option_has_registrations"
+                                                "choice_answer_in_use",
+                                                "option_has_registrations",
+                                                "option_shape_locked"
                                             ]
                                         },
                                         "errors": {
@@ -6771,7 +6779,10 @@
                                                             "already_taken",
                                                             "must_be_after",
                                                             "too_many_guests",
+                                                            "no_guests",
+                                                            "not_an_answer",
                                                             "not_enough_places",
+                                                            "too_few_answers",
                                                             "image_not_jpeg",
                                                             "image_too_large",
                                                             "image_too_heavy",
@@ -8404,9 +8415,21 @@
                             "null"
                         ]
                     },
+                    "registrationEnabled": {
+                        "type": "boolean",
+                        "description": "Whether the public may use the form. A form that exists but is not open answers 404 to the public; the committee's screens still reach it."
+                    },
+                    "registrationAsksAddress": {
+                        "type": "boolean",
+                        "description": "Whether the form asks for a postal address."
+                    },
+                    "registrationAsksTable": {
+                        "type": "boolean",
+                        "description": "Whether the form asks who the guest would like to sit with."
+                    },
                     "takesRegistrations": {
                         "type": "boolean",
-                        "description": "Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set."
+                        "description": "Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set."
                     },
                     "myAttendance": {
                         "anyOf": [
@@ -8438,6 +8461,9 @@
                     "registrationOpensAt",
                     "registrationClosesAt",
                     "registrationMaxGuests",
+                    "registrationEnabled",
+                    "registrationAsksAddress",
+                    "registrationAsksTable",
                     "takesRegistrations",
                     "myAttendance"
                 ],
@@ -8782,6 +8808,19 @@
                 ],
                 "title": "MemberResource"
             },
+            "OptionKind": {
+                "type": "string",
+                "description": "What one block of an event's booking form is (ADR 0032). The first four are answered by the guest; a heading or a paragraph is only read. A quantity is the one kind that can be priced, capped and counted as people, which is what every option was before the kinds existed.  The values are stored, so renaming a case is a migration.\n",
+                "enum": [
+                    "quantity",
+                    "text",
+                    "choice",
+                    "yes_no",
+                    "heading",
+                    "paragraph"
+                ],
+                "title": "OptionKind"
+            },
             "PhotoSlotResource": {
                 "type": "object",
                 "properties": {
@@ -9049,6 +9088,14 @@
                             "null"
                         ]
                     },
+                    "asksAddress": {
+                        "type": "boolean",
+                        "description": "Whether to ask for a postal address. A booking sent with one anyway stores none."
+                    },
+                    "asksTable": {
+                        "type": "boolean",
+                        "description": "Whether to ask who the guest would like to sit with. A booking sent with it anyway stores none."
+                    },
                     "opensAt": {
                         "type": [
                             "string",
@@ -9071,6 +9118,8 @@
                     "event",
                     "options",
                     "maxGuests",
+                    "asksAddress",
+                    "asksTable",
                     "opensAt",
                     "closesAt",
                     "open"
@@ -9083,14 +9132,50 @@
                     "id": {
                         "type": "integer"
                     },
+                    "kind": {
+                        "description": "What this block is. `quantity`, `text`, `choice` and `yes_no` are answered; `heading` and `paragraph` are only read.",
+                        "$ref": "#/components/schemas/OptionKind"
+                    },
                     "label": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null only on a paragraph without a title."
                     },
                     "description": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "Help text under the label, or a paragraph's body."
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "description": "Whether a booking must answer this block. Always false on a heading or a paragraph."
+                    },
+                    "countsGuests": {
+                        "type": "boolean",
+                        "description": "Whether this quantity is people, added up against the per-booking maximum. Always false on other kinds."
+                    },
+                    "answers": {
+                        "type": "array",
+                        "description": "A choice's answers in order; empty on every other kind. A booking stores the `id`.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "label": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "label"
+                            ]
+                        }
                     },
                     "priceCents": {
                         "type": [
@@ -9120,8 +9205,12 @@
                 },
                 "required": [
                     "id",
+                    "kind",
                     "label",
                     "description",
+                    "required",
+                    "countsGuests",
+                    "answers",
                     "priceCents",
                     "capacity",
                     "remaining",
@@ -9177,11 +9266,36 @@
                                 "optionId": {
                                     "type": "integer"
                                 },
+                                "kind": {
+                                    "description": "The kind of block this answers, which says whether to read `quantity` or `value`.",
+                                    "$ref": "#/components/schemas/OptionKind"
+                                },
                                 "label": {
-                                    "type": "string"
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
                                 },
                                 "quantity": {
-                                    "type": "integer"
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "How many, on a quantity; null on every other kind."
+                                },
+                                "value": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "The text, the chosen answer's id, or `yes` / `no`; null on a quantity."
+                                },
+                                "answerLabel": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "On a choice, the current wording of the chosen answer, so a rename shows; null otherwise."
                                 },
                                 "priceCents": {
                                     "type": [
@@ -9192,8 +9306,11 @@
                             },
                             "required": [
                                 "optionId",
+                                "kind",
                                 "label",
                                 "quantity",
+                                "value",
+                                "answerLabel",
                                 "priceCents"
                             ]
                         }
@@ -9316,7 +9433,7 @@
             },
             "ReplaceRegistrationOptionsRequest": {
                 "type": "object",
-                "description": "The complete list of things that can be booked at one event.\n\nThis is a replacement, not a partial update. Send the whole list every\ntime: an entry carrying an `id` updates that option, an entry without one\ncreates a new option, and any existing option missing from the list is\ndeleted. Deleting an option somebody has already booked is refused with\n`option_has_registrations` rather than rewriting what that person ordered.\n\nSend `options: []` to leave the event with nothing bookable. At most 50\nentries. An `id` must belong to this event.\n\n`priceCents` is an integer number of centimes, so 4500 is CHF 45.00. Zero\nis a free option; `null` means the option carries no price at all, for\ninstance when the price is spelled out in the description.\n\n`capacity` caps how many of an option can be booked in all; `null` is no\nlimit. Zero is refused, because an option nobody can book is a removed one.",
+                "description": "The complete list of things that can be booked at one event.\n\nThis is a replacement, not a partial update. Send the whole list every\ntime: an entry carrying an `id` updates that option, an entry without one\ncreates a new option, and any existing option missing from the list is\ndeleted. Deleting an option somebody has already booked is refused with\n`option_has_registrations` rather than rewriting what that person ordered.\n\nSend `options: []` to leave the event with nothing bookable. At most 50\nentries. An `id` must belong to this event.\n\n`priceCents` is an integer number of centimes, so 4500 is CHF 45.00. Zero\nis a free option; `null` means the option carries no price at all, for\ninstance when the price is spelled out in the description.\n\n`capacity` caps how many of an option can be booked in all; `null` is no\nlimit. Zero is refused, because an option nobody can book is a removed one.\n\nEach entry is one block of the form, by `kind` (ADR 0032): `quantity`,\n`text`, `choice` and `yes_no` are answered, `heading` and `paragraph` are\nonly read. An entry without a kind is a quantity. Price, capacity and\n`countsGuests` belong to a quantity only, and `answers` to a choice only.\nA quantity without `countsGuests` counts people, as every option did\nbefore the kinds existed.",
                 "properties": {
                     "options": {
                         "type": "array",
@@ -9348,9 +9465,16 @@
                                     ],
                                     "description": "The id of an existing option of this event, to update it. Omit or send `null` to create a new one."
                                 },
+                                "kind": {
+                                    "description": "What this block is: `quantity`, `text`, `choice`, `yes_no`, `heading` or `paragraph`. Omitted, it is a `quantity`. A block somebody has answered cannot change kind.",
+                                    "$ref": "#/components/schemas/OptionKind"
+                                },
                                 "label": {
-                                    "type": "string",
-                                    "description": "What the guest sees on the booking form, for example \"Repas adulte\".",
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "What the guest sees on the booking form, for example \"Repas adulte\". Optional on a paragraph only.",
                                     "maxLength": 255
                                 },
                                 "description": {
@@ -9358,14 +9482,23 @@
                                         "string",
                                         "null"
                                     ],
-                                    "maxLength": 255
+                                    "description": "Help text under the label, or a paragraph's body, which it requires.",
+                                    "maxLength": 2000
+                                },
+                                "required": {
+                                    "type": "boolean",
+                                    "description": "Whether the guest must answer this block. Default `false`. Turning it on later changes no booking already made."
+                                },
+                                "countsGuests": {
+                                    "type": "boolean",
+                                    "description": "Quantities only: whether the number is people, added up against the per-booking maximum. Omitted on a quantity, it is `true`. A block somebody has booked cannot flip it."
                                 },
                                 "priceCents": {
                                     "type": [
                                         "integer",
                                         "null"
                                     ],
-                                    "description": "Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own.",
+                                    "description": "Quantities only. Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own.",
                                     "minimum": 0,
                                     "maximum": 1000000
                                 },
@@ -9374,9 +9507,34 @@
                                         "integer",
                                         "null"
                                     ],
-                                    "description": "How many of this option can be booked across every guest, at least 1. Omit or send `null` for no limit. Lowering it below what is booked already stops further bookings and changes none.",
+                                    "description": "Quantities only. How many of this option can be booked across every guest, at least 1. Omit or send `null` for no limit. Lowering it below what is booked already stops further bookings and changes none.",
                                     "minimum": 1,
                                     "maximum": 100000
+                                },
+                                "answers": {
+                                    "type": "array",
+                                    "description": "Choices only, and required there: 2 to 20 answers, in order. Send each answer's `id` back to keep it; a booking that picked an answer stays on it through a rename. An answer somebody picked cannot be removed.",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "description": "The id from a previous read. Omit it for a new answer, and the server assigns one.",
+                                                "maxLength": 16
+                                            },
+                                            "label": {
+                                                "type": "string",
+                                                "maxLength": 255
+                                            }
+                                        },
+                                        "required": [
+                                            "label"
+                                        ]
+                                    },
+                                    "maxItems": 20
                                 },
                                 "sortOrder": {
                                     "type": [
@@ -9387,10 +9545,7 @@
                                     "minimum": 0,
                                     "maximum": 1000
                                 }
-                            },
-                            "required": [
-                                "label"
-                            ]
+                            }
                         },
                         "maxItems": 50
                     }
@@ -9616,6 +9771,18 @@
                         "description": "The largest number of people one booking may cover, 1 to 100. Null means no cap.",
                         "minimum": 1,
                         "maximum": 100
+                    },
+                    "registrationEnabled": {
+                        "type": "boolean",
+                        "description": "Whether the public may use the form (ADR 0033). A new form is closed until the committee opens it; closed, the form answers 404."
+                    },
+                    "registrationAsksAddress": {
+                        "type": "boolean",
+                        "description": "Whether the form asks for a postal address. Default true."
+                    },
+                    "registrationAsksTable": {
+                        "type": "boolean",
+                        "description": "Whether the form asks who the guest would like to sit with. Default true."
                     },
                     "tagIds": {
                         "type": "array",
@@ -9926,7 +10093,7 @@
             },
             "StoreRegistrationRequest": {
                 "type": "object",
-                "description": "An anonymous booking for one event.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nName, email and phone are required, because a Swiss committee reaches\nsomebody by telephone the evening before. Address and table name are\noptional.\n\n`choices` is what is being ordered: a non-empty list of `{optionId,\nquantity}`, at most 20 entries, each option appearing at most once and\nbelonging to this event. Read the options from\n`GET /api/v1/events/{event}/registration`. When the event sets a per-booking\nguest cap, a booking whose quantities add up to more than that cap fails\nvalidation against `choices` with `too_many_guests`.\n\nAn event that takes no bookings answers `404`, whether or not it exists.",
+                "description": "An anonymous booking for one event.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nName, email and phone are required, because a Swiss committee reaches\nsomebody by telephone the evening before. Address and table name are\noptional.\n\n`choices` holds the answers, one per block of the form: `{optionId,\nquantity}` for a quantity, `{optionId, value}` for the other kinds, at most\n20 entries, each block at most once and belonging to this event. Read the\nblocks from `GET /api/v1/events/{event}/registration`. A required block left\nout fails against `answers.<optionId>` with `required`; a value its block\ndoes not take fails with `not_an_answer`.\n\nThe quantities that count people are the booking's size. When the form has\nany, they must add up to at least one (`no_guests`) and, under a per-booking\nguest cap, to no more than it (`too_many_guests`), both against `choices`.\n\nAn event that takes no bookings, or whose form is not open, answers `404`, whether or not it exists.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -9964,7 +10131,7 @@
                     },
                     "choices": {
                         "type": "array",
-                        "description": "What is being ordered, at least one entry and at most 20. Fails with `too_many_guests` when the quantities exceed the event per-booking cap.",
+                        "description": "The answers, one entry per block answered, at most 20. A quantity sends `quantity`; text, choice and yes/no send `value`. Leave out a block not answered. Fails with `too_many_guests` when the quantities that count people exceed the event per-booking cap, and with `no_guests` when the form has such blocks and they add up to nobody.",
                         "examples": [
                             [
                                 {
@@ -9972,8 +10139,8 @@
                                     "quantity": 2
                                 },
                                 {
-                                    "optionId": 8,
-                                    "quantity": 1
+                                    "optionId": 9,
+                                    "value": "yes"
                                 }
                             ]
                         ],
@@ -9985,18 +10152,27 @@
                                     "description": "An option offered by this event, from `GET /api/v1/events/{event}/registration`. Each option may appear at most once in `choices`."
                                 },
                                 "quantity": {
-                                    "type": "integer",
-                                    "description": "How many of that option, 1 to 50. Order the same option twice by raising this, not by repeating the entry.",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "Quantities only, and required there: how many, 1 to 50. Order the same option twice by raising this, not by repeating the entry.",
                                     "minimum": 1,
                                     "maximum": 50
+                                },
+                                "value": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "Every other answered kind: the text, up to 1000 characters; the chosen answer's `id`; or `yes` / `no`. Anything else fails with `not_an_answer`.",
+                                    "maxLength": 1000
                                 }
                             },
                             "required": [
-                                "optionId",
-                                "quantity"
+                                "optionId"
                             ]
                         },
-                        "minItems": 1,
                         "maxItems": 20
                     },
                     "website": {
@@ -10170,6 +10346,18 @@
                         "description": "The largest number of people one booking may cover, 1 to 100. Send `null` for no cap.",
                         "minimum": 1,
                         "maximum": 100
+                    },
+                    "registrationEnabled": {
+                        "type": "boolean",
+                        "description": "Whether the public may use the form (ADR 0033). A new form is closed until the committee opens it; closed, the form answers 404."
+                    },
+                    "registrationAsksAddress": {
+                        "type": "boolean",
+                        "description": "Whether the form asks for a postal address. Default true."
+                    },
+                    "registrationAsksTable": {
+                        "type": "boolean",
+                        "description": "Whether the form asks who the guest would like to sit with. Default true."
                     },
                     "tagIds": {
                         "type": "array",
@@ -10451,7 +10639,10 @@
                                                     "already_taken",
                                                     "must_be_after",
                                                     "too_many_guests",
+                                                    "no_guests",
+                                                    "not_an_answer",
                                                     "not_enough_places",
+                                                    "too_few_answers",
                                                     "image_not_jpeg",
                                                     "image_too_large",
                                                     "image_too_heavy",

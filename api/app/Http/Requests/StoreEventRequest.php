@@ -65,6 +65,12 @@ class StoreEventRequest extends FormRequest
             'registrationClosesAt' => ['nullable', 'date', 'after:registrationOpensAt'],
             /** The largest number of people one booking may cover, 1 to 100. Null means no cap. */
             'registrationMaxGuests' => ['nullable', 'integer', 'gt:0', 'max:100'],
+            /** Whether the public may use the form (ADR 0033). A new form is closed until the committee opens it; closed, the form answers 404. */
+            'registrationEnabled' => ['sometimes', 'boolean'],
+            /** Whether the form asks for a postal address. Default true. */
+            'registrationAsksAddress' => ['sometimes', 'boolean'],
+            /** Whether the form asks who the guest would like to sit with. Default true. */
+            'registrationAsksTable' => ['sometimes', 'boolean'],
             /** Ids from `GET /event-tags`. A repeated id counts once. */
             'tagIds' => ['sometimes', 'array', 'max:8'],
             'tagIds.*' => ['integer', 'exists:event_tags,id'],

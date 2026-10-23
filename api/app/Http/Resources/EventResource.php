@@ -92,7 +92,13 @@ class EventResource extends JsonResource
                 ? null
                 : Iso8601::utc($this->registration_closes_at),
             'registrationMaxGuests' => $this->registration_max_guests,
-            /** Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set. */
+            /** Whether the public may use the form. A form that exists but is not open answers 404 to the public; the committee's screens still reach it. */
+            'registrationEnabled' => $this->registration_enabled,
+            /** Whether the form asks for a postal address. */
+            'registrationAsksAddress' => $this->registration_asks_address,
+            /** Whether the form asks who the guest would like to sit with. */
+            'registrationAsksTable' => $this->registration_asks_table,
+            /** Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set. */
             'takesRegistrations' => $this->takesRegistrations(),
             /** The calling member's own answer for this event, or null if they have not replied. Never anybody else's. */
             'myAttendance' => $this->myAttendance(),

@@ -309,11 +309,29 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { OptionKind } from "./optionKind";
 
 export type RegistrationResourceChoicesItem = {
   optionId: number;
-  label: string;
-  quantity: number;
+  /** The kind of block this answers, which says whether to read `quantity` or `value`. */
+  kind: OptionKind;
+  /** @nullable */
+  label: string | null;
+  /**
+   * How many, on a quantity; null on every other kind.
+   * @nullable
+   */
+  quantity: number | null;
+  /**
+   * The text, the chosen answer's id, or `yes` / `no`; null on a quantity.
+   * @nullable
+   */
+  value: string | null;
+  /**
+   * On a choice, the current wording of the chosen answer, so a rename shows; null otherwise.
+   * @nullable
+   */
+  answerLabel: string | null;
   /** @nullable */
   priceCents: number | null;
 };

@@ -317,6 +317,10 @@ export interface RegistrationFormResource {
   options: RegistrationOptionResource[];
   /** @nullable */
   maxGuests: number | null;
+  /** Whether to ask for a postal address. A booking sent with one anyway stores none. */
+  asksAddress: boolean;
+  /** Whether to ask who the guest would like to sit with. A booking sent with it anyway stores none. */
+  asksTable: boolean;
   /** @nullable */
   opensAt: string | null;
   /** @nullable */

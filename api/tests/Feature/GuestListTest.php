@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Mail\RegistrationConfirmation;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\Registration;
 use App\Models\RegistrationChoice;
 use App\Models\RegistrationOption;
 use App\Models\Role;
+use App\Support\OptionKind;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -695,5 +697,104 @@ class GuestListTest extends TestCase
                 ->get("/api/v1/events/{$this->event->id}/registrations.{$format}")
                 ->assertStatus(403);
         }
+    }
+
+    // ------------------------------------------------------- blocks
+
+    public function test_every_input_block_is_a_column(): void
+    {
+        $this->block(OptionKind::Heading, 'Repas');
+        $this->block(OptionKind::Text, 'Allergies');
+        $this->book();
+
+        $headers = $this->exported()['headers'];
+
+        $this->assertContains('Allergies', $headers);
+        $this->assertNotContains('Repas', $headers);
+    }
+
+    public function test_choice_and_yes_no_cells_read_as_words(): void
+    {
+        $veggie = $this->block(OptionKind::YesNo, 'Végétarien ?');
+        $size = RegistrationOption::factory()->choiceOf(['S', 'M'])
+            ->create(['event_id' => $this->event->id, 'sort_order' => 5]);
+        $allergies = $this->block(OptionKind::Text, 'Allergies');
+        $booking = $this->book();
+        $this->answer($booking, $veggie, 'yes');
+        $this->answer($booking, $size, 'm');
+        $this->answer($booking, $allergies, 'Noix');
+
+        $json = $this->exported();
+        $row = $json['rows'][0];
+
+        $this->assertSame('Oui', $row[array_search('Végétarien ?', $json['headers'], true)]);
+        $this->assertSame('M', $row[array_search('Taille de t-shirt', $json['headers'], true)]);
+        $this->assertSame('Noix', $row[array_search('Allergies', $json['headers'], true)]);
+    }
+
+    public function test_totals_leave_answer_columns_blank(): void
+    {
+        $allergies = $this->block(OptionKind::Text, 'Allergies');
+        $this->answer($this->book(), $allergies, 'Noix');
+
+        $json = $this->exported();
+
+        $this->assertSame('', $json['totals'][array_search('Allergies', $json['headers'], true)]);
+    }
+
+    public function test_the_people_column_is_blank_without_people_blocks(): void
+    {
+        // A picnic list counts nobody, and 0 would read as "nobody comes".
+        $this->meat->delete();
+        $this->child->delete();
+        $bring = $this->block(OptionKind::Text, 'Que nous apportez-vous ?');
+        $booking = Registration::factory()->create(['event_id' => $this->event->id]);
+        $this->answer($booking, $bring, 'Un gâteau');
+
+        $json = $this->exported();
+        $people = array_search('Personnes', $json['headers'], true);
+
+        $this->assertNull($json['rows'][0][$people]);
+        $this->assertNull($json['totals'][$people]);
+    }
+
+    public function test_the_confirmation_lists_each_answer(): void
+    {
+        $veggie = $this->block(OptionKind::YesNo, 'Végétarien ?');
+        $allergies = $this->block(OptionKind::Text, 'Allergies');
+        $booking = $this->book('Maillard', 2);
+        $this->answer($booking, $veggie, 'no');
+        $this->answer($booking, $allergies, 'Noix');
+
+        $rendered = (new RegistrationConfirmation($booking->fresh(), $this->event))->render();
+        $text = preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($rendered))) ?? '';
+
+        $this->assertStringContainsString('Menu viande 2', $text);
+        $this->assertStringContainsString('Végétarien ? Non', $text);
+        $this->assertStringContainsString('Allergies Noix', $text);
+    }
+
+    private function block(OptionKind $kind, string $label): RegistrationOption
+    {
+        return RegistrationOption::factory()->kind($kind)
+            ->create(['event_id' => $this->event->id, 'label' => $label, 'sort_order' => 5]);
+    }
+
+    private function answer(Registration $booking, RegistrationOption $option, string $value): void
+    {
+        RegistrationChoice::create([
+            'registration_id' => $booking->id,
+            'option_id' => $option->id,
+            'value' => $value,
+        ]);
+    }
+
+    /** @return array{headers: list<string>, rows: list<list<mixed>>, totals: list<mixed>} */
+    private function exported(): array
+    {
+        return $this->actingAsMember($this->organiser)
+            ->getJson("/api/v1/events/{$this->event->id}/registrations.json")
+            ->assertOk()
+            ->json();
     }
 }

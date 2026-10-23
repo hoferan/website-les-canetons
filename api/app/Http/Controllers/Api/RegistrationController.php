@@ -12,8 +12,10 @@ use App\Mail\RegistrationConfirmation;
 use App\Models\Event;
 use App\Models\Registration;
 use App\Models\RegistrationChoice;
+use App\Models\RegistrationOption;
 use App\Support\Audit;
 use App\Support\Emits;
+use App\Support\OptionKind;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\IgnoreResponse;
 use Dedoc\Scramble\Attributes\Response;
@@ -39,16 +41,18 @@ class RegistrationController extends Controller
      * `open` is computed by the server. Do not derive it from `opensAt` and
      * `closesAt` on the client, whose clock may be wrong.
      *
-     * An event that takes no registrations answers `404`, whether or not it
-     * exists. An event that is enabled but outside its window answers `200`
-     * with `open: false`, so the form can say when bookings start or that
-     * they have closed.
+     * An event that takes no registrations, or whose form the committee has
+     * not opened, answers `404`, whether or not it exists. An open form
+     * outside its window answers `200` with `open: false`, so the form can say
+     * when bookings start or that they have closed.
+     *
+     * `asksAddress` and `asksTable` say whether to show those two fields.
      */
     public function form(Event $event): RegistrationFormResource
     {
         // 404 rather than 403: whether an event exists without taking
         // bookings is private planning, and this endpoint needs no session.
-        if (! $event->takesRegistrations()) {
+        if (! $event->acceptsBookings()) {
             abort(404);
         }
 
@@ -89,7 +93,7 @@ class RegistrationController extends Controller
     #[Emits('registration_not_open', 'registration_closed')]
     public function store(StoreRegistrationRequest $request, Event $event): JsonResponse
     {
-        // The takesRegistrations() 404 lives in the Form Request's
+        // The acceptsBookings() 404 lives in the Form Request's
         // prepareForValidation(): it has to run before validation, or the
         // caller gets a 400 about option ids instead.
         $refusal = self::refuseUnlessOpen($event);
@@ -106,7 +110,12 @@ class RegistrationController extends Controller
             ->whereNotNull('capacity')
             ->exists();
 
-        $registration = DB::transaction(function () use ($data, $event, $capped): Registration {
+        // Also before the transaction, for the same reason as $capped.
+        $kinds = $event->registrationOptions()->get()->mapWithKeys(
+            fn (RegistrationOption $option): array => [$option->id => $option->kind]
+        );
+
+        $registration = DB::transaction(function () use ($data, $event, $capped, $kinds): Registration {
             if ($capped) {
                 self::refuseBeyondCapacity($event, $data['choices']);
             }
@@ -117,15 +126,29 @@ class RegistrationController extends Controller
                 'last_name' => $data['lastName'],
                 'email' => $data['email'],
                 'phone' => $data['phone'],
-                'address' => $data['address'] ?? null,
-                'table_name' => $data['tableName'] ?? null,
+                // A form that does not ask for them stores neither, whatever
+                // a hand-written body sends.
+                'address' => $event->registration_asks_address ? ($data['address'] ?? null) : null,
+                'table_name' => $event->registration_asks_table ? ($data['tableName'] ?? null) : null,
             ]);
 
             foreach ($data['choices'] as $choice) {
+                // Each kind keeps only its own column, whatever else the
+                // entry carried.
+                $quantity = $kinds[$choice['optionId']] === OptionKind::Quantity;
+                $value = $quantity ? null : trim((string) ($choice['value'] ?? ''));
+
+                // A blank text is no answer: the request let it through as
+                // such, and an empty row would read as answered.
+                if ($value === '') {
+                    continue;
+                }
+
                 RegistrationChoice::create([
                     'registration_id' => $registration->id,
                     'option_id' => $choice['optionId'],
-                    'quantity' => $choice['quantity'],
+                    'quantity' => $quantity ? $choice['quantity'] : null,
+                    'value' => $value,
                 ]);
             }
 
@@ -282,7 +305,7 @@ class RegistrationController extends Controller
      * position in what was sent, so the form can mark the option that ran
      * out. Throwing rolls the transaction back.
      *
-     * @param  list<array{optionId: int, quantity: int}>  $choices
+     * @param  list<array{optionId: int, quantity?: int|null, value?: string|null}>  $choices
      */
     private static function refuseBeyondCapacity(Event $event, array $choices): void
     {
@@ -301,7 +324,7 @@ class RegistrationController extends Controller
         foreach ($choices as $index => $choice) {
             $remaining = $options->get($choice['optionId'])?->remaining();
 
-            if ($remaining !== null && $choice['quantity'] > $remaining) {
+            if ($remaining !== null && ($choice['quantity'] ?? 0) > $remaining) {
                 $validator->errors()->add("choices.{$index}.quantity", 'not_enough_places');
             }
         }

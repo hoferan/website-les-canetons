@@ -79,7 +79,7 @@ test("offers the registration window, and says which field is the switch", async
 
   // A date field is not obviously a switch, so the copy beside it matters.
   expect(
-    screen.getByText(/date de clôture pour ouvrir cet événement aux inscriptions/),
+    screen.getByText(/date de clôture pour donner un formulaire d’inscription/),
   ).toBeInTheDocument();
 });
 
@@ -135,7 +135,7 @@ test("a new event takes no bookings until a closing date is typed", async () => 
   expect(created.takesRegistrations).toBe(false);
 });
 
-test("typing a closing date is what opens an event to the public", async () => {
+test("typing a closing date gives the event a form, closed until it is opened", async () => {
   await renderForm();
 
   await fillIn({
@@ -153,6 +153,8 @@ test("typing a closing date is what opens an event to the public", async () => {
   // default beside the date field, so a closing day means the whole of it.
   expect(created.registrationClosesAt).toBe("2026-11-14T23:59:00+01:00");
   expect(created.takesRegistrations).toBe(true);
+  // ADR 0033: built now, opened when the committee says so.
+  expect(created.registrationEnabled).toBe(false);
 });
 
 test("an empty guest cap is no cap, not a cap of zero", async () => {
@@ -409,4 +411,57 @@ test("the form stays busy from the create through the publish, so a second tap m
   const planning = await eventIndex({ limit: 1000 });
   const rows = planning.status === 200 ? planning.data.data : [];
   expect(rows.filter((event) => event.title === "Un seul concert")).toHaveLength(1);
+});
+
+test("the committee opens the form with its own switch", async () => {
+  await renderForm();
+
+  await fillIn({
+    Titre: "Souper de décembre",
+    Lieu: "Grenette",
+    "Date de début": "2026-12-05",
+    "Heure de début": "18:30",
+    "Heure de fin": "23:30",
+    "Clôture des inscriptions": "2026-11-28",
+  });
+  await userEvent.click(screen.getByRole("checkbox", { name: "Formulaire ouvert" }));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
+
+  const created = await createdEvent("Souper de décembre");
+  expect(created.registrationEnabled).toBe(true);
+});
+
+test("a form can stop asking for the address and the table", async () => {
+  await renderForm();
+
+  // Both asked by default, which is what every form did.
+  expect(screen.getByRole("checkbox", { name: "Demander l’adresse" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Demander la table" })).toBeChecked();
+
+  await fillIn({
+    Titre: "Pique-nique",
+    Lieu: "Lac de la Gruyère",
+    "Date de début": "2027-06-12",
+    "Heure de début": "11:00",
+    "Heure de fin": "16:00",
+  });
+  await userEvent.click(screen.getByRole("checkbox", { name: "Demander l’adresse" }));
+  await userEvent.click(screen.getByRole("checkbox", { name: "Demander la table" }));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
+
+  const created = await createdEvent("Pique-nique");
+  expect(created.registrationAsksAddress).toBe(false);
+  expect(created.registrationAsksTable).toBe(false);
+});
+
+/**
+ * The dates and the switch together decide whether the public sees a form
+ * (ADR 0033), so neither hint may claim the dates alone do.
+ */
+test("the hints say the form shows once it is open and within its dates", async () => {
+  await renderForm();
+
+  expect(screen.queryByText(/le formulaire est en ligne dès maintenant/)).not.toBeInTheDocument();
+  expect(screen.getByText(/Une fois le formulaire ouvert/)).toBeInTheDocument();
+  expect(screen.getByText(/n’apparaît au public que coché et entre ses dates/)).toBeInTheDocument();
 });

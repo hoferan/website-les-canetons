@@ -314,9 +314,16 @@ export type StoreRegistrationRequestChoicesItem = {
   /** An option offered by this event, from `GET /api/v1/events/{event}/registration`. Each option may appear at most once in `choices`. */
   optionId: number;
   /**
-   * How many of that option, 1 to 50. Order the same option twice by raising this, not by repeating the entry.
+   * Quantities only, and required there: how many, 1 to 50. Order the same option twice by raising this, not by repeating the entry.
    * @minimum 1
    * @maximum 50
+   * @nullable
    */
-  quantity: number;
+  quantity?: number | null;
+  /**
+   * Every other answered kind: the text, up to 1000 characters; the chosen answer's `id`; or `yes` / `no`. Anything else fails with `not_an_answer`.
+   * @maxLength 1000
+   * @nullable
+   */
+  value?: string | null;
 };

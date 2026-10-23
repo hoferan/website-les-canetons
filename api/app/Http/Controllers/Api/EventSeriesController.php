@@ -124,7 +124,7 @@ class EventSeriesController extends Controller
         $events = Collection::make($events);
         $events->load(['tags', Event::POSTER]);
         $events->loadCount(EventController::counts());
-        $events->loadSum('registrationChoices as guest_count', 'quantity');
+        $events->loadSum(Event::guestCount(), 'quantity');
 
         $planning = EventResource::collection($events);
 

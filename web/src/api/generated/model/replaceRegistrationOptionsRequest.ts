@@ -329,6 +329,13 @@ import type { ReplaceRegistrationOptionsRequestOptionsItem } from "./replaceRegi
  *
  * `capacity` caps how many of an option can be booked in all; `null` is no
  * limit. Zero is refused, because an option nobody can book is a removed one.
+ *
+ * Each entry is one block of the form, by `kind` (ADR 0032): `quantity`,
+ * `text`, `choice` and `yes_no` are answered, `heading` and `paragraph` are
+ * only read. An entry without a kind is a quantity. Price, capacity and
+ * `countsGuests` belong to a quantity only, and `answers` to a choice only.
+ * A quantity without `countsGuests` counts people, as every option did
+ * before the kinds existed.
  */
 export interface ReplaceRegistrationOptionsRequest {
   /**

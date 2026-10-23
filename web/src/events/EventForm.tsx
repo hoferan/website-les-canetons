@@ -27,6 +27,9 @@ export type EventDraft = {
   registrationClosesDate: string;
   registrationClosesTime: string;
   registrationMaxGuests: string;
+  registrationEnabled: boolean;
+  registrationAsksAddress: boolean;
+  registrationAsksTable: boolean;
 };
 
 /**
@@ -71,6 +74,10 @@ export function draftFromEvent(event: EventResource | null): EventDraft {
       event?.registrationMaxGuests === null || event?.registrationMaxGuests === undefined
         ? ""
         : String(event.registrationMaxGuests),
+    // A new form starts closed and asks for both details (ADR 0033).
+    registrationEnabled: event?.registrationEnabled ?? false,
+    registrationAsksAddress: event?.registrationAsksAddress ?? true,
+    registrationAsksTable: event?.registrationAsksTable ?? true,
   };
 }
 
@@ -111,6 +118,9 @@ export function eventBodyFrom(draft: EventDraft): StoreEventRequest {
     // server refuses against this field.
     registrationMaxGuests:
       draft.registrationMaxGuests.trim() === "" ? null : Number(draft.registrationMaxGuests),
+    registrationEnabled: draft.registrationEnabled,
+    registrationAsksAddress: draft.registrationAsksAddress,
+    registrationAsksTable: draft.registrationAsksTable,
   };
 }
 
@@ -381,6 +391,27 @@ export function EventForm({
           problem={problemFor("registrationMaxGuests")}
         />
         <p className="text-sm text-ink-muted">{t("eventForm.maxGuestsHint")}</p>
+
+        {/* The form's own switches, here until the form editor (#319) takes
+            them with the closing date and the cap. */}
+        {(
+          [
+            ["registrationEnabled", "eventForm.formOpen"],
+            ["registrationAsksAddress", "eventForm.asksAddress"],
+            ["registrationAsksTable", "eventForm.asksTable"],
+          ] as const
+        ).map(([field, label]) => (
+          <label key={field} className="flex min-h-touch items-center gap-2">
+            <input
+              type="checkbox"
+              className="size-5"
+              checked={draft[field]}
+              onChange={(changed) => set(field, changed.target.checked)}
+            />
+            {t(label)}
+          </label>
+        ))}
+        <p className="text-sm text-ink-muted">{t("eventForm.formOpenHint")}</p>
       </fieldset>
 
       <FormError error={error} />

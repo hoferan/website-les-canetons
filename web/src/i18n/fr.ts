@@ -167,6 +167,10 @@ export const fr = {
       "Des réponses ou des inscriptions existent déjà : l'événement ne peut plus repasser en brouillon.",
     option_has_registrations:
       "Impossible de supprimer une option déjà réservée. Annulez d'abord les inscriptions concernées.",
+    option_shape_locked:
+      "Quelqu'un a déjà répondu à ce bloc : son type et le fait qu'il compte des personnes ne peuvent plus changer. Ajoutez plutôt un nouveau bloc.",
+    choice_answer_in_use:
+      "Quelqu'un a choisi cette réponse : elle ne peut pas être supprimée. Vous pouvez la renommer.",
     xlsx_unavailable: "L'export Excel n'est pas disponible sur ce serveur. Utilisez le format CSV.",
     register_in_use:
       "Des membres jouent dans ce pupitre ou l'enseignent. Attribuez-leur d'abord un autre pupitre.",
@@ -202,9 +206,15 @@ export const fr = {
     // App\Exceptions\ApiError's closure-added branch emits `field` and
     // `reason` only, so a {{max}} would print as is.
     too_many_guests: "dépasse le nombre de personnes autorisé par inscription",
+    // Against `choices`, when the blocks that count people add up to nobody.
+    no_guests: "doit compter au moins une personne",
+    // Against `choices.N.value`: an answer that block does not offer.
+    not_an_answer: "n'est pas une réponse proposée",
     // Against `choices.N.quantity`, when an option's capacity has fewer
     // places left. No parameter, for the same reason as too_many_guests.
     not_enough_places: "dépasse les places encore libres",
+    // Against `options.N.answers`, a choice with one answer.
+    too_few_answers: "doit proposer au moins deux réponses",
     // The photo checks, on each size and on the set. No parameters, as with
     // too_many_guests. The browser shrinks and re-encodes a photo before
     // sending it, so only a failed or bypassed shrink reaches these.
@@ -260,6 +270,9 @@ export const fr = {
     registrationOpensAt: "Ouverture des inscriptions",
     registrationClosesAt: "Clôture des inscriptions",
     registrationMaxGuests: "Personnes par inscription",
+    registrationEnabled: "Formulaire ouvert",
+    registrationAsksAddress: "Demander l’adresse",
+    registrationAsksTable: "Demander la table",
     sectionId: "Pupitre",
     committeeFunctionId: "Fonction au comité",
     instructorOfSectionId: "Moniteur du pupitre",
@@ -309,6 +322,11 @@ export const fr = {
     priceCents: "Prix",
     capacity: "Nombre de places",
     sortOrder: "Ordre",
+    kind: "Type de bloc",
+    required: "Obligatoire",
+    countsGuests: "Compte comme personnes",
+    answers: "Réponses",
+    value: "Réponse",
   },
 
   /**
@@ -776,16 +794,21 @@ export const fr = {
 
     registrationsLegend: "Inscriptions du public",
     registrationsHint:
-      "Renseignez une date de clôture pour ouvrir cet événement aux inscriptions. Laissez-la vide si personne ne s’inscrit\u00a0: c’est le cas de presque tout le planning.",
+      "Renseignez une date de clôture pour donner un formulaire d’inscription à cet événement. Laissez-la vide si personne ne s’inscrit\u00a0: c’est le cas de presque tout le planning.",
     closesDate: "Clôture des inscriptions",
     closesTime: "Heure de clôture",
     opensDate: "Ouverture des inscriptions",
     opensTime: "Heure d’ouverture",
     opensHint:
-      "Sans date d’ouverture, le formulaire est en ligne dès maintenant. Renseignez-la pour préparer un événement dont les inscriptions ne doivent pas encore apparaître.",
+      "Une fois le formulaire ouvert, il est en ligne tout de suite s’il n’a pas de date d’ouverture. Renseignez-la pour qu’il n’apparaisse qu’à partir de ce jour-là.",
     maxGuests: "Personnes par inscription",
     maxGuestsHint:
-      "Le maximum qu’une seule inscription peut couvrir, entre 1 et 100. Laissez vide pour ne pas limiter. La salle, elle, n’est jamais limitée\u00a0: le comité surveille la liste et avance la clôture si nécessaire.",
+      "Le maximum qu’une seule inscription peut couvrir, entre 1 et 100. Laissez vide pour ne pas limiter. Pour limiter la salle, donnez un nombre de places à chaque menu dans «\u00a0Ce qu’on réserve\u00a0».",
+    formOpen: "Formulaire ouvert",
+    asksAddress: "Demander l’adresse",
+    asksTable: "Demander la table",
+    formOpenHint:
+      "Le formulaire n’apparaît au public que coché et entre ses dates\u00a0: vous pouvez le préparer à l’avance et ne l’ouvrir qu’ensuite.",
   },
 
   /**
@@ -998,6 +1021,13 @@ export const fr = {
     soldOut: "Complet",
 
     chooseSomeone: "Choisissez au moins une personne.",
+    // Under a required question the server says was left out.
+    answerRequired: "Merci de répondre à cette question.",
+    // A yes/no question's two answers, and how an answer reads back on the
+    // confirmation. The question and the answer are what the committee typed.
+    yes: "Oui",
+    no: "Non",
+    answered: "{{question}} : {{answer}}",
     // The running total and the confirmation, when an option carries a price. {{guests}} is
     // common.guests already counted; {{total}} is formatCents.
     guestsWithTotal: "{{guests}} — {{total}}",
@@ -1023,6 +1053,8 @@ export const fr = {
     exportsHint:
       "Les quatre fichiers contiennent exactement les mêmes lignes. Excel est celui que le comité ouvre\u00a0; CSV fonctionne partout.",
     empty: "Personne ne s’est encore inscrit. Le formulaire public est à l’adresse",
+    emptyClosed:
+      "Personne ne s’est encore inscrit. Le formulaire n’est pas encore ouvert au public\u00a0: cochez «\u00a0Formulaire ouvert\u00a0» sur l’événement.",
 
     /**
      * The two "Annuler"s are not one key. `cancel` is the per-row button that
@@ -1047,6 +1079,10 @@ export const fr = {
     // booking. Same shape as the per-card order line, so the two read alike.
     optionTotalsLabel: "Au total\u00a0:",
     optionTotal: "{{count}} × {{label}}",
+    // Above the tally of each question's answers.
+    answerTotalsLabel: "Réponses :",
+    // A question a booking left alone, counted with its answers.
+    noAnswer: "sans réponse",
 
     // Paying. Only a booking with a price shows any of this: a free evening
     // has nothing to collect. `paid` labels a manager's switch and fills a
@@ -1085,8 +1121,28 @@ export const fr = {
 
     label: "Intitulé",
     description: "Description",
-    optionNumber: "Option {{n}}",
-    addOption: "Ajouter une option",
+    // The kind beside the number, since the fields differ from one kind to
+    // the next.
+    blockHeading: "Bloc {{n}} · {{kind}}",
+    kinds: {
+      quantity: "Quantité",
+      text: "Texte libre",
+      choice: "Choix unique",
+      yes_no: "Oui / non",
+      heading: "Titre",
+      paragraph: "Paragraphe",
+    },
+    addBlock: "Ajouter un bloc",
+    required: "Réponse obligatoire",
+    countsGuests: "Compte comme personnes",
+    countsGuestsHint:
+      "Ce nombre s’ajoute aux personnes de l’inscription et compte pour la limite par inscription.",
+    body: "Texte",
+    answers: "Réponses",
+    answerNumber: "Réponse {{n}}",
+    addAnswer: "Ajouter une réponse",
+    removeAnswer: "Retirer la réponse {{n}}",
+    tooFewAnswers: "Proposez au moins deux réponses.",
     price: "Prix en francs",
     priceInvalid: "Indiquez un montant, par exemple 45 ou 45.50.",
     capacity: "Nombre de places",
@@ -1101,7 +1157,7 @@ export const fr = {
     moveUp: "Monter {{option}}",
     moveDown: "Descendre {{option}}",
     remove: "Retirer {{option}}",
-    thisOption: "cette option",
+    thisOption: "ce bloc",
 
     saved: "Enregistré.",
     saving: "Enregistrement…",

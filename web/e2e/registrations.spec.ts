@@ -41,6 +41,11 @@ test("a visitor books the souper from the agenda, and the committee finds them o
   await page.getByLabel("Repas adulte").fill("2");
   await expect(page.getByTestId("booking-total")).toHaveText("2 personnes — CHF 90.00");
 
+  // The souper's questions after its menus (ADR 0032): answered once for the
+  // whole booking.
+  await page.getByRole("group", { name: "Végétarien ?" }).getByLabel("Oui").check();
+  await page.getByLabel("Tiramisu").check();
+
   await page.getByRole("button", { name: "M’inscrire" }).click();
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Inscription enregistrée");
@@ -66,12 +71,21 @@ test("a visitor books the souper from the agenda, and the committee finds them o
     "3 inscriptions · 8 personnes · CHF 240.00 · 0\u00a0sur\u00a02\u00a0payées",
   );
 
-  const cards = page.getByTestId("guest-cards").getByRole("listitem");
+  // The cards themselves, not every list item: a card lists its answers too.
+  const cards = page.getByTestId("guest-cards").locator(":scope > li");
   await expect(cards).toHaveCount(3);
   const booked = cards.filter({ hasText: "Bulliard Sophie" });
   await expect(booked).toBeVisible();
   await expect(booked).toContainText("sophie.bulliard@example.ch");
   await expect(booked).toContainText("Table\u00a0: Avec les Python");
+  await expect(booked.getByTestId("guest-answers")).toContainText("V\u00e9g\u00e9tarien ? : Oui");
+  await expect(booked.getByTestId("guest-answers")).toContainText("Dessert : Tiramisu");
+
+  // The tally beside the kitchen's: the seed's Jeanne took the meringue.
+  await expect(page.getByTestId("answer-totals")).toContainText("Dessert : 1 \u00d7 Tiramisu");
+  await expect(page.getByTestId("answer-totals")).toContainText(
+    "Dessert : 1 \u00d7 Meringue et double cr\u00e8me",
+  );
 
   // `registrations.view` is ALL the committee role grants: the list is
   // theirs to read, never to amend, cancel or mark paid.

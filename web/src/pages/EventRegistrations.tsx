@@ -15,7 +15,11 @@ import {
   useEventShow,
   useRegistrationIndex,
 } from "../api/generated/endpoints";
-import type { RegistrationResource, UpdateRegistrationRequest } from "../api/generated/model";
+import type {
+  RegistrationResource,
+  RegistrationResourceChoicesItem,
+  UpdateRegistrationRequest,
+} from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
@@ -145,6 +149,7 @@ export function EventRegistrations() {
   const total = priced.reduce((sum, booking) => sum + (booking.totalCents ?? 0), 0);
   const paidCount = priced.filter((booking) => booking.paidAt !== null).length;
   const perOption = optionTotalsOf(bookings);
+  const perAnswer = answerTotalsOf(bookings);
 
   const title = event.data?.status === 200 ? event.data.data : null;
 
@@ -302,8 +307,13 @@ export function EventRegistrations() {
           {/* Both counts are pluralised by the catalogue: a `> 1` rule is
               French, and wrong in German, where zero is plural. */}
           {t("registrations.bookings", { count: bookingCount ?? bookings.length })}
-          {t("registrations.countsSeparator")}
-          {t("common.guests", { count: guests })}
+          {/* Left out when nobody is counted: a list of answers alone. */}
+          {guests === 0 ? null : (
+            <>
+              {t("registrations.countsSeparator")}
+              {t("common.guests", { count: guests })}
+            </>
+          )}
           {/* Nothing when no booking carries a price, instead of CHF 0.00 over
               unpriced options. */}
           {priced.length === 0 ? null : <> · {formatCents(total)}</>}
@@ -330,6 +340,26 @@ export function EventRegistrations() {
             {perOption.map((option) => (
               <li key={option.optionId} className="font-semibold">
                 {t("registrations.optionTotal", { count: option.quantity, label: option.label })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {/* The same, for the questions: how many picked each answer. */}
+      {perAnswer.length > 0 ? (
+        <div data-testid="answer-totals" className="mt-tight flex flex-col">
+          <span className="text-ink-muted">{t("registrations.answerTotalsLabel")}</span>
+          <ul className="flex flex-col">
+            {perAnswer.map((entry) => (
+              <li key={entry.key} className="font-semibold">
+                {t("booking.answered", {
+                  question: entry.question,
+                  answer: t("registrations.optionTotal", {
+                    count: entry.count,
+                    label: entry.answer,
+                  }),
+                })}
               </li>
             ))}
           </ul>
@@ -404,7 +434,15 @@ export function EventRegistrations() {
 
       {!list.isPending && !list.isError && bookings.length === 0 ? (
         <p className="mt-block text-ink-muted">
-          {t("registrations.empty")} <code>/events/{eventId}/book</code>.
+          {/* A form that is not open answers 404 at its address (ADR 0033),
+              so the address is offered only once there is something there. */}
+          {title?.registrationEnabled ? (
+            <>
+              {t("registrations.empty")} <code>/events/{eventId}/book</code>.
+            </>
+          ) : (
+            t("registrations.emptyClosed")
+          )}
         </p>
       ) : null}
 
@@ -441,11 +479,34 @@ export function EventRegistrations() {
                     {t("registrations.tableLabel", { value: booking.tableName })}
                   </p>
                 ) : null}
-                <p className="mt-tight">{orderOf(booking)}</p>
-                <p className="text-ink-muted">
-                  {t("common.guests", { count: booking.guestCount })}
-                  {booking.totalCents === null ? null : <> — {formatCents(booking.totalCents)}</>}
-                </p>
+                {orderOf(booking) === "" ? null : <p className="mt-tight">{orderOf(booking)}</p>}
+                {answersOf(booking).length === 0 ? null : (
+                  <ul data-testid="guest-answers" className="mt-tight">
+                    {answersOf(booking).map((choice) => (
+                      <li key={choice.optionId}>
+                        {t("booking.answered", {
+                          question: choice.label,
+                          answer: answerText(choice),
+                        })}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {/* Nobody to count on a form whose blocks count no people:
+                    "0 personne" would read as nobody coming. */}
+                {booking.guestCount === 0 && booking.totalCents === null ? null : (
+                  <p className="text-ink-muted">
+                    {booking.guestCount === 0
+                      ? null
+                      : t("common.guests", { count: booking.guestCount })}
+                    {booking.totalCents === null ? null : (
+                      <>
+                        {booking.guestCount === 0 ? null : " — "}
+                        {formatCents(booking.totalCents)}
+                      </>
+                    )}
+                  </p>
+                )}
                 {/* Only a booking that owes something has a payment to record:
                     "Non payé" on an unpriced one would chase money nobody
                     named. */}
@@ -494,9 +555,94 @@ export function EventRegistrations() {
   );
 }
 
-/** What one booking ordered, as one line. */
+/** What one booking ordered, as one line: its quantities only. */
 function orderOf(booking: RegistrationResource): string {
-  return booking.choices.map((choice) => `${choice.quantity} × ${choice.label}`).join(", ");
+  return booking.choices
+    .filter((choice) => choice.kind === "quantity")
+    .map((choice) => `${choice.quantity} × ${choice.label}`)
+    .join(", ");
+}
+
+/** A booking's other answers, as the guest gave them. */
+function answersOf(booking: RegistrationResource): RegistrationResourceChoicesItem[] {
+  return booking.choices.filter((choice) => choice.kind !== "quantity");
+}
+
+/** An answer as words: the text, the chosen answer's label, or Oui / Non. */
+function answerText(choice: RegistrationResourceChoicesItem): string {
+  if (choice.kind === "yes_no") {
+    return choice.value === "yes" ? t("booking.yes") : t("booking.no");
+  }
+
+  return (choice.kind === "choice" ? choice.answerLabel : choice.value) ?? "";
+}
+
+/**
+ * How many picked each answer of each choice and yes/no, the counterpart of
+ * the kitchen's totals. Free text has no tally. Ordered like those, by
+ * option id, then by how many picked the answer.
+ */
+function answerTotalsOf(
+  bookings: RegistrationResource[],
+): { key: string; question: string; answer: string; count: number }[] {
+  const tally = new Map<
+    string,
+    {
+      key: string;
+      question: string;
+      answer: string;
+      count: number;
+      optionId: number;
+      /** The "no answer" line, which sorts after the real answers. */
+      last?: boolean;
+    }
+  >();
+  for (const booking of bookings) {
+    for (const choice of booking.choices) {
+      if (choice.kind !== "choice" && choice.kind !== "yes_no") {
+        continue;
+      }
+      const key = `${choice.optionId}:${choice.value}`;
+      const entry = tally.get(key) ?? {
+        key,
+        optionId: choice.optionId,
+        question: choice.label ?? "",
+        answer: answerText(choice),
+        count: 0,
+      };
+      entry.count += 1;
+      tally.set(key, entry);
+    }
+  }
+  // The bookings that left each question alone, after its answers. Only a
+  // question somebody answered is known here: the list carries no blocks.
+  const questions = new Map<number, string>();
+  for (const entry of tally.values()) {
+    questions.set(entry.optionId, entry.question);
+  }
+  for (const [optionId, question] of questions) {
+    const answered = bookings.filter((booking) =>
+      booking.choices.some((choice) => choice.optionId === optionId),
+    ).length;
+    if (answered < bookings.length) {
+      tally.set(`${optionId}:none`, {
+        key: `${optionId}:none`,
+        optionId,
+        question,
+        answer: t("registrations.noAnswer"),
+        // Below every real answer, whatever its count.
+        count: bookings.length - answered,
+        last: true,
+      });
+    }
+  }
+
+  return [...tally.values()].sort(
+    (a, b) =>
+      a.optionId - b.optionId ||
+      Number(a.last ?? false) - Number(b.last ?? false) ||
+      b.count - a.count,
+  );
 }
 
 /**
@@ -513,12 +659,15 @@ function optionTotalsOf(
   const tally = new Map<number, { optionId: number; label: string; quantity: number }>();
   for (const booking of bookings) {
     for (const choice of booking.choices) {
+      if (choice.kind !== "quantity") {
+        continue;
+      }
       const entry = tally.get(choice.optionId) ?? {
         optionId: choice.optionId,
         label: choice.label ?? "",
         quantity: 0,
       };
-      entry.quantity += choice.quantity;
+      entry.quantity += choice.quantity ?? 0;
       tally.set(choice.optionId, entry);
     }
   }

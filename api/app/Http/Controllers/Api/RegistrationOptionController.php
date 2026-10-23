@@ -10,11 +10,14 @@ use App\Models\Event;
 use App\Models\RegistrationOption;
 use App\Support\Audit;
 use App\Support\Emits;
+use App\Support\OptionKind;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 #[Group('Registration', weight: 40)]
 class RegistrationOptionController extends Controller
@@ -67,9 +70,14 @@ class RegistrationOptionController extends Controller
      * `409 option_has_registrations`, names the options in the way, and
      * changes nothing. An `id` belonging to another event's option, more
      * than 50 entries, or a missing label answers `400 validation_failed`.
+     *
+     * Each entry is one block of the form, by `kind`. A block somebody has
+     * answered keeps its kind and its `countsGuests`
+     * (`409 option_shape_locked`), and a choice keeps every answer somebody
+     * picked (`409 choice_answer_in_use`); its wording may change.
      */
     #[Endpoint(operationId: 'registrationOption.replace')]
-    #[Emits('option_has_registrations')]
+    #[Emits('option_has_registrations', 'option_shape_locked', 'choice_answer_in_use')]
     public function replace(ReplaceRegistrationOptionsRequest $request, Event $event): JsonResponse
     {
         // A whole-list PUT: the committee fills in one form listing every
@@ -82,25 +90,18 @@ class RegistrationOptionController extends Controller
         /** @var list<array<string, mixed>> $incoming */
         $incoming = $request->validated()['options'];
 
-        $keptIds = collect($incoming)
-            ->pluck('id')
-            ->filter(fn ($id) => $id !== null)
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        $existing = $event->registrationOptions()->get()->keyBy('id');
+        $targets = self::targets($incoming, $existing);
 
         // Checked before anything is written. The RESTRICT foreign key would
         // refuse the delete anyway, but with a 500 halfway through the
         // transaction; refusing here can name the option in use.
         //
         // An option survives if the request names its id, or if an id-less
-        // entry carries its label (the adoption the write below performs).
-        // Checking only ids would refuse a plain retry of the first save.
-        $incomingLabels = array_column($incoming, 'label');
-
-        $booked = $event->registrationOptions()
-            ->whereNotIn('id', $keptIds)
-            ->get()
-            ->reject(fn (RegistrationOption $option) => in_array($option->label, $incomingLabels, true))
+        // entry adopts it (see targets()). Checking only ids would refuse a
+        // plain retry of the first save.
+        $booked = $existing
+            ->except(array_filter($targets))
             ->filter(fn (RegistrationOption $option) => $option->isBooked());
 
         if ($booked->isNotEmpty()) {
@@ -112,42 +113,60 @@ class RegistrationOptionController extends Controller
             );
         }
 
-        DB::transaction(function () use ($event, $incoming, $keptIds): void {
-            // The label match keeps this idempotent. Without it, replaying
-            // the committee's first save (no ids yet, e.g. a retry after a
-            // timeout) would delete what the first call created and re-create
-            // it under new ids, and a booking in between would make the retry
-            // answer option_has_registrations. Matching an id-less entry to an
-            // existing option with the same label lets the second identical
-            // request update the row the first one created.
-            $existingByLabel = $event->registrationOptions()
-                ->whereNotIn('id', $keptIds)
-                ->get()
-                ->keyBy('label');
+        $rows = [];
 
-            $claimed = [];
+        foreach ($incoming as $index => $option) {
+            $target = $targets[$index] === null ? null : $existing->get($targets[$index]);
+            $kind = OptionKind::from($option['kind']);
+            $countsGuests = $kind === OptionKind::Quantity && ($option['countsGuests'] ?? true);
+            $answers = $kind === OptionKind::Choice ? self::keyed($option['answers'], $target) : null;
 
-            foreach ($incoming as $index => $option) {
-                $attributes = [
-                    'label' => $option['label'],
-                    'description' => $option['description'] ?? null,
-                    'price_cents' => $option['priceCents'] ?? null,
-                    'capacity' => $option['capacity'] ?? null,
-                    // Falls back to the position in the submitted array, so a
-                    // client need not number the list.
-                    'sort_order' => $option['sortOrder'] ?? $index,
-                ];
-
-                $id = $option['id'] ?? null;
-
-                if ($id === null) {
-                    $id = $existingByLabel->get($option['label'])?->id;
+            // A booking's answer means what the block meant when it was
+            // given: "3" read as people, or a free text read as yes/no, would
+            // rewrite it. Labels, prices and answers' wording stay editable.
+            if ($target !== null && $target->isBooked()) {
+                if ($target->kind !== $kind || $target->counts_guests !== $countsGuests) {
+                    return ApiError::json(409, 'option_shape_locked',
+                        "Somebody has answered \"{$target->label}\", so its kind and whether it counts people stay as they are");
                 }
 
+                if ($kind === OptionKind::Choice) {
+                    $kept = array_column($answers ?? [], 'id');
+                    $lost = $target->choices()->whereNotNull('value')->distinct()->pluck('value')
+                        ->reject(fn (string $key) => in_array($key, $kept, true));
+
+                    if ($lost->isNotEmpty()) {
+                        return ApiError::json(409, 'choice_answer_in_use',
+                            "An answer of \"{$target->label}\" that somebody picked cannot be removed");
+                    }
+                }
+            }
+
+            $rows[] = [$target?->id, [
+                'kind' => $kind,
+                'label' => $option['label'] ?? null,
+                'description' => $option['description'] ?? null,
+                'required' => $kind->isInput() && ($option['required'] ?? false),
+                'counts_guests' => $countsGuests,
+                'price_cents' => $option['priceCents'] ?? null,
+                'capacity' => $option['capacity'] ?? null,
+                'settings' => $answers === null ? null : ['answers' => $answers],
+                // Falls back to the position in the submitted array, so a
+                // client need not number the list.
+                'sort_order' => $option['sortOrder'] ?? $index,
+            ]];
+        }
+
+        DB::transaction(function () use ($event, $rows): void {
+            $claimed = [];
+
+            foreach ($rows as [$id, $attributes]) {
                 if ($id !== null) {
-                    // Scoped to this event, so an id belonging to another
-                    // event's option cannot be hijacked into this one.
-                    $event->registrationOptions()->whereKey($id)->update($attributes);
+                    // Through the model, not a query update, so the casts
+                    // encode `kind` and `settings`. Scoped to this event, so
+                    // an id belonging to another event's option cannot be
+                    // hijacked into this one.
+                    $event->registrationOptions()->findOrFail($id)->update($attributes);
                     $claimed[] = $id;
 
                     continue;
@@ -172,5 +191,85 @@ class RegistrationOptionController extends Controller
         return response()->json(
             RegistrationOptionResource::collection($event->registrationOptions()->withSum('choices', 'quantity')->get())
         );
+    }
+
+    /**
+     * The existing option each incoming entry updates, by position, or null
+     * for one it creates.
+     *
+     * An entry with an id updates that option. One without adopts an unclaimed
+     * option of the same kind and label. That keeps the write idempotent:
+     * replaying the committee's first save (no ids yet, e.g. a retry after a
+     * timeout) would otherwise delete what the first call created and
+     * re-create it under new ids, and a booking in between would make the
+     * retry answer option_has_registrations. A paragraph without a label is
+     * never adopted; recreating it is harmless, since nobody answers one.
+     *
+     * @param  list<array<string, mixed>>  $incoming
+     * @param  Collection<int, RegistrationOption>  $existing
+     * @return list<int|null>
+     */
+    private static function targets(array $incoming, Collection $existing): array
+    {
+        $named = collect($incoming)->pluck('id')->filter()->map(fn ($id) => (int) $id)->all();
+        $adoptable = $existing->except($named);
+
+        $targets = [];
+
+        foreach ($incoming as $option) {
+            if (($option['id'] ?? null) !== null) {
+                $targets[] = (int) $option['id'];
+
+                continue;
+            }
+
+            $label = $option['label'] ?? null;
+            $match = $label === null ? null : $adoptable->first(
+                fn (RegistrationOption $candidate) => $candidate->label === $label
+                    && $candidate->kind->value === $option['kind']
+            );
+
+            if ($match !== null) {
+                $adoptable->forget($match->id);
+            }
+
+            $targets[] = $match?->id;
+        }
+
+        return $targets;
+    }
+
+    /**
+     * A choice's answers with their ids settled.
+     *
+     * An id the option already has is kept. An answer sent without one takes
+     * the id of the existing answer with the same label, for the same reason
+     * targets() adopts by label; anything else gets a fresh id. An id the
+     * option does not have is treated as absent rather than trusted, so a
+     * client cannot point an answer at another block's id.
+     *
+     * @param  list<array{id?: string|null, label: string}>  $sent
+     * @return list<array{id: string, label: string}>
+     */
+    private static function keyed(array $sent, ?RegistrationOption $target): array
+    {
+        $known = collect($target?->answers() ?? []);
+        $taken = [];
+        $answers = [];
+
+        foreach ($sent as $answer) {
+            $key = $answer['id'] ?? null;
+
+            if ($key === null || ! $known->contains('id', $key) || in_array($key, $taken, true)) {
+                $key = $known->first(fn (array $old) => $old['label'] === $answer['label']
+                    && ! in_array($old['id'], $taken, true))['id'] ?? null;
+            }
+
+            $key ??= Str::lower(Str::random(8));
+            $taken[] = $key;
+            $answers[] = ['id' => $key, 'label' => $answer['label']];
+        }
+
+        return $answers;
     }
 }

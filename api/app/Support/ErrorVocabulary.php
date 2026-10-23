@@ -206,6 +206,12 @@ final class ErrorVocabulary
         'option_has_registrations' => [409, 'That option has already been booked, so it cannot be deleted. '
             .'Cancel the bookings that reference it first.'],
 
+        'option_shape_locked' => [409, 'Somebody has already answered that block, so its kind and whether it '
+            .'counts people cannot change. Add a new block instead.'],
+
+        'choice_answer_in_use' => [409, 'Somebody has picked that answer, so it cannot be removed. Rename it, '
+            .'or cancel the bookings that chose it first.'],
+
         'register_in_use' => [409, 'Somebody plays in or teaches this register, so it cannot be deleted. '
             .'`playerCount` and `instructorCount` on GET /api/v1/sections/{section} say how many; give each '
             .'of them another register first.'],
@@ -269,9 +275,17 @@ final class ErrorVocabulary
         'must_be_after',
         // StoreRegistrationRequest::after(), against `choices`.
         'too_many_guests',
+        // StoreRegistrationRequest::after(): `no_guests` against `choices`
+        // when blocks count people and add up to nobody, `not_an_answer`
+        // against `choices.N.value` for a value its block does not take.
+        'no_guests',
+        'not_an_answer',
         // RegistrationController, against `choices.N.quantity`, when an
         // option's capacity has fewer places left.
         'not_enough_places',
+        // ReplaceRegistrationOptionsRequest::after(), against
+        // `options.N.answers`, for a choice with one answer.
+        'too_few_answers',
         // What ReceivesImageSizes::after() adds against `files.N` and `files`.
         ...JpegInspector::PROBLEMS,
         ...ImageSet::PROBLEMS,

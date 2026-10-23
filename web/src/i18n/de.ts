@@ -152,6 +152,10 @@ export const de: typeof fr = {
       "Es liegen bereits Antworten oder Anmeldungen vor: Die Veranstaltung kann nicht mehr zum Entwurf werden.",
     option_has_registrations:
       "Eine bereits gebuchte Option kann nicht gelöscht werden. Stornieren Sie zuerst die betroffenen Anmeldungen.",
+    option_shape_locked:
+      "Jemand hat diesen Block bereits beantwortet: Seine Art und ob er Personen zählt, lassen sich nicht mehr ändern. Fügen Sie stattdessen einen neuen Block hinzu.",
+    choice_answer_in_use:
+      "Jemand hat diese Antwort gewählt: Sie kann nicht gelöscht werden. Sie können sie umbenennen.",
     xlsx_unavailable:
       "Der Excel-Export ist auf diesem Server nicht verfügbar. Verwenden Sie das CSV-Format.",
     register_in_use:
@@ -182,7 +186,10 @@ export const de: typeof fr = {
     // No parameter, as in French: the limit comes from a closure validator
     // that sends only `field` and `reason`, so a {{max}} would print as is.
     too_many_guests: "überschreitet die pro Anmeldung zulässige Personenzahl",
+    no_guests: "muss mindestens eine Person umfassen",
+    not_an_answer: "ist keine angebotene Antwort",
     not_enough_places: "übersteigt die noch freien Plätze",
+    too_few_answers: "muss mindestens zwei Antworten anbieten",
     image_not_jpeg: "muss ein JPEG-Bild sein",
     image_too_large: "hat zu viele Pixel",
     image_too_heavy: "ist zu gross",
@@ -232,6 +239,9 @@ export const de: typeof fr = {
     registrationOpensAt: "Anmeldebeginn",
     registrationClosesAt: "Anmeldeschluss",
     registrationMaxGuests: "Personen pro Anmeldung",
+    registrationEnabled: "Formular geöffnet",
+    registrationAsksAddress: "Adresse erfragen",
+    registrationAsksTable: "Tisch erfragen",
     sectionId: "Register",
     committeeFunctionId: "Funktion im Vorstand",
     instructorOfSectionId: "Registerleitung",
@@ -272,6 +282,11 @@ export const de: typeof fr = {
     priceCents: "Preis",
     capacity: "Anzahl Plätze",
     sortOrder: "Reihenfolge",
+    kind: "Art des Blocks",
+    required: "Pflichtfeld",
+    countsGuests: "Zählt als Personen",
+    answers: "Antworten",
+    value: "Antwort",
   },
 
   common: {
@@ -574,16 +589,21 @@ export const de: typeof fr = {
 
     registrationsLegend: "Anmeldungen des Publikums",
     registrationsHint:
-      "Tragen Sie ein Schlussdatum ein, um diesen Anlass für Anmeldungen zu öffnen. Lassen Sie es leer, wenn sich niemand anmeldet: Das trifft auf fast die ganze Planung zu.",
+      "Tragen Sie ein Schlussdatum ein, um diesem Anlass ein Anmeldeformular zu geben. Lassen Sie es leer, wenn sich niemand anmeldet: Das trifft auf fast die ganze Planung zu.",
     closesDate: "Anmeldeschluss",
     closesTime: "Uhrzeit des Anmeldeschlusses",
     opensDate: "Anmeldebeginn",
     opensTime: "Uhrzeit des Anmeldebeginns",
     opensHint:
-      "Ohne Anmeldebeginn ist das Formular ab sofort online. Tragen Sie ihn ein, um einen Anlass vorzubereiten, dessen Anmeldungen noch nicht erscheinen sollen.",
+      "Sobald das Formular geöffnet ist, ist es ohne Anmeldebeginn sofort online. Tragen Sie ihn ein, damit es erst ab diesem Tag erscheint.",
     maxGuests: "Personen pro Anmeldung",
     maxGuestsHint:
-      "Das Maximum, das eine einzelne Anmeldung abdecken kann, zwischen 1 und 100. Leer lassen, um nicht zu begrenzen. Der Saal selbst ist nie begrenzt: Der Vorstand beobachtet die Liste und zieht den Anmeldeschluss bei Bedarf vor.",
+      "Das Maximum, das eine einzelne Anmeldung abdecken kann, zwischen 1 und 100. Leer lassen, um nicht zu begrenzen. Um den Saal zu begrenzen, geben Sie jedem Menü unter «Was buchbar ist» eine Anzahl Plätze.",
+    formOpen: "Formular geöffnet",
+    asksAddress: "Adresse erfragen",
+    asksTable: "Tisch erfragen",
+    formOpenHint:
+      "Das Formular erscheint nur angekreuzt und zwischen seinen Daten: Sie können es im Voraus vorbereiten und erst dann öffnen.",
   },
 
   seriesForm: {
@@ -743,6 +763,10 @@ export const de: typeof fr = {
     soldOut: "Ausgebucht",
 
     chooseSomeone: "Wählen Sie mindestens eine Person.",
+    answerRequired: "Bitte beantworten Sie diese Frage.",
+    yes: "Ja",
+    no: "Nein",
+    answered: "{{question}}: {{answer}}",
     guestsWithTotal: "{{guests}} — {{total}}",
     submit: "Anmelden",
     sending: "Wird gesendet…",
@@ -763,6 +787,8 @@ export const de: typeof fr = {
     exportsHint:
       "Alle vier Dateien enthalten genau dieselben Zeilen. Excel ist die, die der Vorstand öffnet; CSV funktioniert überall.",
     empty: "Es hat sich noch niemand angemeldet. Das öffentliche Formular ist unter",
+    emptyClosed:
+      "Es hat sich noch niemand angemeldet. Das Formular ist für das Publikum noch nicht geöffnet: Kreuzen Sie beim Anlass «Formular geöffnet» an.",
 
     // "Stornieren", not "Abbrechen": this cancels a booking, while
     // common.cancel closes a form without doing anything. French says
@@ -777,6 +803,8 @@ export const de: typeof fr = {
     keepBooking: "Anmeldung behalten",
 
     optionTotalsLabel: "Insgesamt:",
+    answerTotalsLabel: "Antworten:",
+    noAnswer: "ohne Antwort",
     optionTotal: "{{count}} × {{label}}",
 
     paid: "Bezahlt",
@@ -805,8 +833,26 @@ export const de: typeof fr = {
 
     label: "Bezeichnung",
     description: "Beschreibung",
-    optionNumber: "Option {{n}}",
-    addOption: "Option hinzufügen",
+    blockHeading: "Block {{n}} · {{kind}}",
+    kinds: {
+      quantity: "Anzahl",
+      text: "Freitext",
+      choice: "Einfachauswahl",
+      yes_no: "Ja / Nein",
+      heading: "Titel",
+      paragraph: "Absatz",
+    },
+    addBlock: "Block hinzufügen",
+    required: "Antwort erforderlich",
+    countsGuests: "Zählt als Personen",
+    countsGuestsHint:
+      "Diese Zahl zählt zu den Personen der Anmeldung und zur Begrenzung pro Anmeldung.",
+    body: "Text",
+    answers: "Antworten",
+    answerNumber: "Antwort {{n}}",
+    addAnswer: "Antwort hinzufügen",
+    removeAnswer: "Antwort {{n}} entfernen",
+    tooFewAnswers: "Bieten Sie mindestens zwei Antworten an.",
     price: "Preis in Franken",
     priceInvalid: "Geben Sie einen Betrag ein, zum Beispiel 45 oder 45.50.",
     capacity: "Anzahl Plätze",
@@ -818,7 +864,7 @@ export const de: typeof fr = {
     moveUp: "{{option}} nach oben",
     moveDown: "{{option}} nach unten",
     remove: "{{option}} entfernen",
-    thisOption: "diese Option",
+    thisOption: "diesen Block",
 
     saved: "Gespeichert.",
     saving: "Wird gespeichert…",

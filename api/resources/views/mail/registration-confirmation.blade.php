@@ -15,12 +15,29 @@ Nous avons bien reçu votre inscription pour **{{ $event->title }}**.
 
 **Où :** {{ $event->location }}
 
-@if ($registration->choices->isNotEmpty())
+{{-- Quantities as the order, then every other answer under its question.
+     Two tables, because "Végétarien ? | Non" under a "Quantité" heading
+     reads as a count. --}}
+@php
+    $ordered = $registration->choices->filter(fn ($choice) => $choice->quantity !== null);
+    $answered = $registration->choices->filter(fn ($choice) => $choice->quantity === null);
+@endphp
+@if ($ordered->isNotEmpty())
 <x-mail::table>
 | Choix | Quantité |
 | :---- | -------: |
-@foreach ($registration->choices as $choice)
+@foreach ($ordered as $choice)
 | {{ $choice->option?->label }} | {{ $choice->quantity }} |
+@endforeach
+</x-mail::table>
+@endif
+
+@if ($answered->isNotEmpty())
+<x-mail::table>
+| Question | Réponse |
+| :------- | :------ |
+@foreach ($answered as $choice)
+| {{ $choice->option?->label }} | {{ str_replace(["\r", "\n", '|'], [' ', ' ', '/'], (string) $choice->answerText()) }} |
 @endforeach
 </x-mail::table>
 @endif

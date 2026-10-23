@@ -244,6 +244,9 @@ test("the planning's card shows the event's poster", async () => {
     registrationOpensAt: null,
     registrationClosesAt: null,
     registrationMaxGuests: null,
+    registrationEnabled: false,
+    registrationAsksAddress: true,
+    registrationAsksTable: true,
     takesRegistrations: false,
     myAttendance: null,
   } satisfies EventResource;

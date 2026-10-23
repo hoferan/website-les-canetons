@@ -171,7 +171,17 @@ test("carries the form token, an idempotency key and an empty honeypot", async (
           phone: "079 000 00 00",
           address: null,
           tableName: null,
-          choices: [{ optionId: 1, label: "Repas adulte", quantity: 1, priceCents: 4500 }],
+          choices: [
+            {
+              optionId: 1,
+              kind: "quantity",
+              label: "Repas adulte",
+              quantity: 1,
+              value: null,
+              answerLabel: null,
+              priceCents: 4500,
+            },
+          ],
           guestCount: 1,
           totalCents: 4500,
           createdAt: "2026-09-14T10:00:00.000Z",
@@ -491,4 +501,223 @@ test("an option that sells out under the guest drops out of the booking", async 
 
   await user.click(screen.getByRole("button", { name: "M’inscrire" }));
   await expect.poll(() => vi.mocked(celebrate).mock.calls.length).toBe(1);
+});
+
+test("shows every block of the form in order, each as its kind", async () => {
+  await renderBooking();
+
+  expect(screen.getByRole("heading", { name: "Pour la cuisine" })).toBeInTheDocument();
+
+  const veggie = screen.getByRole("group", { name: "Végétarien ?" });
+  expect(within(veggie).getByRole("radio", { name: "Oui" })).toBeInTheDocument();
+  expect(within(veggie).getByRole("radio", { name: "Non" })).toBeInTheDocument();
+
+  const dessert = screen.getByRole("group", { name: "Dessert" });
+  expect(within(dessert).getByRole("radio", { name: "Tiramisu" })).toBeInTheDocument();
+
+  expect(screen.getByRole("textbox", { name: "Allergies" })).toHaveAccessibleDescription(
+    "Laissez vide si aucune",
+  );
+});
+
+test("sends each answered block as a value, and leaves out the ones left alone", async () => {
+  const user = userEvent.setup();
+  let choices: unknown = null;
+  server.use(
+    http.post("/api/v1/events/:id/registrations", async ({ request }) => {
+      choices = ((await request.json()) as { choices: unknown }).choices;
+      return HttpResponse.json({}, { status: 500 });
+    }),
+  );
+  await renderBooking();
+
+  await fillInContact(user);
+  await order(user, /Repas adulte/, 2);
+  await user.click(
+    within(screen.getByRole("group", { name: "Végétarien ?" })).getByRole("radio", {
+      name: "Oui",
+    }),
+  );
+  await user.click(screen.getByRole("radio", { name: "Tiramisu" }));
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  await expect.poll(() => choices).not.toBeNull();
+  expect(choices).toEqual([
+    { optionId: 1, quantity: 2 },
+    { optionId: 5, value: "yes" },
+    { optionId: 6, value: "tiramisu" },
+  ]);
+});
+
+test("the confirmation lists the answers beside the order", async () => {
+  const user = userEvent.setup();
+  await renderBooking();
+
+  await fillInContact(user);
+  await order(user, /Repas adulte/, 1);
+  await user.click(screen.getByRole("radio", { name: "Tiramisu" }));
+  await user.type(screen.getByRole("textbox", { name: "Allergies" }), "Noix");
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  const summary = await screen.findByTestId("booking-summary");
+  expect(within(summary).getByText("1 × Repas adulte")).toBeInTheDocument();
+  expect(within(summary).getByText("Dessert : Tiramisu")).toBeInTheDocument();
+  expect(within(summary).getByText("Allergies : Noix")).toBeInTheDocument();
+});
+
+/** A form of questions only, such as a picnic list: nobody to count. */
+function questionsOnly() {
+  server.use(
+    http.get("/api/v1/events/:id/registration", () =>
+      HttpResponse.json({
+        event: {
+          id: SOUPER,
+          title: "Pique-nique",
+          startsAt: "2027-06-12T10:00:00.000Z",
+          endsAt: null,
+          location: "Lac de la Gruyère",
+        },
+        options: [
+          {
+            id: 40,
+            kind: "text",
+            label: "Que nous apportez-vous ?",
+            description: null,
+            required: true,
+            countsGuests: false,
+            answers: [],
+            priceCents: null,
+            capacity: null,
+            remaining: null,
+            sortOrder: 0,
+          },
+        ],
+        maxGuests: null,
+        opensAt: null,
+        closesAt: "2027-06-01T00:00:00.000Z",
+        open: true,
+      }),
+    ),
+  );
+}
+
+test("a form with nobody to count asks for no one and states no total", async () => {
+  questionsOnly();
+  await renderBooking();
+
+  expect(screen.queryByText("Choisissez au moins une personne.")).not.toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: /Que nous apportez-vous/ })).toBeRequired();
+});
+
+test("a required block the server says is missing is marked on that block", async () => {
+  const user = userEvent.setup();
+  questionsOnly();
+  server.use(
+    http.post("/api/v1/events/:id/registrations", () =>
+      HttpResponse.json(
+        {
+          type: "about:blank",
+          title: "Bad Request",
+          status: 400,
+          detail: "Invalid form submission",
+          instance: "/api/v1/events/7/registrations",
+          code: "validation_failed",
+          errors: [{ field: "answers.40", reason: "required" }],
+        },
+        { status: 400 },
+      ),
+    ),
+  );
+  await renderBooking();
+
+  await fillInContact(user);
+  await user.type(screen.getByRole("textbox", { name: /Que nous apportez-vous/ }), "Un gâteau");
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  expect(await screen.findByText("Merci de répondre à cette question.")).toBeInTheDocument();
+});
+
+/** The souper's form with one block replaced, to test a single kind. */
+function formWith(option: Record<string, unknown>, form: Record<string, unknown> = {}) {
+  server.use(
+    http.get("/api/v1/events/:id/registration", () =>
+      HttpResponse.json({
+        event: {
+          id: SOUPER,
+          title: "Pique-nique",
+          startsAt: "2027-06-12T10:00:00.000Z",
+          endsAt: null,
+          location: "Lac de la Gruyère",
+        },
+        options: [
+          {
+            id: 41,
+            description: null,
+            required: true,
+            countsGuests: false,
+            answers: [],
+            priceCents: null,
+            capacity: null,
+            remaining: null,
+            sortOrder: 0,
+            ...option,
+          },
+        ],
+        maxGuests: null,
+        opensAt: null,
+        closesAt: "2027-06-01T00:00:00.000Z",
+        open: true,
+        asksAddress: true,
+        asksTable: true,
+        ...form,
+      }),
+    ),
+  );
+}
+
+test("a required yes/no left unanswered says so, and nothing is sent", async () => {
+  const user = userEvent.setup();
+  let posted = false;
+  server.use(
+    http.post("/api/v1/events/:id/registrations", () => {
+      posted = true;
+      return HttpResponse.json({}, { status: 201 });
+    }),
+  );
+  formWith({ kind: "yes_no", label: "Vous venez en car ?" });
+  await renderBooking();
+
+  await fillInContact(user);
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  expect(
+    within(screen.getByRole("group", { name: /Vous venez en car/ })).getByText(
+      "Merci de répondre à cette question.",
+    ),
+  ).toBeInTheDocument();
+  expect(posted).toBe(false);
+});
+
+test("a required quantity is marked and required like a contact field", async () => {
+  formWith({ kind: "quantity", label: "Personnes", countsGuests: true });
+  await renderBooking();
+
+  expect(screen.getByLabelText(/Personnes/)).toBeRequired();
+  expect(screen.getByText("Personnes").closest("label")).toHaveTextContent("*");
+});
+
+test("a form that does not ask for the address or the table shows neither field", async () => {
+  formWith(
+    { kind: "text", label: "Que nous apportez-vous ?", required: false },
+    {
+      asksAddress: false,
+      asksTable: false,
+    },
+  );
+  await renderBooking();
+
+  expect(screen.queryByLabelText("Adresse")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Table", { exact: true })).not.toBeInTheDocument();
+  // The three a committee always needs stay.
+  expect(screen.getByLabelText("Téléphone")).toBeRequired();
 });

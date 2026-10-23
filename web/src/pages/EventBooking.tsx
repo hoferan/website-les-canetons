@@ -17,6 +17,7 @@ import type {
   RegistrationFormResource,
   RegistrationOptionResource,
   RegistrationResource,
+  RegistrationResourceChoicesItem,
 } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
@@ -114,6 +115,9 @@ export function EventBooking() {
   // Keyed by option id. A missing key is none of that option, so an untouched
   // form sends nothing instead of a row of zeroes.
   const [quantities, setQuantities] = useState<Record<number, string>>({});
+  // Every other answer, keyed the same way: the text, the chosen answer's
+  // id, or yes / no. An empty string is no answer and is not sent.
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [booked, setBooked] = useState<RegistrationResource | null>(null);
   const bookedHeading = useRef<HTMLHeadingElement>(null);
 
@@ -144,13 +148,31 @@ export function EventBooking() {
         // A sold-out option leaves the booking even if the guest chose it
         // before it sold out: its box is disabled, so it could not be
         // cleared, and every retry would be refused again.
-        .filter((option) => option.remaining !== 0)
+        .filter((option) => option.kind === "quantity" && option.remaining !== 0)
         .map((option) => ({ option, quantity: Number(quantities[option.id] ?? "0") }))
         .filter((line) => Number.isInteger(line.quantity) && line.quantity > 0),
     [offer, quantities],
   );
 
-  const guests = chosen.reduce((sum, line) => sum + line.quantity, 0);
+  // What is sent, in this order: the server names a refused line by its
+  // position, `choices.N.quantity` or `choices.N.value`.
+  const lines = useMemo(
+    () => [
+      ...chosen.map((line) => ({ optionId: line.option.id, quantity: line.quantity })),
+      ...(offer?.options ?? [])
+        .filter((option) => (answers[option.id] ?? "").trim() !== "")
+        .map((option) => ({ optionId: option.id, value: answers[option.id] ?? "" })),
+    ],
+    [chosen, offer, answers],
+  );
+  const positionOf = (optionId: number) => lines.findIndex((line) => line.optionId === optionId);
+
+  // A form with no block that counts people, a picnic list say, has nobody
+  // to count and no "choose someone" to say.
+  const countsPeople = (offer?.options ?? []).some((option) => option.countsGuests);
+  const guests = chosen
+    .filter((line) => line.option.countsGuests)
+    .reduce((sum, line) => sum + line.quantity, 0);
   const priced = chosen.filter((line) => line.option.priceCents !== null);
   const total = priced.reduce(
     (sum, line) => sum + (line.option.priceCents ?? 0) * line.quantity,
@@ -165,10 +187,7 @@ export function EventBooking() {
           ...contact,
           address: contact.address.trim() === "" ? null : contact.address,
           tableName: contact.tableName.trim() === "" ? null : contact.tableName,
-          choices: chosen.map((line) => ({
-            optionId: line.option.id,
-            quantity: line.quantity,
-          })),
+          choices: lines,
           website,
         },
         publicWriteHeaders(token, idempotencyKey.current),
@@ -257,20 +276,24 @@ export function EventBooking() {
             <ul className="mt-tight grid gap-1" data-testid="booking-summary">
               {booked.choices.map((choice) => (
                 <li key={choice.optionId}>
-                  {choice.quantity} × {choice.label}
+                  {choice.kind === "quantity"
+                    ? `${choice.quantity} × ${choice.label}`
+                    : t("booking.answered", { question: choice.label, answer: answerText(choice) })}
                 </li>
               ))}
             </ul>
-            <p className="mt-tight" data-testid="booked-guests">
-              {/* Null is not zero: a booking of unpriced options owes an
-                unknown amount, not "CHF 0.00". */}
-              {booked.totalCents === null
-                ? t("common.guests", { count: booked.guestCount })
-                : t("booking.guestsWithTotal", {
-                    guests: t("common.guests", { count: booked.guestCount }),
-                    total: formatCents(booked.totalCents),
-                  })}
-            </p>
+            {countsPeople || booked.totalCents !== null ? (
+              <p className="mt-tight" data-testid="booked-guests">
+                {/* Null is not zero: a booking of unpriced options owes an
+                  unknown amount, not "CHF 0.00". */}
+                {booked.totalCents === null
+                  ? t("common.guests", { count: booked.guestCount })
+                  : t("booking.guestsWithTotal", {
+                      guests: t("common.guests", { count: booked.guestCount }),
+                      total: formatCents(booked.totalCents),
+                    })}
+              </p>
+            ) : null}
           </Card>
         </PageSection>
       </>
@@ -317,7 +340,13 @@ export function EventBooking() {
                     {t("booking.contactLegend")}
                   </legend>
                   <RequiredLegend />
-                  {FIELDS.map((field) => (
+                  {/* Address and table are the form's to ask for (ADR 0033);
+                    the other four every booking needs. */}
+                  {FIELDS.filter(
+                    (field) =>
+                      (field.name !== "address" || offer.asksAddress) &&
+                      (field.name !== "tableName" || offer.asksTable),
+                  ).map((field) => (
                     <FormField
                       key={field.name}
                       id={`booking-${field.name}`}
@@ -344,21 +373,87 @@ export function EventBooking() {
                     <p className="text-ink-muted">{t("booking.nothingOffered")}</p>
                   ) : null}
 
-                  {offer.options.map((option) => (
-                    <QuantityField
-                      key={option.id}
-                      option={option}
-                      // The server names the line by its position in what was
-                      // sent, `choices.N.quantity`, not by option id.
-                      problem={messageFor(
-                        `choices.${chosen.findIndex((line) => line.option.id === option.id)}.quantity`,
-                      )}
-                      value={quantities[option.id] ?? ""}
-                      onChange={(value) =>
-                        setQuantities((current) => ({ ...current, [option.id]: value }))
-                      }
-                    />
-                  ))}
+                  {offer.options.map((option) => {
+                    // A required block left out is refused against
+                    // `answers.<optionId>`, since it has no position in what
+                    // was sent. Said in a sentence of its own: the generic
+                    // "<field> est obligatoire" would name the field "Réponses".
+                    const unanswered = messageFor(`answers.${option.id}`)
+                      ? t("booking.answerRequired")
+                      : undefined;
+
+                    if (option.kind === "heading") {
+                      return (
+                        <h3 key={option.id} className="mt-tight font-display text-lg">
+                          {option.label}
+                        </h3>
+                      );
+                    }
+                    if (option.kind === "paragraph") {
+                      return (
+                        <div key={option.id} className="flex flex-col gap-1">
+                          {option.label ? <p className="font-semibold">{option.label}</p> : null}
+                          {/* As typed, line breaks included: the committee
+                            writes it in a text area. */}
+                          <p className="whitespace-pre-line text-ink-muted">{option.description}</p>
+                        </div>
+                      );
+                    }
+                    if (option.kind === "quantity") {
+                      return (
+                        <QuantityField
+                          key={option.id}
+                          option={option}
+                          // The server names the line by its position in what
+                          // was sent, `choices.N.quantity`, not by option id.
+                          problem={
+                            messageFor(`choices.${positionOf(option.id)}.quantity`) ?? unanswered
+                          }
+                          value={quantities[option.id] ?? ""}
+                          onChange={(value) =>
+                            setQuantities((current) => ({ ...current, [option.id]: value }))
+                          }
+                        />
+                      );
+                    }
+
+                    const problem =
+                      messageFor(`choices.${positionOf(option.id)}.value`) ?? unanswered;
+                    const answer = answers[option.id] ?? "";
+                    const set = (value: string) =>
+                      setAnswers((current) => ({ ...current, [option.id]: value }));
+
+                    return option.kind === "text" ? (
+                      <FormField
+                        key={option.id}
+                        id={`option-${option.id}`}
+                        label={option.label ?? ""}
+                        as="textarea"
+                        maxLength={1000}
+                        hint={option.description ?? undefined}
+                        required={option.required}
+                        problem={problem}
+                        value={answer}
+                        onChange={set}
+                      />
+                    ) : (
+                      <RadioQuestion
+                        key={option.id}
+                        option={option}
+                        choices={
+                          option.kind === "yes_no"
+                            ? [
+                                { id: "yes", label: t("booking.yes") },
+                                { id: "no", label: t("booking.no") },
+                              ]
+                            : option.answers
+                        }
+                        problem={problem}
+                        value={answer}
+                        onChange={set}
+                      />
+                    );
+                  })}
 
                   {/* The refusal for the whole list lands on `choices`, as the
                     server sends it: no single quantity is wrong when the sum
@@ -371,18 +466,24 @@ export function EventBooking() {
 
                   {/* The running total, which is why prices travel as integers:
                     a guest reads what a choice costs before submitting. */}
-                  <p className="text-ink" data-testid="booking-total">
-                    {/* The count's plural comes from the catalogue: `guests > 1`
-                      is the French rule, and wrong for "0 Person" in German. */}
-                    {guests === 0
-                      ? t("booking.chooseSomeone")
-                      : priced.length === 0
-                        ? t("common.guests", { count: guests })
-                        : t("booking.guestsWithTotal", {
-                            guests: t("common.guests", { count: guests }),
-                            total: formatCents(total),
-                          })}
-                  </p>
+                  {countsPeople ? (
+                    <p className="text-ink" data-testid="booking-total">
+                      {/* The count's plural comes from the catalogue: `guests > 1`
+                        is the French rule, and wrong for "0 Person" in German. */}
+                      {guests === 0
+                        ? t("booking.chooseSomeone")
+                        : priced.length === 0
+                          ? t("common.guests", { count: guests })
+                          : t("booking.guestsWithTotal", {
+                              guests: t("common.guests", { count: guests }),
+                              total: formatCents(total),
+                            })}
+                    </p>
+                  ) : priced.length > 0 ? (
+                    <p className="text-ink" data-testid="booking-total">
+                      {formatCents(total)}
+                    </p>
+                  ) : null}
                 </fieldset>
 
                 {/* The honeypot, as on the contact form: hidden from people and
@@ -438,7 +539,7 @@ function QuantityField({
   const placesId = `${id}-places`;
   // Outside FormField, so the browser's finding is picked up by hand. `max` is
   // 50, and without this a 99 typed here blocks the submit with no message.
-  const browser = useBrowserProblem(option.label);
+  const browser = useBrowserProblem(option.label ?? "");
   const shown = browser.problem ?? problem;
   const soldOut = option.remaining === 0;
   // Null `remaining` is no capacity, so only the API's own cap of 50 applies.
@@ -452,6 +553,12 @@ function QuantityField({
       <div className="flex flex-col">
         <label htmlFor={id}>
           {option.label}
+          {option.required ? (
+            <span aria-hidden="true" className="text-danger">
+              {" "}
+              *
+            </span>
+          ) : null}
           {/* Null, not zero: an option whose price lives in its description
               says nothing here instead of claiming to be free. */}
           {option.priceCents === null ? null : (
@@ -478,7 +585,10 @@ function QuantityField({
       <Input
         id={id}
         type="number"
-        min={0}
+        // A required quantity needs at least one, which the browser checks
+        // before anything is sent, as it does for the contact fields.
+        min={option.required ? 1 : 0}
+        required={option.required && !soldOut}
         max={max}
         inputMode="numeric"
         className="w-20"
@@ -507,4 +617,98 @@ function QuantityField({
       ) : null}
     </div>
   );
+}
+
+/**
+ * One of several answers, as radio buttons under the question: a single
+ * choice, or yes / no.
+ *
+ * Native radios in a fieldset, so the browser's own `required` check stops
+ * an unanswered required question before anything is sent, as it does for
+ * the contact fields.
+ */
+function RadioQuestion({
+  option,
+  choices,
+  problem,
+  value,
+  onChange,
+}: {
+  option: RegistrationOptionResource;
+  choices: { id: string; label: string }[];
+  problem: string | undefined;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const name = `option-${option.id}`;
+  const hintId = `${name}-hint`;
+  const errorId = `${name}-error`;
+  // The browser's finding, raised by `formIsValid` on a required question
+  // left unanswered. Without it focus lands on a radio and nothing says why.
+  const [missing, setMissing] = useState(false);
+  const shown = problem ?? (missing ? t("booking.answerRequired") : undefined);
+
+  return (
+    // min-w-0: a fieldset defaults to min-width: min-content, so one long
+    // unbroken answer would widen the card past a phone's screen. Measured at
+    // 258px of sideways scroll before this.
+    <fieldset
+      className="flex min-w-0 flex-col gap-1"
+      aria-describedby={
+        [option.description ? hintId : null, shown ? errorId : null].filter(Boolean).join(" ") ||
+        undefined
+      }
+    >
+      <legend>
+        {option.label}
+        {option.required ? (
+          <span aria-hidden="true" className="text-danger">
+            {" "}
+            *
+          </span>
+        ) : null}
+      </legend>
+      {option.description ? (
+        <span id={hintId} className="text-sm text-ink-muted">
+          {option.description}
+        </span>
+      ) : null}
+      {/* Wrapping rows, so two short answers sit side by side and a long list
+          stacks at 390px. Each label is the touch target, 44px high. */}
+      <div className="flex flex-wrap gap-x-related">
+        {choices.map((choice) => (
+          <label key={choice.id} className="flex min-h-touch cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              name={name}
+              value={choice.id}
+              required={option.required}
+              checked={value === choice.id}
+              onInvalid={() => setMissing(true)}
+              onChange={() => {
+                setMissing(false);
+                onChange(choice.id);
+              }}
+              className="size-5 shrink-0 accent-violet"
+            />
+            <span className="min-w-0 [overflow-wrap:anywhere]">{choice.label}</span>
+          </label>
+        ))}
+      </div>
+      {shown ? (
+        <span id={errorId} className="text-sm text-danger" role="alert">
+          {shown}
+        </span>
+      ) : null}
+    </fieldset>
+  );
+}
+
+/** A booked answer as the guest reads it back. */
+function answerText(choice: RegistrationResourceChoicesItem): string {
+  if (choice.kind === "yes_no") {
+    return choice.value === "yes" ? t("booking.yes") : t("booking.no");
+  }
+
+  return (choice.kind === "choice" ? choice.answerLabel : choice.value) ?? "";
 }

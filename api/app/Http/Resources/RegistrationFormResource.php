@@ -29,6 +29,10 @@ class RegistrationFormResource extends JsonResource
             'event' => new PublicEventResource($this->resource),
             'options' => RegistrationOptionResource::collection($this->registrationOptions),
             'maxGuests' => $this->registration_max_guests,
+            /** Whether to ask for a postal address. A booking sent with one anyway stores none. */
+            'asksAddress' => $this->registration_asks_address,
+            /** Whether to ask who the guest would like to sit with. A booking sent with it anyway stores none. */
+            'asksTable' => $this->registration_asks_table,
             'opensAt' => $this->registration_opens_at === null
                 ? null
                 : Iso8601::utc($this->registration_opens_at),

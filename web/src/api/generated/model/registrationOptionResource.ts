@@ -309,12 +309,29 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { OptionKind } from "./optionKind";
+import type { RegistrationOptionResourceAnswersItem } from "./registrationOptionResourceAnswersItem";
 
 export interface RegistrationOptionResource {
   id: number;
-  label: string;
-  /** @nullable */
+  /** What this block is. `quantity`, `text`, `choice` and `yes_no` are answered; `heading` and `paragraph` are only read. */
+  kind: OptionKind;
+  /**
+   * Null only on a paragraph without a title.
+   * @nullable
+   */
+  label: string | null;
+  /**
+   * Help text under the label, or a paragraph's body.
+   * @nullable
+   */
   description: string | null;
+  /** Whether a booking must answer this block. Always false on a heading or a paragraph. */
+  required: boolean;
+  /** Whether this quantity is people, added up against the per-booking maximum. Always false on other kinds. */
+  countsGuests: boolean;
+  /** A choice's answers in order; empty on every other kind. A booking stores the `id`. */
+  answers: RegistrationOptionResourceAnswersItem[];
   /**
    * Price in centimes: 4500 is CHF 45.00. Null when the option is free or priced in its description.
    * @nullable
