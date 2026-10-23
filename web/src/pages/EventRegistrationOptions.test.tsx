@@ -9,7 +9,7 @@ import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { EventRegistrationOptions } from "./EventRegistrationOptions";
 
-/** The seeded souper, which offers three things. */
+/** The seeded souper: three menus, then a heading, a yes/no, a choice and a text. */
 const SOUPER = 7;
 
 async function renderEditor(eventId = SOUPER) {
@@ -24,13 +24,13 @@ async function renderEditor(eventId = SOUPER) {
   return result;
 }
 
-/** The fields of one numbered row, which is how the screen names them. */
+/** The fields of one numbered block, which is how the screen names them. */
 function row(position: number) {
-  const heading = screen.getByRole("heading", { name: `Option ${position}` });
+  const heading = screen.getByRole("heading", { name: new RegExp(`^Bloc ${position} · `) });
   const item = heading.closest("li");
 
   if (!item) {
-    throw new Error(`option ${position} is not in a list item`);
+    throw new Error(`block ${position} is not in a list item`);
   }
 
   return within(item);
@@ -89,16 +89,16 @@ test("adds an option, and reads the saved list back", async () => {
   const user = userEvent.setup();
   await renderEditor();
 
-  await user.click(screen.getByRole("button", { name: "Ajouter une option" }));
-  await user.type(row(4).getByLabelText("Intitulé"), "Dessert supplémentaire");
+  await user.click(screen.getByRole("button", { name: "Quantité" }));
+  await user.type(row(8).getByLabelText("Intitulé"), "Dessert supplémentaire");
   // A comma, which is what a French keyboard's numeric pad produces.
-  await user.type(row(4).getByLabelText("Prix en francs"), "5,50");
+  await user.type(row(8).getByLabelText("Prix en francs"), "5,50");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
   expect(await screen.findByText("Enregistré.")).toBeInTheDocument();
   // Re-seeded from the server's answer, so the comma comes back as the
   // canonical decimal point and the new row now carries a real id.
-  expect(row(4).getByLabelText("Prix en francs")).toHaveValue("5.50");
+  expect(row(8).getByLabelText("Prix en francs")).toHaveValue("5.50");
 });
 
 /**
@@ -160,7 +160,7 @@ test("refuses to drop an option somebody has booked, and keeps the edit", async 
     await screen.findByText(/Impossible de supprimer une option déjà réservée/),
   ).toBeInTheDocument();
   // The row stays removed: a refused save keeps the rest of the edit.
-  expect(screen.queryByRole("heading", { name: "Option 3" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Bloc 7 · Texte libre" })).not.toBeInTheDocument();
 });
 
 /**
@@ -220,7 +220,7 @@ test("an event with nothing bookable says so and still offers the editor", async
   await renderEditor(1);
 
   expect(await screen.findByText(/Rien n’est proposé pour l’instant/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Ajouter une option" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Quantité" })).toBeInTheDocument();
 });
 
 test("reorders the list, and the order is what is saved", async () => {
@@ -268,7 +268,16 @@ test("saves a capacity, and an emptied one as no limit", async () => {
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
   await expect.poll(() => sent).not.toBeNull();
-  expect(sent!.map((option) => option.capacity)).toEqual([120, null, null]);
+  // Only the quantities carry a capacity; the other blocks send none.
+  expect(sent!.map((option) => option.capacity)).toEqual([
+    120,
+    null,
+    null,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+  ]);
 });
 
 test("reports a capacity that is not a whole number of places against its own row", async () => {
@@ -292,4 +301,138 @@ test("reports a capacity that is not a whole number of places against its own ro
     ),
   ).toBeInTheDocument();
   expect(sent).toBe(false);
+});
+
+/** The body of the next PUT, with the server's answer left to the mock. */
+function capturePut(): () => Record<string, unknown>[] | null {
+  let sent: Record<string, unknown>[] | null = null;
+
+  server.use(
+    http.put("/api/v1/events/:id/registration-options", async ({ request }) => {
+      sent = ((await request.json()) as { options: Record<string, unknown>[] }).options;
+      return HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } });
+    }),
+  );
+
+  return () => sent;
+}
+
+test("shows each saved block as its kind", async () => {
+  await renderEditor();
+
+  expect(await screen.findByRole("heading", { name: "Bloc 1 · Quantité" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Bloc 4 · Titre" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Bloc 5 · Oui / non" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Bloc 6 · Choix unique" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Bloc 7 · Texte libre" })).toBeInTheDocument();
+  // Only a quantity has a price.
+  expect(row(5).queryByLabelText("Prix en francs")).toBeNull();
+  expect(row(6).getByLabelText("Réponse 1")).toHaveValue("Meringue et double crème");
+});
+
+test("adds one block of each kind and sends what each kind takes", async () => {
+  const user = userEvent.setup();
+  const sent = capturePut();
+  await renderEditor(1);
+
+  for (const kind of ["Quantité", "Texte libre", "Oui / non", "Titre", "Paragraphe"]) {
+    await user.click(screen.getByRole("button", { name: kind }));
+  }
+  await user.type(row(1).getByLabelText("Intitulé"), "Pique-nique");
+  await user.type(row(2).getByLabelText("Intitulé"), "Que nous apportez-vous ?");
+  await user.click(row(2).getByRole("switch", { name: "Réponse obligatoire" }));
+  await user.type(row(3).getByLabelText("Intitulé"), "Végétarien ?");
+  await user.type(row(4).getByLabelText("Intitulé"), "Infos");
+  await user.type(row(5).getByLabelText("Texte"), "Rendez-vous au local.");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(sent).not.toBeNull();
+  expect(sent()).toEqual([
+    expect.objectContaining({ kind: "quantity", label: "Pique-nique", countsGuests: true }),
+    expect.objectContaining({ kind: "text", required: true }),
+    expect.objectContaining({ kind: "yes_no", label: "Végétarien ?", required: false }),
+    expect.objectContaining({ kind: "heading", label: "Infos" }),
+    expect.objectContaining({ kind: "paragraph", description: "Rendez-vous au local." }),
+  ]);
+  // A text sends neither price nor capacity: the API refuses both off a quantity.
+  expect(sent()![1]).not.toHaveProperty("priceCents");
+  expect(sent()![1]).not.toHaveProperty("countsGuests");
+});
+
+test("a new quantity counts people until the committee says otherwise", async () => {
+  const user = userEvent.setup();
+  const sent = capturePut();
+  await renderEditor(1);
+
+  await user.click(screen.getByRole("button", { name: "Quantité" }));
+  expect(row(1).getByRole("switch", { name: "Compte comme personnes" })).toBeChecked();
+
+  await user.type(row(1).getByLabelText("Intitulé"), "Bouteilles");
+  await user.click(row(1).getByRole("switch", { name: "Compte comme personnes" }));
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(sent).not.toBeNull();
+  expect(sent()![0]).toMatchObject({ kind: "quantity", countsGuests: false });
+});
+
+test("a choice keeps its answers' ids and sends new ones without", async () => {
+  const user = userEvent.setup();
+  const sent = capturePut();
+  await renderEditor();
+
+  await expect
+    .poll(() => row(6).getByLabelText("Réponse 1"))
+    .toHaveValue("Meringue et double crème");
+  await user.click(row(6).getByRole("button", { name: "Ajouter une réponse" }));
+  await user.type(row(6).getByLabelText("Réponse 3"), "Glace");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(sent).not.toBeNull();
+  expect(sent()![5]).toMatchObject({
+    kind: "choice",
+    answers: [
+      { id: "meringue", label: "Meringue et double crème" },
+      { id: "tiramisu", label: "Tiramisu" },
+      { id: null, label: "Glace" },
+    ],
+  });
+});
+
+test("a choice with one answer is reported before anything is sent", async () => {
+  const user = userEvent.setup();
+  const sent = capturePut();
+  await renderEditor(1);
+
+  await user.click(screen.getByRole("button", { name: "Choix unique" }));
+  await user.type(row(1).getByLabelText("Intitulé"), "Taille");
+  await user.type(row(1).getByLabelText("Réponse 1"), "M");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect(await row(1).findByText("Proposez au moins deux réponses.")).toBeInTheDocument();
+  expect(sent()).toBeNull();
+});
+
+test("a locked block's refusal is shown in words", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.put("/api/v1/events/:id/registration-options", () =>
+      HttpResponse.json(
+        {
+          type: "about:blank",
+          title: "Conflict",
+          status: 409,
+          detail: "locked",
+          instance: "/api/v1/events/7/registration-options",
+          code: "option_shape_locked",
+          errors: [],
+        },
+        { status: 409 },
+      ),
+    ),
+  );
+  await renderEditor();
+
+  await user.click(await screen.findByRole("button", { name: "Enregistrer" }));
+
+  expect(await screen.findByText(/Quelqu'un a déjà répondu à ce bloc/)).toBeInTheDocument();
 });

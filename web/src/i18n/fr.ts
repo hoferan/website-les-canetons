@@ -1100,8 +1100,28 @@ export const fr = {
 
     label: "Intitulé",
     description: "Description",
-    optionNumber: "Option {{n}}",
-    addOption: "Ajouter une option",
+    // The kind beside the number, since the fields differ from one kind to
+    // the next.
+    blockHeading: "Bloc {{n}} · {{kind}}",
+    kinds: {
+      quantity: "Quantité",
+      text: "Texte libre",
+      choice: "Choix unique",
+      yes_no: "Oui / non",
+      heading: "Titre",
+      paragraph: "Paragraphe",
+    },
+    addBlock: "Ajouter un bloc",
+    required: "Réponse obligatoire",
+    countsGuests: "Compte comme personnes",
+    countsGuestsHint:
+      "Ce nombre s’ajoute aux personnes de l’inscription et compte pour la limite par inscription.",
+    body: "Texte",
+    answers: "Réponses",
+    answerNumber: "Réponse {{n}}",
+    addAnswer: "Ajouter une réponse",
+    removeAnswer: "Retirer la réponse {{n}}",
+    tooFewAnswers: "Proposez au moins deux réponses.",
     price: "Prix en francs",
     priceInvalid: "Indiquez un montant, par exemple 45 ou 45.50.",
     capacity: "Nombre de places",
@@ -1116,7 +1136,7 @@ export const fr = {
     moveUp: "Monter {{option}}",
     moveDown: "Descendre {{option}}",
     remove: "Retirer {{option}}",
-    thisOption: "cette option",
+    thisOption: "ce bloc",
 
     saved: "Enregistré.",
     saving: "Enregistrement…",

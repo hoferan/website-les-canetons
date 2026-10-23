@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -12,6 +13,7 @@ import {
   useEventShow,
 } from "../api/generated/endpoints";
 import type {
+  OptionKind,
   RegistrationOptionResource,
   ReplaceRegistrationOptionsRequestOptionsItem,
 } from "../api/generated/model";
@@ -24,46 +26,128 @@ import { t } from "../i18n";
 import { francsInput, parseFrancs } from "../money";
 import { OUTLINED_CARD } from "../carnival/raised";
 
-/** One row of the editor: an existing option, or one being invented. */
+/** One answer of a choice, as typed. */
+type AnswerDraft = {
+  /** The server's id, sent back so bookings keep pointing at it; null for a new one. */
+  id: string | null;
+  label: string;
+  /** A stable key for React, since a new answer has no id. */
+  key: string;
+};
+
+/** One block of the editor: an existing one, or one being invented. */
 type Draft = {
   /** Null for a row that does not exist on the server yet. */
   id: number | null;
+  /** Fixed once the row exists: the server refuses changing a booked block's kind. */
+  kind: OptionKind;
   label: string;
+  /** Help text, or a paragraph's body. */
   description: string;
+  required: boolean;
+  /** Quantities only. */
+  countsGuests: boolean;
   /** Francs as typed, not centimes: see web/src/money.ts. */
   price: string;
   /** Whole places as typed; empty is no limit. */
   capacity: string;
   /** Places still free, as the server last counted; null without a capacity. */
   remaining: number | null;
+  /** Choices only. */
+  answers: AnswerDraft[];
   /** A stable key for React, since a new row has no id. */
   key: string;
 };
 
+/** The kinds in the order the add buttons offer them. */
+const KINDS: OptionKind[] = ["quantity", "text", "choice", "yes_no", "heading", "paragraph"];
+
 let nextKey = 0;
+
+function answerDraft(id: string | null, label: string): AnswerDraft {
+  return { id, label, key: `answer-${nextKey++}` };
+}
 
 function draftFrom(option: RegistrationOptionResource): Draft {
   return {
     id: option.id,
-    label: option.label,
+    kind: option.kind,
+    label: option.label ?? "",
     description: option.description ?? "",
+    required: option.required,
+    countsGuests: option.countsGuests,
     price: francsInput(option.priceCents),
     capacity: option.capacity === null ? "" : String(option.capacity),
     remaining: option.remaining,
+    answers: option.answers.map((answer) => answerDraft(answer.id, answer.label)),
     key: `option-${option.id}`,
   };
 }
 
-function blankDraft(): Draft {
+function blankDraft(kind: OptionKind): Draft {
   return {
     id: null,
+    kind,
     label: "",
     description: "",
+    required: false,
+    // A new quantity is a menu until the committee says otherwise, as every
+    // option was before the kinds existed.
+    countsGuests: kind === "quantity",
     price: "",
     capacity: "",
     remaining: null,
+    // Two empty answers, the fewest a choice can have.
+    answers: kind === "choice" ? [answerDraft(null, ""), answerDraft(null, "")] : [],
     key: `new-${nextKey++}`,
   };
+}
+
+/** Whether the guest answers this kind, as opposed to only reading it. */
+function isInput(kind: OptionKind): boolean {
+  return kind !== "heading" && kind !== "paragraph";
+}
+
+/**
+ * What the API takes for one row, by kind. Price, capacity and the
+ * counts-as-people tick go with a quantity only, and the answers with a
+ * choice only: the API refuses them anywhere else.
+ */
+function payloadOf(
+  row: Draft,
+  index: number,
+  price: number | null,
+  capacity: number | null,
+): ReplaceRegistrationOptionsRequestOptionsItem {
+  const common: ReplaceRegistrationOptionsRequestOptionsItem = {
+    id: row.id,
+    kind: row.kind,
+    label: row.label.trim() === "" ? null : row.label,
+    description: row.description.trim() === "" ? null : row.description,
+    sortOrder: index,
+  };
+
+  if (!isInput(row.kind)) {
+    return common;
+  }
+  if (row.kind === "quantity") {
+    return {
+      ...common,
+      required: row.required,
+      countsGuests: row.countsGuests,
+      priceCents: price,
+      capacity,
+    };
+  }
+  if (row.kind === "choice") {
+    return {
+      ...common,
+      required: row.required,
+      answers: row.answers.map((answer) => ({ id: answer.id, label: answer.label })),
+    };
+  }
+
+  return { ...common, required: row.required };
 }
 
 /** Empty is no limit; anything else must be a whole number of at least 1. */
@@ -109,6 +193,7 @@ export function EventRegistrationOptions() {
   const [readError, setReadError] = useState<string | null>(null);
   const [priceProblems, setPriceProblems] = useState<Record<string, string>>({});
   const [capacityProblems, setCapacityProblems] = useState<Record<string, string>>({});
+  const [answerProblems, setAnswerProblems] = useState<Record<string, string>>({});
   // Beside the button, not in a toast: a toast is gone by the time somebody
   // looks up from the form.
   const [saved, setSaved] = useState(false);
@@ -191,11 +276,13 @@ export function EventRegistrationOptions() {
     // centimes, so the typed price never reaches it.
     const problems: Record<string, string> = {};
     const capacityFaults: Record<string, string> = {};
+    const answerFaults: Record<string, string> = {};
     const options: ReplaceRegistrationOptionsRequestOptionsItem[] = [];
 
     drafts.forEach((row, index) => {
-      const price = parseFrancs(row.price);
-      const capacity = parseCapacity(row.capacity);
+      const quantity = row.kind === "quantity";
+      const price = quantity ? parseFrancs(row.price) : null;
+      const capacity = quantity ? parseCapacity(row.capacity) : null;
 
       if (price === "invalid") {
         problems[row.key] = t("registrationOptions.priceInvalid");
@@ -203,23 +290,26 @@ export function EventRegistrationOptions() {
       if (capacity === "invalid") {
         capacityFaults[row.key] = t("registrationOptions.capacityInvalid");
       }
-      if (price === "invalid" || capacity === "invalid") {
+      // The API's own rule, checked here so the row is marked before a
+      // round trip. An answer left blank does not count.
+      if (row.kind === "choice" && row.answers.filter((a) => a.label.trim() !== "").length < 2) {
+        answerFaults[row.key] = t("registrationOptions.tooFewAnswers");
+      }
+      if (price === "invalid" || capacity === "invalid" || answerFaults[row.key]) {
         return;
       }
 
-      options.push({
-        id: row.id,
-        label: row.label,
-        description: row.description.trim() === "" ? null : row.description,
-        priceCents: price,
-        capacity,
-        sortOrder: index,
-      });
+      options.push(payloadOf(row, index, price, capacity));
     });
 
     setPriceProblems(problems);
     setCapacityProblems(capacityFaults);
-    if (Object.keys(problems).length > 0 || Object.keys(capacityFaults).length > 0) {
+    setAnswerProblems(answerFaults);
+    if (
+      Object.keys(problems).length > 0 ||
+      Object.keys(capacityFaults).length > 0 ||
+      Object.keys(answerFaults).length > 0
+    ) {
       return;
     }
 
@@ -278,11 +368,14 @@ export function EventRegistrationOptions() {
           <ul className="mt-block grid gap-related">
             {drafts.map((row, index) => (
               <li key={row.key} className={`${OUTLINED_CARD} flex flex-col gap-related p-4`}>
-                {/* Numbered, because the same three labels repeat per option.
-                    The number is the position, which is also what `sortOrder`
-                    is sent as. */}
+                {/* Numbered, because the same labels repeat per block, and
+                    named by kind, because the fields differ. The number is the
+                    position, which is also what `sortOrder` is sent as. */}
                 <h2 className="font-display text-lg">
-                  {t("registrationOptions.optionNumber", { n: index + 1 })}
+                  {t("registrationOptions.blockHeading", {
+                    n: index + 1,
+                    kind: t(`registrationOptions.kinds.${row.kind}`),
+                  })}
                 </h2>
 
                 <FormField
@@ -294,41 +387,83 @@ export function EventRegistrationOptions() {
                   // `field` as sent (`options.2.label`), so a bare "label"
                   // would light every row at once.
                   problem={form.messageFor(`options.${index}.label`)}
-                  required
+                  // A paragraph may go without a title.
+                  required={row.kind !== "paragraph"}
                 />
-                <FormField
-                  id={`description-${row.key}`}
-                  label={t("registrationOptions.description")}
-                  value={row.description}
-                  onChange={(value) => update(row.key, { description: value })}
-                  problem={form.messageFor(`options.${index}.description`)}
-                />
-                <FormField
-                  id={`price-${row.key}`}
-                  label={t("registrationOptions.price")}
-                  value={row.price}
-                  onChange={(value) => update(row.key, { price: value })}
-                  // The local parse failure first: when it fires, nothing was
-                  // sent.
-                  problem={priceProblems[row.key] ?? form.messageFor(`options.${index}.priceCents`)}
-                />
-                <FormField
-                  id={`capacity-${row.key}`}
-                  label={t("registrationOptions.capacity")}
-                  value={row.capacity}
-                  inputMode="numeric"
-                  onChange={(value) => update(row.key, { capacity: value })}
-                  // The count is the one the screen opened with, or the last
-                  // save's: it does not follow bookings made meanwhile.
-                  hint={
-                    row.remaining === null
-                      ? t("registrationOptions.capacityHint")
-                      : t("registrationOptions.capacityRemaining", { count: row.remaining })
-                  }
-                  problem={
-                    capacityProblems[row.key] ?? form.messageFor(`options.${index}.capacity`)
-                  }
-                />
+                {row.kind === "heading" ? null : (
+                  <FormField
+                    id={`description-${row.key}`}
+                    label={
+                      row.kind === "paragraph"
+                        ? t("registrationOptions.body")
+                        : t("registrationOptions.description")
+                    }
+                    as={row.kind === "paragraph" ? "textarea" : "input"}
+                    maxLength={2000}
+                    value={row.description}
+                    onChange={(value) => update(row.key, { description: value })}
+                    problem={form.messageFor(`options.${index}.description`)}
+                    required={row.kind === "paragraph"}
+                  />
+                )}
+
+                {row.kind === "quantity" ? (
+                  <>
+                    <FormField
+                      id={`price-${row.key}`}
+                      label={t("registrationOptions.price")}
+                      value={row.price}
+                      onChange={(value) => update(row.key, { price: value })}
+                      // The local parse failure first: when it fires, nothing
+                      // was sent.
+                      problem={
+                        priceProblems[row.key] ?? form.messageFor(`options.${index}.priceCents`)
+                      }
+                    />
+                    <FormField
+                      id={`capacity-${row.key}`}
+                      label={t("registrationOptions.capacity")}
+                      value={row.capacity}
+                      inputMode="numeric"
+                      onChange={(value) => update(row.key, { capacity: value })}
+                      // The count is the one the screen opened with, or the
+                      // last save's: it does not follow bookings made
+                      // meanwhile.
+                      hint={
+                        row.remaining === null
+                          ? t("registrationOptions.capacityHint")
+                          : t("registrationOptions.capacityRemaining", { count: row.remaining })
+                      }
+                      problem={
+                        capacityProblems[row.key] ?? form.messageFor(`options.${index}.capacity`)
+                      }
+                    />
+                    <Toggle
+                      id={`counts-${row.key}`}
+                      label={t("registrationOptions.countsGuests")}
+                      hint={t("registrationOptions.countsGuestsHint")}
+                      checked={row.countsGuests}
+                      onChange={(checked) => update(row.key, { countsGuests: checked })}
+                    />
+                  </>
+                ) : null}
+
+                {row.kind === "choice" ? (
+                  <AnswersEditor
+                    row={row}
+                    problem={answerProblems[row.key] ?? form.messageFor(`options.${index}.answers`)}
+                    onChange={(answers) => update(row.key, { answers })}
+                  />
+                ) : null}
+
+                {isInput(row.kind) ? (
+                  <Toggle
+                    id={`required-${row.key}`}
+                    label={t("registrationOptions.required")}
+                    checked={row.required}
+                    onChange={(checked) => update(row.key, { required: checked })}
+                  />
+                ) : null}
 
                 {/* Icon-only, so the aria-label carries the option and a
                     screen reader hears which row moves. Remove sits at the far
@@ -381,15 +516,33 @@ export function EventRegistrationOptions() {
 
           <FormError error={form.error} />
 
+          {/* One button per kind rather than a menu: six choices fit, and a
+              committee member sees at once what a form can hold. */}
+          <div
+            role="group"
+            aria-labelledby="add-block"
+            className="mt-block flex flex-wrap items-center gap-tight"
+          >
+            <span id="add-block" className="w-full text-sm text-ink-muted">
+              {t("registrationOptions.addBlock")}
+            </span>
+            {KINDS.map((kind) => (
+              <Button
+                key={kind}
+                type="button"
+                variant="raised-light"
+                onClick={() => {
+                  setSaved(false);
+                  setDrafts((current) => [...current, blankDraft(kind)]);
+                }}
+              >
+                <Plus aria-hidden="true" />
+                {t(`registrationOptions.kinds.${kind}`)}
+              </Button>
+            ))}
+          </div>
+
           <div className="mt-block flex flex-wrap gap-related">
-            <Button
-              type="button"
-              variant="raised-light"
-              onClick={() => setDrafts((current) => [...current, blankDraft()])}
-            >
-              <Plus aria-hidden="true" />
-              {t("registrationOptions.addOption")}
-            </Button>
             {saved ? (
               <p role="status" className="self-center text-ink-muted">
                 {t("registrationOptions.saved")}
@@ -411,5 +564,112 @@ export function EventRegistrationOptions() {
         </>
       ) : null}
     </PageSection>
+  );
+}
+
+/** A setting of one block, as a switch with its label beside it. */
+function Toggle({
+  id,
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex min-h-touch items-center gap-2">
+        <Switch
+          id={id}
+          checked={checked}
+          aria-describedby={hint ? `${id}-hint` : undefined}
+          onCheckedChange={onChange}
+        />
+        <label htmlFor={id}>{label}</label>
+      </div>
+      {hint ? (
+        <span id={`${id}-hint`} className="text-sm text-ink-muted">
+          {hint}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * A choice's answers, each a field of its own, in the order the guest sees
+ * them.
+ *
+ * An answer keeps its server id through a rename, which is what keeps the
+ * bookings that picked it pointing at it. Removing one somebody picked is
+ * refused by the server, as removing a booked option is.
+ */
+function AnswersEditor({
+  row,
+  problem,
+  onChange,
+}: {
+  row: Draft;
+  problem: string | undefined;
+  onChange: (answers: AnswerDraft[]) => void;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-tight">
+      <legend className="mb-tight text-sm font-semibold">{t("registrationOptions.answers")}</legend>
+      {row.answers.map((answer, position) => (
+        // A grid, so the remove button stays beside its field at 390px
+        // instead of wrapping under it.
+        <div key={answer.key} className="grid grid-cols-[1fr_auto] items-end gap-tight">
+          <FormField
+            id={`answer-${answer.key}`}
+            label={t("registrationOptions.answerNumber", { n: position + 1 })}
+            value={answer.label}
+            maxLength={255}
+            onChange={(value) =>
+              onChange(
+                row.answers.map((other) =>
+                  other.key === answer.key ? { ...other, label: value } : other,
+                ),
+              )
+            }
+          />
+          <Button
+            type="button"
+            variant="raised-light"
+            size="icon"
+            aria-label={t("registrationOptions.removeAnswer", { n: position + 1 })}
+            onClick={() => onChange(row.answers.filter((other) => other.key !== answer.key))}
+          >
+            <Trash2 aria-hidden="true" />
+          </Button>
+        </div>
+      ))}
+      {problem ? (
+        <span className="text-sm text-danger" role="alert">
+          {problem}
+        </span>
+      ) : null}
+      <Button
+        type="button"
+        variant="raised-light"
+        className="w-fit"
+        // Twenty is the API's cap.
+        aria-disabled={row.answers.length >= 20}
+        onClick={() => {
+          if (row.answers.length >= 20) {
+            return;
+          }
+          onChange([...row.answers, answerDraft(null, "")]);
+        }}
+      >
+        <Plus aria-hidden="true" />
+        {t("registrationOptions.addAnswer")}
+      </Button>
+    </fieldset>
   );
 }
