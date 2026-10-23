@@ -21,6 +21,7 @@ import type {
   InboxItemResource,
   InboxSummary200Counts,
   MemberResource,
+  OptionKind,
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
   RegistrationOptionResource,
@@ -1868,10 +1869,30 @@ type MockRegistration = RegistrationResource & { eventId: number };
  *
  * The children's meal has a capacity of 6 against the 3 already booked, so
  * the form shows places left and a fourth child can be refused.
+ *
+ * After the menus, one block of every other kind (ADR 0032), none required,
+ * so a booking of menus alone still goes through.
  */
 function initialOptions(): MockOption[] {
+  const menu: Pick<MockOption, "kind" | "required" | "countsGuests" | "answers"> = {
+    kind: "quantity",
+    required: false,
+    countsGuests: true,
+    answers: [],
+  };
+  const question: Omit<MockOption, "id" | "kind" | "label" | "sortOrder"> = {
+    eventId: 7,
+    description: null,
+    required: false,
+    countsGuests: false,
+    priceCents: null,
+    capacity: null,
+    answers: [],
+  };
+
   return [
     {
+      ...menu,
       eventId: 7,
       id: 1,
       label: "Repas adulte",
@@ -1881,6 +1902,7 @@ function initialOptions(): MockOption[] {
       sortOrder: 0,
     },
     {
+      ...menu,
       eventId: 7,
       id: 2,
       label: "Repas enfant",
@@ -1890,6 +1912,7 @@ function initialOptions(): MockOption[] {
       sortOrder: 1,
     },
     {
+      ...menu,
       eventId: 7,
       id: 3,
       label: "Sans repas",
@@ -1897,6 +1920,27 @@ function initialOptions(): MockOption[] {
       priceCents: null,
       capacity: null,
       sortOrder: 2,
+    },
+    { ...question, id: 4, kind: "heading", label: "Pour la cuisine", sortOrder: 3 },
+    { ...question, id: 5, kind: "yes_no", label: "Végétarien ?", sortOrder: 4 },
+    {
+      ...question,
+      id: 6,
+      kind: "choice",
+      label: "Dessert",
+      answers: [
+        { id: "meringue", label: "Meringue et double crème" },
+        { id: "tiramisu", label: "Tiramisu" },
+      ],
+      sortOrder: 5,
+    },
+    {
+      ...question,
+      id: 7,
+      kind: "text",
+      label: "Allergies",
+      description: "Laissez vide si aucune",
+      sortOrder: 6,
     },
   ];
 }
@@ -1924,8 +1968,10 @@ function initialRegistrations(): MockRegistration[] {
       address: "Route des Alpes 12, 1700 Fribourg",
       tableName: "Avec la famille Python",
       choices: [
-        { optionId: 1, label: "Repas adulte", quantity: 2, priceCents: 4500 },
-        { optionId: 2, label: "Repas enfant", quantity: 3, priceCents: 2000 },
+        line(1, "Repas adulte", 2, 4500),
+        line(2, "Repas enfant", 3, 2000),
+        answer(5, "yes_no", "Végétarien ?", "no"),
+        answer(6, "choice", "Dessert", "meringue", "Meringue et double crème"),
       ],
       guestCount: 5,
       totalCents: 15000,
@@ -1942,7 +1988,7 @@ function initialRegistrations(): MockRegistration[] {
       phoneE164: "+41263221010",
       address: null,
       tableName: null,
-      choices: [{ optionId: 3, label: "Sans repas", quantity: 1, priceCents: null }],
+      choices: [line(3, "Sans repas", 1, null)],
       guestCount: 1,
       // Null, not zero: this booking owes an unknown amount rather than
       // nothing, and the two must be visibly different on screen.
@@ -1953,15 +1999,44 @@ function initialRegistrations(): MockRegistration[] {
   ];
 }
 
+/** A quantity line of a booking, as RegistrationResource carries it. */
+function line(
+  optionId: number,
+  label: string,
+  quantity: number,
+  priceCents: number | null,
+): RegistrationResourceChoicesItem {
+  return {
+    optionId,
+    kind: "quantity",
+    label,
+    quantity,
+    value: null,
+    answerLabel: null,
+    priceCents,
+  };
+}
+
+/** Any other answer of a booking: text, a choice's id, or yes / no. */
+function answer(
+  optionId: number,
+  kind: OptionKind,
+  label: string | null,
+  value: string,
+  answerLabel: string | null = null,
+): RegistrationResourceChoicesItem {
+  return { optionId, kind, label, quantity: null, value, answerLabel, priceCents: null };
+}
+
 let options: MockOption[] = initialOptions();
 let registrations: MockRegistration[] = initialRegistrations();
-let nextOptionId = 4;
+let nextOptionId = 8;
 let nextRegistrationId = 3;
 
 function resetRegistrations(): void {
   options = initialOptions();
   registrations = initialRegistrations();
-  nextOptionId = 4;
+  nextOptionId = 8;
   nextRegistrationId = 3;
 }
 
@@ -1996,7 +2071,7 @@ function remainingOf(option: MockOption): number | null {
     .filter((registration) => registration.eventId === option.eventId)
     .flatMap((registration) => registration.choices)
     .filter((choice) => choice.optionId === option.id)
-    .reduce((sum, choice) => sum + choice.quantity, 0);
+    .reduce((sum, choice) => sum + (choice.quantity ?? 0), 0);
 
   return Math.max(0, option.capacity - booked);
 }
@@ -2024,20 +2099,34 @@ function registrationTag(registration: MockRegistration): string {
  *
  * The server sends both as fields of RegistrationResource so the spreadsheet,
  * the screen and the confirmation mail cannot disagree. The total is null
- * when nothing taken carries a price, which is not zero.
+ * when nothing taken carries a price, which is not zero. Only the quantities
+ * on blocks that count people are people.
  */
-function totalsOf(choices: RegistrationResourceChoicesItem[]): {
+function totalsOf(
+  eventId: number,
+  choices: RegistrationResourceChoicesItem[],
+): {
   guestCount: number;
   totalCents: number | null;
 } {
+  const counted = new Set(
+    optionsFor(eventId)
+      .filter((option) => option.countsGuests)
+      .map((option) => option.id),
+  );
   const priced = choices.filter((choice) => choice.priceCents !== null);
 
   return {
-    guestCount: choices.reduce((sum, choice) => sum + choice.quantity, 0),
+    guestCount: choices
+      .filter((choice) => counted.has(choice.optionId))
+      .reduce((sum, choice) => sum + (choice.quantity ?? 0), 0),
     totalCents:
       priced.length === 0
         ? null
-        : priced.reduce((sum, choice) => sum + (choice.priceCents ?? 0) * choice.quantity, 0),
+        : priced.reduce(
+            (sum, choice) => sum + (choice.priceCents ?? 0) * (choice.quantity ?? 0),
+            0,
+          ),
   };
 }
 
@@ -2106,12 +2195,34 @@ function guestListOf(eventId: number): {
   rows: (string | number | null)[][];
   totals: (string | number | null)[];
 } {
-  const eventOptions = optionsFor(eventId);
+  // The answered blocks only: a heading or a paragraph has no column.
+  const eventOptions = optionsFor(eventId).filter(
+    (option) => option.kind !== "heading" && option.kind !== "paragraph",
+  );
+  const countsGuests = eventOptions.some((option) => option.countsGuests);
   const bookings = registrations
     .filter((registration) => registration.eventId === eventId)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
   const francs = (cents: number | null) => (cents === null ? null : Math.round(cents) / 100);
+
+  // A quantity is its number, 0 when not taken so the column sums; any other
+  // answer is its words, as RegistrationChoice::answerText() writes them.
+  const cell = (booking: MockRegistration, option: RegistrationOptionResource) => {
+    const choice = booking.choices.find((candidate) => candidate.optionId === option.id);
+
+    if (option.kind === "quantity") {
+      return choice?.quantity ?? 0;
+    }
+    if (choice === undefined) {
+      return null;
+    }
+    if (option.kind === "yes_no") {
+      return choice.value === "yes" ? "Oui" : "Non";
+    }
+
+    return option.kind === "choice" ? choice.answerLabel : choice.value;
+  };
 
   const headers = [
     "Nom",
@@ -2120,7 +2231,7 @@ function guestListOf(eventId: number): {
     "Téléphone",
     "Adresse",
     "Table",
-    ...eventOptions.map((option) => option.label),
+    ...eventOptions.map((option) => option.label ?? ""),
     "Personnes",
     "Total CHF",
     "Payé le",
@@ -2134,10 +2245,8 @@ function guestListOf(eventId: number): {
     booking.phone,
     booking.address,
     booking.tableName,
-    ...eventOptions.map(
-      (option) => booking.choices.find((choice) => choice.optionId === option.id)?.quantity ?? 0,
-    ),
-    booking.guestCount,
+    ...eventOptions.map((option) => cell(booking, option)),
+    countsGuests ? booking.guestCount : null,
     francs(booking.totalCents),
     booking.paidAt === null ? null : booking.paidAt.slice(0, 16).replace("T", " "),
     booking.createdAt.slice(0, 16).replace("T", " "),
@@ -2155,13 +2264,16 @@ function guestListOf(eventId: number): {
     "",
     "",
     ...eventOptions.map((option) =>
-      bookings.reduce(
-        (sum, booking) =>
-          sum + (booking.choices.find((choice) => choice.optionId === option.id)?.quantity ?? 0),
-        0,
-      ),
+      option.kind !== "quantity"
+        ? ""
+        : bookings.reduce(
+            (sum, booking) =>
+              sum +
+              (booking.choices.find((choice) => choice.optionId === option.id)?.quantity ?? 0),
+            0,
+          ),
     ),
-    bookings.reduce((sum, booking) => sum + booking.guestCount, 0),
+    countsGuests ? bookings.reduce((sum, booking) => sum + booking.guestCount, 0) : null,
     priced.length === 0 ? null : francs(priced.reduce((sum, cents) => sum + cents, 0)),
     "",
     "",
@@ -4245,52 +4357,107 @@ const overrides = [
       "phone",
     ];
     const missing = required.filter((field) => String(body[field] ?? "").trim() === "");
-    const chosen = (body.choices ?? []).filter((choice) => choice.quantity > 0);
+    const sent = body.choices ?? [];
+    const eventOptions = optionsFor(event.id);
+    const optionOf = (id: number) => eventOptions.find((candidate) => candidate.id === id);
 
-    if (missing.length > 0 || chosen.length === 0) {
+    if (sent.some((choice) => !optionOf(choice.optionId))) {
       return problem(400, "validation_failed", "Invalid form submission", [
-        ...missing.map((field) => ({ field, reason: "required" })),
-        ...(chosen.length === 0 ? [{ field: "choices", reason: "required" }] : []),
+        { field: "choices.0.optionId", reason: "exists" },
       ]);
     }
+
+    // Each answer against its block, then every required block, as
+    // StoreRegistrationRequest::after() checks them.
+    const wrong = sent.flatMap((choice, index) => {
+      const option = optionOf(choice.optionId);
+      const value = choice.value ?? null;
+
+      if (option?.kind === "quantity") {
+        return choice.quantity == null
+          ? [{ field: `choices.${index}.quantity`, reason: "required" }]
+          : [];
+      }
+
+      const fits =
+        value === null ||
+        (option?.kind === "text" && value.length <= 1000) ||
+        (option?.kind === "yes_no" && (value === "yes" || value === "no")) ||
+        (option?.kind === "choice" && option.answers.some((offered) => offered.id === value));
+
+      return fits ? [] : [{ field: `choices.${index}.value`, reason: "not_an_answer" }];
+    });
+
+    const answered = (option: RegistrationOptionResource) =>
+      sent.some(
+        (choice) =>
+          choice.optionId === option.id &&
+          (option.kind === "quantity"
+            ? (choice.quantity ?? 0) > 0
+            : (choice.value ?? "").trim() !== ""),
+      );
+    const unanswered = eventOptions
+      .filter((option) => option.required && !answered(option))
+      .map((option) => ({ field: `answers.${option.id}`, reason: "required" }));
 
     // The per-booking cap compares the whole choices array with a number on
     // the event, so it is raised against `choices` with no params, as the
     // server's closure validator does: that path emits field and reason only,
     // and an interpolating French string would print a literal {{max}}.
-    const guests = chosen.reduce((sum, choice) => sum + choice.quantity, 0);
-    if (event.registrationMaxGuests !== null && guests > event.registrationMaxGuests) {
-      return problem(400, "validation_failed", "Invalid form submission", [
-        { field: "choices", reason: "too_many_guests" },
-      ]);
+    const people = eventOptions.filter((option) => option.countsGuests);
+    const guests = sent
+      .filter((choice) => people.some((option) => option.id === choice.optionId))
+      .reduce((sum, choice) => sum + (choice.quantity ?? 0), 0);
+    const size =
+      people.length === 0
+        ? []
+        : guests === 0
+          ? [{ field: "choices", reason: "no_guests" }]
+          : event.registrationMaxGuests !== null && guests > event.registrationMaxGuests
+            ? [{ field: "choices", reason: "too_many_guests" }]
+            : [];
+
+    const refusals = [
+      ...missing.map((field) => ({ field, reason: "required" })),
+      ...wrong,
+      ...unanswered,
+      ...size,
+    ];
+    if (refusals.length > 0) {
+      return problem(400, "validation_failed", "Invalid form submission", refusals);
     }
 
-    const eventOptions = optionsFor(event.id);
-    const choices: RegistrationResourceChoicesItem[] = [];
-
-    for (const choice of chosen) {
-      const option = eventOptions.find((candidate) => candidate.id === choice.optionId);
+    // A blank answer is no answer, and each kind keeps only its own column.
+    const choices: RegistrationResourceChoicesItem[] = sent.flatMap((choice) => {
+      const option = optionOf(choice.optionId);
       if (!option) {
-        return problem(400, "validation_failed", "Invalid form submission", [
-          { field: "choices.0.optionId", reason: "exists" },
-        ]);
+        return [];
       }
-      choices.push({
-        optionId: option.id,
-        label: option.label,
-        quantity: choice.quantity,
-        priceCents: option.priceCents,
-      });
-    }
+      if (option.kind === "quantity") {
+        return [line(option.id, option.label ?? "", choice.quantity ?? 0, option.priceCents)];
+      }
+
+      const value = (choice.value ?? "").trim();
+
+      return value === ""
+        ? []
+        : [
+            answer(
+              option.id,
+              option.kind,
+              option.label,
+              value,
+              option.answers.find((offered) => offered.id === value)?.label ?? null,
+            ),
+          ];
+    });
 
     // Against `choices.N.quantity`, N the position in what was sent, as
     // RegistrationController::refuseBeyondCapacity reports it.
-    const short = (body.choices ?? []).flatMap((choice, index) => {
-      const remaining = eventOptions.find(
-        (candidate) => candidate.id === choice.optionId,
-      )?.remaining;
+    const short = sent.flatMap((choice, index) => {
+      const remaining = optionOf(choice.optionId)?.remaining;
 
-      return remaining !== null && remaining !== undefined && choice.quantity > remaining
+      return remaining !== null && remaining !== undefined && (choice.quantity ?? 0) > remaining
         ? [{ field: `choices.${index}.quantity`, reason: "not_enough_places" }]
         : [];
     });
@@ -4309,7 +4476,7 @@ const overrides = [
       address: body.address?.trim() ? body.address : null,
       tableName: body.tableName?.trim() ? body.tableName : null,
       choices,
-      ...totalsOf(choices),
+      ...totalsOf(event.id, choices),
       paidAt: null,
       createdAt: new Date().toISOString(),
     };
@@ -4550,14 +4717,34 @@ const overrides = [
     // option of the same label, so a replayed first save converges instead of
     // deleting and re-creating the list. Checking ids alone would refuse a
     // plain retry.
-    const keptIds = incoming
+    // Which existing option each entry updates, as
+    // RegistrationOptionController::targets() decides it: by id, or by an
+    // unclaimed option of the same kind and label. A paragraph without a
+    // label is never adopted.
+    const named = incoming
       .map((option) => option.id)
       .filter((id): id is number => typeof id === "number");
-    const labels = incoming.map((option) => option.label);
+    const adoptable = options.filter(
+      (option) => option.eventId === eventId && !named.includes(option.id),
+    );
+    const targets = incoming.map((option) => {
+      if (typeof option.id === "number") {
+        return options.find((candidate) => candidate.id === option.id) ?? null;
+      }
+      const kind = option.kind ?? "quantity";
+      const match = adoptable.find(
+        (candidate) =>
+          option.label != null && candidate.label === option.label && candidate.kind === kind,
+      );
+      if (match) {
+        adoptable.splice(adoptable.indexOf(match), 1);
+      }
+      return match ?? null;
+    });
 
     const booked = options
       .filter((option) => option.eventId === eventId)
-      .filter((option) => !keptIds.includes(option.id) && !labels.includes(option.label))
+      .filter((option) => !targets.includes(option))
       .filter((option) => labelled(option.id));
 
     if (booked.length > 0) {
@@ -4569,36 +4756,65 @@ const overrides = [
       );
     }
 
-    const claimed: number[] = [];
-    let next = options.filter((option) => option.eventId !== eventId);
+    const picked = (id: number) =>
+      registrations
+        .filter((registration) => registration.eventId === eventId)
+        .flatMap((registration) => registration.choices)
+        .filter((choice) => choice.optionId === id && choice.value !== null)
+        .map((choice) => String(choice.value));
 
-    incoming.forEach((option, index) => {
-      const adopted =
-        option.id ??
-        options.find(
-          (candidate) => candidate.eventId === eventId && candidate.label === option.label,
-        )?.id;
+    const rows: MockOption[] = [];
 
-      const id = adopted ?? nextOptionId++;
-      claimed.push(id);
+    for (const [index, option] of incoming.entries()) {
+      const target = targets[index];
+      const kind = option.kind ?? "quantity";
+      const countsGuests = kind === "quantity" && (option.countsGuests ?? true);
+      const known = target?.answers ?? [];
+      const answers =
+        kind !== "choice"
+          ? []
+          : (option.answers ?? []).map((sentAnswer) => ({
+              id:
+                known.find((old) => old.id === sentAnswer.id)?.id ??
+                known.find((old) => old.label === sentAnswer.label)?.id ??
+                Math.random().toString(36).slice(2, 10),
+              label: sentAnswer.label,
+            }));
 
-      next = [
-        ...next,
-        {
-          eventId,
-          id,
-          label: option.label,
-          description: option.description ?? null,
-          priceCents: option.priceCents ?? null,
-          capacity: option.capacity ?? null,
-          // Falls back to the entry's position, so a client sending the list
-          // in order gets that order without numbering it.
-          sortOrder: option.sortOrder ?? index,
-        },
-      ];
-    });
+      if (target && labelled(target.id)) {
+        if (target.kind !== kind || target.countsGuests !== countsGuests) {
+          return conflict(
+            "option_shape_locked",
+            `Somebody has answered "${target.label}", so its kind and whether it counts people stay as they are`,
+          );
+        }
+        const kept = answers.map((kept) => kept.id);
+        if (kind === "choice" && picked(target.id).some((id) => !kept.includes(id))) {
+          return conflict(
+            "choice_answer_in_use",
+            `An answer of "${target.label}" that somebody picked cannot be removed`,
+          );
+        }
+      }
 
-    options = next.filter((option) => option.eventId !== eventId || claimed.includes(option.id));
+      rows.push({
+        eventId,
+        id: target?.id ?? nextOptionId++,
+        kind,
+        label: option.label ?? null,
+        description: option.description ?? null,
+        required: kind !== "heading" && kind !== "paragraph" && (option.required ?? false),
+        countsGuests,
+        priceCents: option.priceCents ?? null,
+        capacity: option.capacity ?? null,
+        answers,
+        // Falls back to the entry's position, so a client sending the list
+        // in order gets that order without numbering it.
+        sortOrder: option.sortOrder ?? index,
+      });
+    }
+
+    options = [...options.filter((option) => option.eventId !== eventId), ...rows];
 
     return collection(optionsFor(eventId), request, 200, { ETag: optionsTag(eventId) });
   }),

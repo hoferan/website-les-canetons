@@ -6,7 +6,9 @@ import {
   authMe,
   configShow,
   contactStore,
+  registrationStore,
 } from "../api/generated/endpoints";
+import type { StoreRegistrationRequest } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { publicWriteHeaders } from "../api/publicWrite";
 import { setMemberRoles, setMockUser } from "./handlers";
@@ -1230,4 +1232,61 @@ test("an image file is served as a labelled placeholder of its own size", async 
   const smallest = first.sizes[0] as ImageRow["sizes"][number];
   expect(smallest.width).toBeLessThan(first.width);
   expect(await (await fetch(smallest.url)).text()).toContain(`width="${smallest.width}"`);
+});
+
+/** A public booking for the mocked souper, event 7, with these answers. */
+function bookSouper(choices: StoreRegistrationRequest["choices"]) {
+  return registrationStore(
+    7,
+    {
+      lastName: "Canard",
+      firstName: "Donald",
+      email: "donald@example.com",
+      phone: "079 000 00 00",
+      choices,
+      website: "",
+    },
+    publicWriteHeaders("mock-form-token", "handlers-test-booking-key"),
+  );
+}
+
+test("POST /registrations books a menu with answers to the other blocks", async () => {
+  const result = await bookSouper([
+    { optionId: 1, quantity: 2 },
+    { optionId: 5, value: "yes" },
+    { optionId: 6, value: "tiramisu" },
+    { optionId: 7, value: "Noix" },
+  ]);
+
+  expect(result.status).toBe(201);
+  if (result.status !== 201) {
+    throw new Error("the booking was not created");
+  }
+  expect(result.data.guestCount).toBe(2);
+  expect(result.data.choices.map((choice) => [choice.kind, choice.value])).toEqual([
+    ["quantity", null],
+    ["yes_no", "yes"],
+    ["choice", "tiramisu"],
+    ["text", "Noix"],
+  ]);
+  expect(result.data.choices[2]?.answerLabel).toBe("Tiramisu");
+});
+
+test("POST /registrations needs one person when the form counts people", async () => {
+  const error = (await bookSouper([{ optionId: 5, value: "no" }]).catch(
+    (thrown: unknown) => thrown,
+  )) as ApiError;
+
+  expect(error.status).toBe(400);
+  expect(error.fields).toEqual([{ field: "choices", reason: "no_guests" }]);
+});
+
+test("POST /registrations refuses an answer the block does not offer", async () => {
+  const error = (await bookSouper([
+    { optionId: 1, quantity: 1 },
+    { optionId: 6, value: "flan" },
+  ]).catch((thrown: unknown) => thrown)) as ApiError;
+
+  expect(error.status).toBe(400);
+  expect(error.fields).toEqual([{ field: "choices.1.value", reason: "not_an_answer" }]);
 });
