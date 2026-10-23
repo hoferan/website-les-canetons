@@ -167,6 +167,10 @@ export const fr = {
       "Des réponses ou des inscriptions existent déjà : l'événement ne peut plus repasser en brouillon.",
     option_has_registrations:
       "Impossible de supprimer une option déjà réservée. Annulez d'abord les inscriptions concernées.",
+    option_shape_locked:
+      "Quelqu'un a déjà répondu à ce bloc : son type et le fait qu'il compte des personnes ne peuvent plus changer. Ajoutez plutôt un nouveau bloc.",
+    choice_answer_in_use:
+      "Quelqu'un a choisi cette réponse : elle ne peut pas être supprimée. Vous pouvez la renommer.",
     xlsx_unavailable: "L'export Excel n'est pas disponible sur ce serveur. Utilisez le format CSV.",
     register_in_use:
       "Des membres jouent dans ce pupitre ou l'enseignent. Attribuez-leur d'abord un autre pupitre.",
@@ -205,6 +209,8 @@ export const fr = {
     // Against `choices.N.quantity`, when an option's capacity has fewer
     // places left. No parameter, for the same reason as too_many_guests.
     not_enough_places: "dépasse les places encore libres",
+    // Against `options.N.answers`, a choice with one answer.
+    too_few_answers: "doit proposer au moins deux réponses",
     // The photo checks, on each size and on the set. No parameters, as with
     // too_many_guests. The browser shrinks and re-encodes a photo before
     // sending it, so only a failed or bypassed shrink reaches these.
@@ -309,6 +315,11 @@ export const fr = {
     priceCents: "Prix",
     capacity: "Nombre de places",
     sortOrder: "Ordre",
+    kind: "Type de bloc",
+    required: "Obligatoire",
+    countsGuests: "Compte comme personnes",
+    answers: "Réponses",
+    key: "Réponse",
   },
 
   /**

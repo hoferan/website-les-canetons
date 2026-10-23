@@ -152,6 +152,10 @@ export const de: typeof fr = {
       "Es liegen bereits Antworten oder Anmeldungen vor: Die Veranstaltung kann nicht mehr zum Entwurf werden.",
     option_has_registrations:
       "Eine bereits gebuchte Option kann nicht gelöscht werden. Stornieren Sie zuerst die betroffenen Anmeldungen.",
+    option_shape_locked:
+      "Jemand hat diesen Block bereits beantwortet: Seine Art und ob er Personen zählt, lassen sich nicht mehr ändern. Fügen Sie stattdessen einen neuen Block hinzu.",
+    choice_answer_in_use:
+      "Jemand hat diese Antwort gewählt: Sie kann nicht gelöscht werden. Sie können sie umbenennen.",
     xlsx_unavailable:
       "Der Excel-Export ist auf diesem Server nicht verfügbar. Verwenden Sie das CSV-Format.",
     register_in_use:
@@ -183,6 +187,7 @@ export const de: typeof fr = {
     // that sends only `field` and `reason`, so a {{max}} would print as is.
     too_many_guests: "überschreitet die pro Anmeldung zulässige Personenzahl",
     not_enough_places: "übersteigt die noch freien Plätze",
+    too_few_answers: "muss mindestens zwei Antworten anbieten",
     image_not_jpeg: "muss ein JPEG-Bild sein",
     image_too_large: "hat zu viele Pixel",
     image_too_heavy: "ist zu gross",
@@ -272,6 +277,11 @@ export const de: typeof fr = {
     priceCents: "Preis",
     capacity: "Anzahl Plätze",
     sortOrder: "Reihenfolge",
+    kind: "Art des Blocks",
+    required: "Pflichtfeld",
+    countsGuests: "Zählt als Personen",
+    answers: "Antworten",
+    key: "Antwort",
   },
 
   common: {

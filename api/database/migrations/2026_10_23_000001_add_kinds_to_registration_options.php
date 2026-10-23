@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Schema;
  * and the totals behave as before. The backfill runs only when the column is
  * first added, so a re-run cannot undo a committee's later untick.
  *
+ * `label` becomes nullable for a paragraph without a title, and
  * `description` widens to text for a paragraph's body. A choice row's
  * `quantity` becomes nullable and gains `value`, for the answers that are not
  * a number. Both are additive, so code from before this deploy keeps working.
@@ -29,6 +30,7 @@ return new class extends Migration
                 $table->boolean('required')->default(false)->after('description');
                 $table->boolean('counts_guests')->default(false)->after('required');
                 $table->json('settings')->nullable()->after('capacity');
+                $table->string('label')->nullable()->change();
                 $table->text('description')->nullable()->change();
             });
 

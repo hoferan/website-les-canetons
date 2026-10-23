@@ -5163,6 +5163,11 @@ export const getRegistrationOptionReplaceUrl = (event: number) => {
  * `409 option_has_registrations`, names the options in the way, and
  * changes nothing. An `id` belonging to another event's option, more
  * than 50 entries, or a missing label answers `400 validation_failed`.
+ *
+ * Each entry is one block of the form, by `kind`. A block somebody has
+ * answered keeps its kind and its `countsGuests`
+ * (`409 option_shape_locked`), and a choice keeps every answer somebody
+ * picked (`409 choice_answer_in_use`); its wording may change.
  * @summary Replace an event's bookable options
  */
 export const registrationOptionReplace = async (

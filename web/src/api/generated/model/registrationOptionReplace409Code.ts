@@ -317,5 +317,7 @@ export type RegistrationOptionReplace409Code =
   (typeof RegistrationOptionReplace409Code)[keyof typeof RegistrationOptionReplace409Code];
 
 export const RegistrationOptionReplace409Code = {
+  choice_answer_in_use: "choice_answer_in_use",
   option_has_registrations: "option_has_registrations",
+  option_shape_locked: "option_shape_locked",
 } as const;

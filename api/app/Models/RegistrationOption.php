@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * answers in `settings`.
  *
  * @property OptionKind $kind
+ * @property string|null $label
  * @property bool $required
  * @property bool $counts_guests
  * @property array<string, mixed>|null $settings

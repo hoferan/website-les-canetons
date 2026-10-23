@@ -220,11 +220,11 @@ class RegistrationSchemaTest extends TestCase
 
         $this->kindsMigration()->up();
 
-        $row = DB::table('event_registration_options')->find($id);
-        $this->assertSame('quantity', $row->kind);
-        $this->assertSame(1, (int) $row->counts_guests);
-        $this->assertSame(0, (int) $row->required);
-        $this->assertNull($row->settings);
+        $row = (array) DB::table('event_registration_options')->find($id);
+        $this->assertSame('quantity', $row['kind']);
+        $this->assertSame(1, (int) $row['counts_guests']);
+        $this->assertSame(0, (int) $row['required']);
+        $this->assertNull($row['settings']);
     }
 
     public function test_the_kinds_migration_is_idempotent(): void

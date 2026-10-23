@@ -309,6 +309,8 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { OptionKind } from "./optionKind";
+import type { ReplaceRegistrationOptionsRequestOptionsItemAnswersItem } from "./replaceRegistrationOptionsRequestOptionsItemAnswersItem";
 
 export type ReplaceRegistrationOptionsRequestOptionsItem = {
   /**
@@ -316,30 +318,43 @@ export type ReplaceRegistrationOptionsRequestOptionsItem = {
    * @nullable
    */
   id?: number | null;
+  /** What this block is: `quantity`, `text`, `choice`, `yes_no`, `heading` or `paragraph`. Omitted, it is a `quantity`. A block somebody has answered cannot change kind. */
+  kind?: OptionKind;
   /**
-   * What the guest sees on the booking form, for example "Repas adulte".
-   * @maxLength 255
-   */
-  label: string;
-  /**
+   * What the guest sees on the booking form, for example "Repas adulte". Optional on a paragraph only.
    * @maxLength 255
    * @nullable
    */
-  description?: string | null;
+  label?: string | null;
   /**
-   * Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own.
+   * Help text under the label, or a paragraph's body, which it requires.
+   * @maxLength 2000
+   * @nullable
+   */
+  description?: string | null;
+  /** Whether the guest must answer this block. Default `false`. Turning it on later changes no booking already made. */
+  required?: boolean;
+  /** Quantities only: whether the number is people, added up against the per-booking maximum. Omitted on a quantity, it is `true`. A block somebody has booked cannot flip it. */
+  countsGuests?: boolean;
+  /**
+   * Quantities only. Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own.
    * @minimum 0
    * @maximum 1000000
    * @nullable
    */
   priceCents?: number | null;
   /**
-   * How many of this option can be booked across every guest, at least 1. Omit or send `null` for no limit. Lowering it below what is booked already stops further bookings and changes none.
+   * Quantities only. How many of this option can be booked across every guest, at least 1. Omit or send `null` for no limit. Lowering it below what is booked already stops further bookings and changes none.
    * @minimum 1
    * @maximum 100000
    * @nullable
    */
   capacity?: number | null;
+  /**
+   * Choices only, and required there: 2 to 20 answers, in order. Send each answer's `key` back to keep it; a booking that picked an answer stays on it through a rename. An answer somebody picked cannot be removed.
+   * @maxItems 20
+   */
+  answers?: ReplaceRegistrationOptionsRequestOptionsItemAnswersItem[];
   /**
    * Where this option sits on the form, lowest first, ties broken by id. Omitted, it takes the entry position in the list you send.
    * @minimum 0

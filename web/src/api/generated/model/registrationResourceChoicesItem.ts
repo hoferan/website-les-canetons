@@ -312,8 +312,10 @@
 
 export type RegistrationResourceChoicesItem = {
   optionId: number;
-  label: string;
-  quantity: number;
+  /** @nullable */
+  label: string | null;
+  /** @nullable */
+  quantity: number | null;
   /** @nullable */
   priceCents: number | null;
 };

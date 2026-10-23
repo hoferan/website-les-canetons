@@ -314,7 +314,7 @@ import { faker } from "@faker-js/faker";
 import { HttpResponse, http } from "msw";
 import type { RequestHandlerOptions } from "msw";
 
-import { AttendanceStatus, Environment, TagColour } from "./model";
+import { AttendanceStatus, Environment, OptionKind, TagColour } from "./model";
 import type {
   AccountPassword200,
   AgendaIndex200,
@@ -1024,8 +1024,11 @@ export const getRegistrationStoreResponseMock = (
   choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       optionId: faker.number.int(),
-      label: faker.string.alpha({ length: { min: 10, max: 20 } }),
-      quantity: faker.number.int(),
+      label: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      quantity: faker.helpers.arrayElement([faker.number.int(), null]),
       priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     }),
   ),
@@ -1060,8 +1063,11 @@ export const getRegistrationIndexResponseMock = (
     choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
       () => ({
         optionId: faker.number.int(),
-        label: faker.string.alpha({ length: { min: 10, max: 20 } }),
-        quantity: faker.number.int(),
+        label: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        quantity: faker.helpers.arrayElement([faker.number.int(), null]),
         priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
       }),
     ),
@@ -1113,11 +1119,23 @@ export const getRegistrationFormResponseMock = (
   options: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       id: faker.number.int(),
-      label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      kind: faker.helpers.arrayElement(Object.values(OptionKind)),
+      label: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
       description: faker.helpers.arrayElement([
         faker.string.alpha({ length: { min: 10, max: 20 } }),
         null,
       ]),
+      required: faker.datatype.boolean(),
+      countsGuests: faker.datatype.boolean(),
+      answers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({
+          key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        }),
+      ),
       priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
       capacity: faker.helpers.arrayElement([faker.number.int(), null]),
       remaining: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -1174,8 +1192,11 @@ export const getRegistrationShowResponseMock = (
   choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       optionId: faker.number.int(),
-      label: faker.string.alpha({ length: { min: 10, max: 20 } }),
-      quantity: faker.number.int(),
+      label: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      quantity: faker.helpers.arrayElement([faker.number.int(), null]),
       priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     }),
   ),
@@ -1206,8 +1227,11 @@ export const getRegistrationUpdateResponseMock = (
   choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       optionId: faker.number.int(),
-      label: faker.string.alpha({ length: { min: 10, max: 20 } }),
-      quantity: faker.number.int(),
+      label: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      quantity: faker.helpers.arrayElement([faker.number.int(), null]),
       priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     }),
   ),
@@ -1227,11 +1251,20 @@ export const getRegistrationOptionIndexResponseMock = (
 ): RegistrationOptionIndex200 => ({
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
-    label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    kind: faker.helpers.arrayElement(Object.values(OptionKind)),
+    label: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
     description: faker.helpers.arrayElement([
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
     ]),
+    required: faker.datatype.boolean(),
+    countsGuests: faker.datatype.boolean(),
+    answers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      }),
+    ),
     priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     capacity: faker.helpers.arrayElement([faker.number.int(), null]),
     remaining: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -1246,11 +1279,20 @@ export const getRegistrationOptionReplaceResponseMock = (
 ): RegistrationOptionReplace200 => ({
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
-    label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    kind: faker.helpers.arrayElement(Object.values(OptionKind)),
+    label: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
     description: faker.helpers.arrayElement([
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
     ]),
+    required: faker.datatype.boolean(),
+    countsGuests: faker.datatype.boolean(),
+    answers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      }),
+    ),
     priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     capacity: faker.helpers.arrayElement([faker.number.int(), null]),
     remaining: faker.helpers.arrayElement([faker.number.int(), null]),
