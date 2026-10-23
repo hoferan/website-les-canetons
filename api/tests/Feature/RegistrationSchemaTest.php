@@ -7,10 +7,12 @@ use App\Models\Member;
 use App\Models\Registration;
 use App\Models\RegistrationChoice;
 use App\Models\RegistrationOption;
+use App\Support\OptionKind;
 use App\Support\Permission;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class RegistrationSchemaTest extends TestCase
@@ -201,5 +203,73 @@ class RegistrationSchemaTest extends TestCase
         $this->assertNotContains(Permission::HistoryManage->value, $permissions);
         $this->assertNotContains(Permission::ImagesManage->value, $permissions);
         $this->assertNotContains(Permission::RolesManage->value, $permissions);
+    }
+
+    public function test_existing_options_become_ticked_quantity_blocks(): void
+    {
+        // Every option before the kinds existed is a souper menu: it counts
+        // people, and the per-booking cap must keep reading it that way.
+        $this->kindsMigration()->down();
+        $event = Event::factory()->takingRegistrations()->create();
+        $id = DB::table('event_registration_options')->insertGetId([
+            'event_id' => $event->id,
+            'label' => 'Menu viande',
+            'price_cents' => 4500,
+            'sort_order' => 0,
+        ]);
+
+        $this->kindsMigration()->up();
+
+        $row = DB::table('event_registration_options')->find($id);
+        $this->assertSame('quantity', $row->kind);
+        $this->assertSame(1, (int) $row->counts_guests);
+        $this->assertSame(0, (int) $row->required);
+        $this->assertNull($row->settings);
+    }
+
+    public function test_the_kinds_migration_is_idempotent(): void
+    {
+        $this->kindsMigration()->up();
+        $this->kindsMigration()->up();
+
+        $this->assertTrue(Schema::hasColumns('event_registration_options', ['kind', 'required', 'counts_guests', 'settings']));
+        $this->assertTrue(Schema::hasColumn('registration_choices', 'value'));
+    }
+
+    public function test_a_choice_may_carry_a_value_and_no_quantity(): void
+    {
+        $option = RegistrationOption::factory()->kind(OptionKind::YesNo)->create();
+        $booking = Registration::factory()->create(['event_id' => $option->event_id]);
+
+        RegistrationChoice::create([
+            'registration_id' => $booking->id,
+            'option_id' => $option->id,
+            'quantity' => null,
+            'value' => 'yes',
+        ]);
+
+        $choice = $booking->choices()->sole();
+        $this->assertNull($choice->quantity);
+        $this->assertSame('yes', $choice->value);
+    }
+
+    public function test_the_guest_count_leaves_out_unticked_blocks(): void
+    {
+        // "How many bottles do you bring" is a quantity, but not people.
+        $event = Event::factory()->takingRegistrations()->create();
+        $meal = RegistrationOption::factory()->create(['event_id' => $event->id]);
+        $bottles = RegistrationOption::factory()->uncounted()->create(['event_id' => $event->id]);
+
+        $booking = Registration::factory()
+            ->withChoice($meal, 2)
+            ->withChoice($bottles, 5)
+            ->create(['event_id' => $event->id]);
+
+        $this->assertSame(2, $booking->load('choices.option')->guest_count);
+    }
+
+    private function kindsMigration(): object
+    {
+        return require database_path('migrations/2026_10_23_000001_add_kinds_to_registration_options.php');
     }
 }

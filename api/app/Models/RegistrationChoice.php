@@ -6,13 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * How many of one option a booking asked for.
+ * A booking's answer to one block of the form.
  *
- * A quantity, not a row per person: UNIQUE(registration_id, option_id) keeps
- * it one row per option.
+ * A quantity block fills `quantity`, a number and not a row per person;
+ * every other input kind fills `value` (the text, the chosen answer's key, or
+ * `yes`/`no`). UNIQUE(registration_id, option_id) keeps it one row per block.
  *
  * No factory: a choice cannot exist without a registration and an option, so
  * RegistrationFactory builds them through withChoice().
+ *
+ * @property int|null $quantity
+ * @property string|null $value
  */
 class RegistrationChoice extends Model
 {
@@ -20,6 +24,7 @@ class RegistrationChoice extends Model
         'registration_id',
         'option_id',
         'quantity',
+        'value',
     ];
 
     protected function casts(): array

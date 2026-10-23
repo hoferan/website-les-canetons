@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\OptionKind;
 use Database\Factories\RegistrationOptionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `capacity` caps the bookings across every guest; null is no limit (ADR
  * 0031). RegistrationController counts against it under a lock.
  *
+ * `kind` makes it one block of the event's form (ADR 0032). Price, capacity
+ * and `counts_guests` mean something only on a quantity; a choice keeps its
+ * answers in `settings`.
+ *
+ * @property OptionKind $kind
+ * @property bool $required
+ * @property bool $counts_guests
+ * @property array<string, mixed>|null $settings
  * @property int|null $price_cents
  * @property int|null $capacity
  */
@@ -32,12 +41,51 @@ class RegistrationOption extends Model
 
     protected $fillable = [
         'event_id',
+        'kind',
         'label',
         'description',
+        'required',
+        'counts_guests',
         'price_cents',
         'capacity',
+        'settings',
         'sort_order',
     ];
+
+    /** Mirrors the column defaults, which create() never reads back. */
+    protected $attributes = [
+        'kind' => 'quantity',
+        'required' => false,
+        'counts_guests' => false,
+    ];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return [
+            'kind' => OptionKind::class,
+            'required' => 'boolean',
+            'counts_guests' => 'boolean',
+            'settings' => 'array',
+        ];
+    }
+
+    /**
+     * A choice's answers, in the order the committee wrote them.
+     *
+     * The key is what a booking stores, so renaming an answer renames it on
+     * every booking that picked it. Empty for every other kind.
+     *
+     * @return list<array{key: string, label: string}>
+     */
+    public function answers(): array
+    {
+        if ($this->kind !== OptionKind::Choice) {
+            return [];
+        }
+
+        return array_values($this->settings['answers'] ?? []);
+    }
 
     /** @return BelongsTo<Event, $this> */
     public function event(): BelongsTo

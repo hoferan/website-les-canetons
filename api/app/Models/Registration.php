@@ -85,13 +85,17 @@ class Registration extends Model
     /**
      * How many people this booking is for.
      *
-     * The sum of the quantities, so "3 x meat, 1 x child" is four people.
-     * `registration_max_guests` caps this. It reads the loaded choices rather
-     * than querying, so the guest list does not become an N+1.
+     * The sum of the quantities on blocks that count people, so "3 x meat,
+     * 1 x child" is four people and "5 bottles" is none.
+     * `registration_max_guests` caps this. It reads the loaded choices and
+     * their options rather than querying, so the guest list does not become an
+     * N+1.
      */
     protected function guestCount(): Attribute
     {
-        return Attribute::get(fn (): int => (int) $this->choices->sum('quantity'));
+        return Attribute::get(fn (): int => (int) $this->choices
+            ->filter(fn (RegistrationChoice $choice): bool => $choice->option?->counts_guests === true)
+            ->sum('quantity'));
     }
 
     /**
