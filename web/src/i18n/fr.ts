@@ -800,7 +800,7 @@ export const fr = {
     opensDate: "Ouverture des inscriptions",
     opensTime: "Heure d’ouverture",
     opensHint:
-      "Sans date d’ouverture, le formulaire est en ligne dès maintenant. Renseignez-la pour préparer un événement dont les inscriptions ne doivent pas encore apparaître.",
+      "Une fois le formulaire ouvert, il est en ligne tout de suite s’il n’a pas de date d’ouverture. Renseignez-la pour qu’il n’apparaisse qu’à partir de ce jour-là.",
     maxGuests: "Personnes par inscription",
     maxGuestsHint:
       "Le maximum qu’une seule inscription peut couvrir, entre 1 et 100. Laissez vide pour ne pas limiter. Pour limiter la salle, donnez un nombre de places à chaque menu dans «\u00a0Ce qu’on réserve\u00a0».",
@@ -808,7 +808,7 @@ export const fr = {
     asksAddress: "Demander l’adresse",
     asksTable: "Demander la table",
     formOpenHint:
-      "Tant que le formulaire n’est pas ouvert, le public ne le voit pas\u00a0: vous pouvez le préparer à l’avance.",
+      "Le formulaire n’apparaît au public que coché et entre ses dates\u00a0: vous pouvez le préparer à l’avance et ne l’ouvrir qu’ensuite.",
   },
 
   /**
@@ -1053,6 +1053,8 @@ export const fr = {
     exportsHint:
       "Les quatre fichiers contiennent exactement les mêmes lignes. Excel est celui que le comité ouvre\u00a0; CSV fonctionne partout.",
     empty: "Personne ne s’est encore inscrit. Le formulaire public est à l’adresse",
+    emptyClosed:
+      "Personne ne s’est encore inscrit. Le formulaire n’est pas encore ouvert au public\u00a0: cochez «\u00a0Formulaire ouvert\u00a0» sur l’événement.",
 
     /**
      * The two "Annuler"s are not one key. `cancel` is the per-row button that

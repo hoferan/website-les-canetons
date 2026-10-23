@@ -91,10 +91,14 @@ class RegistrationFormSettingsTest extends TestCase
             ...$extra,
         ]);
         $taking = $row(['registration_closes_at' => now()->addWeeks(2)]);
+        $formless = $row([]);
 
         $this->formSwitches()->up();
 
         $this->assertSame(1, (int) ((array) DB::table('events')->find($taking))['registration_enabled']);
+        // An event with no form yet stays closed, or typing a closing date on
+        // it later would put a half-built form online on save.
+        $this->assertSame(0, (int) ((array) DB::table('events')->find($formless))['registration_enabled']);
         $this->assertTrue(Event::query()->findOrFail($taking)->registrationIsOpen());
         // The column's default is false for what comes after.
         $this->assertSame(0, (int) ((array) DB::table('events')->find($row([])))['registration_enabled']);

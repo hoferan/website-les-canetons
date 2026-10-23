@@ -43,7 +43,9 @@ it from the public.
   of a closed form stay reachable. `acceptsBookings()` is the public test: a form that
   exists and is open.
 - The migration adds the column with a default of true, so every form taking bookings
-  at deploy keeps taking them in the same statement, then drops the default to false.
+  at deploy keeps taking them in the same statement. It then closes every event with no
+  form, so typing a closing date on one later does not put a half-built form online, and
+  drops the default to false.
 - `registration_asks_address` and `registration_asks_table`, both true by default. A form
   that does not ask for one stores none, whatever a booking sends. Name, email and phone
   stay asked on every form.

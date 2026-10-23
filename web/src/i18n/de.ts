@@ -595,7 +595,7 @@ export const de: typeof fr = {
     opensDate: "Anmeldebeginn",
     opensTime: "Uhrzeit des Anmeldebeginns",
     opensHint:
-      "Ohne Anmeldebeginn ist das Formular ab sofort online. Tragen Sie ihn ein, um einen Anlass vorzubereiten, dessen Anmeldungen noch nicht erscheinen sollen.",
+      "Sobald das Formular geöffnet ist, ist es ohne Anmeldebeginn sofort online. Tragen Sie ihn ein, damit es erst ab diesem Tag erscheint.",
     maxGuests: "Personen pro Anmeldung",
     maxGuestsHint:
       "Das Maximum, das eine einzelne Anmeldung abdecken kann, zwischen 1 und 100. Leer lassen, um nicht zu begrenzen. Um den Saal zu begrenzen, geben Sie jedem Menü unter «Was buchbar ist» eine Anzahl Plätze.",
@@ -603,7 +603,7 @@ export const de: typeof fr = {
     asksAddress: "Adresse erfragen",
     asksTable: "Tisch erfragen",
     formOpenHint:
-      "Solange das Formular nicht geöffnet ist, sieht das Publikum es nicht: Sie können es im Voraus vorbereiten.",
+      "Das Formular erscheint nur angekreuzt und zwischen seinen Daten: Sie können es im Voraus vorbereiten und erst dann öffnen.",
   },
 
   seriesForm: {
@@ -787,6 +787,8 @@ export const de: typeof fr = {
     exportsHint:
       "Alle vier Dateien enthalten genau dieselben Zeilen. Excel ist die, die der Vorstand öffnet; CSV funktioniert überall.",
     empty: "Es hat sich noch niemand angemeldet. Das öffentliche Formular ist unter",
+    emptyClosed:
+      "Es hat sich noch niemand angemeldet. Das Formular ist für das Publikum noch nicht geöffnet: Kreuzen Sie beim Anlass «Formular geöffnet» an.",
 
     // "Stornieren", not "Abbrechen": this cancels a booking, while
     // common.cancel closes a form without doing anything. French says

@@ -434,7 +434,15 @@ export function EventRegistrations() {
 
       {!list.isPending && !list.isError && bookings.length === 0 ? (
         <p className="mt-block text-ink-muted">
-          {t("registrations.empty")} <code>/events/{eventId}/book</code>.
+          {/* A form that is not open answers 404 at its address (ADR 0033),
+              so the address is offered only once there is something there. */}
+          {title?.registrationEnabled ? (
+            <>
+              {t("registrations.empty")} <code>/events/{eventId}/book</code>.
+            </>
+          ) : (
+            t("registrations.emptyClosed")
+          )}
         </p>
       ) : null}
 

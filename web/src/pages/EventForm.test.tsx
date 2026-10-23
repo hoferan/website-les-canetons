@@ -453,3 +453,15 @@ test("a form can stop asking for the address and the table", async () => {
   expect(created.registrationAsksAddress).toBe(false);
   expect(created.registrationAsksTable).toBe(false);
 });
+
+/**
+ * The dates and the switch together decide whether the public sees a form
+ * (ADR 0033), so neither hint may claim the dates alone do.
+ */
+test("the hints say the form shows once it is open and within its dates", async () => {
+  await renderForm();
+
+  expect(screen.queryByText(/le formulaire est en ligne dès maintenant/)).not.toBeInTheDocument();
+  expect(screen.getByText(/Une fois le formulaire ouvert/)).toBeInTheDocument();
+  expect(screen.getByText(/n’apparaît au public que coché et entre ses dates/)).toBeInTheDocument();
+});

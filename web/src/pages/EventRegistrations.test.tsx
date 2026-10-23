@@ -529,12 +529,30 @@ test("says in French when a server cannot make an Excel file", async () => {
   expect(await screen.findByText(/L'export Excel n'est pas disponible/)).toBeInTheDocument();
 });
 
-test("an event nobody has booked says where the form is", async () => {
-  // Event 1 is a rehearsal: no options, no bookings.
+test("an open form nobody has booked says where the form is", async () => {
+  server.use(
+    http.get("*/api/v1/events/:id/registrations", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
+  await renderGuestList();
+
+  expect(screen.getByText(/Personne ne s’est encore inscrit/)).toBeInTheDocument();
+  expect(screen.getByText("/events/7/book")).toBeInTheDocument();
+  expect(screen.queryByTestId("guest-cards")).not.toBeInTheDocument();
+});
+
+/**
+ * A form that is not open answers 404 at that address, so handing it out
+ * would send guests to "no form here" (ADR 0033).
+ */
+test("a form that is not open gives no address to share, and says how to open it", async () => {
+  // Event 1 is a rehearsal: no open form, no bookings.
   await renderGuestList("demo.direction", 1);
 
   expect(screen.getByText(/Personne ne s’est encore inscrit/)).toBeInTheDocument();
-  expect(screen.queryByTestId("guest-cards")).not.toBeInTheDocument();
+  expect(screen.getByText(/Le formulaire n’est pas encore ouvert au public/)).toBeInTheDocument();
+  expect(screen.queryByText("/events/1/book")).not.toBeInTheDocument();
 });
 
 test("the guest card carries the postal address", async () => {

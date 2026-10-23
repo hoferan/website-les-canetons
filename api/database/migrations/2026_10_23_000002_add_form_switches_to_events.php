@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -9,10 +10,10 @@ use Illuminate\Support\Facades\Schema;
  * and whether it asks for an address and a table.
  *
  * `registration_enabled` is added with a default of true, so the ADD itself
- * keeps every form that takes bookings today taking them, in one statement
- * with no backfill to skip. The default then drops to false, so a new form
- * starts closed. That second step re-runs harmlessly, and a run that died
- * between the two leaves only the default to fix, which the next run does.
+ * keeps every form that takes bookings today taking them, in one statement.
+ * Events with no form are then closed again, and the default drops to false,
+ * so a new form starts closed. Both later steps re-run harmlessly, so a run
+ * that died partway is finished by the next one.
  *
  * The two `asks` columns default to true, which is what every form did.
  *
@@ -33,6 +34,14 @@ return new class extends Migration
                 Schema::table('events', $add);
             }
         }
+
+        // The ADD opened every row; only the ones with a form were taking
+        // bookings. An event with no form stays closed, or typing a closing
+        // date on it later would put a half-built form online on save.
+        // Unconditional, so a run that died after the ADD still does it: the
+        // migration re-runs only while every request answers 503, so nobody
+        // can have ticked the switch in between.
+        DB::table('events')->whereNull('registration_closes_at')->update(['registration_enabled' => false]);
 
         Schema::table('events', function (Blueprint $table) {
             $table->boolean('registration_enabled')->default(false)->change();
