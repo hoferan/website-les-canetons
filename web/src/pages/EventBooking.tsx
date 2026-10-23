@@ -547,6 +547,12 @@ function QuantityField({
       <div className="flex flex-col">
         <label htmlFor={id}>
           {option.label}
+          {option.required ? (
+            <span aria-hidden="true" className="text-danger">
+              {" "}
+              *
+            </span>
+          ) : null}
           {/* Null, not zero: an option whose price lives in its description
               says nothing here instead of claiming to be free. */}
           {option.priceCents === null ? null : (
@@ -573,7 +579,10 @@ function QuantityField({
       <Input
         id={id}
         type="number"
-        min={0}
+        // A required quantity needs at least one, which the browser checks
+        // before anything is sent, as it does for the contact fields.
+        min={option.required ? 1 : 0}
+        required={option.required && !soldOut}
         max={max}
         inputMode="numeric"
         className="w-20"
@@ -628,12 +637,19 @@ function RadioQuestion({
   const name = `option-${option.id}`;
   const hintId = `${name}-hint`;
   const errorId = `${name}-error`;
+  // The browser's finding, raised by `formIsValid` on a required question
+  // left unanswered. Without it focus lands on a radio and nothing says why.
+  const [missing, setMissing] = useState(false);
+  const shown = problem ?? (missing ? t("booking.answerRequired") : undefined);
 
   return (
+    // min-w-0: a fieldset defaults to min-width: min-content, so one long
+    // unbroken answer would widen the card past a phone's screen. Measured at
+    // 258px of sideways scroll before this.
     <fieldset
-      className="flex flex-col gap-1"
+      className="flex min-w-0 flex-col gap-1"
       aria-describedby={
-        [option.description ? hintId : null, problem ? errorId : null].filter(Boolean).join(" ") ||
+        [option.description ? hintId : null, shown ? errorId : null].filter(Boolean).join(" ") ||
         undefined
       }
     >
@@ -662,16 +678,20 @@ function RadioQuestion({
               value={choice.id}
               required={option.required}
               checked={value === choice.id}
-              onChange={() => onChange(choice.id)}
-              className="size-5 accent-violet"
+              onInvalid={() => setMissing(true)}
+              onChange={() => {
+                setMissing(false);
+                onChange(choice.id);
+              }}
+              className="size-5 shrink-0 accent-violet"
             />
-            {choice.label}
+            <span className="min-w-0 [overflow-wrap:anywhere]">{choice.label}</span>
           </label>
         ))}
       </div>
-      {problem ? (
+      {shown ? (
         <span id={errorId} className="text-sm text-danger" role="alert">
-          {problem}
+          {shown}
         </span>
       ) : null}
     </fieldset>

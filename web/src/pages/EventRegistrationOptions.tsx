@@ -143,7 +143,11 @@ function payloadOf(
     return {
       ...common,
       required: row.required,
-      answers: row.answers.map((answer) => ({ id: answer.id, label: answer.label })),
+      // A blank answer is dropped, as the check in save() already ignores it:
+      // sent, the API would refuse its label against a field no row shows.
+      answers: row.answers
+        .filter((answer) => answer.label.trim() !== "")
+        .map((answer) => ({ id: answer.id, label: answer.label })),
     };
   }
 

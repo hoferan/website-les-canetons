@@ -57,7 +57,7 @@ class RegistrationOption extends Model
     protected $attributes = [
         'kind' => 'quantity',
         'required' => false,
-        'counts_guests' => false,
+        'counts_guests' => true,
     ];
 
     /** @return array<string, string> */

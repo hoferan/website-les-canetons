@@ -436,3 +436,24 @@ test("a locked block's refusal is shown in words", async () => {
 
   expect(await screen.findByText(/Quelqu'un a déjà répondu à ce bloc/)).toBeInTheDocument();
 });
+
+test("an answer left blank is not sent", async () => {
+  const user = userEvent.setup();
+  const sent = capturePut();
+  await renderEditor(1);
+
+  await user.click(screen.getByRole("button", { name: "Choix unique" }));
+  await user.type(row(1).getByLabelText("Intitulé"), "Taille");
+  await user.type(row(1).getByLabelText("Réponse 1"), "S");
+  await user.type(row(1).getByLabelText("Réponse 2"), "M");
+  await user.click(row(1).getByRole("button", { name: "Ajouter une réponse" }));
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(sent).not.toBeNull();
+  expect(sent()![0]).toMatchObject({
+    answers: [
+      { id: null, label: "S" },
+      { id: null, label: "M" },
+    ],
+  });
+});

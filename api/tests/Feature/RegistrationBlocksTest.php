@@ -318,6 +318,18 @@ class RegistrationBlocksTest extends TestCase
             ->assertJsonPath('errors.0.field', "answers.{$allergies->id}");
     }
 
+    public function test_an_array_answer_to_a_required_block_is_a_400_not_a_500(): void
+    {
+        // after() runs even when the rules have failed, so the required check
+        // sees whatever an anonymous caller sent.
+        $allergies = RegistrationOption::factory()->kind(OptionKind::Text)->required()
+            ->create(['event_id' => $this->event->id, 'label' => 'Allergies']);
+
+        $this->bookPublicly([['optionId' => $allergies->id, 'value' => ['x']]])
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'validation_failed');
+    }
+
     public function test_a_form_with_people_blocks_needs_one_person(): void
     {
         // The migrated souper: two optional menus and nothing else. Without

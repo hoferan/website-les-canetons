@@ -227,6 +227,27 @@ class RegistrationSchemaTest extends TestCase
         $this->assertNull($row['settings']);
     }
 
+    public function test_a_half_applied_kinds_migration_finishes_on_the_next_run(): void
+    {
+        // MariaDB DDL is not transactional and each column is its own ALTER,
+        // so a request killed mid-migration leaves some columns added. The
+        // next run must add the rest, not skip them all because `kind` exists.
+        $event = Event::factory()->takingRegistrations()->create();
+        $id = DB::table('event_registration_options')->insertGetId([
+            'event_id' => $event->id,
+            'label' => 'Menu viande',
+            'sort_order' => 0,
+        ]);
+        Schema::table('event_registration_options', function ($table) {
+            $table->dropColumn(['counts_guests', 'settings']);
+        });
+
+        $this->kindsMigration()->up();
+
+        $this->assertTrue(Schema::hasColumns('event_registration_options', ['counts_guests', 'settings']));
+        $this->assertSame(1, (int) ((array) DB::table('event_registration_options')->find($id))['counts_guests']);
+    }
+
     public function test_the_kinds_migration_is_idempotent(): void
     {
         $this->kindsMigration()->up();

@@ -636,3 +636,69 @@ test("a required block the server says is missing is marked on that block", asyn
 
   expect(await screen.findByText("Merci de répondre à cette question.")).toBeInTheDocument();
 });
+
+/** The souper's form with one block replaced, to test a single kind. */
+function formWith(option: Record<string, unknown>) {
+  server.use(
+    http.get("/api/v1/events/:id/registration", () =>
+      HttpResponse.json({
+        event: {
+          id: SOUPER,
+          title: "Pique-nique",
+          startsAt: "2027-06-12T10:00:00.000Z",
+          endsAt: null,
+          location: "Lac de la Gruyère",
+        },
+        options: [
+          {
+            id: 41,
+            description: null,
+            required: true,
+            countsGuests: false,
+            answers: [],
+            priceCents: null,
+            capacity: null,
+            remaining: null,
+            sortOrder: 0,
+            ...option,
+          },
+        ],
+        maxGuests: null,
+        opensAt: null,
+        closesAt: "2027-06-01T00:00:00.000Z",
+        open: true,
+      }),
+    ),
+  );
+}
+
+test("a required yes/no left unanswered says so, and nothing is sent", async () => {
+  const user = userEvent.setup();
+  let posted = false;
+  server.use(
+    http.post("/api/v1/events/:id/registrations", () => {
+      posted = true;
+      return HttpResponse.json({}, { status: 201 });
+    }),
+  );
+  formWith({ kind: "yes_no", label: "Vous venez en car ?" });
+  await renderBooking();
+
+  await fillInContact(user);
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  expect(
+    within(screen.getByRole("group", { name: /Vous venez en car/ })).getByText(
+      "Merci de répondre à cette question.",
+    ),
+  ).toBeInTheDocument();
+  expect(posted).toBe(false);
+});
+
+test("a required quantity is marked and required like a contact field", async () => {
+  formWith({ kind: "quantity", label: "Personnes", countsGuests: true });
+  await renderBooking();
+
+  expect(screen.getByLabelText(/Personnes/)).toBeRequired();
+  expect(screen.getByText("Personnes").closest("label")).toHaveTextContent("*");
+});

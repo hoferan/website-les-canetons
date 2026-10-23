@@ -218,9 +218,13 @@ class StoreRegistrationRequest extends FormRequest
                 continue;
             }
 
+            // is_string, not a cast: after() runs even when the rules failed,
+            // and an array cast to string is a 500, not a 400.
+            $value = $choice['value'] ?? null;
+
             return $option->kind === OptionKind::Quantity
                 ? (int) ($choice['quantity'] ?? 0) > 0
-                : trim((string) ($choice['value'] ?? '')) !== '';
+                : is_string($value) && trim($value) !== '';
         }
 
         return false;
