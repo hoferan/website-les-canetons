@@ -286,6 +286,8 @@
                                                             "already_taken",
                                                             "must_be_after",
                                                             "too_many_guests",
+                                                            "no_guests",
+                                                            "not_an_answer",
                                                             "not_enough_places",
                                                             "too_few_answers",
                                                             "image_not_jpeg",
@@ -2186,6 +2188,8 @@
                                                             "already_taken",
                                                             "must_be_after",
                                                             "too_many_guests",
+                                                            "no_guests",
+                                                            "not_an_answer",
                                                             "not_enough_places",
                                                             "too_few_answers",
                                                             "image_not_jpeg",
@@ -6775,6 +6779,8 @@
                                                             "already_taken",
                                                             "must_be_after",
                                                             "too_many_guests",
+                                                            "no_guests",
+                                                            "not_an_answer",
                                                             "not_enough_places",
                                                             "too_few_answers",
                                                             "image_not_jpeg",
@@ -9129,11 +9135,11 @@
                     },
                     "answers": {
                         "type": "array",
-                        "description": "A choice's answers in order; empty on every other kind. A booking stores the `key`.",
+                        "description": "A choice's answers in order; empty on every other kind. A booking stores the `id`.",
                         "items": {
                             "type": "object",
                             "properties": {
-                                "key": {
+                                "id": {
                                     "type": "string"
                                 },
                                 "label": {
@@ -9141,7 +9147,7 @@
                                 }
                             },
                             "required": [
-                                "key",
+                                "id",
                                 "label"
                             ]
                         }
@@ -9235,6 +9241,10 @@
                                 "optionId": {
                                     "type": "integer"
                                 },
+                                "kind": {
+                                    "description": "The kind of block this answers, which says whether to read `quantity` or `value`.",
+                                    "$ref": "#/components/schemas/OptionKind"
+                                },
                                 "label": {
                                     "type": [
                                         "string",
@@ -9245,7 +9255,22 @@
                                     "type": [
                                         "integer",
                                         "null"
-                                    ]
+                                    ],
+                                    "description": "How many, on a quantity; null on every other kind."
+                                },
+                                "value": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "The text, the chosen answer's id, or `yes` / `no`; null on a quantity."
+                                },
+                                "answerLabel": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "On a choice, the current wording of the chosen answer, so a rename shows; null otherwise."
                                 },
                                 "priceCents": {
                                     "type": [
@@ -9256,8 +9281,11 @@
                             },
                             "required": [
                                 "optionId",
+                                "kind",
                                 "label",
                                 "quantity",
+                                "value",
+                                "answerLabel",
                                 "priceCents"
                             ]
                         }
@@ -9460,16 +9488,16 @@
                                 },
                                 "answers": {
                                     "type": "array",
-                                    "description": "Choices only, and required there: 2 to 20 answers, in order. Send each answer's `key` back to keep it; a booking that picked an answer stays on it through a rename. An answer somebody picked cannot be removed.",
+                                    "description": "Choices only, and required there: 2 to 20 answers, in order. Send each answer's `id` back to keep it; a booking that picked an answer stays on it through a rename. An answer somebody picked cannot be removed.",
                                     "items": {
                                         "type": "object",
                                         "properties": {
-                                            "key": {
+                                            "id": {
                                                 "type": [
                                                     "string",
                                                     "null"
                                                 ],
-                                                "description": "The key from a previous read. Omit it for a new answer, and the server assigns one.",
+                                                "description": "The id from a previous read. Omit it for a new answer, and the server assigns one.",
                                                 "maxLength": 16
                                             },
                                             "label": {
@@ -10028,7 +10056,7 @@
             },
             "StoreRegistrationRequest": {
                 "type": "object",
-                "description": "An anonymous booking for one event.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nName, email and phone are required, because a Swiss committee reaches\nsomebody by telephone the evening before. Address and table name are\noptional.\n\n`choices` is what is being ordered: a non-empty list of `{optionId,\nquantity}`, at most 20 entries, each option appearing at most once and\nbelonging to this event. Read the options from\n`GET /api/v1/events/{event}/registration`. When the event sets a per-booking\nguest cap, a booking whose quantities add up to more than that cap fails\nvalidation against `choices` with `too_many_guests`.\n\nAn event that takes no bookings answers `404`, whether or not it exists.",
+                "description": "An anonymous booking for one event.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nName, email and phone are required, because a Swiss committee reaches\nsomebody by telephone the evening before. Address and table name are\noptional.\n\n`choices` holds the answers, one per block of the form: `{optionId,\nquantity}` for a quantity, `{optionId, value}` for the other kinds, at most\n20 entries, each block at most once and belonging to this event. Read the\nblocks from `GET /api/v1/events/{event}/registration`. A required block left\nout fails against `answers.<optionId>` with `required`; a value its block\ndoes not take fails with `not_an_answer`.\n\nThe quantities that count people are the booking's size. When the form has\nany, they must add up to at least one (`no_guests`) and, under a per-booking\nguest cap, to no more than it (`too_many_guests`), both against `choices`.\n\nAn event that takes no bookings answers `404`, whether or not it exists.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -10066,7 +10094,7 @@
                     },
                     "choices": {
                         "type": "array",
-                        "description": "What is being ordered, at least one entry and at most 20. Fails with `too_many_guests` when the quantities exceed the event per-booking cap.",
+                        "description": "The answers, one entry per block answered, at most 20. A quantity sends `quantity`; text, choice and yes/no send `value`. Leave out a block not answered. Fails with `too_many_guests` when the quantities that count people exceed the event per-booking cap, and with `no_guests` when the form has such blocks and they add up to nobody.",
                         "examples": [
                             [
                                 {
@@ -10074,8 +10102,8 @@
                                     "quantity": 2
                                 },
                                 {
-                                    "optionId": 8,
-                                    "quantity": 1
+                                    "optionId": 9,
+                                    "value": "yes"
                                 }
                             ]
                         ],
@@ -10087,18 +10115,27 @@
                                     "description": "An option offered by this event, from `GET /api/v1/events/{event}/registration`. Each option may appear at most once in `choices`."
                                 },
                                 "quantity": {
-                                    "type": "integer",
-                                    "description": "How many of that option, 1 to 50. Order the same option twice by raising this, not by repeating the entry.",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "Quantities only, and required there: how many, 1 to 50. Order the same option twice by raising this, not by repeating the entry.",
                                     "minimum": 1,
                                     "maximum": 50
+                                },
+                                "value": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "Every other answered kind: the text, up to 1000 characters; the chosen answer's `id`; or `yes` / `no`. Anything else fails with `not_an_answer`.",
+                                    "maxLength": 1000
                                 }
                             },
                             "required": [
-                                "optionId",
-                                "quantity"
+                                "optionId"
                             ]
                         },
-                        "minItems": 1,
                         "maxItems": 20
                     },
                     "website": {
@@ -10553,6 +10590,8 @@
                                                     "already_taken",
                                                     "must_be_after",
                                                     "too_many_guests",
+                                                    "no_guests",
+                                                    "not_an_answer",
                                                     "not_enough_places",
                                                     "too_few_answers",
                                                     "image_not_jpeg",

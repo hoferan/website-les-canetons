@@ -312,11 +312,11 @@
 
 export type ReplaceRegistrationOptionsRequestOptionsItemAnswersItem = {
   /**
-   * The key from a previous read. Omit it for a new answer, and the server assigns one.
+   * The id from a previous read. Omit it for a new answer, and the server assigns one.
    * @maxLength 16
    * @nullable
    */
-  key?: string | null;
+  id?: string | null;
   /** @maxLength 255 */
   label: string;
 };

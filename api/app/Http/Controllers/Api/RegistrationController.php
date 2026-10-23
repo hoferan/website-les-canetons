@@ -12,8 +12,10 @@ use App\Mail\RegistrationConfirmation;
 use App\Models\Event;
 use App\Models\Registration;
 use App\Models\RegistrationChoice;
+use App\Models\RegistrationOption;
 use App\Support\Audit;
 use App\Support\Emits;
+use App\Support\OptionKind;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\IgnoreResponse;
 use Dedoc\Scramble\Attributes\Response;
@@ -106,7 +108,12 @@ class RegistrationController extends Controller
             ->whereNotNull('capacity')
             ->exists();
 
-        $registration = DB::transaction(function () use ($data, $event, $capped): Registration {
+        // Also before the transaction, for the same reason as $capped.
+        $kinds = $event->registrationOptions()->get()->mapWithKeys(
+            fn (RegistrationOption $option): array => [$option->id => $option->kind]
+        );
+
+        $registration = DB::transaction(function () use ($data, $event, $capped, $kinds): Registration {
             if ($capped) {
                 self::refuseBeyondCapacity($event, $data['choices']);
             }
@@ -122,10 +129,22 @@ class RegistrationController extends Controller
             ]);
 
             foreach ($data['choices'] as $choice) {
+                // Each kind keeps only its own column, whatever else the
+                // entry carried.
+                $quantity = $kinds[$choice['optionId']] === OptionKind::Quantity;
+                $value = $quantity ? null : trim((string) ($choice['value'] ?? ''));
+
+                // A blank text is no answer: the request let it through as
+                // such, and an empty row would read as answered.
+                if ($value === '') {
+                    continue;
+                }
+
                 RegistrationChoice::create([
                     'registration_id' => $registration->id,
                     'option_id' => $choice['optionId'],
-                    'quantity' => $choice['quantity'],
+                    'quantity' => $quantity ? $choice['quantity'] : null,
+                    'value' => $value,
                 ]);
             }
 
@@ -282,7 +301,7 @@ class RegistrationController extends Controller
      * position in what was sent, so the form can mark the option that ran
      * out. Throwing rolls the transaction back.
      *
-     * @param  list<array{optionId: int, quantity: int}>  $choices
+     * @param  list<array{optionId: int, quantity?: int|null, value?: string|null}>  $choices
      */
     private static function refuseBeyondCapacity(Event $event, array $choices): void
     {
@@ -301,7 +320,7 @@ class RegistrationController extends Controller
         foreach ($choices as $index => $choice) {
             $remaining = $options->get($choice['optionId'])?->remaining();
 
-            if ($remaining !== null && $choice['quantity'] > $remaining) {
+            if ($remaining !== null && ($choice['quantity'] ?? 0) > $remaining) {
                 $validator->errors()->add("choices.{$index}.quantity", 'not_enough_places');
             }
         }

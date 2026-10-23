@@ -330,7 +330,7 @@ export interface RegistrationOptionResource {
   required: boolean;
   /** Whether this quantity is people, added up against the per-booking maximum. Always false on other kinds. */
   countsGuests: boolean;
-  /** A choice's answers in order; empty on every other kind. A booking stores the `key`. */
+  /** A choice's answers in order; empty on every other kind. A booking stores the `id`. */
   answers: RegistrationOptionResourceAnswersItem[];
   /**
    * Price in centimes: 4500 is CHF 45.00. Null when the option is free or priced in its description.

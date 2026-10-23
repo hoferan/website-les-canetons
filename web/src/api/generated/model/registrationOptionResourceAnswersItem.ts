@@ -311,6 +311,6 @@
  */
 
 export type RegistrationOptionResourceAnswersItem = {
-  key: string;
+  id: string;
   label: string;
 };

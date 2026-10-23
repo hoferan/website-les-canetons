@@ -131,7 +131,7 @@ class RegistrationOptionController extends Controller
                 }
 
                 if ($kind === OptionKind::Choice) {
-                    $kept = array_column($answers ?? [], 'key');
+                    $kept = array_column($answers ?? [], 'id');
                     $lost = $target->choices()->whereNotNull('value')->distinct()->pluck('value')
                         ->reject(fn (string $key) => in_array($key, $kept, true));
 
@@ -240,16 +240,16 @@ class RegistrationOptionController extends Controller
     }
 
     /**
-     * A choice's answers with their keys settled.
+     * A choice's answers with their ids settled.
      *
-     * A key the option already has is kept. An answer sent without one takes
-     * the key of the existing answer with the same label, for the same reason
-     * targets() adopts by label; anything else gets a fresh key. A key the
+     * An id the option already has is kept. An answer sent without one takes
+     * the id of the existing answer with the same label, for the same reason
+     * targets() adopts by label; anything else gets a fresh id. An id the
      * option does not have is treated as absent rather than trusted, so a
-     * client cannot point an answer at another block's key.
+     * client cannot point an answer at another block's id.
      *
-     * @param  list<array{key?: string|null, label: string}>  $sent
-     * @return list<array{key: string, label: string}>
+     * @param  list<array{id?: string|null, label: string}>  $sent
+     * @return list<array{id: string, label: string}>
      */
     private static function keyed(array $sent, ?RegistrationOption $target): array
     {
@@ -258,16 +258,16 @@ class RegistrationOptionController extends Controller
         $answers = [];
 
         foreach ($sent as $answer) {
-            $key = $answer['key'] ?? null;
+            $key = $answer['id'] ?? null;
 
-            if ($key === null || ! $known->contains('key', $key) || in_array($key, $taken, true)) {
+            if ($key === null || ! $known->contains('id', $key) || in_array($key, $taken, true)) {
                 $key = $known->first(fn (array $old) => $old['label'] === $answer['label']
-                    && ! in_array($old['key'], $taken, true))['key'] ?? null;
+                    && ! in_array($old['id'], $taken, true))['id'] ?? null;
             }
 
             $key ??= Str::lower(Str::random(8));
             $taken[] = $key;
-            $answers[] = ['key' => $key, 'label' => $answer['label']];
+            $answers[] = ['id' => $key, 'label' => $answer['label']];
         }
 
         return $answers;

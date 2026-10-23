@@ -137,10 +137,10 @@ class ReplaceRegistrationOptionsRequest extends FormRequest
             /** Quantities only. How many of this option can be booked across every guest, at least 1. Omit or send `null` for no limit. Lowering it below what is booked already stops further bookings and changes none. */
             'options.*.capacity' => ['prohibited_unless:options.*.kind,quantity', 'nullable', 'integer', 'gte:1', 'max:100000'],
 
-            /** Choices only, and required there: 2 to 20 answers, in order. Send each answer's `key` back to keep it; a booking that picked an answer stays on it through a rename. An answer somebody picked cannot be removed. */
+            /** Choices only, and required there: 2 to 20 answers, in order. Send each answer's `id` back to keep it; a booking that picked an answer stays on it through a rename. An answer somebody picked cannot be removed. */
             'options.*.answers' => ['required_if:options.*.kind,choice', 'prohibited_unless:options.*.kind,choice', 'array', 'max:20'],
-            /** The key from a previous read. Omit it for a new answer, and the server assigns one. */
-            'options.*.answers.*.key' => ['nullable', 'string', 'max:16'],
+            /** The id from a previous read. Omit it for a new answer, and the server assigns one. */
+            'options.*.answers.*.id' => ['nullable', 'string', 'max:16'],
             'options.*.answers.*.label' => ['required', 'string', 'max:255'],
             /** Where this option sits on the form, lowest first, ties broken by id. Omitted, it takes the entry position in the list you send. */
             'options.*.sortOrder' => ['nullable', 'integer', 'gte:0', 'max:1000'],

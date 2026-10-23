@@ -137,7 +137,7 @@ class EventController extends Controller
         return EventResource::collection(
             $query->with([...self::myAttendance($request), 'tags', Event::POSTER])
                 ->withCount(self::counts())
-                ->withSum('registrationChoices as guest_count', 'quantity')
+                ->withSum(Event::guestCount(), 'quantity')
                 ->get()
         );
     }
@@ -257,7 +257,7 @@ class EventController extends Controller
         // ApiError's; EventIndexTest asserts only the status.
         $event->load(self::myAttendance($request));
         $event->loadCount(self::counts());
-        $event->loadSum('registrationChoices as guest_count', 'quantity');
+        $event->loadSum(Event::guestCount(), 'quantity');
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return new EventResource($event);
@@ -312,7 +312,7 @@ class EventController extends Controller
         Audit::record($request->user(), 'event.created', 'event', $event->id, $event->title);
 
         $event->loadCount(self::counts());
-        $event->loadSum('registrationChoices as guest_count', 'quantity');
+        $event->loadSum(Event::guestCount(), 'quantity');
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return response()->json(new EventResource($event), 201);
@@ -378,7 +378,7 @@ class EventController extends Controller
         // reset the buttons on their own screen. See EventResource.
         $event->load(self::myAttendance($request));
         $event->loadCount(self::counts());
-        $event->loadSum('registrationChoices as guest_count', 'quantity');
+        $event->loadSum(Event::guestCount(), 'quantity');
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return new EventResource($event);
@@ -465,7 +465,7 @@ class EventController extends Controller
     {
         $event->load(self::myAttendance($request));
         $event->loadCount(self::counts());
-        $event->loadSum('registrationChoices as guest_count', 'quantity');
+        $event->loadSum(Event::guestCount(), 'quantity');
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return new EventResource($event);

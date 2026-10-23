@@ -170,6 +170,23 @@ class Event extends Model
         return $this->hasManyThrough(RegistrationChoice::class, Registration::class);
     }
 
+    /**
+     * The people booked, for withSum/loadSum: `->withSum(Event::guestCount(), 'quantity')`.
+     *
+     * Only quantities that count people, so five bottles brought along do not
+     * show as five guests on the planning. Same rule as
+     * Registration::guestCount().
+     *
+     * @return array<string, \Closure>
+     */
+    public static function guestCount(): array
+    {
+        return ['registrationChoices as guest_count' => fn ($choices) => $choices->whereHas(
+            'option',
+            fn ($option) => $option->where('counts_guests', true),
+        )];
+    }
+
     /** Whether this event has not been published yet. */
     public function isDraft(): bool
     {

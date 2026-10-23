@@ -1024,11 +1024,20 @@ export const getRegistrationStoreResponseMock = (
   choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       optionId: faker.number.int(),
+      kind: faker.helpers.arrayElement(Object.values(OptionKind)),
       label: faker.helpers.arrayElement([
         faker.string.alpha({ length: { min: 10, max: 20 } }),
         null,
       ]),
       quantity: faker.helpers.arrayElement([faker.number.int(), null]),
+      value: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      answerLabel: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
       priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     }),
   ),
@@ -1063,11 +1072,20 @@ export const getRegistrationIndexResponseMock = (
     choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
       () => ({
         optionId: faker.number.int(),
+        kind: faker.helpers.arrayElement(Object.values(OptionKind)),
         label: faker.helpers.arrayElement([
           faker.string.alpha({ length: { min: 10, max: 20 } }),
           null,
         ]),
         quantity: faker.helpers.arrayElement([faker.number.int(), null]),
+        value: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        answerLabel: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
         priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
       }),
     ),
@@ -1132,7 +1150,7 @@ export const getRegistrationFormResponseMock = (
       countsGuests: faker.datatype.boolean(),
       answers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
         () => ({
-          key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          id: faker.string.alpha({ length: { min: 10, max: 20 } }),
           label: faker.string.alpha({ length: { min: 10, max: 20 } }),
         }),
       ),
@@ -1192,11 +1210,20 @@ export const getRegistrationShowResponseMock = (
   choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       optionId: faker.number.int(),
+      kind: faker.helpers.arrayElement(Object.values(OptionKind)),
       label: faker.helpers.arrayElement([
         faker.string.alpha({ length: { min: 10, max: 20 } }),
         null,
       ]),
       quantity: faker.helpers.arrayElement([faker.number.int(), null]),
+      value: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      answerLabel: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
       priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     }),
   ),
@@ -1227,11 +1254,20 @@ export const getRegistrationUpdateResponseMock = (
   choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       optionId: faker.number.int(),
+      kind: faker.helpers.arrayElement(Object.values(OptionKind)),
       label: faker.helpers.arrayElement([
         faker.string.alpha({ length: { min: 10, max: 20 } }),
         null,
       ]),
       quantity: faker.helpers.arrayElement([faker.number.int(), null]),
+      value: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      answerLabel: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
       priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     }),
   ),
@@ -1261,7 +1297,7 @@ export const getRegistrationOptionIndexResponseMock = (
     countsGuests: faker.datatype.boolean(),
     answers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
       () => ({
-        key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        id: faker.string.alpha({ length: { min: 10, max: 20 } }),
         label: faker.string.alpha({ length: { min: 10, max: 20 } }),
       }),
     ),
@@ -1289,7 +1325,7 @@ export const getRegistrationOptionReplaceResponseMock = (
     countsGuests: faker.datatype.boolean(),
     answers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
       () => ({
-        key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        id: faker.string.alpha({ length: { min: 10, max: 20 } }),
         label: faker.string.alpha({ length: { min: 10, max: 20 } }),
       }),
     ),

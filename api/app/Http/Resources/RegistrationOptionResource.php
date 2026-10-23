@@ -38,9 +38,9 @@ class RegistrationOptionResource extends JsonResource
             /** Whether this quantity is people, added up against the per-booking maximum. Always false on other kinds. */
             'countsGuests' => $this->counts_guests,
             /**
-             * A choice's answers in order; empty on every other kind. A booking stores the `key`.
+             * A choice's answers in order; empty on every other kind. A booking stores the `id`.
              *
-             * @var list<array{key: string, label: string}>
+             * @var list<array{id: string, label: string}>
              */
             'answers' => $this->resource->answers(),
             /** Price in centimes: 4500 is CHF 45.00. Null when the option is free or priced in its description. */

@@ -351,7 +351,7 @@ export type ReplaceRegistrationOptionsRequestOptionsItem = {
    */
   capacity?: number | null;
   /**
-   * Choices only, and required there: 2 to 20 answers, in order. Send each answer's `key` back to keep it; a booking that picked an answer stays on it through a rename. An answer somebody picked cannot be removed.
+   * Choices only, and required there: 2 to 20 answers, in order. Send each answer's `id` back to keep it; a booking that picked an answer stays on it through a rename. An answer somebody picked cannot be removed.
    * @maxItems 20
    */
   answers?: ReplaceRegistrationOptionsRequestOptionsItemAnswersItem[];

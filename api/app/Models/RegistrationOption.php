@@ -74,10 +74,10 @@ class RegistrationOption extends Model
     /**
      * A choice's answers, in the order the committee wrote them.
      *
-     * The key is what a booking stores, so renaming an answer renames it on
+     * The id is what a booking stores, so renaming an answer renames it on
      * every booking that picked it. Empty for every other kind.
      *
-     * @return list<array{key: string, label: string}>
+     * @return list<array{id: string, label: string}>
      */
     public function answers(): array
     {

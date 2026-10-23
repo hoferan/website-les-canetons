@@ -322,12 +322,16 @@ import type { StoreRegistrationRequestChoicesItem } from "./storeRegistrationReq
  * somebody by telephone the evening before. Address and table name are
  * optional.
  *
- * `choices` is what is being ordered: a non-empty list of `{optionId,
- * quantity}`, at most 20 entries, each option appearing at most once and
- * belonging to this event. Read the options from
- * `GET /api/v1/events/{event}/registration`. When the event sets a per-booking
- * guest cap, a booking whose quantities add up to more than that cap fails
- * validation against `choices` with `too_many_guests`.
+ * `choices` holds the answers, one per block of the form: `{optionId,
+ * quantity}` for a quantity, `{optionId, value}` for the other kinds, at most
+ * 20 entries, each block at most once and belonging to this event. Read the
+ * blocks from `GET /api/v1/events/{event}/registration`. A required block left
+ * out fails against `answers.<optionId>` with `required`; a value its block
+ * does not take fails with `not_an_answer`.
+ *
+ * The quantities that count people are the booking's size. When the form has
+ * any, they must add up to at least one (`no_guests`) and, under a per-booking
+ * guest cap, to no more than it (`too_many_guests`), both against `choices`.
  *
  * An event that takes no bookings answers `404`, whether or not it exists.
  */
@@ -358,8 +362,7 @@ export interface StoreRegistrationRequest {
    */
   tableName?: string | null;
   /**
-   * What is being ordered, at least one entry and at most 20. Fails with `too_many_guests` when the quantities exceed the event per-booking cap.
-   * @minItems 1
+   * The answers, one entry per block answered, at most 20. A quantity sends `quantity`; text, choice and yes/no send `value`. Leave out a block not answered. Fails with `too_many_guests` when the quantities that count people exceed the event per-booking cap, and with `no_guests` when the form has such blocks and they add up to nobody.
    * @maxItems 20
    */
   choices: StoreRegistrationRequestChoicesItem[];

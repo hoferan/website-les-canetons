@@ -60,11 +60,33 @@ class RegistrationResource extends JsonResource
         return $this->resource->choices
             ->map(fn (RegistrationChoice $choice): array => [
                 'optionId' => $choice->option_id,
+                /** The kind of block this answers, which says whether to read `quantity` or `value`. */
+                'kind' => $choice->option?->kind,
                 'label' => $choice->option?->label,
+                /** How many, on a quantity; null on every other kind. */
                 'quantity' => $choice->quantity,
+                /** The text, the chosen answer's id, or `yes` / `no`; null on a quantity. */
+                'value' => $choice->value,
+                /** On a choice, the current wording of the chosen answer, so a rename shows; null otherwise. */
+                'answerLabel' => self::answerLabel($choice),
                 'priceCents' => $choice->option?->price_cents,
             ])
             ->values()
             ->all();
+    }
+
+    private static function answerLabel(RegistrationChoice $choice): ?string
+    {
+        if ($choice->option === null || $choice->value === null) {
+            return null;
+        }
+
+        foreach ($choice->option->answers() as $answer) {
+            if ($answer['id'] === $choice->value) {
+                return $answer['label'];
+            }
+        }
+
+        return null;
     }
 }

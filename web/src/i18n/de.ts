@@ -186,6 +186,8 @@ export const de: typeof fr = {
     // No parameter, as in French: the limit comes from a closure validator
     // that sends only `field` and `reason`, so a {{max}} would print as is.
     too_many_guests: "überschreitet die pro Anmeldung zulässige Personenzahl",
+    no_guests: "muss mindestens eine Person umfassen",
+    not_an_answer: "ist keine angebotene Antwort",
     not_enough_places: "übersteigt die noch freien Plätze",
     too_few_answers: "muss mindestens zwei Antworten anbieten",
     image_not_jpeg: "muss ein JPEG-Bild sein",
@@ -281,7 +283,7 @@ export const de: typeof fr = {
     required: "Pflichtfeld",
     countsGuests: "Zählt als Personen",
     answers: "Antworten",
-    key: "Antwort",
+    value: "Antwort",
   },
 
   common: {

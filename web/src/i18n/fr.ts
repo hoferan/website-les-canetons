@@ -206,6 +206,10 @@ export const fr = {
     // App\Exceptions\ApiError's closure-added branch emits `field` and
     // `reason` only, so a {{max}} would print as is.
     too_many_guests: "dépasse le nombre de personnes autorisé par inscription",
+    // Against `choices`, when the blocks that count people add up to nobody.
+    no_guests: "doit compter au moins une personne",
+    // Against `choices.N.value`: an answer that block does not offer.
+    not_an_answer: "n'est pas une réponse proposée",
     // Against `choices.N.quantity`, when an option's capacity has fewer
     // places left. No parameter, for the same reason as too_many_guests.
     not_enough_places: "dépasse les places encore libres",
@@ -319,7 +323,7 @@ export const fr = {
     required: "Obligatoire",
     countsGuests: "Compte comme personnes",
     answers: "Réponses",
-    key: "Réponse",
+    value: "Réponse",
   },
 
   /**

@@ -35,8 +35,8 @@ class RegistrationOptionFactory extends Factory
     }
 
     /**
-     * A single choice over these answers, keyed by lower-case slugs of the
-     * labels so a test can name the key it books.
+     * A single choice over these answers, identified by lower-case slugs of the
+     * labels so a test can name the id it books.
      *
      * @param  list<string>  $labels
      */
@@ -45,7 +45,7 @@ class RegistrationOptionFactory extends Factory
         return $this->kind(OptionKind::Choice)->state(fn (): array => [
             'label' => 'Taille de t-shirt',
             'settings' => ['answers' => array_map(
-                fn (string $label): array => ['key' => strtolower($label), 'label' => $label],
+                fn (string $label): array => ['id' => strtolower($label), 'label' => $label],
                 $labels,
             )],
         ]);

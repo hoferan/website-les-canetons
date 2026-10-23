@@ -125,17 +125,17 @@ class RegistrationBlocksTest extends TestCase
         ])->assertOk();
 
         $id = $first->json('data.0.id');
-        $small = $first->json('data.0.answers.0.key');
+        $small = $first->json('data.0.answers.0.id');
         $this->assertMatchesRegularExpression('/^[a-z0-9]{8}$/', $small);
 
         $this->replace([
             ['id' => $id, 'kind' => 'choice', 'label' => 'Taille', 'answers' => [
-                ['key' => $small, 'label' => 'Small'],
-                ['key' => $first->json('data.0.answers.1.key'), 'label' => 'M'],
+                ['id' => $small, 'label' => 'Small'],
+                ['id' => $first->json('data.0.answers.1.id'), 'label' => 'M'],
             ]],
         ])
             ->assertOk()
-            ->assertJsonPath('data.0.answers.0.key', $small)
+            ->assertJsonPath('data.0.answers.0.id', $small)
             ->assertJsonPath('data.0.answers.0.label', 'Small');
     }
 
@@ -149,7 +149,7 @@ class RegistrationBlocksTest extends TestCase
             ['id' => $option->id, 'kind' => 'choice', 'label' => 'Taille', 'answers' => [['label' => 'S'], ['label' => 'M']]],
         ])
             ->assertOk()
-            ->assertJsonPath('data.0.answers.0.key', 's');
+            ->assertJsonPath('data.0.answers.0.id', 's');
     }
 
     public function test_a_booked_block_cannot_change_kind(): void
@@ -191,7 +191,7 @@ class RegistrationBlocksTest extends TestCase
         $this->book($option, null, 's');
 
         $this->replace([
-            ['id' => $option->id, 'kind' => 'choice', 'label' => 'Taille', 'answers' => [['key' => 'm', 'label' => 'M'], ['label' => 'L']]],
+            ['id' => $option->id, 'kind' => 'choice', 'label' => 'Taille', 'answers' => [['id' => 'm', 'label' => 'M'], ['label' => 'L']]],
         ])
             ->assertStatus(409)
             ->assertJsonPath('code', 'choice_answer_in_use');
@@ -205,7 +205,7 @@ class RegistrationBlocksTest extends TestCase
         $this->book($option, null, 's');
 
         $this->replace([
-            ['id' => $option->id, 'kind' => 'choice', 'label' => 'Taille', 'answers' => [['key' => 's', 'label' => 'S'], ['key' => 'm', 'label' => 'M']]],
+            ['id' => $option->id, 'kind' => 'choice', 'label' => 'Taille', 'answers' => [['id' => 's', 'label' => 'S'], ['id' => 'm', 'label' => 'M']]],
         ])->assertOk();
 
         $this->assertCount(2, $option->fresh()->answers());
@@ -224,6 +224,195 @@ class RegistrationBlocksTest extends TestCase
 
         $this->replace($body)->assertOk()->assertJsonCount(3, 'data');
         $this->assertSame(3, $this->event->registrationOptions()->count());
+    }
+
+    // ------------------------------------------------------- booking
+
+    public function test_each_input_kind_can_be_answered(): void
+    {
+        $meal = RegistrationOption::factory()->create(['event_id' => $this->event->id]);
+        $veggie = $this->block(OptionKind::YesNo, 'Végétarien ?');
+        $size = RegistrationOption::factory()->choiceOf(['S', 'M'])->create(['event_id' => $this->event->id]);
+        $allergies = $this->block(OptionKind::Text, 'Allergies');
+
+        $this->bookPublicly([
+            ['optionId' => $meal->id, 'quantity' => 2],
+            ['optionId' => $veggie->id, 'value' => 'yes'],
+            ['optionId' => $size->id, 'value' => 'm'],
+            ['optionId' => $allergies->id, 'value' => 'Noix'],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('guestCount', 2)
+            ->assertJsonPath('choices.0.kind', 'quantity')
+            ->assertJsonPath('choices.0.quantity', 2)
+            ->assertJsonPath('choices.1.kind', 'yes_no')
+            ->assertJsonPath('choices.1.value', 'yes')
+            ->assertJsonPath('choices.1.quantity', null)
+            ->assertJsonPath('choices.2.value', 'm')
+            ->assertJsonPath('choices.2.answerLabel', 'M')
+            ->assertJsonPath('choices.3.value', 'Noix');
+    }
+
+    public function test_an_unknown_answer_key_is_refused(): void
+    {
+        $size = RegistrationOption::factory()->choiceOf(['S', 'M'])->create(['event_id' => $this->event->id]);
+
+        $this->bookPublicly([['optionId' => $size->id, 'value' => 'xl']])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'choices.0.value')
+            ->assertJsonPath('errors.0.reason', 'not_an_answer');
+
+        $this->assertSame(0, Registration::query()->count());
+    }
+
+    public function test_a_yes_no_takes_only_yes_or_no(): void
+    {
+        $veggie = $this->block(OptionKind::YesNo, 'Végétarien ?');
+
+        $this->bookPublicly([['optionId' => $veggie->id, 'value' => 'peut-être']])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'choices.0.value')
+            ->assertJsonPath('errors.0.reason', 'not_an_answer');
+    }
+
+    public function test_a_heading_cannot_be_answered(): void
+    {
+        $heading = $this->block(OptionKind::Heading, 'Repas');
+
+        $this->bookPublicly([['optionId' => $heading->id, 'value' => 'x']])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'choices.0.value')
+            ->assertJsonPath('errors.0.reason', 'not_an_answer');
+    }
+
+    public function test_a_quantity_needs_a_number(): void
+    {
+        $meal = RegistrationOption::factory()->create(['event_id' => $this->event->id]);
+
+        $this->bookPublicly([['optionId' => $meal->id, 'value' => 'deux']])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'choices.0.quantity');
+    }
+
+    public function test_a_text_answer_is_capped(): void
+    {
+        $allergies = $this->block(OptionKind::Text, 'Allergies');
+
+        $this->bookPublicly([['optionId' => $allergies->id, 'value' => str_repeat('a', 1001)]])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'choices.0.value');
+    }
+
+    public function test_a_required_text_block_must_be_answered(): void
+    {
+        $allergies = RegistrationOption::factory()->kind(OptionKind::Text)->required()
+            ->create(['event_id' => $this->event->id, 'label' => 'Allergies']);
+
+        $this->bookPublicly([])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', "answers.{$allergies->id}")
+            ->assertJsonPath('errors.0.reason', 'required');
+
+        $this->bookPublicly([['optionId' => $allergies->id, 'value' => '   ']])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', "answers.{$allergies->id}");
+    }
+
+    public function test_a_form_with_people_blocks_needs_one_person(): void
+    {
+        // The migrated souper: two optional menus and nothing else. Without
+        // this rule a booking of nobody would go through.
+        RegistrationOption::factory()->create(['event_id' => $this->event->id]);
+        $veggie = $this->block(OptionKind::YesNo, 'Végétarien ?');
+
+        $this->bookPublicly([['optionId' => $veggie->id, 'value' => 'no']])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'choices')
+            ->assertJsonPath('errors.0.reason', 'no_guests');
+    }
+
+    public function test_a_form_without_people_blocks_accepts_no_quantity(): void
+    {
+        $bring = $this->block(OptionKind::Text, 'Que nous apportez-vous ?');
+
+        $this->bookPublicly([['optionId' => $bring->id, 'value' => 'Un gâteau']])
+            ->assertCreated()
+            ->assertJsonPath('guestCount', 0);
+    }
+
+    public function test_a_form_of_optional_questions_accepts_an_empty_booking(): void
+    {
+        $this->block(OptionKind::Heading, 'Inscription');
+
+        $this->bookPublicly([])->assertCreated();
+    }
+
+    public function test_unticked_quantities_do_not_count_toward_max_guests(): void
+    {
+        $this->event->update(['registration_max_guests' => 2]);
+        $meal = RegistrationOption::factory()->create(['event_id' => $this->event->id]);
+        $bottles = RegistrationOption::factory()->uncounted()->create(['event_id' => $this->event->id]);
+
+        $this->bookPublicly([
+            ['optionId' => $meal->id, 'quantity' => 2],
+            ['optionId' => $bottles->id, 'quantity' => 6],
+        ])->assertCreated();
+    }
+
+    public function test_event_guest_count_ignores_unticked_blocks(): void
+    {
+        $meal = RegistrationOption::factory()->create(['event_id' => $this->event->id]);
+        $bottles = RegistrationOption::factory()->uncounted()->create(['event_id' => $this->event->id]);
+        $this->book($meal, 3);
+        $this->book($bottles, 10);
+
+        $this->actingAsMember($this->organiser)
+            ->getJson("/api/v1/events/{$this->event->id}")
+            ->assertOk()
+            ->assertJsonPath('guestCount', 3);
+
+        $this->actingAsMember($this->organiser)
+            ->getJson('/api/v1/events')
+            ->assertOk()
+            ->assertJsonPath('data.0.guestCount', 3);
+    }
+
+    public function test_a_renamed_answer_shows_its_new_label(): void
+    {
+        $size = RegistrationOption::factory()->choiceOf(['S', 'M'])->create(['event_id' => $this->event->id]);
+        $this->book($size, null, 's');
+
+        $this->replace([
+            ['id' => $size->id, 'kind' => 'choice', 'label' => 'Taille', 'answers' => [
+                ['id' => 's', 'label' => 'Small'], ['id' => 'm', 'label' => 'M'],
+            ]],
+        ])->assertOk();
+
+        $this->actingAsMember($this->organiser)
+            ->getJson("/api/v1/events/{$this->event->id}/registrations")
+            ->assertOk()
+            ->assertJsonPath('data.0.choices.0.answerLabel', 'Small');
+    }
+
+    private function block(OptionKind $kind, string $label): RegistrationOption
+    {
+        return RegistrationOption::factory()->kind($kind)->create(['event_id' => $this->event->id, 'label' => $label]);
+    }
+
+    /** @param  list<array<string, mixed>>  $choices */
+    private function bookPublicly(array $choices): TestResponse
+    {
+        return $this->postJson(
+            "/api/v1/events/{$this->event->id}/registrations",
+            $this->publicWriteBody([
+                'firstName' => 'Delphine',
+                'lastName' => 'Maillard',
+                'email' => 'delphine@example.test',
+                'phone' => '079 322 12 57',
+                'choices' => $choices,
+            ]),
+            $this->publicWriteHeaders(),
+        );
     }
 
     /** @param  list<array<string, mixed>>  $options */

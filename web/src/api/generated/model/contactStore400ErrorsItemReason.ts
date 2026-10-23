@@ -327,6 +327,8 @@ export const ContactStore400ErrorsItemReason = {
   already_taken: "already_taken",
   must_be_after: "must_be_after",
   too_many_guests: "too_many_guests",
+  no_guests: "no_guests",
+  not_an_answer: "not_an_answer",
   not_enough_places: "not_enough_places",
   too_few_answers: "too_few_answers",
   image_not_jpeg: "image_not_jpeg",

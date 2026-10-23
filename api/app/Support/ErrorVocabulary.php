@@ -275,6 +275,11 @@ final class ErrorVocabulary
         'must_be_after',
         // StoreRegistrationRequest::after(), against `choices`.
         'too_many_guests',
+        // StoreRegistrationRequest::after(): `no_guests` against `choices`
+        // when blocks count people and add up to nobody, `not_an_answer`
+        // against `choices.N.value` for a value its block does not take.
+        'no_guests',
+        'not_an_answer',
         // RegistrationController, against `choices.N.quantity`, when an
         // option's capacity has fewer places left.
         'not_enough_places',
