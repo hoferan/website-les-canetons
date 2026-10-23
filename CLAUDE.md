@@ -287,7 +287,7 @@ npm run test:api      # the Laravel suite (needs a database, so not in check)
 npm run test:web      # Vitest (web/src)
 npm run test:e2e      # Playwright (web/e2e), against the mocked backend
 npm run test:js       # node:test over tools/
-npm run screenshots   # every route at 1280 and 390px into dist/screenshots/
+npm run screenshots   # every route at 1280 and 390px into dist/screenshots/, plus index.html
 npm run lighthouse    # public pages vs. the performance budget (informational)
 npm run artisan -- route:list   # artisan, composer and php go through php-runner
 ```

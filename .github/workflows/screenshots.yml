@@ -5,6 +5,10 @@ name: Screenshots
 # MSW-mocked backend, like the e2e job, so it needs no database and no PHP.
 # What is photographed: web/screenshots/pages.json.
 #
+# The artifact is named after the PR and opens on an index.html that shows
+# every picture (tools/screenshot-gallery.mjs), and a comment on the PR links
+# it, edited in place on each push (#321).
+#
 # INFORMATIONAL, AND A WORKFLOW OF ITS OWN FOR THAT REASON, as lighthouse.yml
 # is. ci.yml's all-green is the one required check on main and must need every
 # job in that file, so a job there would gate the merge. The sweep does fail
@@ -26,6 +30,10 @@ jobs:
   screenshots:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      artifact-name: ${{ steps.name.outputs.name }}
+      artifact-url: ${{ steps.upload.outputs.artifact-url }}
+      pictures: ${{ steps.gallery.outputs.pictures }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -53,6 +61,33 @@ jobs:
         run: npx playwright install-deps chromium
       - name: Photograph every route
         run: npm run screenshots
+      # Named after the PR, so a reviewer's downloads say which PR they show.
+      # This workflow runs on pull requests only; the fallback names any other
+      # run by its branch and commit.
+      - name: Name the artifact
+        id: name
+        if: always()
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -n "$PR" ]; then
+            echo "name=screenshots-pr-$PR" >> "$GITHUB_OUTPUT"
+            echo "title=Screenshots, PR #$PR at ${SHA::7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=screenshots-${GITHUB_REF_NAME//\//-}-${SHA::7}" >> "$GITHUB_OUTPUT"
+            echo "title=Screenshots, $GITHUB_REF_NAME at ${SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+      # The npm script writes the gallery only after a green sweep. This step
+      # runs after a red one too, so the artifact always opens on index.html.
+      - name: Build the gallery
+        id: gallery
+        if: always()
+        env:
+          GALLERY_TITLE: ${{ steps.name.outputs.title }}
+        run: |
+          node tools/screenshot-gallery.mjs dist/screenshots
+          echo "pictures=$(find dist/screenshots -name '*.png' | wc -l)" >> "$GITHUB_OUTPUT"
       # Kept even when a page failed, since the pictures taken before it are
       # what shows the reviewer what went wrong.
       - name: Keep the screenshots
@@ -60,16 +95,69 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: screenshots
+          name: ${{ steps.name.outputs.name }}
           path: dist/screenshots/
           retention-days: 14
       - name: Link them from the summary
         if: always() && steps.upload.outputs.artifact-url != ''
         env:
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_NAME: ${{ steps.name.outputs.name }}
         run: |
           {
             echo "### Screenshots"
             echo
-            echo "Every route at desktop (1280px) and phone (390px) width, one folder per login: [download]($ARTIFACT_URL)."
+            echo "Every route at desktop (1280px) and phone (390px) width, as each login sees it: [download $ARTIFACT_NAME.zip]($ARTIFACT_URL), then open \`index.html\` in it."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # A job of its own so that the write permission stays out of the job that
+  # runs npm ci and a browser: this one runs no code from the repository.
+  comment:
+    needs: screenshots
+    # A fork's PR gets a read-only token, so the comment could only fail there.
+    if: >-
+      always() && needs.screenshots.outputs.artifact-url != '' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      # One comment per PR, found by the marker on its first line and edited in
+      # place on every push. Informational like the rest of this workflow, so
+      # a failure to post leaves the run green.
+      - name: Link the screenshots from the PR
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          ARTIFACT_URL: ${{ needs.screenshots.outputs.artifact-url }}
+          ARTIFACT_NAME: ${{ needs.screenshots.outputs.artifact-name }}
+          PICTURES: ${{ needs.screenshots.outputs.pictures }}
+          RESULT: ${{ needs.screenshots.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          marker='<!-- screenshots-sweep -->'
+          if [ "$RESULT" = success ]; then
+            outcome="Every page rendered as itself."
+          else
+            outcome="At least one page did not render as itself; [the run]($RUN_URL) names it. The gallery shows the pictures taken anyway."
+          fi
+          body="$marker
+          ### Screenshots
+
+          $PICTURES pictures of every route at 1280px and 390px, as each login sees it, from ${SHA::7}. $outcome
+
+          [Download $ARTIFACT_NAME.zip]($ARTIFACT_URL), unzip it and open \`index.html\`. Kept for 14 days. [Run]($RUN_URL)"
+
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -f body="$body" > /dev/null
+            echo "Updated comment $id."
+          else
+            gh api "repos/$REPO/issues/$PR/comments" -f body="$body" > /dev/null
+            echo "Posted a new comment."
+          fi
