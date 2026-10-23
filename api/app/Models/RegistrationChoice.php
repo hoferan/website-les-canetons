@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\OptionKind;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -44,5 +45,22 @@ class RegistrationChoice extends Model
     public function option(): BelongsTo
     {
         return $this->belongsTo(RegistrationOption::class, 'option_id');
+    }
+
+    /**
+     * A non-quantity answer as words, for the export and the mail: the text
+     * as typed, the chosen answer's current label, or Oui / Non.
+     *
+     * French, like every other word in those two: they are written for the
+     * committee and the guest of a Fribourg band, outside web/src/i18n/.
+     */
+    public function answerText(): ?string
+    {
+        return match ($this->option?->kind) {
+            OptionKind::YesNo => $this->value === 'yes' ? 'Oui' : 'Non',
+            OptionKind::Choice => collect($this->option->answers())->firstWhere('id', $this->value)['label'] ?? null,
+            OptionKind::Text => $this->value,
+            default => null,
+        };
     }
 }
