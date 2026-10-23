@@ -27,7 +27,9 @@ deploy.
 
 Any event can take bookings. An event takes them exactly when
 `registration_closes_at` is set; there is no separate boolean beside it. Its options,
-such as menus and prices, are rows the committee fills in.
+such as menus and prices, are rows the committee fills in. *Extended on 2026-10-23 by
+[ADR-0032](0032-compose-a-booking-form-from-blocks.md): an option is now one block of
+the form, of a kind, and only the quantities that count people are the booking's size.*
 
 - There is no capacity limit, which also avoids a count-then-insert race on an
   anonymous endpoint. *Replaced on 2026-10-22 by
