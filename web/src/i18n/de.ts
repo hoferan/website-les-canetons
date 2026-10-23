@@ -755,6 +755,10 @@ export const de: typeof fr = {
     soldOut: "Ausgebucht",
 
     chooseSomeone: "Wählen Sie mindestens eine Person.",
+    answerRequired: "Bitte beantworten Sie diese Frage.",
+    yes: "Ja",
+    no: "Nein",
+    answered: "{{question}}: {{answer}}",
     guestsWithTotal: "{{guests}} — {{total}}",
     submit: "Anmelden",
     sending: "Wird gesendet…",

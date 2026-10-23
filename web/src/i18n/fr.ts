@@ -1013,6 +1013,13 @@ export const fr = {
     soldOut: "Complet",
 
     chooseSomeone: "Choisissez au moins une personne.",
+    // Under a required question the server says was left out.
+    answerRequired: "Merci de répondre à cette question.",
+    // A yes/no question's two answers, and how an answer reads back on the
+    // confirmation. The question and the answer are what the committee typed.
+    yes: "Oui",
+    no: "Non",
+    answered: "{{question}} : {{answer}}",
     // The running total and the confirmation, when an option carries a price. {{guests}} is
     // common.guests already counted; {{total}} is formatCents.
     guestsWithTotal: "{{guests}} — {{total}}",
