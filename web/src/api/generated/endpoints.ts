@@ -3958,10 +3958,12 @@ export const getRegistrationFormUrl = (event: number) => {
  * `open` is computed by the server. Do not derive it from `opensAt` and
  * `closesAt` on the client, whose clock may be wrong.
  *
- * An event that takes no registrations answers `404`, whether or not it
- * exists. An event that is enabled but outside its window answers `200`
- * with `open: false`, so the form can say when bookings start or that
- * they have closed.
+ * An event that takes no registrations, or whose form the committee has
+ * not opened, answers `404`, whether or not it exists. An open form
+ * outside its window answers `200` with `open: false`, so the form can say
+ * when bookings start or that they have closed.
+ *
+ * `asksAddress` and `asksTable` say whether to show those two fields.
  * @summary Read a booking form
  */
 export const registrationForm = async (

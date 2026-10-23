@@ -6,6 +6,9 @@ import {
   authMe,
   configShow,
   contactStore,
+  eventPublish,
+  eventStore,
+  registrationForm,
   registrationStore,
 } from "../api/generated/endpoints";
 import type { StoreRegistrationRequest } from "../api/generated/model";
@@ -1289,4 +1292,28 @@ test("POST /registrations refuses an answer the block does not offer", async () 
 
   expect(error.status).toBe(400);
   expect(error.fields).toEqual([{ field: "choices.1.value", reason: "not_an_answer" }]);
+});
+
+test("a form the committee has not opened answers 404, like no form", async () => {
+  setMockUser("demo.direction");
+  const created = await eventStore({
+    title: "Souper 2027",
+    startsAt: "2027-01-23T18:30:00.000Z",
+    endsAt: "2027-01-23T22:30:00.000Z",
+    location: "Grenette",
+    registrationClosesAt: "2027-01-16T22:59:00.000Z",
+  });
+  if (created.status !== 201) {
+    throw new Error("the event was not created");
+  }
+  expect(created.data.registrationEnabled).toBe(false);
+  // Published, or the draft rule would answer 404 and this test would prove nothing.
+  await eventPublish(created.data.id, {
+    headers: await ifMatchFor(`/api/v1/events/${created.data.id}`),
+  });
+
+  const error = (await registrationForm(created.data.id).catch(
+    (thrown: unknown) => thrown,
+  )) as ApiError;
+  expect(error.status).toBe(404);
 });

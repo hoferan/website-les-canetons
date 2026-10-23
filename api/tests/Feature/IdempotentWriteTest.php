@@ -257,6 +257,7 @@ class IdempotentWriteTest extends TestCase
     {
         $event = Event::factory()->create([
             'registration_opens_at' => now()->subDay(),
+            'registration_enabled' => true,
             'registration_closes_at' => now()->addWeek(),
             'registration_max_guests' => 10,
         ]);

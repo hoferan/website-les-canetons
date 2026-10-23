@@ -2413,7 +2413,7 @@
         "/events/{event}/registration": {
             "get": {
                 "operationId": "registration.form",
-                "description": "Anonymous. Returns what a public form needs: the event's title, dates\nand location, the options that can be booked, the maximum number of\npeople one booking may cover, and whether the form is open right now.\n\n`open` is computed by the server. Do not derive it from `opensAt` and\n`closesAt` on the client, whose clock may be wrong.\n\nAn event that takes no registrations answers `404`, whether or not it\nexists. An event that is enabled but outside its window answers `200`\nwith `open: false`, so the form can say when bookings start or that\nthey have closed.",
+                "description": "Anonymous. Returns what a public form needs: the event's title, dates\nand location, the options that can be booked, the maximum number of\npeople one booking may cover, and whether the form is open right now.\n\n`open` is computed by the server. Do not derive it from `opensAt` and\n`closesAt` on the client, whose clock may be wrong.\n\nAn event that takes no registrations, or whose form the committee has\nnot opened, answers `404`, whether or not it exists. An open form\noutside its window answers `200` with `open: false`, so the form can say\nwhen bookings start or that they have closed.\n\n`asksAddress` and `asksTable` say whether to show those two fields.",
                 "summary": "Read a booking form",
                 "tags": [
                     "Registration"
@@ -8415,9 +8415,21 @@
                             "null"
                         ]
                     },
+                    "registrationEnabled": {
+                        "type": "boolean",
+                        "description": "Whether the public may use the form. A form that exists but is not open answers 404 to the public; the committee's screens still reach it."
+                    },
+                    "registrationAsksAddress": {
+                        "type": "boolean",
+                        "description": "Whether the form asks for a postal address."
+                    },
+                    "registrationAsksTable": {
+                        "type": "boolean",
+                        "description": "Whether the form asks who the guest would like to sit with."
+                    },
                     "takesRegistrations": {
                         "type": "boolean",
-                        "description": "Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set."
+                        "description": "Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set."
                     },
                     "myAttendance": {
                         "anyOf": [
@@ -8449,6 +8461,9 @@
                     "registrationOpensAt",
                     "registrationClosesAt",
                     "registrationMaxGuests",
+                    "registrationEnabled",
+                    "registrationAsksAddress",
+                    "registrationAsksTable",
                     "takesRegistrations",
                     "myAttendance"
                 ],
@@ -9073,6 +9088,14 @@
                             "null"
                         ]
                     },
+                    "asksAddress": {
+                        "type": "boolean",
+                        "description": "Whether to ask for a postal address. A booking sent with one anyway stores none."
+                    },
+                    "asksTable": {
+                        "type": "boolean",
+                        "description": "Whether to ask who the guest would like to sit with. A booking sent with it anyway stores none."
+                    },
                     "opensAt": {
                         "type": [
                             "string",
@@ -9095,6 +9118,8 @@
                     "event",
                     "options",
                     "maxGuests",
+                    "asksAddress",
+                    "asksTable",
                     "opensAt",
                     "closesAt",
                     "open"
@@ -9747,6 +9772,18 @@
                         "minimum": 1,
                         "maximum": 100
                     },
+                    "registrationEnabled": {
+                        "type": "boolean",
+                        "description": "Whether the public may use the form (ADR 0033). A new form is closed until the committee opens it; closed, the form answers 404."
+                    },
+                    "registrationAsksAddress": {
+                        "type": "boolean",
+                        "description": "Whether the form asks for a postal address. Default true."
+                    },
+                    "registrationAsksTable": {
+                        "type": "boolean",
+                        "description": "Whether the form asks who the guest would like to sit with. Default true."
+                    },
                     "tagIds": {
                         "type": "array",
                         "description": "Ids from `GET /event-tags`. A repeated id counts once.",
@@ -10056,7 +10093,7 @@
             },
             "StoreRegistrationRequest": {
                 "type": "object",
-                "description": "An anonymous booking for one event.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nName, email and phone are required, because a Swiss committee reaches\nsomebody by telephone the evening before. Address and table name are\noptional.\n\n`choices` holds the answers, one per block of the form: `{optionId,\nquantity}` for a quantity, `{optionId, value}` for the other kinds, at most\n20 entries, each block at most once and belonging to this event. Read the\nblocks from `GET /api/v1/events/{event}/registration`. A required block left\nout fails against `answers.<optionId>` with `required`; a value its block\ndoes not take fails with `not_an_answer`.\n\nThe quantities that count people are the booking's size. When the form has\nany, they must add up to at least one (`no_guests`) and, under a per-booking\nguest cap, to no more than it (`too_many_guests`), both against `choices`.\n\nAn event that takes no bookings answers `404`, whether or not it exists.",
+                "description": "An anonymous booking for one event.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nName, email and phone are required, because a Swiss committee reaches\nsomebody by telephone the evening before. Address and table name are\noptional.\n\n`choices` holds the answers, one per block of the form: `{optionId,\nquantity}` for a quantity, `{optionId, value}` for the other kinds, at most\n20 entries, each block at most once and belonging to this event. Read the\nblocks from `GET /api/v1/events/{event}/registration`. A required block left\nout fails against `answers.<optionId>` with `required`; a value its block\ndoes not take fails with `not_an_answer`.\n\nThe quantities that count people are the booking's size. When the form has\nany, they must add up to at least one (`no_guests`) and, under a per-booking\nguest cap, to no more than it (`too_many_guests`), both against `choices`.\n\nAn event that takes no bookings, or whose form is not open, answers `404`, whether or not it exists.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -10309,6 +10346,18 @@
                         "description": "The largest number of people one booking may cover, 1 to 100. Send `null` for no cap.",
                         "minimum": 1,
                         "maximum": 100
+                    },
+                    "registrationEnabled": {
+                        "type": "boolean",
+                        "description": "Whether the public may use the form (ADR 0033). A new form is closed until the committee opens it; closed, the form answers 404."
+                    },
+                    "registrationAsksAddress": {
+                        "type": "boolean",
+                        "description": "Whether the form asks for a postal address. Default true."
+                    },
+                    "registrationAsksTable": {
+                        "type": "boolean",
+                        "description": "Whether the form asks who the guest would like to sit with. Default true."
                     },
                     "tagIds": {
                         "type": "array",

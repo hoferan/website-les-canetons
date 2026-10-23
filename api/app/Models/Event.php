@@ -37,6 +37,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonImmutable|null $registration_opens_at
  * @property CarbonImmutable|null $registration_closes_at
  * @property int|null $registration_max_guests
+ * @property bool $registration_enabled
+ * @property bool $registration_asks_address
+ * @property bool $registration_asks_table
  */
 class Event extends Model
 {
@@ -50,6 +53,10 @@ class Event extends Model
      */
     protected $attributes = [
         'is_public' => false,
+        // A new form starts closed, and asks for both details (ADR 0033).
+        'registration_enabled' => false,
+        'registration_asks_address' => true,
+        'registration_asks_table' => true,
     ];
 
     /** What a list eager-loads to render every event's poster. See poster(). */
@@ -66,6 +73,9 @@ class Event extends Model
         'registration_opens_at',
         'registration_closes_at',
         'registration_max_guests',
+        'registration_enabled',
+        'registration_asks_address',
+        'registration_asks_table',
         'published_at',
     ];
 
@@ -205,14 +215,26 @@ class Event extends Model
     }
 
     /**
-     * Whether this event takes public registrations at all.
+     * Whether this event has a booking form at all.
      *
-     * True exactly when `registration_closes_at` is set (ADR 0020). No
-     * separate boolean, which could drift out of step with the date.
+     * True exactly when `registration_closes_at` is set (ADR 0020). This is
+     * what the committee's screens follow: a form being built, or one closed
+     * after taking bookings, still has its options editor and guest list.
+     * Whether the public may use it is acceptsBookings().
      */
     public function takesRegistrations(): bool
     {
         return $this->registration_closes_at !== null;
+    }
+
+    /**
+     * Whether the public may read and send the form: it exists and the
+     * committee has opened it (ADR 0033). A form not open answers the same 404
+     * as no form, so a stranger cannot tell one from the other.
+     */
+    public function acceptsBookings(): bool
+    {
+        return $this->takesRegistrations() && $this->registration_enabled;
     }
 
     /**
@@ -224,7 +246,7 @@ class Event extends Model
      */
     public function registrationIsOpen(): bool
     {
-        if (! $this->takesRegistrations()) {
+        if (! $this->acceptsBookings()) {
             return false;
         }
 
@@ -251,6 +273,9 @@ class Event extends Model
             'registration_opens_at' => UtcDateTime::class,
             'registration_closes_at' => UtcDateTime::class,
             'registration_max_guests' => 'integer',
+            'registration_enabled' => 'boolean',
+            'registration_asks_address' => 'boolean',
+            'registration_asks_table' => 'boolean',
         ];
     }
 }

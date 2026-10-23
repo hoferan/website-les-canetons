@@ -638,7 +638,7 @@ test("a required block the server says is missing is marked on that block", asyn
 });
 
 /** The souper's form with one block replaced, to test a single kind. */
-function formWith(option: Record<string, unknown>) {
+function formWith(option: Record<string, unknown>, form: Record<string, unknown> = {}) {
   server.use(
     http.get("/api/v1/events/:id/registration", () =>
       HttpResponse.json({
@@ -667,6 +667,9 @@ function formWith(option: Record<string, unknown>) {
         opensAt: null,
         closesAt: "2027-06-01T00:00:00.000Z",
         open: true,
+        asksAddress: true,
+        asksTable: true,
+        ...form,
       }),
     ),
   );
@@ -701,4 +704,20 @@ test("a required quantity is marked and required like a contact field", async ()
 
   expect(screen.getByLabelText(/Personnes/)).toBeRequired();
   expect(screen.getByText("Personnes").closest("label")).toHaveTextContent("*");
+});
+
+test("a form that does not ask for the address or the table shows neither field", async () => {
+  formWith(
+    { kind: "text", label: "Que nous apportez-vous ?", required: false },
+    {
+      asksAddress: false,
+      asksTable: false,
+    },
+  );
+  await renderBooking();
+
+  expect(screen.queryByLabelText("Adresse")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Table", { exact: true })).not.toBeInTheDocument();
+  // The three a committee always needs stay.
+  expect(screen.getByLabelText("Téléphone")).toBeRequired();
 });

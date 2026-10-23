@@ -1389,6 +1389,9 @@ function initialEvents(): EventResource[] {
       registrationOpensAt: null,
       registrationClosesAt: null,
       registrationMaxGuests: null,
+      registrationEnabled: false,
+      registrationAsksAddress: true,
+      registrationAsksTable: true,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1408,6 +1411,9 @@ function initialEvents(): EventResource[] {
       registrationOpensAt: null,
       registrationClosesAt: null,
       registrationMaxGuests: null,
+      registrationEnabled: false,
+      registrationAsksAddress: true,
+      registrationAsksTable: true,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1427,6 +1433,9 @@ function initialEvents(): EventResource[] {
       registrationOpensAt: null,
       registrationClosesAt: null,
       registrationMaxGuests: null,
+      registrationEnabled: false,
+      registrationAsksAddress: true,
+      registrationAsksTable: true,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1448,6 +1457,9 @@ function initialEvents(): EventResource[] {
       registrationOpensAt: null,
       registrationClosesAt: null,
       registrationMaxGuests: null,
+      registrationEnabled: false,
+      registrationAsksAddress: true,
+      registrationAsksTable: true,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1472,6 +1484,9 @@ function initialEvents(): EventResource[] {
       registrationOpensAt: null,
       registrationClosesAt: null,
       registrationMaxGuests: null,
+      registrationEnabled: false,
+      registrationAsksAddress: true,
+      registrationAsksTable: true,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1492,6 +1507,9 @@ function initialEvents(): EventResource[] {
       registrationOpensAt: null,
       registrationClosesAt: null,
       registrationMaxGuests: null,
+      registrationEnabled: false,
+      registrationAsksAddress: true,
+      registrationAsksTable: true,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1519,6 +1537,9 @@ function initialEvents(): EventResource[] {
       registrationOpensAt: at(-14, "00:00"),
       registrationClosesAt: at(35, "23:59"),
       registrationMaxGuests: 6,
+      registrationEnabled: true,
+      registrationAsksAddress: true,
+      registrationAsksTable: true,
       takesRegistrations: true,
       myAttendance: null,
       answeredCount: null,
@@ -1545,6 +1566,9 @@ function initialEvents(): EventResource[] {
       registrationOpensAt: null,
       registrationClosesAt: null,
       registrationMaxGuests: null,
+      registrationEnabled: false,
+      registrationAsksAddress: true,
+      registrationAsksTable: true,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1565,6 +1589,9 @@ function initialEvents(): EventResource[] {
       registrationOpensAt: null,
       registrationClosesAt: null,
       registrationMaxGuests: null,
+      registrationEnabled: false,
+      registrationAsksAddress: true,
+      registrationAsksTable: true,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -2132,7 +2159,8 @@ function totalsOf(
 
 /** Mirrors Event::registrationIsOpen(): the close date is the switch. */
 function registrationIsOpen(event: EventResource): boolean {
-  if (event.registrationClosesAt === null) {
+  // A form the committee has not opened takes nothing (ADR 0033).
+  if (event.registrationClosesAt === null || !event.registrationEnabled) {
     return false;
   }
 
@@ -3509,6 +3537,9 @@ const overrides = [
         registrationOpensAt: null,
         registrationClosesAt: null,
         registrationMaxGuests: null,
+        registrationEnabled: false,
+        registrationAsksAddress: true,
+        registrationAsksTable: true,
         takesRegistrations: false,
         myAttendance: null,
         answeredCount: null,
@@ -3565,6 +3596,9 @@ const overrides = [
       registrationOpensAt: body.registrationOpensAt ?? null,
       registrationClosesAt: body.registrationClosesAt ?? null,
       registrationMaxGuests: body.registrationMaxGuests ?? null,
+      registrationEnabled: body.registrationEnabled ?? false,
+      registrationAsksAddress: body.registrationAsksAddress ?? true,
+      registrationAsksTable: body.registrationAsksTable ?? true,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -4298,7 +4332,12 @@ const overrides = [
 
     // A draft is a 404 here for everyone, a logged-in manager included: the
     // public routes are the visitor's view of the event.
-    if (!event || event.publishedAt === null || event.registrationClosesAt === null) {
+    if (
+      !event ||
+      event.publishedAt === null ||
+      event.registrationClosesAt === null ||
+      !event.registrationEnabled
+    ) {
       return notFound();
     }
 
@@ -4306,6 +4345,8 @@ const overrides = [
       event: publicEvent(event),
       options: optionsFor(event.id),
       maxGuests: event.registrationMaxGuests,
+      asksAddress: event.registrationAsksAddress,
+      asksTable: event.registrationAsksTable,
       opensAt: event.registrationOpensAt,
       closesAt: event.registrationClosesAt,
       open: registrationIsOpen(event),
@@ -4323,7 +4364,12 @@ const overrides = [
     // an event that takes none would answer a complaint about
     // `choices.0.optionId` and leak that the event exists. A draft answers
     // the same 404.
-    if (!event || event.publishedAt === null || event.registrationClosesAt === null) {
+    if (
+      !event ||
+      event.publishedAt === null ||
+      event.registrationClosesAt === null ||
+      !event.registrationEnabled
+    ) {
       return notFound();
     }
 
@@ -4473,8 +4519,9 @@ const overrides = [
       email: String(body.email),
       phone: String(body.phone),
       phoneE164: mockE164(String(body.phone)),
-      address: body.address?.trim() ? body.address : null,
-      tableName: body.tableName?.trim() ? body.tableName : null,
+      // A form that does not ask for them stores neither.
+      address: event.registrationAsksAddress && body.address?.trim() ? body.address : null,
+      tableName: event.registrationAsksTable && body.tableName?.trim() ? body.tableName : null,
       choices,
       ...totalsOf(event.id, choices),
       paidAt: null,

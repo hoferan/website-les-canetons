@@ -31,7 +31,7 @@ use Illuminate\Validation\Validator;
  * any, they must add up to at least one (`no_guests`) and, under a per-booking
  * guest cap, to no more than it (`too_many_guests`), both against `choices`.
  *
- * An event that takes no bookings answers `404`, whether or not it exists.
+ * An event that takes no bookings, or whose form is not open, answers `404`, whether or not it exists.
  */
 class StoreRegistrationRequest extends FormRequest
 {
@@ -48,7 +48,7 @@ class StoreRegistrationRequest extends FormRequest
     {
         $event = $this->route('event');
 
-        if ($event instanceof Event && ! $event->takesRegistrations()) {
+        if ($event instanceof Event && ! $event->acceptsBookings()) {
             abort(404);
         }
     }

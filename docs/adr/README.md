@@ -56,3 +56,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0030](0030-auto-migrate-off-keeps-serving.md) | Keep serving when AUTO_MIGRATE is off, because it is the outage switch |
 | [0031](0031-cap-an-option-under-a-lock.md) | Cap how many of an option can be booked, counting under a lock on the event |
 | [0032](0032-compose-a-booking-form-from-blocks.md) | Compose an event's booking form from blocks the committee assembles |
+| [0033](0033-a-booking-form-opens-with-its-own-switch.md) | Open a booking form with its own switch, and let it ask for address and table |

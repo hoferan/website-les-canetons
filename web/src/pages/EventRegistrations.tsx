@@ -579,7 +579,15 @@ function answerTotalsOf(
 ): { key: string; question: string; answer: string; count: number }[] {
   const tally = new Map<
     string,
-    { key: string; question: string; answer: string; count: number; optionId: number }
+    {
+      key: string;
+      question: string;
+      answer: string;
+      count: number;
+      optionId: number;
+      /** The "no answer" line, which sorts after the real answers. */
+      last?: boolean;
+    }
   >();
   for (const booking of bookings) {
     for (const choice of booking.choices) {
@@ -598,7 +606,35 @@ function answerTotalsOf(
       tally.set(key, entry);
     }
   }
-  return [...tally.values()].sort((a, b) => a.optionId - b.optionId || b.count - a.count);
+  // The bookings that left each question alone, after its answers. Only a
+  // question somebody answered is known here: the list carries no blocks.
+  const questions = new Map<number, string>();
+  for (const entry of tally.values()) {
+    questions.set(entry.optionId, entry.question);
+  }
+  for (const [optionId, question] of questions) {
+    const answered = bookings.filter((booking) =>
+      booking.choices.some((choice) => choice.optionId === optionId),
+    ).length;
+    if (answered < bookings.length) {
+      tally.set(`${optionId}:none`, {
+        key: `${optionId}:none`,
+        optionId,
+        question,
+        answer: t("registrations.noAnswer"),
+        // Below every real answer, whatever its count.
+        count: bookings.length - answered,
+        last: true,
+      });
+    }
+  }
+
+  return [...tally.values()].sort(
+    (a, b) =>
+      a.optionId - b.optionId ||
+      Number(a.last ?? false) - Number(b.last ?? false) ||
+      b.count - a.count,
+  );
 }
 
 /**

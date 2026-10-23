@@ -41,16 +41,18 @@ class RegistrationController extends Controller
      * `open` is computed by the server. Do not derive it from `opensAt` and
      * `closesAt` on the client, whose clock may be wrong.
      *
-     * An event that takes no registrations answers `404`, whether or not it
-     * exists. An event that is enabled but outside its window answers `200`
-     * with `open: false`, so the form can say when bookings start or that
-     * they have closed.
+     * An event that takes no registrations, or whose form the committee has
+     * not opened, answers `404`, whether or not it exists. An open form
+     * outside its window answers `200` with `open: false`, so the form can say
+     * when bookings start or that they have closed.
+     *
+     * `asksAddress` and `asksTable` say whether to show those two fields.
      */
     public function form(Event $event): RegistrationFormResource
     {
         // 404 rather than 403: whether an event exists without taking
         // bookings is private planning, and this endpoint needs no session.
-        if (! $event->takesRegistrations()) {
+        if (! $event->acceptsBookings()) {
             abort(404);
         }
 
@@ -91,7 +93,7 @@ class RegistrationController extends Controller
     #[Emits('registration_not_open', 'registration_closed')]
     public function store(StoreRegistrationRequest $request, Event $event): JsonResponse
     {
-        // The takesRegistrations() 404 lives in the Form Request's
+        // The acceptsBookings() 404 lives in the Form Request's
         // prepareForValidation(): it has to run before validation, or the
         // caller gets a 400 about option ids instead.
         $refusal = self::refuseUnlessOpen($event);
@@ -124,8 +126,10 @@ class RegistrationController extends Controller
                 'last_name' => $data['lastName'],
                 'email' => $data['email'],
                 'phone' => $data['phone'],
-                'address' => $data['address'] ?? null,
-                'table_name' => $data['tableName'] ?? null,
+                // A form that does not ask for them stores neither, whatever
+                // a hand-written body sends.
+                'address' => $event->registration_asks_address ? ($data['address'] ?? null) : null,
+                'table_name' => $event->registration_asks_table ? ($data['tableName'] ?? null) : null,
             ]);
 
             foreach ($data['choices'] as $choice) {

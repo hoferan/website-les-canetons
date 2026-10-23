@@ -383,7 +383,13 @@ export interface EventResource {
   registrationClosesAt: string | null;
   /** @nullable */
   registrationMaxGuests: number | null;
-  /** Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set. */
+  /** Whether the public may use the form. A form that exists but is not open answers 404 to the public; the committee's screens still reach it. */
+  registrationEnabled: boolean;
+  /** Whether the form asks for a postal address. */
+  registrationAsksAddress: boolean;
+  /** Whether the form asks who the guest would like to sit with. */
+  registrationAsksTable: boolean;
+  /** Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set. */
   takesRegistrations: boolean;
   myAttendance: AttendanceResource | null;
 }

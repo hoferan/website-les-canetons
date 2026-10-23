@@ -139,7 +139,7 @@ class AgendaTest extends TestCase
     /**
      * The flag the public agenda decides whether to offer a booking link on.
      *
-     * Both events below take bookings (`registration_closes_at` enables that)
+     * Both events below take bookings (an open form with a closing date)
      * and differ only in whether the window has opened. A resource that
      * published `takesRegistrations()` instead of `registrationIsOpen()` would
      * pass every other test here and send a visitor to a form that refuses
@@ -152,6 +152,7 @@ class AgendaTest extends TestCase
             'is_public' => true,
             'starts_at' => now()->addWeeks(4),
             'ends_at' => now()->addWeeks(4)->addHours(5),
+            'registration_enabled' => true,
             'registration_closes_at' => now()->addWeeks(3),
         ]);
 
@@ -162,6 +163,7 @@ class AgendaTest extends TestCase
             'ends_at' => now()->addWeeks(6)->addHours(4),
             // Enabled, but the form does not appear until next month.
             'registration_opens_at' => now()->addWeek(),
+            'registration_enabled' => true,
             'registration_closes_at' => now()->addWeeks(5),
         ]);
 

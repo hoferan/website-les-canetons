@@ -82,6 +82,7 @@ class EventFactory extends Factory
     public function takingRegistrations(?int $maxGuests = null): static
     {
         return $this->state(fn (): array => [
+            'registration_enabled' => true,
             'registration_closes_at' => Carbon::now()->addWeeks(2),
             'registration_max_guests' => $maxGuests,
         ]);
@@ -92,6 +93,7 @@ class EventFactory extends Factory
     {
         return $this->state(fn (): array => [
             'registration_opens_at' => Carbon::now()->addWeek(),
+            'registration_enabled' => true,
             'registration_closes_at' => Carbon::now()->addWeeks(3),
         ]);
     }
@@ -101,6 +103,7 @@ class EventFactory extends Factory
     {
         return $this->state(fn (): array => [
             'registration_opens_at' => Carbon::now()->subWeeks(3),
+            'registration_enabled' => true,
             'registration_closes_at' => Carbon::now()->subDay(),
         ]);
     }

@@ -270,6 +270,9 @@ export const fr = {
     registrationOpensAt: "Ouverture des inscriptions",
     registrationClosesAt: "Clôture des inscriptions",
     registrationMaxGuests: "Personnes par inscription",
+    registrationEnabled: "Formulaire ouvert",
+    registrationAsksAddress: "Demander l’adresse",
+    registrationAsksTable: "Demander la table",
     sectionId: "Pupitre",
     committeeFunctionId: "Fonction au comité",
     instructorOfSectionId: "Moniteur du pupitre",
@@ -791,7 +794,7 @@ export const fr = {
 
     registrationsLegend: "Inscriptions du public",
     registrationsHint:
-      "Renseignez une date de clôture pour ouvrir cet événement aux inscriptions. Laissez-la vide si personne ne s’inscrit\u00a0: c’est le cas de presque tout le planning.",
+      "Renseignez une date de clôture pour donner un formulaire d’inscription à cet événement. Laissez-la vide si personne ne s’inscrit\u00a0: c’est le cas de presque tout le planning.",
     closesDate: "Clôture des inscriptions",
     closesTime: "Heure de clôture",
     opensDate: "Ouverture des inscriptions",
@@ -800,7 +803,12 @@ export const fr = {
       "Sans date d’ouverture, le formulaire est en ligne dès maintenant. Renseignez-la pour préparer un événement dont les inscriptions ne doivent pas encore apparaître.",
     maxGuests: "Personnes par inscription",
     maxGuestsHint:
-      "Le maximum qu’une seule inscription peut couvrir, entre 1 et 100. Laissez vide pour ne pas limiter. La salle, elle, n’est jamais limitée\u00a0: le comité surveille la liste et avance la clôture si nécessaire.",
+      "Le maximum qu’une seule inscription peut couvrir, entre 1 et 100. Laissez vide pour ne pas limiter. Pour limiter la salle, donnez un nombre de places à chaque menu dans «\u00a0Ce qu’on réserve\u00a0».",
+    formOpen: "Formulaire ouvert",
+    asksAddress: "Demander l’adresse",
+    asksTable: "Demander la table",
+    formOpenHint:
+      "Tant que le formulaire n’est pas ouvert, le public ne le voit pas\u00a0: vous pouvez le préparer à l’avance.",
   },
 
   /**
@@ -1071,6 +1079,8 @@ export const fr = {
     optionTotal: "{{count}} × {{label}}",
     // Above the tally of each question's answers.
     answerTotalsLabel: "Réponses :",
+    // A question a booking left alone, counted with its answers.
+    noAnswer: "sans réponse",
 
     // Paying. Only a booking with a price shows any of this: a free evening
     // has nothing to collect. `paid` labels a manager's switch and fills a

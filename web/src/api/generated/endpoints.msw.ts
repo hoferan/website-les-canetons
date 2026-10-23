@@ -492,6 +492,9 @@ export const getEventIndexResponseMock = (
       null,
     ]),
     registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+    registrationEnabled: faker.datatype.boolean(),
+    registrationAsksAddress: faker.datatype.boolean(),
+    registrationAsksTable: faker.datatype.boolean(),
     takesRegistrations: faker.datatype.boolean(),
     myAttendance: faker.helpers.arrayElement([
       {
@@ -563,6 +566,9 @@ export const getEventStoreResponseMock = (
     null,
   ]),
   registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  registrationEnabled: faker.datatype.boolean(),
+  registrationAsksAddress: faker.datatype.boolean(),
+  registrationAsksTable: faker.datatype.boolean(),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
@@ -632,6 +638,9 @@ export const getEventShowResponseMock = (
     null,
   ]),
   registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  registrationEnabled: faker.datatype.boolean(),
+  registrationAsksAddress: faker.datatype.boolean(),
+  registrationAsksTable: faker.datatype.boolean(),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
@@ -701,6 +710,9 @@ export const getEventUpdateResponseMock = (
     null,
   ]),
   registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  registrationEnabled: faker.datatype.boolean(),
+  registrationAsksAddress: faker.datatype.boolean(),
+  registrationAsksTable: faker.datatype.boolean(),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
@@ -788,6 +800,9 @@ export const getEventSeriesResponseMock = (
       null,
     ]),
     registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+    registrationEnabled: faker.datatype.boolean(),
+    registrationAsksAddress: faker.datatype.boolean(),
+    registrationAsksTable: faker.datatype.boolean(),
     takesRegistrations: faker.datatype.boolean(),
     myAttendance: faker.helpers.arrayElement([
       {
@@ -859,6 +874,9 @@ export const getEventPublishResponseMock = (
     null,
   ]),
   registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  registrationEnabled: faker.datatype.boolean(),
+  registrationAsksAddress: faker.datatype.boolean(),
+  registrationAsksTable: faker.datatype.boolean(),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
@@ -928,6 +946,9 @@ export const getEventUnpublishResponseMock = (
     null,
   ]),
   registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  registrationEnabled: faker.datatype.boolean(),
+  registrationAsksAddress: faker.datatype.boolean(),
+  registrationAsksTable: faker.datatype.boolean(),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
@@ -1161,6 +1182,8 @@ export const getRegistrationFormResponseMock = (
     }),
   ),
   maxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  asksAddress: faker.datatype.boolean(),
+  asksTable: faker.datatype.boolean(),
   opensAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   closesAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   open: faker.datatype.boolean(),

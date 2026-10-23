@@ -304,6 +304,10 @@ class EventController extends Controller
             'registration_opens_at' => $data['registrationOpensAt'] ?? null,
             'registration_closes_at' => $data['registrationClosesAt'] ?? null,
             'registration_max_guests' => $data['registrationMaxGuests'] ?? null,
+            // A new form starts closed (ADR 0033); both details are asked.
+            'registration_enabled' => $data['registrationEnabled'] ?? false,
+            'registration_asks_address' => $data['registrationAsksAddress'] ?? true,
+            'registration_asks_table' => $data['registrationAsksTable'] ?? true,
         ]);
         $event->tags()->sync(EventTag::distinctIds($data['tagIds'] ?? []));
 
@@ -352,6 +356,9 @@ class EventController extends Controller
             'registrationOpensAt' => 'registration_opens_at',
             'registrationClosesAt' => 'registration_closes_at',
             'registrationMaxGuests' => 'registration_max_guests',
+            'registrationEnabled' => 'registration_enabled',
+            'registrationAsksAddress' => 'registration_asks_address',
+            'registrationAsksTable' => 'registration_asks_table',
         ];
 
         foreach ($columns as $field => $column) {

@@ -698,9 +698,12 @@ test("the totals count each answer of a choice and a yes/no", async () => {
   await renderGuestList();
 
   const totals = within(screen.getByTestId("answer-totals")).getAllByRole("listitem");
+  // Marc answered neither, so each question also counts one "sans réponse".
   expect(totals.map((item) => item.textContent)).toEqual([
     "Végétarien ? : 1 × Non",
+    "Végétarien ? : 1 × sans réponse",
     "Dessert : 1 × Meringue et double crème",
+    "Dessert : 1 × sans réponse",
   ]);
   // And the kitchen's quantities stay as they were.
   expect(
@@ -743,4 +746,12 @@ test("a list that counts nobody states no number of people", async () => {
   expect(screen.getByTestId("guest-counts")).not.toHaveTextContent("personne");
   expect(cardFor("Aebischer Test")).not.toHaveTextContent("personne");
   expect(cardFor("Aebischer Test")).toHaveTextContent("Que nous apportez-vous ? : Un gâteau");
+});
+
+test("a yes/no's tally says how many gave no answer", async () => {
+  // Jeanne answered "Non"; Marc left it alone.
+  await renderGuestList();
+
+  const totals = within(screen.getByTestId("answer-totals")).getAllByRole("listitem");
+  expect(totals.map((item) => item.textContent)).toContain("Végétarien ? : 1 × sans réponse");
 });

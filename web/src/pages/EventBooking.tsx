@@ -340,7 +340,13 @@ export function EventBooking() {
                     {t("booking.contactLegend")}
                   </legend>
                   <RequiredLegend />
-                  {FIELDS.map((field) => (
+                  {/* Address and table are the form's to ask for (ADR 0033);
+                    the other four every booking needs. */}
+                  {FIELDS.filter(
+                    (field) =>
+                      (field.name !== "address" || offer.asksAddress) &&
+                      (field.name !== "tableName" || offer.asksTable),
+                  ).map((field) => (
                     <FormField
                       key={field.name}
                       id={`booking-${field.name}`}

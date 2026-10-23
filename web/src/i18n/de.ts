@@ -239,6 +239,9 @@ export const de: typeof fr = {
     registrationOpensAt: "Anmeldebeginn",
     registrationClosesAt: "Anmeldeschluss",
     registrationMaxGuests: "Personen pro Anmeldung",
+    registrationEnabled: "Formular geöffnet",
+    registrationAsksAddress: "Adresse erfragen",
+    registrationAsksTable: "Tisch erfragen",
     sectionId: "Register",
     committeeFunctionId: "Funktion im Vorstand",
     instructorOfSectionId: "Registerleitung",
@@ -586,7 +589,7 @@ export const de: typeof fr = {
 
     registrationsLegend: "Anmeldungen des Publikums",
     registrationsHint:
-      "Tragen Sie ein Schlussdatum ein, um diesen Anlass für Anmeldungen zu öffnen. Lassen Sie es leer, wenn sich niemand anmeldet: Das trifft auf fast die ganze Planung zu.",
+      "Tragen Sie ein Schlussdatum ein, um diesem Anlass ein Anmeldeformular zu geben. Lassen Sie es leer, wenn sich niemand anmeldet: Das trifft auf fast die ganze Planung zu.",
     closesDate: "Anmeldeschluss",
     closesTime: "Uhrzeit des Anmeldeschlusses",
     opensDate: "Anmeldebeginn",
@@ -595,7 +598,12 @@ export const de: typeof fr = {
       "Ohne Anmeldebeginn ist das Formular ab sofort online. Tragen Sie ihn ein, um einen Anlass vorzubereiten, dessen Anmeldungen noch nicht erscheinen sollen.",
     maxGuests: "Personen pro Anmeldung",
     maxGuestsHint:
-      "Das Maximum, das eine einzelne Anmeldung abdecken kann, zwischen 1 und 100. Leer lassen, um nicht zu begrenzen. Der Saal selbst ist nie begrenzt: Der Vorstand beobachtet die Liste und zieht den Anmeldeschluss bei Bedarf vor.",
+      "Das Maximum, das eine einzelne Anmeldung abdecken kann, zwischen 1 und 100. Leer lassen, um nicht zu begrenzen. Um den Saal zu begrenzen, geben Sie jedem Menü unter «Was buchbar ist» eine Anzahl Plätze.",
+    formOpen: "Formular geöffnet",
+    asksAddress: "Adresse erfragen",
+    asksTable: "Tisch erfragen",
+    formOpenHint:
+      "Solange das Formular nicht geöffnet ist, sieht das Publikum es nicht: Sie können es im Voraus vorbereiten.",
   },
 
   seriesForm: {
@@ -794,6 +802,7 @@ export const de: typeof fr = {
 
     optionTotalsLabel: "Insgesamt:",
     answerTotalsLabel: "Antworten:",
+    noAnswer: "ohne Antwort",
     optionTotal: "{{count}} × {{label}}",
 
     paid: "Bezahlt",

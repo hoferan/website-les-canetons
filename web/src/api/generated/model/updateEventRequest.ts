@@ -375,6 +375,12 @@ export interface UpdateEventRequest {
    * @nullable
    */
   registrationMaxGuests?: number | null;
+  /** Whether the public may use the form (ADR 0033). A new form is closed until the committee opens it; closed, the form answers 404. */
+  registrationEnabled?: boolean;
+  /** Whether the form asks for a postal address. Default true. */
+  registrationAsksAddress?: boolean;
+  /** Whether the form asks who the guest would like to sit with. Default true. */
+  registrationAsksTable?: boolean;
   /**
    * Ids from `GET /event-tags`, replacing the event's tags. Leave it out to keep them; send `[]` to clear them.
    * @maxItems 8
