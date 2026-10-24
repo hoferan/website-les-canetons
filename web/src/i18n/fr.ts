@@ -1163,6 +1163,52 @@ export const fr = {
 
     saved: "Enregistré.",
     saving: "Enregistrement…",
+
+    // The in-place editor (/events/:id/book/edit, #319). The page is the
+    // booking form itself, so most of what it shows is the guest's copy.
+    editing: "Vous modifiez ce formulaire. Les invités le voient comme ci-dessous.",
+    settingsHeading: "Réglages du formulaire",
+    enabled: "Réservations ouvertes",
+    enabledOn: "Ouvertes : le formulaire est en ligne entre ses dates.",
+    enabledOff: "Fermées : personne ne voit encore le formulaire.",
+    closesDate: "Clôture des inscriptions",
+    closesTime: "Heure de clôture",
+    opensDate: "Ouverture des inscriptions",
+    opensTime: "Heure d’ouverture",
+    opensHint: "Vide : en ligne dès que les réservations sont ouvertes.",
+    maxGuests: "Personnes par inscription",
+    maxGuestsHint: "Le maximum qu’une inscription peut couvrir, de 1 à 100. Vide : pas de limite.",
+    noClosingDate:
+      "Sans date de clôture, personne ne peut réserver : l’événement n’a alors pas de formulaire.",
+    contactHeading: "Coordonnées",
+    contactLocked: "Toujours demandé",
+    contactHint: "Nom, prénom, e-mail et téléphone : chaque inscription les donne.",
+    asksAddress: "Demander l’adresse",
+    asksTable: "Demander avec qui être à table",
+    // The name of the button over a closed block. {{block}} is what the
+    // committee typed, or `thisOption`.
+    edit: "Modifier « {{block}} »",
+    done: "Terminé",
+    inUse: "A des réponses : ne peut être ni retiré ni changé de nature.",
+    insertFirst: "Ajouter un bloc au début",
+    insertAfter: "Ajouter un bloc après « {{block}} »",
+    insertHere: "Ajouter un bloc ici",
+    pickerHeading: "Que voulez-vous ajouter ?",
+    kindHints: {
+      quantity: "Un nombre, avec prix et places",
+      text: "Ce que l’invité veut dire",
+      choice: "Une réponse dans une liste",
+      yes_no: "Une question fermée",
+      heading: "Sépare le formulaire en parties",
+      paragraph: "Une information à lire",
+    },
+    cancel: "Annuler",
+    preview: "Voir comme un invité",
+    backToEditing: "Revenir à l’édition",
+    copyFrom: "Copier depuis…",
+    copyHint: "Reprend les blocs d’un autre formulaire, sans ses inscriptions.",
+    copyNone: "Aucun autre événement n’a de formulaire.",
+    leave: "Le formulaire a des modifications non enregistrées. Quitter quand même ?",
   },
 
   /**
