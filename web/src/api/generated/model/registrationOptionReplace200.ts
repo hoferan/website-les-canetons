@@ -309,12 +309,12 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { EditableRegistrationOptionResource } from "./editableRegistrationOptionResource";
 import type { RegistrationOptionReplace200Meta } from "./registrationOptionReplace200Meta";
-import type { RegistrationOptionResource } from "./registrationOptionResource";
 
 export type RegistrationOptionReplace200 = {
   /** This page of the collection, in the collection's own order. */
-  data: RegistrationOptionResource[];
+  data: EditableRegistrationOptionResource[];
   /** What you actually got. */
   meta: RegistrationOptionReplace200Meta;
 };

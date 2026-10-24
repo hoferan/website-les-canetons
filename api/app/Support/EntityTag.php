@@ -52,6 +52,16 @@ use InvalidArgumentException;
  */
 final class EntityTag
 {
+    /** The EventResource keys the options PUT writes beside the blocks. */
+    private const FORM_SETTINGS = [
+        'registrationEnabled',
+        'registrationOpensAt',
+        'registrationClosesAt',
+        'registrationMaxGuests',
+        'registrationAsksAddress',
+        'registrationAsksTable',
+    ];
+
     /**
      * facet => the route parameter it is read from
      *
@@ -182,12 +192,22 @@ final class EntityTag
 
             // Without `remaining`, which every booking changes: a guest booking
             // while the editor is open must not 412 the committee's save.
-            'event.options' => array_map(
-                fn (array $option): array => array_diff_key($option, ['remaining' => true]),
-                RegistrationOptionResource::collection(
-                    self::event($model)->registrationOptions()->withSum('choices', 'quantity')->get()
-                )->toArray(self::bare()),
-            ),
+            //
+            // With the form's six settings, which the same PUT writes: a form
+            // opened from the event screen meanwhile must refuse the editor's
+            // save rather than be closed again by it.
+            'event.options' => [
+                'options' => array_map(
+                    fn (array $option): array => array_diff_key($option, ['remaining' => true]),
+                    RegistrationOptionResource::collection(
+                        self::event($model)->registrationOptions()->withSum('choices', 'quantity')->get()
+                    )->toArray(self::bare()),
+                ),
+                'form' => array_intersect_key(
+                    (new EventResource(self::event($model)))->toArray(self::bare()),
+                    array_flip(self::FORM_SETTINGS),
+                ),
+            ],
 
             'member' => (new MemberResource($model->load(['roles', 'section'])))->toArray(self::bare()),
 

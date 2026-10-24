@@ -242,6 +242,7 @@ export const de: typeof fr = {
     registrationEnabled: "Formular geöffnet",
     registrationAsksAddress: "Adresse erfragen",
     registrationAsksTable: "Tisch erfragen",
+    form: "Formulareinstellungen",
     sectionId: "Register",
     committeeFunctionId: "Funktion im Vorstand",
     instructorOfSectionId: "Registerleitung",

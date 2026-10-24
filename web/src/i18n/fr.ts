@@ -273,6 +273,8 @@ export const fr = {
     registrationEnabled: "Formulaire ouvert",
     registrationAsksAddress: "Demander l’adresse",
     registrationAsksTable: "Demander la table",
+    // The six settings above, together, on the form editor's save.
+    form: "Réglages du formulaire",
     sectionId: "Pupitre",
     committeeFunctionId: "Fonction au comité",
     instructorOfSectionId: "Moniteur du pupitre",
