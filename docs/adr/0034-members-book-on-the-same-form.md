@@ -47,7 +47,8 @@ the planning badge and the ADR 0031 capacity count keep working without a second
 - One booking per member per event is a unique index on `(event_id, member_id)`. Every
   member write takes the ADR 0031 event lock first, capped or not, because "one each"
   is a check followed by an insert too. A change leaves its own places out of the
-  capacity count.
+  capacity count, and the form a member reads counts `remaining` the same way, so
+  their own places never show as sold out.
 - Member writes carry no `If-Match`, like answering an event: a member writes only
   their own booking, and ConditionalWrite's tag read would fix the snapshot before the
   lock.

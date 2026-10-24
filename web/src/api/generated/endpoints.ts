@@ -3971,7 +3971,9 @@ export const getRegistrationFormUrl = (event: number) => {
  *
  * A form for members only (`audience: members`) answers `404` to a caller
  * without a session, the same as no form. A member reads it, and books
- * through `/api/v1/events/{event}/my-registration`, not here.
+ * through `/api/v1/events/{event}/my-registration`, not here. Its
+ * `remaining` leaves out the places the caller's own booking holds,
+ * which they may keep when they change it.
  * @summary Read a booking form
  */
 export const registrationForm = async (

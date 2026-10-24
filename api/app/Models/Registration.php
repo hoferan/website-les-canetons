@@ -106,7 +106,12 @@ class Registration extends Model
      */
     public function writeChoices(array $choices, Collection $kinds): void
     {
-        $this->choices()->delete();
+        // Only a booking that had answers. On a new one the DELETE would take
+        // a gap lock at the end of the index, and two bookings doing that at
+        // once deadlock each other's inserts.
+        if (! $this->wasRecentlyCreated) {
+            $this->choices()->delete();
+        }
 
         foreach ($choices as $choice) {
             $quantity = $kinds[$choice['optionId']] === OptionKind::Quantity;

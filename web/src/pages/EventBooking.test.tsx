@@ -822,6 +822,38 @@ test("a member changes their answers in the form they filled in, and keeps one b
   expect(await screen.findByTestId("booking-summary")).toHaveTextContent("Taille de t-shirt : XL");
 });
 
+/**
+ * The weekend's cakes are capped at 12. A member who brought all twelve
+ * changes another answer: their own cakes must not read as sold out, or the
+ * save drops them.
+ *
+ * Mutation test: count the member's own places in the form's `remaining`
+ * (the mocked form read, as RegistrationController::form) and this fails.
+ */
+test("a member who holds the last capped places keeps them when changing another answer", async () => {
+  setMockUser("demo.player");
+  const user = userEvent.setup();
+  const first = await renderBooking(WEEKEND);
+
+  await user.click(await screen.findByRole("radio", { name: "S" }));
+  await user.type(screen.getByLabelText(/Gâteaux que j’apporte/), "12");
+  await user.click(screen.getByRole("button", { name: "Envoyer mes réponses" }));
+  await screen.findByText("Vos réponses");
+
+  first.unmount();
+  await renderBooking(WEEKEND);
+  await user.click(await screen.findByRole("button", { name: "Modifier mes réponses" }));
+
+  expect(screen.getByLabelText(/Gâteaux que j’apporte/)).toBeEnabled();
+  expect(screen.getByLabelText(/Gâteaux que j’apporte/)).toHaveValue(12);
+  await user.click(screen.getByRole("radio", { name: "M" }));
+  await user.click(screen.getByRole("button", { name: "Enregistrer les modifications" }));
+
+  expect(await screen.findByTestId("booking-summary")).toHaveTextContent(
+    "12 × Gâteaux que j’apporte",
+  );
+});
+
 test("a member withdraws their answers and can answer again", async () => {
   setMockUser("demo.player");
   const user = userEvent.setup();

@@ -49,7 +49,9 @@ class RegistrationController extends Controller
      *
      * A form for members only (`audience: members`) answers `404` to a caller
      * without a session, the same as no form. A member reads it, and books
-     * through `/api/v1/events/{event}/my-registration`, not here.
+     * through `/api/v1/events/{event}/my-registration`, not here. Its
+     * `remaining` leaves out the places the caller's own booking holds,
+     * which they may keep when they change it.
      */
     public function form(Request $request, Event $event): RegistrationFormResource
     {
@@ -66,8 +68,21 @@ class RegistrationController extends Controller
             abort(404);
         }
 
+        // On a members form, `remaining` leaves out the caller's own places,
+        // as their PUT counts them: the form they change must not show their
+        // own places as sold out, or the next save drops them.
+        $mine = $event->isMembersOnly()
+            ? Registration::query()->select('id')->where('event_id', $event->id)->where('member_id', $request->user()?->id)
+            : null;
+
         return new RegistrationFormResource($event->load([
-            'registrationOptions' => fn ($options) => $options->withSum('choices', 'quantity'),
+            'registrationOptions' => fn ($options) => $options->withSum(
+                ['choices' => fn ($choices) => $choices->when(
+                    $mine !== null,
+                    fn ($choices) => $choices->whereNotIn('registration_id', $mine),
+                )],
+                'quantity',
+            ),
         ]));
     }
 

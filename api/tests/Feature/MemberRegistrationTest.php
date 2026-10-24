@@ -339,6 +339,26 @@ class MemberRegistrationTest extends TestCase
             ->assertJsonPath('errors.0.reason', 'not_enough_places');
     }
 
+    public function test_the_form_counts_a_members_own_places_as_still_theirs(): void
+    {
+        // So the form they change does not show their own places as sold
+        // out, which would drop them from the next save.
+        $event = $this->membersForm();
+        $meal = RegistrationOption::factory()->create(['event_id' => $event->id, 'capacity' => 3]);
+        $anna = Member::factory()->create();
+        $this->bookAs($anna, $event, [['optionId' => $meal->id, 'quantity' => 3]]);
+
+        $this->actingAsMember($anna)
+            ->getJson("/api/v1/events/{$event->id}/registration")
+            ->assertOk()
+            ->assertJsonPath('options.0.remaining', 3);
+
+        $this->actingAsMember(Member::factory()->create())
+            ->getJson("/api/v1/events/{$event->id}/registration")
+            ->assertOk()
+            ->assertJsonPath('options.0.remaining', 0);
+    }
+
     public function test_a_members_booking_keeps_to_the_per_booking_cap_and_the_required_blocks(): void
     {
         $event = $this->membersForm(['registration_max_guests' => 2]);
@@ -392,6 +412,28 @@ class MemberRegistrationTest extends TestCase
         $this->bookAs(Member::factory()->create(), $event, [['optionId' => $meal->id, 'quantity' => 1]]);
 
         $this->assertSame($before, EntityTag::compute('event', $event));
+    }
+
+    public function test_a_new_booking_deletes_nothing_before_it_writes_its_answers(): void
+    {
+        // A DELETE on a fresh booking's id takes a gap lock at the end of
+        // registration_choices' index, and two bookings doing that at once
+        // deadlock each other's inserts into a 500, on the lock-free guest
+        // path too.
+        $event = $this->membersForm();
+        $meal = RegistrationOption::factory()->create(['event_id' => $event->id]);
+        $this->actingAsMember(Member::factory()->create());
+
+        $deletes = [];
+        DB::listen(function (QueryExecuted $query) use (&$deletes): void {
+            if (str_starts_with(strtolower($query->sql), 'delete')) {
+                $deletes[] = $query->sql;
+            }
+        });
+
+        $this->putJson($this->mine($event), ['choices' => [['optionId' => $meal->id, 'quantity' => 1]]])->assertCreated();
+
+        $this->assertSame([], $deletes);
     }
 
     public function test_an_event_read_without_the_callers_subselect_carries_no_answer_flags(): void

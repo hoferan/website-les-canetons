@@ -2071,6 +2071,8 @@ function initialOptions(): MockOption[] {
       kind: "quantity",
       label: "Gâteaux que j’apporte",
       description: "Pour le goûter du dimanche",
+      // Capped, so a member who holds the last ones can be seen keeping them.
+      capacity: 12,
       sortOrder: 2,
     },
   ];
@@ -4658,9 +4660,16 @@ const overrides = [
       return notFound();
     }
 
+    // On a members form, `remaining` gives back the caller's own places, as
+    // RegistrationController::form() counts them.
+    const mine = event.registrationAudience === "members" ? (mineOn(event.id)?.id ?? null) : null;
+
     return HttpResponse.json({
       event: publicEvent(event),
-      options: optionsFor(event.id),
+      options: optionsFor(event.id).map((option) => ({
+        ...option,
+        remaining: remainingBesides(option, mine) ?? null,
+      })),
       maxGuests: event.registrationMaxGuests,
       audience: event.registrationAudience,
       asksAddress: event.registrationAsksAddress,
