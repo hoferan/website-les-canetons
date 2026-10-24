@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Resources\EventResource;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\Registration;
@@ -14,6 +15,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
@@ -390,6 +392,17 @@ class MemberRegistrationTest extends TestCase
         $this->bookAs(Member::factory()->create(), $event, [['optionId' => $meal->id, 'quantity' => 1]]);
 
         $this->assertSame($before, EntityTag::compute('event', $event));
+    }
+
+    public function test_an_event_read_without_the_callers_subselect_carries_no_answer_flags(): void
+    {
+        // How EntityTag renders it: a fresh row, no caller. Flags read from a
+        // missing subselect would put the window's open state into the tag.
+        $event = $this->membersForm();
+
+        $rendered = (new EventResource(Event::query()->findOrFail($event->id)))->toArray(Request::create('/'));
+
+        $this->assertNull($rendered['myRegistration']);
     }
 
     public function test_the_planning_says_whether_i_have_answered_a_members_form(): void
