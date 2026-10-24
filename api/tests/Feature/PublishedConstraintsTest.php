@@ -146,7 +146,11 @@ class PublishedConstraintsTest extends TestCase
     {
         $floors = [];
 
-        foreach (glob(self::REQUESTS_DIR.'/*.php') ?: [] as $file) {
+        // Concerns/ too: the booking answers' rules live in a trait two
+        // requests share (ValidatesBookingAnswers).
+        $files = [...glob(self::REQUESTS_DIR.'/*.php') ?: [], ...glob(self::REQUESTS_DIR.'/Concerns/*.php') ?: []];
+
+        foreach ($files as $file) {
             $source = (string) file_get_contents($file);
 
             preg_match_all(

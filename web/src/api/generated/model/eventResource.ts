@@ -310,8 +310,10 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { AttendanceResource } from "./attendanceResource";
+import type { EventResourceMyRegistration } from "./eventResourceMyRegistration";
 import type { EventResourcePoster } from "./eventResourcePoster";
 import type { EventTagResource } from "./eventTagResource";
+import type { FormAudience } from "./formAudience";
 
 export interface EventResource {
   id: number;
@@ -389,7 +391,14 @@ export interface EventResource {
   registrationAsksAddress: boolean;
   /** Whether the form asks who the guest would like to sit with. */
   registrationAsksTable: boolean;
+  /** Who may fill in the form: `public`, anybody, or `members`, logged-in members only. */
+  registrationAudience: FormAudience;
   /** Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set. */
   takesRegistrations: boolean;
   myAttendance: AttendanceResource | null;
+  /**
+   * On a published event whose form is open and for members only: whether the caller has booked it, and whether it still takes changes. Null on every other event. Book at `/api/v1/events/{event}/my-registration`.
+   * @nullable
+   */
+  myRegistration: EventResourceMyRegistration;
 }

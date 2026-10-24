@@ -406,6 +406,9 @@ import type {
   MemberRoleReplace200,
   MemberRoleReplace409,
   MemberStore201,
+  MyRegistrationDestroy200,
+  MyRegistrationDestroy409,
+  MyRegistrationPut409,
   PhotoSlotIndex200,
   PhotoSlotIndexParams,
   PhotoSlotUpdate200,
@@ -420,6 +423,7 @@ import type {
   Problem428Response,
   Problem429Response,
   Problem503Response,
+  PutMyRegistrationRequest,
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
   RegistrationDestroy200,
@@ -3964,6 +3968,10 @@ export const getRegistrationFormUrl = (event: number) => {
  * when bookings start or that they have closed.
  *
  * `asksAddress` and `asksTable` say whether to show those two fields.
+ *
+ * A form for members only (`audience: members`) answers `404` to a caller
+ * without a session, the same as no form. A member reads it, and books
+ * through `/api/v1/events/{event}/my-registration`, not here.
  * @summary Read a booking form
  */
 export const registrationForm = async (
@@ -14470,4 +14478,546 @@ export const usePhotoSlotUpdate = <
   TContext
 > => {
   return useMutation(getPhotoSlotUpdateMutationOptions(options), queryClient);
+};
+
+export type myRegistrationShowResponse200 = {
+  data: RegistrationResource;
+  status: 200;
+};
+
+export type myRegistrationShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type myRegistrationShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type myRegistrationShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type myRegistrationShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type myRegistrationShowResponseSuccess = myRegistrationShowResponse200 & {
+  headers: Headers;
+};
+export type myRegistrationShowResponseError = (
+  | myRegistrationShowResponse401
+  | myRegistrationShowResponse403
+  | myRegistrationShowResponse404
+  | myRegistrationShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type myRegistrationShowResponse =
+  myRegistrationShowResponseSuccess | myRegistrationShowResponseError;
+
+export const getMyRegistrationShowUrl = (event: number) => {
+  return `/events/${event}/my-registration`;
+};
+
+/**
+ * Requires a session. Returns the caller's own booking for this event's
+ * form, or `404` when they have none. Readable after the form closes, so
+ * the answers can still be shown.
+ *
+ * An event whose form is not open, or not for members, answers `404`.
+ * @summary Read my booking
+ */
+export const myRegistrationShow = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<myRegistrationShowResponse> => {
+  return customFetch<myRegistrationShowResponse>(getMyRegistrationShowUrl(event), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getMyRegistrationShowQueryKey = (event: number) => {
+  return [`/events/${event}/my-registration`] as const;
+};
+
+export const getMyRegistrationShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof myRegistrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof myRegistrationShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getMyRegistrationShowQueryKey(event);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof myRegistrationShow>>> = ({ signal }) =>
+    myRegistrationShow(event, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: event !== null && event !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof myRegistrationShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type MyRegistrationShowQueryResult = NonNullable<
+  Awaited<ReturnType<typeof myRegistrationShow>>
+>;
+export type MyRegistrationShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useMyRegistrationShow<
+  TData = Awaited<ReturnType<typeof myRegistrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof myRegistrationShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof myRegistrationShow>>,
+          TError,
+          Awaited<ReturnType<typeof myRegistrationShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useMyRegistrationShow<
+  TData = Awaited<ReturnType<typeof myRegistrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof myRegistrationShow>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof myRegistrationShow>>,
+          TError,
+          Awaited<ReturnType<typeof myRegistrationShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useMyRegistrationShow<
+  TData = Awaited<ReturnType<typeof myRegistrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof myRegistrationShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read my booking
+ */
+
+export function useMyRegistrationShow<
+  TData = Awaited<ReturnType<typeof myRegistrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof myRegistrationShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getMyRegistrationShowQueryOptions(event, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type myRegistrationPutResponse200 = {
+  data: RegistrationResource;
+  status: 200;
+};
+
+export type myRegistrationPutResponse201 = {
+  data: RegistrationResource;
+  status: 201;
+};
+
+export type myRegistrationPutResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type myRegistrationPutResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type myRegistrationPutResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type myRegistrationPutResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type myRegistrationPutResponse409 = {
+  data: MyRegistrationPut409;
+  status: 409;
+};
+
+export type myRegistrationPutResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type myRegistrationPutResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type myRegistrationPutResponseSuccess = (
+  myRegistrationPutResponse200 | myRegistrationPutResponse201
+) & {
+  headers: Headers;
+};
+export type myRegistrationPutResponseError = (
+  | myRegistrationPutResponse400
+  | myRegistrationPutResponse401
+  | myRegistrationPutResponse403
+  | myRegistrationPutResponse404
+  | myRegistrationPutResponse409
+  | myRegistrationPutResponse419
+  | myRegistrationPutResponse503
+) & {
+  headers: Headers;
+};
+
+export type myRegistrationPutResponse =
+  myRegistrationPutResponseSuccess | myRegistrationPutResponseError;
+
+export const getMyRegistrationPutUrl = (event: number) => {
+  return `/events/${event}/my-registration`;
+};
+
+/**
+ * Requires a session. Creates the caller's booking (`201`) or replaces
+ * its answers (`200`), quantities included. Send every answer each time:
+ * a block left out is no longer answered. No confirmation mail is sent.
+ *
+ * Refuses with `registration_not_open` before the window opens and
+ * `registration_closed` after it shuts, both `409`. An option with a
+ * `capacity` takes no more than is left, not counting the places this
+ * booking already holds; asking for more fails against
+ * `choices.N.quantity` with `not_enough_places`.
+ * @summary Book, or change my answers
+ */
+export const myRegistrationPut = async (
+  event: number,
+  putMyRegistrationRequest: PutMyRegistrationRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<myRegistrationPutResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<myRegistrationPutResponse>(getMyRegistrationPutUrl(event), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(putMyRegistrationRequest),
+  });
+};
+
+export const getMyRegistrationPutMutationKey = () => ["myRegistrationPut"] as const;
+
+export const getMyRegistrationPutMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | MyRegistrationPut409
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof myRegistrationPut>>,
+    TError,
+    MyRegistrationPutMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof myRegistrationPut>>,
+  TError,
+  MyRegistrationPutMutationVariables,
+  TContext
+> => {
+  const mutationKey = getMyRegistrationPutMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof myRegistrationPut>>,
+    MyRegistrationPutMutationVariables
+  > = (props) => {
+    const { event, data } = props ?? {};
+
+    return myRegistrationPut(event, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MyRegistrationPutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof myRegistrationPut>>
+>;
+export type MyRegistrationPutMutationBody = PutMyRegistrationRequest;
+export type MyRegistrationPutMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | MyRegistrationPut409
+  | Problem419Response
+  | Problem503Response;
+export type MyRegistrationPutMutationVariables = { event: number; data: PutMyRegistrationRequest };
+
+/**
+ * @summary Book, or change my answers
+ */
+export const useMyRegistrationPut = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | MyRegistrationPut409
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof myRegistrationPut>>,
+      TError,
+      MyRegistrationPutMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof myRegistrationPut>>,
+  TError,
+  MyRegistrationPutMutationVariables,
+  TContext
+> => {
+  return useMutation(getMyRegistrationPutMutationOptions(options), queryClient);
+};
+
+export type myRegistrationDestroyResponse200 = {
+  data: MyRegistrationDestroy200;
+  status: 200;
+};
+
+export type myRegistrationDestroyResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type myRegistrationDestroyResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type myRegistrationDestroyResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type myRegistrationDestroyResponse409 = {
+  data: MyRegistrationDestroy409;
+  status: 409;
+};
+
+export type myRegistrationDestroyResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type myRegistrationDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type myRegistrationDestroyResponseSuccess = myRegistrationDestroyResponse200 & {
+  headers: Headers;
+};
+export type myRegistrationDestroyResponseError = (
+  | myRegistrationDestroyResponse401
+  | myRegistrationDestroyResponse403
+  | myRegistrationDestroyResponse404
+  | myRegistrationDestroyResponse409
+  | myRegistrationDestroyResponse419
+  | myRegistrationDestroyResponse503
+) & {
+  headers: Headers;
+};
+
+export type myRegistrationDestroyResponse =
+  myRegistrationDestroyResponseSuccess | myRegistrationDestroyResponseError;
+
+export const getMyRegistrationDestroyUrl = (event: number) => {
+  return `/events/${event}/my-registration`;
+};
+
+/**
+ * Requires a session. Removes the caller's booking and its answers, until
+ * the form closes. Answers `{"ok": true}`, or `404` when there is none.
+ *
+ * Refuses with `registration_not_open` or `registration_closed`, `409`,
+ * outside the window.
+ * @summary Withdraw my booking
+ */
+export const myRegistrationDestroy = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<myRegistrationDestroyResponse> => {
+  return customFetch<myRegistrationDestroyResponse>(getMyRegistrationDestroyUrl(event), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getMyRegistrationDestroyMutationKey = () => ["myRegistrationDestroy"] as const;
+
+export const getMyRegistrationDestroyMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | MyRegistrationDestroy409
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof myRegistrationDestroy>>,
+    TError,
+    MyRegistrationDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof myRegistrationDestroy>>,
+  TError,
+  MyRegistrationDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getMyRegistrationDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof myRegistrationDestroy>>,
+    MyRegistrationDestroyMutationVariables
+  > = (props) => {
+    const { event } = props ?? {};
+
+    return myRegistrationDestroy(event, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MyRegistrationDestroyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof myRegistrationDestroy>>
+>;
+
+export type MyRegistrationDestroyMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | MyRegistrationDestroy409
+  | Problem419Response
+  | Problem503Response;
+export type MyRegistrationDestroyMutationVariables = { event: number };
+
+/**
+ * @summary Withdraw my booking
+ */
+export const useMyRegistrationDestroy = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | MyRegistrationDestroy409
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof myRegistrationDestroy>>,
+      TError,
+      MyRegistrationDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof myRegistrationDestroy>>,
+  TError,
+  MyRegistrationDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getMyRegistrationDestroyMutationOptions(options), queryClient);
 };

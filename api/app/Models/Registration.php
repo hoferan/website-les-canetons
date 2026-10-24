@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\OptionKind;
 use App\Support\PhoneNumber;
 use Database\Factories\RegistrationFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * One booking: a stranger's from the public form, or a member's from a
@@ -90,6 +92,39 @@ class Registration extends Model
     public function choices(): HasMany
     {
         return $this->hasMany(RegistrationChoice::class);
+    }
+
+    /**
+     * Replaces this booking's answers with the ones sent.
+     *
+     * Each kind keeps only its own column, whatever else the entry carried,
+     * and a blank text is no answer: the request let it through as such, and
+     * an empty row would read as answered.
+     *
+     * @param  list<array{optionId: int, quantity?: int|null, value?: string|null}>  $choices
+     * @param  Collection<int, OptionKind>  $kinds  each option's kind, by id
+     */
+    public function writeChoices(array $choices, Collection $kinds): void
+    {
+        $this->choices()->delete();
+
+        foreach ($choices as $choice) {
+            $quantity = $kinds[$choice['optionId']] === OptionKind::Quantity;
+            $value = $quantity ? null : trim((string) ($choice['value'] ?? ''));
+
+            if ($value === '') {
+                continue;
+            }
+
+            RegistrationChoice::create([
+                'registration_id' => $this->id,
+                'option_id' => $choice['optionId'],
+                'quantity' => $quantity ? $choice['quantity'] : null,
+                'value' => $value,
+            ]);
+        }
+
+        $this->unsetRelation('choices');
     }
 
     public function fullName(): string

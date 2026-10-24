@@ -11,12 +11,11 @@ use App\Http\Resources\RegistrationResource;
 use App\Mail\RegistrationConfirmation;
 use App\Models\Event;
 use App\Models\Registration;
-use App\Models\RegistrationChoice;
 use App\Models\RegistrationOption;
 use App\Support\Audit;
+use App\Support\BookingCapacity;
 use App\Support\EffectivePermissions;
 use App\Support\Emits;
-use App\Support\OptionKind;
 use App\Support\Permission;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\IgnoreResponse;
@@ -27,8 +26,6 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
 
 #[Group('Registration', 'Public bookings for an event that takes them, and the guest list the committee works from.', weight: 40)]
 class RegistrationController extends Controller
@@ -117,7 +114,7 @@ class RegistrationController extends Controller
         $data = $request->validated();
 
         // Read before the transaction opens, never inside it: see
-        // refuseBeyondCapacity() for why the lock has to come first.
+        // BookingCapacity for why the lock has to come first.
         $capped = $event->registrationOptions()
             ->whereIn('id', array_column($data['choices'], 'optionId'))
             ->whereNotNull('capacity')
@@ -130,7 +127,8 @@ class RegistrationController extends Controller
 
         $registration = DB::transaction(function () use ($data, $event, $capped, $kinds): Registration {
             if ($capped) {
-                self::refuseBeyondCapacity($event, $data['choices']);
+                BookingCapacity::lock($event);
+                BookingCapacity::refuse($event, $data['choices']);
             }
 
             $registration = Registration::create([
@@ -145,25 +143,7 @@ class RegistrationController extends Controller
                 'table_name' => $event->registration_asks_table ? ($data['tableName'] ?? null) : null,
             ]);
 
-            foreach ($data['choices'] as $choice) {
-                // Each kind keeps only its own column, whatever else the
-                // entry carried.
-                $quantity = $kinds[$choice['optionId']] === OptionKind::Quantity;
-                $value = $quantity ? null : trim((string) ($choice['value'] ?? ''));
-
-                // A blank text is no answer: the request let it through as
-                // such, and an empty row would read as answered.
-                if ($value === '') {
-                    continue;
-                }
-
-                RegistrationChoice::create([
-                    'registration_id' => $registration->id,
-                    'option_id' => $choice['optionId'],
-                    'quantity' => $quantity ? $choice['quantity'] : null,
-                    'value' => $value,
-                ]);
-            }
+            $registration->writeChoices($data['choices'], $kinds);
 
             return $registration;
         });
@@ -301,54 +281,10 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Refuses a booking that asks for more of an option than is left.
-     *
-     * The count and the insert after it have to be one step, or two guests
-     * reading the last place both get it. So this locks the event's row and
-     * a second booking for the same event waits here until the first commits
-     * (ADR 0031). Called only when a requested option has a capacity: an
-     * event without one keeps the lock-free path ADR 0020 chose.
-     *
-     * It must be the transaction's first statement. InnoDB's REPEATABLE READ
-     * fixes a transaction's snapshot at its first plain read, so any read
-     * before the lock would make the count below miss a booking committed
-     * while this one waited.
-     *
-     * Each refusal is reported against `choices.N.quantity`, N being the
-     * position in what was sent, so the form can mark the option that ran
-     * out. Throwing rolls the transaction back.
-     *
-     * @param  list<array{optionId: int, quantity?: int|null, value?: string|null}>  $choices
+     * Refuses a booking outside the window, naming which end was missed.
+     * MyRegistrationController refuses a member's writes with it too.
      */
-    private static function refuseBeyondCapacity(Event $event, array $choices): void
-    {
-        Event::query()->whereKey($event->id)->lockForUpdate()->first();
-
-        $options = $event->registrationOptions()
-            ->whereIn('id', array_column($choices, 'optionId'))
-            ->withSum('choices', 'quantity')
-            ->get()
-            ->keyBy('id');
-
-        // A validator of its own rather than withMessages(), because
-        // ApiErrorVocabularyTest finds reasons by scanning for errors()->add().
-        $validator = Validator::make([], []);
-
-        foreach ($choices as $index => $choice) {
-            $remaining = $options->get($choice['optionId'])?->remaining();
-
-            if ($remaining !== null && ($choice['quantity'] ?? 0) > $remaining) {
-                $validator->errors()->add("choices.{$index}.quantity", 'not_enough_places');
-            }
-        }
-
-        if ($validator->errors()->isNotEmpty()) {
-            throw new ValidationException($validator);
-        }
-    }
-
-    /** Refuses a booking outside the window, naming which end was missed. */
-    private static function refuseUnlessOpen(Event $event): ?JsonResponse
+    public static function refuseUnlessOpen(Event $event): ?JsonResponse
     {
         if ($event->registrationIsOpen()) {
             return null;

@@ -37,7 +37,10 @@ opens it.*
   anonymous endpoint. *Replaced on 2026-10-22 by
   [ADR-0031](0031-cap-an-option-under-a-lock.md): an option may now have a capacity,
   counted under a lock.*
-- Guests cannot change their own booking. The committee corrects it.
+- Guests cannot change their own booking. The committee corrects it. *Extended on
+  2026-10-24 by [ADR-0034](0034-members-book-on-the-same-form.md): on a form for members
+  only, a member books with their account and changes or withdraws it until the form
+  closes.*
 - Prices are integer centimes.
 - An option that has bookings cannot be deleted (`409 option_has_registrations`).
 - The public form for an event that is not taking bookings answers 404 rather than

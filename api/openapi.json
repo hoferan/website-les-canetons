@@ -2413,7 +2413,7 @@
         "/events/{event}/registration": {
             "get": {
                 "operationId": "registration.form",
-                "description": "Anonymous. Returns what a public form needs: the event's title, dates\nand location, the options that can be booked, the maximum number of\npeople one booking may cover, and whether the form is open right now.\n\n`open` is computed by the server. Do not derive it from `opensAt` and\n`closesAt` on the client, whose clock may be wrong.\n\nAn event that takes no registrations, or whose form the committee has\nnot opened, answers `404`, whether or not it exists. An open form\noutside its window answers `200` with `open: false`, so the form can say\nwhen bookings start or that they have closed.\n\n`asksAddress` and `asksTable` say whether to show those two fields.",
+                "description": "Anonymous. Returns what a public form needs: the event's title, dates\nand location, the options that can be booked, the maximum number of\npeople one booking may cover, and whether the form is open right now.\n\n`open` is computed by the server. Do not derive it from `opensAt` and\n`closesAt` on the client, whose clock may be wrong.\n\nAn event that takes no registrations, or whose form the committee has\nnot opened, answers `404`, whether or not it exists. An open form\noutside its window answers `200` with `open: false`, so the form can say\nwhen bookings start or that they have closed.\n\n`asksAddress` and `asksTable` say whether to show those two fields.\n\nA form for members only (`audience: members`) answers `404` to a caller\nwithout a session, the same as no form. A member reads it, and books\nthrough `/api/v1/events/{event}/my-registration`, not here.",
                 "summary": "Read a booking form",
                 "tags": [
                     "Registration"
@@ -8001,6 +8001,278 @@
                     }
                 }
             }
+        },
+        "/events/{event}/my-registration": {
+            "get": {
+                "operationId": "myRegistration.show",
+                "description": "Requires a session. Returns the caller's own booking for this event's\nform, or `404` when they have none. Readable after the form closes, so\nthe answers can still be shown.\n\nAn event whose form is not open, or not for members, answers `404`.",
+                "summary": "Read my booking",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`RegistrationResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "myRegistration.put",
+                "description": "Requires a session. Creates the caller's booking (`201`) or replaces\nits answers (`200`), quantities included. Send every answer each time:\na block left out is no longer answered. No confirmation mail is sent.\n\nRefuses with `registration_not_open` before the window opens and\n`registration_closed` after it shuts, both `409`. An option with a\n`capacity` takes no more than is left, not counting the places this\nbooking already holds; asking for more fails against\n`choices.N.quantity` with `not_enough_places`.",
+                "summary": "Book, or change my answers",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutMyRegistrationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The booking, with its answers replaced.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "201": {
+                        "description": "The booking, as it was created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationResource"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "registration_closed",
+                                                "registration_not_open"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "myRegistration.destroy",
+                "description": "Requires a session. Removes the caller's booking and its answers, until\nthe form closes. Answers `{\"ok\": true}`, or `404` when there is none.\n\nRefuses with `registration_not_open` or `registration_closed`, `409`,\noutside the window.",
+                "summary": "Withdraw my booking",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Withdrawn. The booking and its answers are gone.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "registration_closed",
+                                                "registration_not_open"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -8532,6 +8804,10 @@
                         "type": "boolean",
                         "description": "Whether the form asks who the guest would like to sit with."
                     },
+                    "registrationAudience": {
+                        "description": "Who may fill in the form: `public`, anybody, or `members`, logged-in members only.",
+                        "$ref": "#/components/schemas/FormAudience"
+                    },
                     "takesRegistrations": {
                         "type": "boolean",
                         "description": "Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set."
@@ -8545,6 +8821,25 @@
                             {
                                 "type": "null"
                             }
+                        ]
+                    },
+                    "myRegistration": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "On a published event whose form is open and for members only: whether the caller has booked it, and whether it still takes changes. Null on every other event. Book at `/api/v1/events/{event}/my-registration`.",
+                        "properties": {
+                            "answered": {
+                                "type": "boolean"
+                            },
+                            "open": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "answered",
+                            "open"
                         ]
                     }
                 },
@@ -8569,8 +8864,10 @@
                     "registrationEnabled",
                     "registrationAsksAddress",
                     "registrationAsksTable",
+                    "registrationAudience",
                     "takesRegistrations",
-                    "myAttendance"
+                    "myAttendance",
+                    "myRegistration"
                 ],
                 "title": "EventResource"
             },
@@ -8610,6 +8907,15 @@
                     "celebrate"
                 ],
                 "title": "EventTagResource"
+            },
+            "FormAudience": {
+                "type": "string",
+                "description": "Who may fill in an event's booking form (#318, ADR 0034). A public form takes bookings from anybody, with contact details. A members form takes one booking per account, with the name from the account and no contact details, and does not exist for an anonymous caller.  The values are stored, so renaming a case is a migration.\n",
+                "enum": [
+                    "public",
+                    "members"
+                ],
+                "title": "FormAudience"
             },
             "HandleContactMessageRequest": {
                 "type": "object",
@@ -9123,6 +9429,62 @@
                 ],
                 "title": "PublicSectionResource"
             },
+            "PutMyRegistrationRequest": {
+                "type": "object",
+                "description": "A member's own booking on a form for members only (ADR 0034).\n\nOnly the answers: the name comes from the account, and no email, phone,\naddress or table is asked. `choices` follows the same rules as a guest's\nbooking: `{optionId, quantity}` for a quantity, `{optionId, value}` for the\nother kinds, at most 20 entries, each block at most once. A required block\nleft out fails against `answers.<optionId>` with `required`; a value its\nblock does not take fails with `not_an_answer`. The quantities that count\npeople must add up to at least one (`no_guests`) and to no more than the\nper-booking cap (`too_many_guests`), both against `choices`.\n\nAn event whose form is not open, or not for members, answers `404`.",
+                "properties": {
+                    "choices": {
+                        "type": "array",
+                        "description": "The answers, one entry per block answered, at most 20. A quantity sends `quantity`; text, choice and yes/no send `value`. Leave out a block not answered. Fails with `too_many_guests` when the quantities that count people exceed the event per-booking cap, and with `no_guests` when the form has such blocks and they add up to nobody.",
+                        "examples": [
+                            [
+                                {
+                                    "optionId": 7,
+                                    "quantity": 2
+                                },
+                                {
+                                    "optionId": 9,
+                                    "value": "yes"
+                                }
+                            ]
+                        ],
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "optionId": {
+                                    "type": "integer",
+                                    "description": "An option offered by this event, from `GET /api/v1/events/{event}/registration`. Each option may appear at most once in `choices`."
+                                },
+                                "quantity": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "Quantities only, and required there: how many, 1 to 50. Order the same option twice by raising this, not by repeating the entry.",
+                                    "minimum": 1,
+                                    "maximum": 50
+                                },
+                                "value": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "Every other answered kind: the text, up to 1000 characters; the chosen answer's `id`; or `yes` / `no`. Anything else fails with `not_an_answer`.",
+                                    "maxLength": 1000
+                                }
+                            },
+                            "required": [
+                                "optionId"
+                            ]
+                        },
+                        "maxItems": 20
+                    }
+                },
+                "required": [
+                    "choices"
+                ],
+                "title": "PutMyRegistrationRequest"
+            },
             "RecordMemberAttendanceRequest": {
                 "type": "object",
                 "description": "One member's answer, entered on their behalf by the committee.\n\nThe same payload a member sends for themselves, with one rule missing:\n`note` is always optional here, even when the answer changes from `yes` to\n`no`, because the committee is writing down what the member told them.\n\nThe route refuses a caller who aims it at their own membership, so a member\nwho both plays and manages still has to answer for themselves through\n`PUT /api/v1/events/{event}/attendance`.",
@@ -9193,6 +9555,10 @@
                             "null"
                         ]
                     },
+                    "audience": {
+                        "description": "`public`: anybody books, with contact details. `members`: the caller books with their account at `/api/v1/events/{event}/my-registration`, and no contact details are asked.",
+                        "$ref": "#/components/schemas/FormAudience"
+                    },
                     "asksAddress": {
                         "type": "boolean",
                         "description": "Whether to ask for a postal address. A booking sent with one anyway stores none."
@@ -9223,6 +9589,7 @@
                     "event",
                     "options",
                     "maxGuests",
+                    "audience",
                     "asksAddress",
                     "asksTable",
                     "opensAt",
@@ -9329,6 +9696,10 @@
                     "id": {
                         "type": "integer"
                     },
+                    "isMember": {
+                        "type": "boolean",
+                        "description": "Whether a member made this booking with their account, on a form for members only. Such a booking has no email, phone, address or table."
+                    },
                     "firstName": {
                         "type": "string"
                     },
@@ -9336,11 +9707,18 @@
                         "type": "string"
                     },
                     "email": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null on a member's booking."
                     },
                     "phone": {
-                        "type": "string",
-                        "description": "The number as the guest typed it. This is what to show."
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The number as the guest typed it. This is what to show. Null on a member's booking."
                     },
                     "phoneE164": {
                         "type": [
@@ -9446,6 +9824,7 @@
                 },
                 "required": [
                     "id",
+                    "isMember",
                     "firstName",
                     "lastName",
                     "email",
@@ -9694,6 +10073,10 @@
                             "registrationAsksTable": {
                                 "type": "boolean",
                                 "description": "Whether the form asks who the guest would like to sit with."
+                            },
+                            "registrationAudience": {
+                                "description": "Who may fill in the form: `public`, anybody, or `members`, logged-in members only. Omit to leave it as it is.",
+                                "$ref": "#/components/schemas/FormAudience"
                             }
                         }
                     }
@@ -10241,7 +10624,7 @@
             },
             "StoreRegistrationRequest": {
                 "type": "object",
-                "description": "An anonymous booking for one event.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nName, email and phone are required, because a Swiss committee reaches\nsomebody by telephone the evening before. Address and table name are\noptional.\n\n`choices` holds the answers, one per block of the form: `{optionId,\nquantity}` for a quantity, `{optionId, value}` for the other kinds, at most\n20 entries, each block at most once and belonging to this event. Read the\nblocks from `GET /api/v1/events/{event}/registration`. A required block left\nout fails against `answers.<optionId>` with `required`; a value its block\ndoes not take fails with `not_an_answer`.\n\nThe quantities that count people are the booking's size. When the form has\nany, they must add up to at least one (`no_guests`) and, under a per-booking\nguest cap, to no more than it (`too_many_guests`), both against `choices`.\n\nAn event that takes no bookings, or whose form is not open, answers `404`, whether or not it exists.",
+                "description": "An anonymous booking for one event.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nName, email and phone are required, because a Swiss committee reaches\nsomebody by telephone the evening before. Address and table name are\noptional.\n\n`choices` holds the answers, one per block of the form: `{optionId,\nquantity}` for a quantity, `{optionId, value}` for the other kinds, at most\n20 entries, each block at most once and belonging to this event. Read the\nblocks from `GET /api/v1/events/{event}/registration`. A required block left\nout fails against `answers.<optionId>` with `required`; a value its block\ndoes not take fails with `not_an_answer`.\n\nThe quantities that count people are the booking's size. When the form has\nany, they must add up to at least one (`no_guests`) and, under a per-booking\nguest cap, to no more than it (`too_many_guests`), both against `choices`.\n\nAn event that takes no bookings, whose form is not open, or whose form is for members only, answers `404`, whether or not it exists.",
                 "properties": {
                     "firstName": {
                         "type": "string",

@@ -272,6 +272,15 @@ class Event extends Model
         return $this->registration_closes_at->isFuture();
     }
 
+    /**
+     * Whether the public agenda may link to the form right now: open, and not
+     * for members only, whoever is asking.
+     */
+    public function takesPublicBookingsNow(): bool
+    {
+        return $this->registrationIsOpen() && ! $this->isMembersOnly();
+    }
+
     protected function casts(): array
     {
         return [

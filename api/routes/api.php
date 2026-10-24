@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\MemberAttendanceController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
 use App\Http\Controllers\Api\MemberRoleController;
+use App\Http\Controllers\Api\MyRegistrationController;
 use App\Http\Controllers\Api\PhotoSlotController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\RegistrationOptionController;
@@ -351,6 +352,21 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     Route::middleware(['event.published', 'permission:attendance.respond'])->group(function () {
         Route::put('/events/{event}/attendance', [AttendanceController::class, 'update']);
         Route::delete('/events/{event}/attendance', [AttendanceController::class, 'destroy']);
+    });
+
+    // A member's own booking on a form for members only (ADR 0034):
+    // `events.view`, which every account holds, because any account may fill
+    // one in. `event.published:everyone` hides a draft's form from its
+    // managers too, as on the public booking routes.
+    //
+    // No `etag:`, like answering an event above: a member writes only their
+    // own booking, and the committee's corrections touch other fields. It
+    // would also break the ADR 0031 lock, which must open the transaction:
+    // ConditionalWrite reads the tag first and fixes the snapshot.
+    Route::middleware(['event.published:everyone', 'permission:events.view'])->group(function () {
+        Route::get('/events/{event}/my-registration', [MyRegistrationController::class, 'show']);
+        Route::put('/events/{event}/my-registration', [MyRegistrationController::class, 'put']);
+        Route::delete('/events/{event}/my-registration', [MyRegistrationController::class, 'destroy']);
     });
 
     // The chase list: who has not answered. `attendance.view_all`, separate
