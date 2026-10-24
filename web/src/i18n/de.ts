@@ -242,6 +242,7 @@ export const de: typeof fr = {
     registrationEnabled: "Formular geöffnet",
     registrationAsksAddress: "Adresse erfragen",
     registrationAsksTable: "Tisch erfragen",
+    registrationAudience: "Nur für Mitglieder",
     form: "Formulareinstellungen",
     sectionId: "Register",
     committeeFunctionId: "Funktion im Vorstand",
@@ -517,6 +518,10 @@ export const de: typeof fr = {
     registrationsAria: "Anmeldungen zu {{title}}",
     options: "Anmeldeformular",
     optionsAria: "Das Anmeldeformular von {{title}}",
+    fillForm: "Formular ausfüllen",
+    fillFormAria: "Das Formular von {{title}} ausfüllen",
+    myAnswers: "Meine Antworten",
+    myAnswersAria: "Meine Antworten zu {{title}}",
     whoComingAria: "Wer kommt zu {{title}}",
     editAria: "{{title}} bearbeiten",
     deleteAria: "{{title}} löschen",
@@ -754,6 +759,19 @@ export const de: typeof fr = {
     guestsWithTotal: "{{guests}} — {{total}}",
     submit: "Anmelden",
     sending: "Wird gesendet…",
+
+    membersLogIn:
+      "Mitglied der Gugge? Melden Sie sich an, um die Formulare für Mitglieder zu sehen.",
+    memberAs: "Sie antworten als {{name}}.",
+    memberUntil: "Sie können bis am {{date}} antworten und Ihre Antworten ändern.",
+    memberClosed: "Dieses Formular ist geschlossen.",
+    memberSubmit: "Antworten senden",
+    memberSave: "Änderungen speichern",
+    memberAnswersHeading: "Ihre Antworten",
+    memberChange: "Antworten ändern",
+    memberWithdraw: "Antworten zurückziehen",
+    memberWithdrawn: "Ihre Antworten wurden zurückgezogen. Sie können erneut antworten.",
+    memberNoAnswer: "Sie haben dieses Formular nicht beantwortet.",
   },
 
   registrations: {
@@ -765,6 +783,7 @@ export const de: typeof fr = {
     downloadFailed: "Die Datei konnte nicht heruntergeladen werden.",
 
     tableLabel: "Tisch: {{value}}",
+    memberBadge: "Mitglied",
     bookings_one: "{{count}} Anmeldung",
     bookings_other: "{{count}} Anmeldungen",
     countsSeparator: " · ",
@@ -853,6 +872,10 @@ export const de: typeof fr = {
     enabled: "Anmeldungen geöffnet",
     enabledOn: "Geöffnet: Das Formular ist zwischen seinen Daten online.",
     enabledOff: "Geschlossen: Noch niemand sieht das Formular.",
+    membersOnly: "Nur für Mitglieder",
+    membersOnlyOn:
+      "Nur angemeldete Mitglieder sehen es. Jedes antwortet einmal, mit seinem Konto, und kann seine Antworten ändern.",
+    membersOnlyOff: "Öffentlich: Alle können sich über den Link anmelden.",
     closesDate: "Anmeldeschluss",
     closesTime: "Uhrzeit des Anmeldeschlusses",
     opensDate: "Anmeldebeginn",
@@ -869,6 +892,9 @@ export const de: typeof fr = {
     contactHint: "Name, Vorname, E-Mail und Telefon: Jede Anmeldung gibt sie an.",
     asksAddress: "Adresse erfragen",
     asksTable: "Erfragen, mit wem man am Tisch sitzt",
+    memberContactLocked: "Mit dem Konto",
+    memberContactHint:
+      "Keine Kontaktangaben: Jedes Mitglied antwortet mit seinem Konto, unter seinem Namen.",
     edit: "«{{block}}» bearbeiten",
     done: "Fertig",
     inUse: "Hat Antworten: kann weder entfernt noch in der Art geändert werden.",

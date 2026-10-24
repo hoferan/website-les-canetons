@@ -273,7 +273,8 @@ export const fr = {
     registrationEnabled: "Formulaire ouvert",
     registrationAsksAddress: "Demander l’adresse",
     registrationAsksTable: "Demander la table",
-    // The six settings above, together, on the form editor's save.
+    registrationAudience: "Réservé aux membres",
+    // The settings above, together, on the form editor's save.
     form: "Réglages du formulaire",
     sectionId: "Pupitre",
     committeeFunctionId: "Fonction au comité",
@@ -694,6 +695,11 @@ export const fr = {
     registrationsAria: "Inscriptions à {{title}}",
     options: "Formulaire d’inscription",
     optionsAria: "Le formulaire d’inscription de {{title}}",
+    // A form for members only, from the planning card.
+    fillForm: "Remplir le formulaire",
+    fillFormAria: "Remplir le formulaire de {{title}}",
+    myAnswers: "Mes réponses",
+    myAnswersAria: "Mes réponses à {{title}}",
     whoComingAria: "Qui vient à {{title}}",
     editAria: "Modifier {{title}}",
     deleteAria: "Supprimer {{title}}",
@@ -1019,6 +1025,23 @@ export const fr = {
     guestsWithTotal: "{{guests}} — {{total}}",
     submit: "M’inscrire",
     sending: "Envoi…",
+
+    // Under the "no form here" sentence, for a visitor who is not logged in,
+    // on every such page: a members form answers them the same 404.
+    membersLogIn:
+      "Membre de la guggen\u00a0? Connectez-vous pour voir les formulaires réservés aux membres.",
+    // A form for members only (ADR 0034): no contact fields, the account's
+    // name, one booking each that stays changeable until the form closes.
+    memberAs: "Vous répondez en tant que {{name}}.",
+    memberUntil: "Vous pouvez répondre et modifier vos réponses jusqu’au {{date}}.",
+    memberClosed: "Ce formulaire est clos.",
+    memberSubmit: "Envoyer mes réponses",
+    memberSave: "Enregistrer les modifications",
+    memberAnswersHeading: "Vos réponses",
+    memberChange: "Modifier mes réponses",
+    memberWithdraw: "Retirer mes réponses",
+    memberWithdrawn: "Vos réponses ont été retirées. Vous pouvez répondre à nouveau.",
+    memberNoAnswer: "Vous n’avez pas répondu à ce formulaire.",
   },
 
   /** The committee's guest list (/events/:id/registrations). */
@@ -1031,6 +1054,8 @@ export const fr = {
     downloadFailed: "Le fichier n’a pas pu être téléchargé.",
 
     tableLabel: "Table\u00a0: {{value}}",
+    // Beside the name of a booking a member made with their account.
+    memberBadge: "Membre",
     bookings_one: "{{count}} inscription",
     bookings_other: "{{count}} inscriptions",
     // The counts line joins its parts with a middot; the parts are counted
@@ -1149,6 +1174,10 @@ export const fr = {
     enabled: "Réservations ouvertes",
     enabledOn: "Ouvertes : le formulaire est en ligne entre ses dates.",
     enabledOff: "Fermées : personne ne voit encore le formulaire.",
+    membersOnly: "Réservé aux membres",
+    membersOnlyOn:
+      "Seuls les membres connectés le voient. Chacun répond une fois, avec son compte, et peut modifier ses réponses.",
+    membersOnlyOff: "Public\u00a0: tout le monde peut s’inscrire avec le lien.",
     closesDate: "Clôture des inscriptions",
     closesTime: "Heure de clôture",
     opensDate: "Ouverture des inscriptions",
@@ -1164,6 +1193,10 @@ export const fr = {
     contactHint: "Nom, prénom, e-mail et téléphone : chaque inscription les donne.",
     asksAddress: "Demander l’adresse",
     asksTable: "Demander avec qui être à table",
+    // The contact block of a members form, which asks for nothing.
+    memberContactLocked: "Avec le compte",
+    memberContactHint:
+      "Aucune coordonnée demandée\u00a0: chaque membre répond avec son compte, sous son nom.",
     // The name of the button over a closed block. {{block}} is what the
     // committee typed, or `thisOption`.
     edit: "Modifier « {{block}} »",

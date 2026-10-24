@@ -7,8 +7,8 @@ import { Toggle } from "./EditableBlock";
 import type { FormSettings } from "./settings";
 
 /**
- * The form's own settings, at the top of the editor: whether it is open, its
- * window, and the people cap per booking. They left the event form for here
+ * The form's own settings, at the top of the editor: whether it is open, who
+ * fills it in, its window, and the people cap per booking. They left the event form for here
  * (#319), and the same save writes them with the blocks.
  */
 export function SettingsStrip({
@@ -40,6 +40,18 @@ export function SettingsStrip({
         }
         checked={settings.enabled}
         onChange={(checked) => onChange({ enabled: checked })}
+      />
+
+      <Toggle
+        id="form-members-only"
+        label={t("registrationOptions.membersOnly")}
+        hint={
+          settings.membersOnly
+            ? t("registrationOptions.membersOnlyOn")
+            : t("registrationOptions.membersOnlyOff")
+        }
+        checked={settings.membersOnly}
+        onChange={(checked) => onChange({ membersOnly: checked })}
       />
 
       <div className="grid gap-related sm:grid-cols-2">

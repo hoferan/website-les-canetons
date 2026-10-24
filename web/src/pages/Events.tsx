@@ -199,6 +199,22 @@ export function Events() {
     // go behind the "...". Neither the card nor RowActions calls can().
     const actions: RowAction[] = [];
 
+    // A form for members only (ADR 0034), first so it is the inline action
+    // for anybody without the chase list. `myRegistration` is the server's
+    // answer and null on every other event; a closed form the reader never
+    // answered leaves nothing to open.
+    const mine = event.myRegistration;
+    if (mine !== null && (mine.open || mine.answered)) {
+      actions.push({
+        key: "myRegistration",
+        label: mine.answered ? t("events.myAnswers") : t("events.fillForm"),
+        ariaLabel: mine.answered
+          ? t("events.myAnswersAria", { title: event.title })
+          : t("events.fillFormAria", { title: event.title }),
+        to: `/events/${event.id}/book`,
+      });
+    }
+
     if (maySeeAnswers && !isDraft(event)) {
       actions.push({
         key: "attendance",
