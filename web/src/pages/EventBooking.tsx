@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,11 +12,7 @@ import {
   useFormTokenShow,
   useRegistrationForm,
 } from "../api/generated/endpoints";
-import type {
-  RegistrationFormResource,
-  RegistrationResource,
-  RegistrationResourceChoicesItem,
-} from "../api/generated/model";
+import type { RegistrationFormResource, RegistrationResource } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
@@ -24,13 +20,15 @@ import { celebrate } from "../carnival/celebrate";
 import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
 import { PageSection } from "../components/PageSection";
-import { BlockView } from "../booking/BlockView";
+import { AnswerFields } from "../booking/AnswerFields";
+import { AnswersSummary } from "../booking/AnswersSummary";
 import { EMPTY, FIELDS, type Contact } from "../booking/contactFields";
+import { MemberBooking } from "../booking/MemberBooking";
+import { useAnswers } from "../booking/useAnswers";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { t } from "../i18n";
 import { formatDay } from "../lib/date";
-import { formatCents } from "../money";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -49,12 +47,14 @@ import { useSession } from "../session/SessionProvider";
  *
  * An event that takes no bookings answers 404 whether or not it exists, and
  * the page renders the same sentence either way, so a stranger cannot tell
- * which it is.
+ * which it is. A form for members only answers that 404 to a visitor who is
+ * not logged in; a member gets MemberBooking instead (ADR 0034).
  */
 export function EventBooking() {
   const { id } = useParams();
   const eventId = Number(id);
-  const { can } = useSession();
+  const { can, user } = useSession();
+  const location = useLocation();
 
   // The way into the editor, from the form it changes. Offered beside a
   // closed form too, which answers 404 to everybody, the committee included.
@@ -66,12 +66,6 @@ export function EventBooking() {
 
   const [contact, setContact] = useState<Contact>(EMPTY);
   const [website, setWebsite] = useState("");
-  // Keyed by option id. A missing key is none of that option, so an untouched
-  // form sends nothing instead of a row of zeroes.
-  const [quantities, setQuantities] = useState<Record<number, string>>({});
-  // Every other answer, keyed the same way: the text, the chosen answer's
-  // id, or yes / no. An empty string is no answer and is not sent.
-  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [booked, setBooked] = useState<RegistrationResource | null>(null);
   const bookedHeading = useRef<HTMLHeadingElement>(null);
 
@@ -81,11 +75,18 @@ export function EventBooking() {
     query: { retry: false },
   });
 
+  const offer: RegistrationFormResource | null = form.data?.status === 200 ? form.data.data : null;
+  const typed = useAnswers(offer);
+
   // Pinned as the contact form's is: the server refuses a token under two
   // seconds old, so a refetch on a focus change would replace a good token
   // with one that cannot work yet.
+  //
+  // Only for a public form: a member's booking needs no token, and minting one
+  // spends a slot of the public write limiter.
   const formToken = useFormTokenShow({
     query: {
+      enabled: offer !== null && offer.audience !== "members",
       staleTime: Infinity,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -93,45 +94,6 @@ export function EventBooking() {
   });
 
   const { error, setFromThrown, clear, messageFor } = useApiFormError(t("booking.submitFailed"));
-
-  const offer: RegistrationFormResource | null = form.data?.status === 200 ? form.data.data : null;
-
-  const chosen = useMemo(
-    () =>
-      (offer?.options ?? [])
-        // A sold-out option leaves the booking even if the guest chose it
-        // before it sold out: its box is disabled, so it could not be
-        // cleared, and every retry would be refused again.
-        .filter((option) => option.kind === "quantity" && option.remaining !== 0)
-        .map((option) => ({ option, quantity: Number(quantities[option.id] ?? "0") }))
-        .filter((line) => Number.isInteger(line.quantity) && line.quantity > 0),
-    [offer, quantities],
-  );
-
-  // What is sent, in this order: the server names a refused line by its
-  // position, `choices.N.quantity` or `choices.N.value`.
-  const lines = useMemo(
-    () => [
-      ...chosen.map((line) => ({ optionId: line.option.id, quantity: line.quantity })),
-      ...(offer?.options ?? [])
-        .filter((option) => (answers[option.id] ?? "").trim() !== "")
-        .map((option) => ({ optionId: option.id, value: answers[option.id] ?? "" })),
-    ],
-    [chosen, offer, answers],
-  );
-  const positionOf = (optionId: number) => lines.findIndex((line) => line.optionId === optionId);
-
-  // A form with no block that counts people, a picnic list say, has nobody
-  // to count and no "choose someone" to say.
-  const countsPeople = (offer?.options ?? []).some((option) => option.countsGuests);
-  const guests = chosen
-    .filter((line) => line.option.countsGuests)
-    .reduce((sum, line) => sum + line.quantity, 0);
-  const priced = chosen.filter((line) => line.option.priceCents !== null);
-  const total = priced.reduce(
-    (sum, line) => sum + (line.option.priceCents ?? 0) * line.quantity,
-    0,
-  );
 
   const send = useMutation({
     mutationFn: (token: string) =>
@@ -141,7 +103,7 @@ export function EventBooking() {
           ...contact,
           address: contact.address.trim() === "" ? null : contact.address,
           tableName: contact.tableName.trim() === "" ? null : contact.tableName,
-          choices: lines,
+          choices: typed.lines,
           website,
         },
         publicWriteHeaders(token, idempotencyKey.current),
@@ -204,9 +166,23 @@ export function EventBooking() {
               ? t("booking.notOpen")
               : t("booking.loadFailed")}
           </p>
+          {/* On every 404 to a visitor who is not logged in, so it says nothing
+            about whether a members form is behind this address. */}
+          {user === null && form.error instanceof ApiError && form.error.status === 404 ? (
+            <p className="mt-related text-ink-muted">
+              {t("booking.membersLogIn")}{" "}
+              <Link to="/login" state={{ from: location.pathname }} className="underline">
+                {t("nav.login")}
+              </Link>
+            </p>
+          ) : null}
         </PageSection>
       </>
     );
+  }
+
+  if (offer.audience === "members") {
+    return <MemberBooking eventId={eventId} offer={offer} editLink={editLink} />;
   }
 
   if (booked) {
@@ -228,27 +204,7 @@ export function EventBooking() {
             <p className="text-ink-muted">
               {formatEventWhen(offer.event.startsAt, offer.event.endsAt)}
             </p>
-            <ul className="mt-tight grid gap-1" data-testid="booking-summary">
-              {booked.choices.map((choice) => (
-                <li key={choice.optionId}>
-                  {choice.kind === "quantity"
-                    ? `${choice.quantity} × ${choice.label}`
-                    : t("booking.answered", { question: choice.label, answer: answerText(choice) })}
-                </li>
-              ))}
-            </ul>
-            {countsPeople || booked.totalCents !== null ? (
-              <p className="mt-tight" data-testid="booked-guests">
-                {/* Null is not zero: a booking of unpriced options owes an
-                  unknown amount, not "CHF 0.00". */}
-                {booked.totalCents === null
-                  ? t("common.guests", { count: booked.guestCount })
-                  : t("booking.guestsWithTotal", {
-                      guests: t("common.guests", { count: booked.guestCount }),
-                      total: formatCents(booked.totalCents),
-                    })}
-              </p>
-            ) : null}
+            <AnswersSummary booking={booked} countsPeople={typed.countsPeople} />
           </Card>
         </PageSection>
       </>
@@ -320,79 +276,7 @@ export function EventBooking() {
                   ))}
                 </fieldset>
 
-                <fieldset className="flex flex-col gap-related">
-                  <legend className="mb-tight heading-wave w-fit font-display text-xl">
-                    {t("booking.choiceLegend")}
-                  </legend>
-
-                  {offer.options.length === 0 ? (
-                    <p className="text-ink-muted">{t("booking.nothingOffered")}</p>
-                  ) : null}
-
-                  {offer.options.map((option) => {
-                    // A required block left out is refused against
-                    // `answers.<optionId>`, since it has no position in what
-                    // was sent. Said in a sentence of its own: the generic
-                    // "<field> est obligatoire" would name the field "Réponses".
-                    const unanswered = messageFor(`answers.${option.id}`)
-                      ? t("booking.answerRequired")
-                      : undefined;
-
-                    const quantity = option.kind === "quantity";
-
-                    return (
-                      <BlockView
-                        key={option.id}
-                        option={option}
-                        // The server names the line by its position in what
-                        // was sent, `choices.N.quantity` or `choices.N.value`,
-                        // not by option id.
-                        problem={
-                          messageFor(
-                            `choices.${positionOf(option.id)}.${quantity ? "quantity" : "value"}`,
-                          ) ?? unanswered
-                        }
-                        value={(quantity ? quantities : answers)[option.id] ?? ""}
-                        onChange={(value) =>
-                          (quantity ? setQuantities : setAnswers)((current) => ({
-                            ...current,
-                            [option.id]: value,
-                          }))
-                        }
-                      />
-                    );
-                  })}
-
-                  {/* The refusal for the whole list lands on `choices`, as the
-                    server sends it: no single quantity is wrong when the sum
-                    is. */}
-                  {messageFor("choices") ? (
-                    <span className="text-sm text-danger" role="alert">
-                      {messageFor("choices")}
-                    </span>
-                  ) : null}
-
-                  {/* The running total, which is why prices travel as integers:
-                    a guest reads what a choice costs before submitting. */}
-                  {countsPeople ? (
-                    <p className="text-ink" data-testid="booking-total">
-                      {/* The count's plural comes from the catalogue: `guests > 1`
-                        is the French rule, and wrong for "0 Person" in German. */}
-                      {guests === 0
-                        ? t("booking.chooseSomeone")
-                        : priced.length === 0
-                          ? t("common.guests", { count: guests })
-                          : t("booking.guestsWithTotal", {
-                              guests: t("common.guests", { count: guests }),
-                              total: formatCents(total),
-                            })}
-                    </p>
-                  ) : priced.length > 0 ? (
-                    <p className="text-ink" data-testid="booking-total">
-                      {formatCents(total)}
-                    </p>
-                  ) : null}
-                </fieldset>
+                <AnswerFields offer={offer} form={typed} messageFor={messageFor} />
 
                 {/* The honeypot, as on the contact form: hidden from people and
                   assistive technology, a real control whose value is submitted,
@@ -422,13 +306,4 @@ export function EventBooking() {
       </PageSection>
     </>
   );
-}
-
-/** A booked answer as the guest reads it back. */
-function answerText(choice: RegistrationResourceChoicesItem): string {
-  if (choice.kind === "yes_no") {
-    return choice.value === "yes" ? t("booking.yes") : t("booking.no");
-  }
-
-  return (choice.kind === "choice" ? choice.answerLabel : choice.value) ?? "";
 }

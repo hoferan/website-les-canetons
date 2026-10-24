@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Event;
+use App\Support\FormAudience;
 use App\Support\OptionKind;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -163,6 +164,11 @@ class ReplaceRegistrationOptionsRequest extends FormRequest
             'form.registrationAsksAddress' => ['required_with:form', 'boolean'],
             /** Whether the form asks who the guest would like to sit with. */
             'form.registrationAsksTable' => ['required_with:form', 'boolean'],
+            // Optional where the six are not: a screen loaded before this
+            // setting existed sends the six it knows, and must not be refused
+            // or flip a members form back to public.
+            /** Who may fill in the form: `public`, anybody, or `members`, logged-in members only. Omit to leave it as it is. */
+            'form.registrationAudience' => ['sometimes', Rule::enum(FormAudience::class)],
         ];
     }
 

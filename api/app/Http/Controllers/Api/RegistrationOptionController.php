@@ -182,6 +182,9 @@ class RegistrationOptionController extends Controller
                     'registration_max_guests' => $form['registrationMaxGuests'],
                     'registration_asks_address' => $form['registrationAsksAddress'],
                     'registration_asks_table' => $form['registrationAsksTable'],
+                    ...(isset($form['registrationAudience'])
+                        ? ['registration_audience' => $form['registrationAudience']]
+                        : []),
                 ]);
             }
 

@@ -751,3 +751,195 @@ test("offers the form editor on a form that is not open", async () => {
     "/events/1/book/edit",
   );
 });
+
+/* ----------------------------------------------- a form for members (#318) */
+
+/** The weekend's form, which only members fill in (ADR 0034). */
+const WEEKEND = 4;
+
+test("a members form is the same 404 to a visitor who is not logged in, with a way to log in", async () => {
+  await renderBooking(WEEKEND);
+
+  expect(screen.getByText(/pas d’inscription ouverte pour cette adresse/)).toBeInTheDocument();
+  expect(screen.queryByText(/Weekend musical/)).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Connexion" })).toHaveAttribute("href", "/login");
+});
+
+test("a member answers with their account, without contact fields", async () => {
+  setMockUser("demo.player");
+  const user = userEvent.setup();
+  const sent: unknown[] = [];
+  server.events.on("request:start", async ({ request }) => {
+    if (request.method === "PUT" && request.url.endsWith("/my-registration")) {
+      sent.push(await request.clone().json());
+    }
+  });
+  onTestFinished(() => server.events.removeAllListeners());
+
+  await renderBooking(WEEKEND);
+
+  expect(await screen.findByText("Vous répondez en tant que Perrine Player.")).toBeInTheDocument();
+  expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Téléphone")).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("radio", { name: "M" }));
+  await user.type(screen.getByLabelText(/Gâteaux que j’apporte/), "2");
+  await user.click(screen.getByRole("button", { name: "Envoyer mes réponses" }));
+
+  expect(await screen.findByText("Vos réponses")).toBeInTheDocument();
+  const summary = screen.getByTestId("booking-summary");
+  expect(summary).toHaveTextContent("Taille de t-shirt : M");
+  expect(summary).toHaveTextContent("2 × Gâteaux que j’apporte");
+  expect(sent).toEqual([
+    {
+      choices: [
+        { optionId: 10, quantity: 2 },
+        { optionId: 8, value: "m" },
+      ],
+    },
+  ]);
+});
+
+test("a member changes their answers in the form they filled in, and keeps one booking", async () => {
+  setMockUser("demo.player");
+  const user = userEvent.setup();
+  const first = await renderBooking(WEEKEND);
+
+  await user.click(await screen.findByRole("radio", { name: "S" }));
+  await user.click(screen.getByRole("button", { name: "Envoyer mes réponses" }));
+  await screen.findByText("Vos réponses");
+
+  // Coming back later: nothing typed is left in the page.
+  first.unmount();
+  await renderBooking(WEEKEND);
+  await user.click(await screen.findByRole("button", { name: "Modifier mes réponses" }));
+
+  // The form opens on what was sent, not empty.
+  expect(screen.getByRole("radio", { name: "S" })).toBeChecked();
+  await user.click(screen.getByRole("radio", { name: "XL" }));
+  await user.click(screen.getByRole("button", { name: "Enregistrer les modifications" }));
+
+  expect(await screen.findByTestId("booking-summary")).toHaveTextContent("Taille de t-shirt : XL");
+});
+
+/**
+ * The weekend's cakes are capped at 12. A member who brought all twelve
+ * changes another answer: their own cakes must not read as sold out, or the
+ * save drops them.
+ *
+ * Mutation test: count the member's own places in the form's `remaining`
+ * (the mocked form read, as RegistrationController::form) and this fails.
+ */
+test("a member who holds the last capped places keeps them when changing another answer", async () => {
+  setMockUser("demo.player");
+  const user = userEvent.setup();
+  const first = await renderBooking(WEEKEND);
+
+  await user.click(await screen.findByRole("radio", { name: "S" }));
+  await user.type(screen.getByLabelText(/Gâteaux que j’apporte/), "12");
+  await user.click(screen.getByRole("button", { name: "Envoyer mes réponses" }));
+  await screen.findByText("Vos réponses");
+
+  first.unmount();
+  await renderBooking(WEEKEND);
+  await user.click(await screen.findByRole("button", { name: "Modifier mes réponses" }));
+
+  expect(screen.getByLabelText(/Gâteaux que j’apporte/)).toBeEnabled();
+  expect(screen.getByLabelText(/Gâteaux que j’apporte/)).toHaveValue(12);
+  await user.click(screen.getByRole("radio", { name: "M" }));
+  await user.click(screen.getByRole("button", { name: "Enregistrer les modifications" }));
+
+  expect(await screen.findByTestId("booking-summary")).toHaveTextContent(
+    "12 × Gâteaux que j’apporte",
+  );
+});
+
+test("a member withdraws their answers and can answer again", async () => {
+  setMockUser("demo.player");
+  const user = userEvent.setup();
+  await renderBooking(WEEKEND);
+
+  await user.click(await screen.findByRole("radio", { name: "L" }));
+  await user.click(screen.getByRole("button", { name: "Envoyer mes réponses" }));
+  await user.click(await screen.findByRole("button", { name: "Retirer mes réponses" }));
+
+  expect(await screen.findByText(/Vos réponses ont été retirées/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Envoyer mes réponses" })).toBeInTheDocument();
+  expect(screen.getByRole("radio", { name: "L" })).not.toBeChecked();
+});
+
+test("after a members form closes, a member reads their answers and cannot change them", async () => {
+  setMockUser("demo.player");
+  const shirt = {
+    id: 8,
+    kind: "choice",
+    label: "Taille de t-shirt",
+    description: null,
+    required: true,
+    countsGuests: false,
+    priceCents: null,
+    capacity: null,
+    remaining: null,
+    answers: [{ id: "m", label: "M" }],
+    sortOrder: 0,
+  };
+  server.use(
+    http.get("/api/v1/events/:id/registration", () =>
+      HttpResponse.json({
+        event: {
+          id: WEEKEND,
+          title: "Weekend musical",
+          tags: [],
+          startsAt: "2026-11-21T08:00:00Z",
+          endsAt: "2026-11-22T16:00:00Z",
+          location: "Schwarzsee",
+          poster: null,
+          registrationOpen: false,
+        },
+        options: [shirt],
+        maxGuests: null,
+        audience: "members",
+        asksAddress: true,
+        asksTable: true,
+        opensAt: null,
+        closesAt: "2026-11-01T22:59:00Z",
+        open: false,
+      }),
+    ),
+    http.get("/api/v1/events/:id/my-registration", () =>
+      HttpResponse.json({
+        id: 40,
+        isMember: true,
+        firstName: "Perrine",
+        lastName: "Player",
+        email: null,
+        phone: null,
+        phoneE164: null,
+        address: null,
+        tableName: null,
+        choices: [
+          {
+            optionId: 8,
+            kind: "choice",
+            label: "Taille de t-shirt",
+            quantity: null,
+            value: "m",
+            answerLabel: "M",
+            priceCents: null,
+          },
+        ],
+        guestCount: 0,
+        totalCents: null,
+        paidAt: null,
+        createdAt: "2026-10-20T10:00:00Z",
+      }),
+    ),
+  );
+
+  await renderBooking(WEEKEND);
+
+  expect(await screen.findByText("Ce formulaire est clos.")).toBeInTheDocument();
+  expect(await screen.findByTestId("booking-summary")).toHaveTextContent("Taille de t-shirt : M");
+  expect(screen.queryByRole("button", { name: "Modifier mes réponses" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Retirer mes réponses" })).not.toBeInTheDocument();
+});

@@ -457,8 +457,19 @@ export function EventRegistrations() {
           >
             {bookings.map((booking) => (
               <li key={booking.id} className={`${OUTLINED_CARD} p-3 text-sm`}>
-                <p className="text-ink">
+                <p className="flex flex-wrap items-center gap-tight text-ink">
                   {booking.lastName} {booking.firstName}
+                  {/* A member answered with their account (ADR 0034): no
+                      contact details, and the committee knows how to reach
+                      them. */}
+                  {booking.isMember ? (
+                    <span
+                      data-testid="member-badge"
+                      className="rounded-full border-2 border-ink bg-lilac px-2 text-xs font-semibold"
+                    >
+                      {t("registrations.memberBadge")}
+                    </span>
+                  ) : null}
                 </p>
                 {/* The address stays text, with no geo: link or maps URL: it is
                     free text that may read "c/o Famille X", so a pin built from
@@ -468,8 +479,8 @@ export function EventRegistrations() {
                     three stops. `items-start` stops the column flex stretching
                     each link's tap target across the card. */}
                 <div data-testid="guest-contact" className="flex flex-col items-start gap-tight">
-                  <ContactLink kind="email" value={booking.email} />
-                  <ContactLink kind="phone" value={booking.phone} e164={booking.phoneE164} />
+                  <ContactLink kind="email" value={booking.email ?? ""} />
+                  <ContactLink kind="phone" value={booking.phone ?? ""} e164={booking.phoneE164} />
                   {booking.address ? (
                     <span className="text-ink-muted">{booking.address}</span>
                   ) : null}
@@ -800,13 +811,20 @@ function BookingActions({
   const who = `${booking.firstName} ${booking.lastName}`;
 
   const actions: RowAction[] = [
-    {
-      key: "amend",
-      label: t("registrations.amend"),
-      ariaLabel: t("registrations.amendTitle", { name: who }),
-      disabled: busy,
-      onSelect: onAmend,
-    },
+    // Not on a member's booking: its name comes from the account and is
+    // copied again on the member's next change, and it has no contact
+    // details to correct (ADR 0034).
+    ...(booking.isMember
+      ? []
+      : [
+          {
+            key: "amend",
+            label: t("registrations.amend"),
+            ariaLabel: t("registrations.amendTitle", { name: who }),
+            disabled: busy,
+            onSelect: onAmend,
+          },
+        ]),
     {
       key: "cancel",
       // registrations.cancel, not common.cancel: this one cancels a booking
@@ -854,8 +872,8 @@ function AmendForm({
   const [draft, setDraft] = useState({
     lastName: booking.lastName,
     firstName: booking.firstName,
-    email: booking.email,
-    phone: booking.phone,
+    email: booking.email ?? "",
+    phone: booking.phone ?? "",
     address: booking.address ?? "",
     tableName: booking.tableName ?? "",
   });

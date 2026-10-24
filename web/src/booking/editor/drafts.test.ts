@@ -70,6 +70,7 @@ const SOUPER: Pick<
   | "registrationMaxGuests"
   | "registrationAsksAddress"
   | "registrationAsksTable"
+  | "registrationAudience"
 > = {
   registrationEnabled: true,
   registrationOpensAt: null,
@@ -78,6 +79,7 @@ const SOUPER: Pick<
   registrationMaxGuests: 6,
   registrationAsksAddress: true,
   registrationAsksTable: false,
+  registrationAudience: "public",
 };
 
 test("the settings read back as they were sent", () => {
@@ -93,7 +95,15 @@ test("the settings read back as they were sent", () => {
     registrationMaxGuests: 6,
     registrationAsksAddress: true,
     registrationAsksTable: false,
+    registrationAudience: "public",
   });
+});
+
+test("a members form reads back as one and is sent as one", () => {
+  const settings = settingsFrom({ ...SOUPER, registrationAudience: "members" });
+
+  expect(settings.membersOnly).toBe(true);
+  expect(settingsPayload(settings).registrationAudience).toBe("members");
 });
 
 test("an empty closing date or cap is sent as null", () => {

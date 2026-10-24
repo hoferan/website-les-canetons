@@ -348,6 +348,7 @@ export function EventFormEditor() {
         <ContactBlock
           asksAddress={settings.asksAddress}
           asksTable={settings.asksTable}
+          membersOnly={settings.membersOnly}
           guest={guest}
           onChange={(patch) => {
             edited();

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\OptionKind;
 use App\Support\PhoneNumber;
 use Database\Factories\RegistrationFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -10,9 +11,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
- * One booking, made by a stranger from the public form.
+ * One booking: a stranger's from the public form, or a member's from a
+ * members-only form (`member_id` set, no email or phone; ADR 0034).
  *
  * Write-once from the public side (ADR 0020): no cancel token and no
  * self-service. The committee corrects and cancels on the guest list. Each
@@ -26,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $updated_at
  * @property Carbon|null $paid_at
  * @property string|null $phone_e164
+ * @property int|null $member_id
  * @property-read int $guest_count
  * @property-read int|null $total_cents
  */
@@ -36,6 +40,7 @@ class Registration extends Model
 
     protected $fillable = [
         'event_id',
+        'member_id',
         'first_name',
         'last_name',
         'email',
@@ -71,10 +76,60 @@ class Registration extends Model
         return $this->belongsTo(Event::class);
     }
 
+    /** @return BelongsTo<Member, $this> */
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(Member::class);
+    }
+
+    /** Whether a member made this booking with their account. */
+    public function isMember(): bool
+    {
+        return $this->member_id !== null;
+    }
+
     /** @return HasMany<RegistrationChoice, $this> */
     public function choices(): HasMany
     {
         return $this->hasMany(RegistrationChoice::class);
+    }
+
+    /**
+     * Replaces this booking's answers with the ones sent.
+     *
+     * Each kind keeps only its own column, whatever else the entry carried,
+     * and a blank text is no answer: the request let it through as such, and
+     * an empty row would read as answered.
+     *
+     * @param  list<array{optionId: int, quantity?: int|null, value?: string|null}>  $choices
+     * @param  Collection<int, OptionKind>  $kinds  each option's kind, by id
+     */
+    public function writeChoices(array $choices, Collection $kinds): void
+    {
+        // Only a booking that had answers. On a new one the DELETE would take
+        // a gap lock at the end of the index, and two bookings doing that at
+        // once deadlock each other's inserts.
+        if (! $this->wasRecentlyCreated) {
+            $this->choices()->delete();
+        }
+
+        foreach ($choices as $choice) {
+            $quantity = $kinds[$choice['optionId']] === OptionKind::Quantity;
+            $value = $quantity ? null : trim((string) ($choice['value'] ?? ''));
+
+            if ($value === '') {
+                continue;
+            }
+
+            RegistrationChoice::create([
+                'registration_id' => $this->id,
+                'option_id' => $choice['optionId'],
+                'quantity' => $quantity ? $choice['quantity'] : null,
+                'value' => $value,
+            ]);
+        }
+
+        $this->unsetRelation('choices');
     }
 
     public function fullName(): string

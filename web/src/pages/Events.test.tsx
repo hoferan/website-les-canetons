@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
+import { myRegistrationPut } from "../api/generated/endpoints";
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
@@ -1329,4 +1330,39 @@ test("a draft shows no answer count, because nobody can answer it yet", async ()
   expect(
     within(cardFor("Répétition + apéritif de Noël")).getByText(/réponses/),
   ).toBeInTheDocument();
+});
+
+/* ----------------------------------------------- a form for members (#318) */
+
+/**
+ * The weekend's form is for members only (ADR 0034): the card is the way in,
+ * since the agenda offers no link to it.
+ *
+ * Mutation test: drop the `myRegistration` action and both fail.
+ */
+test("a members form is offered on its card, to anybody with an account", async () => {
+  await renderPlanning("demo.player");
+
+  expect(
+    within(cardFor("Weekend musical")).getByRole("link", {
+      name: "Remplir le formulaire de Weekend musical",
+    }),
+  ).toHaveAttribute("href", "/events/4/book");
+  // Not on an event whose form is public.
+  expect(
+    within(cardFor("Souper de soutien")).queryByRole("link", { name: /formulaire/ }),
+  ).toBeNull();
+});
+
+test("once answered, the card offers the answers instead", async () => {
+  setMockUser("demo.player");
+  await myRegistrationPut(4, { choices: [{ optionId: 8, value: "m" }] });
+
+  await renderPlanning("demo.player");
+
+  expect(
+    within(cardFor("Weekend musical")).getByRole("link", {
+      name: "Mes réponses à Weekend musical",
+    }),
+  ).toHaveAttribute("href", "/events/4/book");
 });

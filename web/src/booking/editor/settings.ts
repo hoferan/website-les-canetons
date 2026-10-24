@@ -20,6 +20,8 @@ export type FormSettings = {
   maxGuests: string;
   asksAddress: boolean;
   asksTable: boolean;
+  /** Only logged-in members fill it in, with their account (ADR 0034). */
+  membersOnly: boolean;
 };
 
 /**
@@ -38,6 +40,7 @@ type Settings = Pick<
   | "registrationMaxGuests"
   | "registrationAsksAddress"
   | "registrationAsksTable"
+  | "registrationAudience"
 >;
 
 export function settingsFrom(event: Settings): FormSettings {
@@ -54,6 +57,7 @@ export function settingsFrom(event: Settings): FormSettings {
     maxGuests: event.registrationMaxGuests === null ? "" : String(event.registrationMaxGuests),
     asksAddress: event.registrationAsksAddress,
     asksTable: event.registrationAsksTable,
+    membersOnly: event.registrationAudience === "members",
   };
 }
 
@@ -74,6 +78,7 @@ export function settingsPayload(settings: FormSettings): ReplaceRegistrationOpti
     registrationMaxGuests: cap === "" ? null : Number(cap),
     registrationAsksAddress: settings.asksAddress,
     registrationAsksTable: settings.asksTable,
+    registrationAudience: settings.membersOnly ? "members" : "public",
   };
 }
 

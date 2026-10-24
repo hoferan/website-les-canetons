@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\UtcDateTime;
+use App\Support\FormAudience;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,6 +41,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property bool $registration_enabled
  * @property bool $registration_asks_address
  * @property bool $registration_asks_table
+ * @property FormAudience $registration_audience
  */
 class Event extends Model
 {
@@ -57,6 +59,8 @@ class Event extends Model
         'registration_enabled' => false,
         'registration_asks_address' => true,
         'registration_asks_table' => true,
+        // Every form is open to the public unless the committee says otherwise (#318).
+        'registration_audience' => 'public',
     ];
 
     /** What a list eager-loads to render every event's poster. See poster(). */
@@ -76,6 +80,7 @@ class Event extends Model
         'registration_enabled',
         'registration_asks_address',
         'registration_asks_table',
+        'registration_audience',
         'published_at',
     ];
 
@@ -238,6 +243,16 @@ class Event extends Model
     }
 
     /**
+     * Whether only members may fill in the form (#318, ADR 0034). Such a form
+     * does not exist for an anonymous caller, and takes one booking per
+     * account.
+     */
+    public function isMembersOnly(): bool
+    {
+        return $this->registration_audience === FormAudience::Members;
+    }
+
+    /**
      * Whether the form is accepting bookings right now.
      *
      * A missing `registration_opens_at` means open immediately, so the
@@ -255,6 +270,15 @@ class Event extends Model
         }
 
         return $this->registration_closes_at->isFuture();
+    }
+
+    /**
+     * Whether the public agenda may link to the form right now: open, and not
+     * for members only, whoever is asking.
+     */
+    public function takesPublicBookingsNow(): bool
+    {
+        return $this->registrationIsOpen() && ! $this->isMembersOnly();
     }
 
     protected function casts(): array
@@ -276,6 +300,7 @@ class Event extends Model
             'registration_enabled' => 'boolean',
             'registration_asks_address' => 'boolean',
             'registration_asks_table' => 'boolean',
+            'registration_audience' => FormAudience::class,
         ];
     }
 }

@@ -334,3 +334,21 @@ test("leaving with unsaved edits asks first, and not after the save", async () =
   expect(await screen.findByText("Ailleurs")).toBeInTheDocument();
   expect(asked).toHaveLength(1);
 });
+
+/* ----------------------------------------------- a form for members (#318) */
+
+/** Mutation test: leave `registrationAudience` out of settingsPayload() and this fails. */
+test("the strip keeps a form for members, and the save says so", async () => {
+  const user = userEvent.setup();
+  const sent = capturePuts();
+  await renderEditor();
+
+  await user.click(screen.getByRole("switch", { name: "Réservé aux membres" }));
+  // The contact block says what a member is asked instead of the fields.
+  expect(screen.getByText(/Aucune coordonnée demandée/)).toBeInTheDocument();
+  expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect(await screen.findByText("Enregistré.")).toBeInTheDocument();
+  expect(sent[0]?.body.form?.registrationAudience).toBe("members");
+});

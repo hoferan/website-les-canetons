@@ -34,6 +34,9 @@ class EventResource extends JsonResource
     /** Request-attribute key the controller and this Resource share for the denominator. */
     public const ANSWERABLE_COUNT = 'answerableCount';
 
+    /** The exists-subselect EventController adds for the caller's own booking. */
+    public const MY_REGISTRATION = 'my_registration_exists';
+
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
@@ -98,10 +101,39 @@ class EventResource extends JsonResource
             'registrationAsksAddress' => $this->registration_asks_address,
             /** Whether the form asks who the guest would like to sit with. */
             'registrationAsksTable' => $this->registration_asks_table,
+            /** Who may fill in the form: `public`, anybody, or `members`, logged-in members only. */
+            'registrationAudience' => $this->registration_audience,
             /** Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set. */
             'takesRegistrations' => $this->takesRegistrations(),
             /** The calling member's own answer for this event, or null if they have not replied. Never anybody else's. */
             'myAttendance' => $this->myAttendance(),
+            /** On a published event whose form is open and for members only: whether the caller has booked it, and whether it still takes changes. Null on every other event. Book at `/api/v1/events/{event}/my-registration`. */
+            'myRegistration' => $this->myRegistration(),
+        ];
+    }
+
+    /**
+     * The caller's own booking on a members form, as two flags, so the
+     * planning can offer "fill in" or "my answers" without a request per
+     * card.
+     *
+     * Reads the subselect the controller scopes to the current member, and
+     * reports null when it was not selected. That keeps it out of EntityTag,
+     * which renders a freshly read model: a member booking must not 412 the
+     * committee's open edit.
+     *
+     * @return array{answered: bool, open: bool}|null
+     */
+    private function myRegistration(): ?array
+    {
+        if (! array_key_exists(self::MY_REGISTRATION, $this->getAttributes()) || $this->isDraft()
+            || ! $this->acceptsBookings() || ! $this->isMembersOnly()) {
+            return null;
+        }
+
+        return [
+            'answered' => (bool) $this->getAttribute(self::MY_REGISTRATION),
+            'open' => $this->registrationIsOpen(),
         ];
     }
 

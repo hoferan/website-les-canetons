@@ -11,18 +11,21 @@ import { Toggle } from "./EditableBlock";
 /**
  * The contact fields, locked at the top of every form.
  *
- * Name, email and phone are asked on every form; address and table are the
- * form's to ask for (ADR 0033), and their two switches live here, beside the
- * fields they add.
+ * Name, email and phone are asked on every public form; address and table
+ * are the form's to ask for (ADR 0033), and their two switches live here,
+ * beside the fields they add. A form for members only asks for none of them:
+ * each member answers with their account (ADR 0034).
  */
 export function ContactBlock({
   asksAddress,
   asksTable,
+  membersOnly,
   guest,
   onChange,
 }: {
   asksAddress: boolean;
   asksTable: boolean;
+  membersOnly: boolean;
   guest: boolean;
   onChange: (patch: { asksAddress?: boolean; asksTable?: boolean }) => void;
 }) {
@@ -45,6 +48,23 @@ export function ContactBlock({
       ))}
     </div>
   );
+
+  if (membersOnly) {
+    // What the member reads above the blocks, in place of the fields.
+    const note = <p className="text-ink-muted">{t("registrationOptions.memberContactHint")}</p>;
+
+    return guest ? (
+      note
+    ) : (
+      <div className={cn(OUTLINED_CARD, "relative flex flex-col gap-related p-4 pt-6")}>
+        <span className="absolute -top-3.5 left-5 inline-flex -rotate-2 items-center gap-1 rounded-full border-2 border-ink bg-line px-2.5 py-0.5 text-sm font-semibold">
+          <Lock aria-hidden="true" className="size-3.5" />
+          {t("registrationOptions.memberContactLocked")}
+        </span>
+        {note}
+      </div>
+    );
+  }
 
   if (guest) {
     return fields;

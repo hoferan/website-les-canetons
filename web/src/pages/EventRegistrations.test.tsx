@@ -4,6 +4,7 @@ import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
 import { beforeEach, expect, onTestFinished, test, vi } from "vitest";
 
+import { myRegistrationPut } from "../api/generated/endpoints";
 import { type Locale } from "../i18n/locale";
 import { problem, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
@@ -772,4 +773,35 @@ test("a yes/no's tally says how many gave no answer", async () => {
 
   const totals = within(screen.getByTestId("answer-totals")).getAllByRole("listitem");
   expect(totals.map((item) => item.textContent)).toContain("Végétarien ? : 1 × sans réponse");
+});
+
+/* ----------------------------------------------- a form for members (#318) */
+
+/**
+ * A member's booking has no contact details, and its name comes from the
+ * account, so there is nothing to correct; cancelling stays.
+ *
+ * Mutation test: render the amend action for every row and this fails.
+ */
+test("a member's booking is marked, and offers no correction", async () => {
+  setMockUser("demo.player");
+  await myRegistrationPut(4, { choices: [{ optionId: 8, value: "m" }] });
+
+  await renderGuestList("demo.direction", 4);
+
+  const card = within(cards())
+    .getByText(/Player Perrine/)
+    .closest("li");
+  expect(card).not.toBeNull();
+  expect(within(card as HTMLElement).getByTestId("member-badge")).toHaveTextContent("Membre");
+  expect(
+    within(card as HTMLElement).queryByRole("button", {
+      name: "Corriger l’inscription de Perrine Player",
+    }),
+  ).toBeNull();
+  expect(
+    within(card as HTMLElement).getByRole("button", {
+      name: "Annuler l’inscription de Perrine Player",
+    }),
+  ).toBeInTheDocument();
 });

@@ -313,11 +313,20 @@ import type { RegistrationResourceChoicesItem } from "./registrationResourceChoi
 
 export interface RegistrationResource {
   id: number;
+  /** Whether a member made this booking with their account, on a form for members only. Such a booking has no email, phone, address or table. */
+  isMember: boolean;
   firstName: string;
   lastName: string;
-  email: string;
-  /** The number as the guest typed it. This is what to show. */
-  phone: string;
+  /**
+   * Null on a member's booking.
+   * @nullable
+   */
+  email: string | null;
+  /**
+   * The number as the guest typed it. This is what to show. Null on a member's booking.
+   * @nullable
+   */
+  phone: string | null;
   /**
    * The same number in E.164, to dial, or null when it could not be read as one: show and dial `phone` then. Read as Swiss unless it starts with `+` or `00`.
    * @nullable

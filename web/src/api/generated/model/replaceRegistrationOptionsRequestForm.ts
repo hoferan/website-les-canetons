@@ -309,6 +309,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { FormAudience } from "./formAudience";
 
 /**
  * The form's settings, the same six the event carries. Omit to leave them as they are; send all six to change any.
@@ -337,4 +338,6 @@ export type ReplaceRegistrationOptionsRequestForm = {
   registrationAsksAddress?: boolean;
   /** Whether the form asks who the guest would like to sit with. */
   registrationAsksTable?: boolean;
+  /** Who may fill in the form: `public`, anybody, or `members`, logged-in members only. Omit to leave it as it is. */
+  registrationAudience?: FormAudience;
 };

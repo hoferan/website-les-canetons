@@ -309,6 +309,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { FormAudience } from "./formAudience";
 import type { PublicEventResource } from "./publicEventResource";
 import type { RegistrationOptionResource } from "./registrationOptionResource";
 
@@ -317,6 +318,8 @@ export interface RegistrationFormResource {
   options: RegistrationOptionResource[];
   /** @nullable */
   maxGuests: number | null;
+  /** `public`: anybody books, with contact details. `members`: the caller books with their account at `/api/v1/events/{event}/my-registration`, and no contact details are asked. */
+  audience: FormAudience;
   /** Whether to ask for a postal address. A booking sent with one anyway stores none. */
   asksAddress: boolean;
   /** Whether to ask who the guest would like to sit with. A booking sent with it anyway stores none. */

@@ -26,10 +26,13 @@ class RegistrationResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            /** Whether a member made this booking with their account, on a form for members only. Such a booking has no email, phone, address or table. */
+            'isMember' => $this->isMember(),
             'firstName' => $this->first_name,
             'lastName' => $this->last_name,
+            /** Null on a member's booking. */
             'email' => $this->email,
-            /** The number as the guest typed it. This is what to show. */
+            /** The number as the guest typed it. This is what to show. Null on a member's booking. */
             'phone' => $this->phone,
             /** The same number in E.164, to dial, or null when it could not be read as one: show and dial `phone` then. Read as Swiss unless it starts with `+` or `00`. */
             'phoneE164' => $this->phone_e164,

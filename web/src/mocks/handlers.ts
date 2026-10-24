@@ -23,6 +23,7 @@ import type {
   InboxSummary200Counts,
   MemberResource,
   OptionKind,
+  PutMyRegistrationRequest,
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
   RegistrationOptionResource,
@@ -1394,6 +1395,8 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationAudience: "public",
+      myRegistration: null,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1416,6 +1419,8 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationAudience: "public",
+      myRegistration: null,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1438,6 +1443,8 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationAudience: "public",
+      myRegistration: null,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1449,6 +1456,8 @@ function initialEvents(): EventResource[] {
       // The two-day case, which is why `ends_at` is a datetime rather than a
       // time beside a `weekend` boolean.
       id: 4,
+      // The members form (ADR 0034): t-shirt sizes and who brings what,
+      // answered by members with their account. Anonymous, it is a 404.
       title: "Weekend musical",
       startsAt: at(28, "09:00"),
       endsAt: at(29, "16:00"),
@@ -1457,12 +1466,14 @@ function initialEvents(): EventResource[] {
       isPublic: false,
       notes: "Repas et logement compris.",
       registrationOpensAt: null,
-      registrationClosesAt: null,
+      registrationClosesAt: at(21, "23:59"),
       registrationMaxGuests: null,
-      registrationEnabled: false,
+      registrationEnabled: true,
       registrationAsksAddress: true,
       registrationAsksTable: true,
-      takesRegistrations: false,
+      registrationAudience: "members",
+      myRegistration: null,
+      takesRegistrations: true,
       myAttendance: null,
       answeredCount: null,
       answerableCount: null,
@@ -1489,6 +1500,8 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationAudience: "public",
+      myRegistration: null,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1512,6 +1525,8 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationAudience: "public",
+      myRegistration: null,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1542,6 +1557,8 @@ function initialEvents(): EventResource[] {
       registrationEnabled: true,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationAudience: "public",
+      myRegistration: null,
       takesRegistrations: true,
       myAttendance: null,
       answeredCount: null,
@@ -1571,6 +1588,8 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationAudience: "public",
+      myRegistration: null,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1594,6 +1613,8 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationAudience: "public",
+      myRegistration: null,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -1794,7 +1815,61 @@ function myAnswerFor(eventId: number): AttendanceResource | null {
 
 /** One event as the caller sees it: the stored row plus their own answer. */
 function withMyAttendance(event: EventResource): EventResource {
-  return { ...event, myAttendance: myAnswerFor(event.id) };
+  return {
+    ...event,
+    myAttendance: myAnswerFor(event.id),
+    myRegistration: myRegistrationFor(event),
+  };
+}
+
+/** The caller's own booking on a members form, as two flags, or null. */
+function myRegistrationFor(event: EventResource): EventResource["myRegistration"] {
+  if (
+    event.publishedAt === null ||
+    event.registrationClosesAt === null ||
+    !event.registrationEnabled ||
+    event.registrationAudience !== "members"
+  ) {
+    return null;
+  }
+
+  return {
+    answered: mineOn(event.id) !== undefined,
+    open: registrationIsOpen(event),
+  };
+}
+
+/** A published event whose form is open and for members only, or undefined. */
+function memberFormOf(eventId: number): EventResource | undefined {
+  return events.find(
+    (event) =>
+      event.id === eventId &&
+      event.publishedAt !== null &&
+      event.registrationClosesAt !== null &&
+      event.registrationEnabled &&
+      event.registrationAudience === "members",
+  );
+}
+
+/** The two refusals outside a form's window, naming which end was missed. */
+function windowRefusal(event: EventResource) {
+  if (registrationIsOpen(event)) {
+    return null;
+  }
+
+  return event.registrationOpensAt !== null && Date.parse(event.registrationOpensAt) > Date.now()
+    ? conflict("registration_not_open", "Registration has not opened yet")
+    : conflict("registration_closed", "Registration has closed");
+}
+
+/** The caller's booking on an event, if they made one with their account. */
+function mineOn(eventId: number): MockRegistration | undefined {
+  return registrations.find(
+    (registration) =>
+      registration.eventId === eventId &&
+      currentUser !== null &&
+      registration.memberId === currentUser.id,
+  );
 }
 
 /**
@@ -1886,7 +1961,7 @@ function refuseIfEndsBeforeStart(startsAt: string | null, endsAt: string | null)
 // `remaining` is not stored: optionsFor() counts it from the bookings, as
 // the server does, so a booking made here moves it.
 type MockOption = Omit<RegistrationOptionResource, "remaining"> & { eventId: number };
-type MockRegistration = RegistrationResource & { eventId: number };
+type MockRegistration = RegistrationResource & { eventId: number; memberId?: number };
 
 /**
  * What event 7 offers.
@@ -1971,6 +2046,35 @@ function initialOptions(): MockOption[] {
       description: "Laissez vide si aucune",
       sortOrder: 6,
     },
+    // Event 4, the members form: nothing counts people, so a booking of
+    // answers alone goes through.
+    {
+      ...question,
+      eventId: 4,
+      id: 8,
+      kind: "choice",
+      label: "Taille de t-shirt",
+      required: true,
+      answers: [
+        { id: "s", label: "S" },
+        { id: "m", label: "M" },
+        { id: "l", label: "L" },
+        { id: "xl", label: "XL" },
+      ],
+      sortOrder: 0,
+    },
+    { ...question, eventId: 4, id: 9, kind: "yes_no", label: "Je dors sur place", sortOrder: 1 },
+    {
+      ...question,
+      eventId: 4,
+      id: 10,
+      kind: "quantity",
+      label: "Gâteaux que j’apporte",
+      description: "Pour le goûter du dimanche",
+      // Capped, so a member who holds the last ones can be seen keeping them.
+      capacity: 12,
+      sortOrder: 2,
+    },
   ];
 }
 
@@ -1989,6 +2093,7 @@ function initialRegistrations(): MockRegistration[] {
     {
       eventId: 7,
       id: 1,
+      isMember: false,
       firstName: "Jeanne",
       lastName: "Aebischer",
       email: "jeanne.aebischer@example.ch",
@@ -2010,6 +2115,7 @@ function initialRegistrations(): MockRegistration[] {
     {
       eventId: 7,
       id: 2,
+      isMember: false,
       firstName: "Marc",
       lastName: "Python",
       email: "marc.python@example.ch",
@@ -2024,6 +2130,30 @@ function initialRegistrations(): MockRegistration[] {
       totalCents: null,
       paidAt: null,
       createdAt: "2026-09-02T09:05:00.000Z",
+    },
+    {
+      // demo.both's answers to the weekend's members form (ADR 0034): no
+      // contact details, the name from the account. Every other account
+      // still has the form to fill in.
+      eventId: 4,
+      memberId: 3,
+      id: 3,
+      isMember: true,
+      firstName: "Bastien",
+      lastName: "Both",
+      email: null,
+      phone: null,
+      phoneE164: null,
+      address: null,
+      tableName: null,
+      choices: [
+        answer(8, "choice", "Taille de t-shirt", "l", "L"),
+        answer(9, "yes_no", "Je dors sur place", "yes"),
+      ],
+      guestCount: 0,
+      totalCents: null,
+      paidAt: null,
+      createdAt: "2026-10-20T19:12:00.000Z",
     },
   ];
 }
@@ -2060,13 +2190,13 @@ function answer(
 let options: MockOption[] = initialOptions();
 let registrations: MockRegistration[] = initialRegistrations();
 let nextOptionId = 8;
-let nextRegistrationId = 3;
+let nextRegistrationId = 4;
 
 function resetRegistrations(): void {
   options = initialOptions();
   registrations = initialRegistrations();
   nextOptionId = 8;
-  nextRegistrationId = 3;
+  nextRegistrationId = 4;
 }
 
 /**
@@ -2076,9 +2206,12 @@ function resetRegistrations(): void {
  * the destructure leaves a bound name nothing reads, which this project's
  * eslint rules refuse, and a cast would stop the compiler checking.
  */
-function published<T extends { eventId: number }>(row: T): Omit<T, "eventId"> {
+function published<T extends { eventId: number; memberId?: number }>(
+  row: T,
+): Omit<T, "eventId" | "memberId"> {
   const resource = { ...row };
   delete (resource as Partial<T>).eventId;
+  delete (resource as Partial<T>).memberId;
   return resource;
 }
 
@@ -2134,6 +2267,7 @@ function formSettingsOf(event: EventResource): ReplaceRegistrationOptionsRequest
     registrationMaxGuests: event.registrationMaxGuests,
     registrationAsksAddress: event.registrationAsksAddress,
     registrationAsksTable: event.registrationAsksTable,
+    registrationAudience: event.registrationAudience,
   };
 }
 
@@ -2164,6 +2298,139 @@ function editableOptionsFor(eventId: number): EditableRegistrationOptionResource
 
 function registrationTag(registration: MockRegistration): string {
   return mockEntityTag(published(registration));
+}
+
+/**
+ * A booking's answers checked against the event's blocks, as
+ * ValidatesBookingAnswers and BookingCapacity check them: the choices to
+ * store, or the refusal. Shared by a guest's booking and a member's
+ * (ADR 0034). `exceptId` leaves that booking's own places out of the
+ * capacity count, for a member changing their answers.
+ */
+function checkedAnswers(
+  event: EventResource,
+  sent: { optionId: number; quantity?: number | null; value?: string | null }[],
+  extra: { field: string; reason: string }[],
+  exceptId: number | null,
+): RegistrationResourceChoicesItem[] | Response {
+  const eventOptions = optionsFor(event.id);
+  const optionOf = (id: number) => eventOptions.find((candidate) => candidate.id === id);
+
+  if (sent.some((choice) => !optionOf(choice.optionId))) {
+    return problem(400, "validation_failed", "Invalid form submission", [
+      { field: "choices.0.optionId", reason: "exists" },
+    ]);
+  }
+
+  // Each answer against its block, then every required block, as
+  // StoreRegistrationRequest::after() checks them.
+  const wrong = sent.flatMap((choice, index) => {
+    const option = optionOf(choice.optionId);
+    const value = choice.value ?? null;
+
+    if (option?.kind === "quantity") {
+      return choice.quantity == null
+        ? [{ field: `choices.${index}.quantity`, reason: "required" }]
+        : [];
+    }
+
+    const fits =
+      value === null ||
+      (option?.kind === "text" && value.length <= 1000) ||
+      (option?.kind === "yes_no" && (value === "yes" || value === "no")) ||
+      (option?.kind === "choice" && option.answers.some((offered) => offered.id === value));
+
+    return fits ? [] : [{ field: `choices.${index}.value`, reason: "not_an_answer" }];
+  });
+
+  const answered = (option: RegistrationOptionResource) =>
+    sent.some(
+      (choice) =>
+        choice.optionId === option.id &&
+        (option.kind === "quantity"
+          ? (choice.quantity ?? 0) > 0
+          : (choice.value ?? "").trim() !== ""),
+    );
+  const unanswered = eventOptions
+    .filter((option) => option.required && !answered(option))
+    .map((option) => ({ field: `answers.${option.id}`, reason: "required" }));
+
+  // The per-booking cap compares the whole choices array with a number on
+  // the event, so it is raised against `choices` with no params, as the
+  // server's closure validator does: that path emits field and reason only,
+  // and an interpolating French string would print a literal {{max}}.
+  const people = eventOptions.filter((option) => option.countsGuests);
+  const guests = sent
+    .filter((choice) => people.some((option) => option.id === choice.optionId))
+    .reduce((sum, choice) => sum + (choice.quantity ?? 0), 0);
+  const size =
+    people.length === 0
+      ? []
+      : guests === 0
+        ? [{ field: "choices", reason: "no_guests" }]
+        : event.registrationMaxGuests !== null && guests > event.registrationMaxGuests
+          ? [{ field: "choices", reason: "too_many_guests" }]
+          : [];
+
+  const refusals = [...extra, ...wrong, ...unanswered, ...size];
+  if (refusals.length > 0) {
+    return problem(400, "validation_failed", "Invalid form submission", refusals);
+  }
+
+  // A blank answer is no answer, and each kind keeps only its own column.
+  const choices: RegistrationResourceChoicesItem[] = sent.flatMap((choice) => {
+    const option = optionOf(choice.optionId);
+    if (!option) {
+      return [];
+    }
+    if (option.kind === "quantity") {
+      return [line(option.id, option.label ?? "", choice.quantity ?? 0, option.priceCents)];
+    }
+
+    const value = (choice.value ?? "").trim();
+
+    return value === ""
+      ? []
+      : [
+          answer(
+            option.id,
+            option.kind,
+            option.label,
+            value,
+            option.answers.find((offered) => offered.id === value)?.label ?? null,
+          ),
+        ];
+  });
+
+  // Against `choices.N.quantity`, N the position in what was sent, as
+  // RegistrationController::refuseBeyondCapacity reports it.
+  const short = sent.flatMap((choice, index) => {
+    const remaining = remainingBesides(optionOf(choice.optionId), exceptId);
+
+    return remaining !== null && remaining !== undefined && (choice.quantity ?? 0) > remaining
+      ? [{ field: `choices.${index}.quantity`, reason: "not_enough_places" }]
+      : [];
+  });
+  if (short.length > 0) {
+    return problem(400, "validation_failed", "Invalid form submission", short);
+  }
+
+  return choices;
+}
+
+/** What is left of an option, giving back the places one booking holds. */
+function remainingBesides(
+  option: RegistrationOptionResource | undefined,
+  exceptId: number | null,
+): number | null | undefined {
+  const remaining = option?.remaining;
+  if (remaining === null || remaining === undefined || exceptId === null || !option) {
+    return remaining;
+  }
+  const held = registrations
+    .find((registration) => registration.id === exceptId)
+    ?.choices.find((choice) => choice.optionId === option.id)?.quantity;
+  return remaining + (held ?? 0);
 }
 
 /**
@@ -2250,7 +2517,8 @@ function publicEvent(event: EventResource) {
     endsAt: event.endsAt,
     location: event.location,
     poster: event.poster,
-    registrationOpen: registrationIsOpen(event),
+    // A members form is not a public booking, whoever is asking.
+    registrationOpen: registrationIsOpen(event) && event.registrationAudience === "public",
   };
 }
 
@@ -3585,6 +3853,8 @@ const overrides = [
         registrationEnabled: false,
         registrationAsksAddress: true,
         registrationAsksTable: true,
+        registrationAudience: "public",
+        myRegistration: null,
         takesRegistrations: false,
         myAttendance: null,
         answeredCount: null,
@@ -3644,6 +3914,8 @@ const overrides = [
       registrationEnabled: body.registrationEnabled ?? false,
       registrationAsksAddress: body.registrationAsksAddress ?? true,
       registrationAsksTable: body.registrationAsksTable ?? true,
+      registrationAudience: "public",
+      myRegistration: null,
       takesRegistrations: false,
       myAttendance: null,
       answeredCount: null,
@@ -4381,15 +4653,25 @@ const overrides = [
       !event ||
       event.publishedAt === null ||
       event.registrationClosesAt === null ||
-      !event.registrationEnabled
+      !event.registrationEnabled ||
+      // The same 404 for a members form, to a caller with no session.
+      (event.registrationAudience === "members" && !currentUser)
     ) {
       return notFound();
     }
 
+    // On a members form, `remaining` gives back the caller's own places, as
+    // RegistrationController::form() counts them.
+    const mine = event.registrationAudience === "members" ? (mineOn(event.id)?.id ?? null) : null;
+
     return HttpResponse.json({
       event: publicEvent(event),
-      options: optionsFor(event.id),
+      options: optionsFor(event.id).map((option) => ({
+        ...option,
+        remaining: remainingBesides(option, mine) ?? null,
+      })),
       maxGuests: event.registrationMaxGuests,
+      audience: event.registrationAudience,
       asksAddress: event.registrationAsksAddress,
       asksTable: event.registrationAsksTable,
       opensAt: event.registrationOpensAt,
@@ -4413,7 +4695,9 @@ const overrides = [
       !event ||
       event.publishedAt === null ||
       event.registrationClosesAt === null ||
-      !event.registrationEnabled
+      !event.registrationEnabled ||
+      // Members book through /my-registration (ADR 0034).
+      event.registrationAudience === "members"
     ) {
       return notFound();
     }
@@ -4448,117 +4732,21 @@ const overrides = [
       "phone",
     ];
     const missing = required.filter((field) => String(body[field] ?? "").trim() === "");
-    const sent = body.choices ?? [];
-    const eventOptions = optionsFor(event.id);
-    const optionOf = (id: number) => eventOptions.find((candidate) => candidate.id === id);
-
-    if (sent.some((choice) => !optionOf(choice.optionId))) {
-      return problem(400, "validation_failed", "Invalid form submission", [
-        { field: "choices.0.optionId", reason: "exists" },
-      ]);
+    const outcome = checkedAnswers(
+      event,
+      body.choices ?? [],
+      missing.map((field) => ({ field, reason: "required" })),
+      null,
+    );
+    if (outcome instanceof Response) {
+      return outcome;
     }
-
-    // Each answer against its block, then every required block, as
-    // StoreRegistrationRequest::after() checks them.
-    const wrong = sent.flatMap((choice, index) => {
-      const option = optionOf(choice.optionId);
-      const value = choice.value ?? null;
-
-      if (option?.kind === "quantity") {
-        return choice.quantity == null
-          ? [{ field: `choices.${index}.quantity`, reason: "required" }]
-          : [];
-      }
-
-      const fits =
-        value === null ||
-        (option?.kind === "text" && value.length <= 1000) ||
-        (option?.kind === "yes_no" && (value === "yes" || value === "no")) ||
-        (option?.kind === "choice" && option.answers.some((offered) => offered.id === value));
-
-      return fits ? [] : [{ field: `choices.${index}.value`, reason: "not_an_answer" }];
-    });
-
-    const answered = (option: RegistrationOptionResource) =>
-      sent.some(
-        (choice) =>
-          choice.optionId === option.id &&
-          (option.kind === "quantity"
-            ? (choice.quantity ?? 0) > 0
-            : (choice.value ?? "").trim() !== ""),
-      );
-    const unanswered = eventOptions
-      .filter((option) => option.required && !answered(option))
-      .map((option) => ({ field: `answers.${option.id}`, reason: "required" }));
-
-    // The per-booking cap compares the whole choices array with a number on
-    // the event, so it is raised against `choices` with no params, as the
-    // server's closure validator does: that path emits field and reason only,
-    // and an interpolating French string would print a literal {{max}}.
-    const people = eventOptions.filter((option) => option.countsGuests);
-    const guests = sent
-      .filter((choice) => people.some((option) => option.id === choice.optionId))
-      .reduce((sum, choice) => sum + (choice.quantity ?? 0), 0);
-    const size =
-      people.length === 0
-        ? []
-        : guests === 0
-          ? [{ field: "choices", reason: "no_guests" }]
-          : event.registrationMaxGuests !== null && guests > event.registrationMaxGuests
-            ? [{ field: "choices", reason: "too_many_guests" }]
-            : [];
-
-    const refusals = [
-      ...missing.map((field) => ({ field, reason: "required" })),
-      ...wrong,
-      ...unanswered,
-      ...size,
-    ];
-    if (refusals.length > 0) {
-      return problem(400, "validation_failed", "Invalid form submission", refusals);
-    }
-
-    // A blank answer is no answer, and each kind keeps only its own column.
-    const choices: RegistrationResourceChoicesItem[] = sent.flatMap((choice) => {
-      const option = optionOf(choice.optionId);
-      if (!option) {
-        return [];
-      }
-      if (option.kind === "quantity") {
-        return [line(option.id, option.label ?? "", choice.quantity ?? 0, option.priceCents)];
-      }
-
-      const value = (choice.value ?? "").trim();
-
-      return value === ""
-        ? []
-        : [
-            answer(
-              option.id,
-              option.kind,
-              option.label,
-              value,
-              option.answers.find((offered) => offered.id === value)?.label ?? null,
-            ),
-          ];
-    });
-
-    // Against `choices.N.quantity`, N the position in what was sent, as
-    // RegistrationController::refuseBeyondCapacity reports it.
-    const short = sent.flatMap((choice, index) => {
-      const remaining = optionOf(choice.optionId)?.remaining;
-
-      return remaining !== null && remaining !== undefined && (choice.quantity ?? 0) > remaining
-        ? [{ field: `choices.${index}.quantity`, reason: "not_enough_places" }]
-        : [];
-    });
-    if (short.length > 0) {
-      return problem(400, "validation_failed", "Invalid form submission", short);
-    }
+    const choices = outcome;
 
     const booking: MockRegistration = {
       eventId: event.id,
       id: nextRegistrationId++,
+      isMember: false,
       firstName: String(body.firstName),
       lastName: String(body.lastName),
       email: String(body.email),
@@ -4576,6 +4764,85 @@ const overrides = [
     registrations = [...registrations, booking];
 
     return HttpResponse.json(published(booking), { status: 201 });
+  }),
+
+  // A member's own booking on a members form (ADR 0034), as
+  // MyRegistrationController answers it: the name from the account, no
+  // contact details, one booking each, changeable until the form closes.
+  http.get("/api/v1/events/:id/my-registration", ({ params }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+    const event = memberFormOf(Number(params.id));
+    const mine = event ? mineOn(event.id) : undefined;
+
+    return mine ? HttpResponse.json(published(mine)) : notFound();
+  }),
+
+  http.put("/api/v1/events/:id/my-registration", async ({ request, params }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+    const event = memberFormOf(Number(params.id));
+    if (!event) {
+      return notFound();
+    }
+    const refusal = windowRefusal(event);
+    if (refusal) {
+      return refusal;
+    }
+
+    const body = (await request.json()) as PutMyRegistrationRequest;
+    const existing = mineOn(event.id);
+    const outcome = checkedAnswers(event, body.choices ?? [], [], existing?.id ?? null);
+    if (outcome instanceof Response) {
+      return outcome;
+    }
+
+    const booking: MockRegistration = {
+      eventId: event.id,
+      memberId: currentUser.id,
+      id: existing?.id ?? nextRegistrationId++,
+      isMember: true,
+      firstName: currentUser.firstName,
+      lastName: currentUser.lastName,
+      email: null,
+      phone: null,
+      phoneE164: null,
+      address: null,
+      tableName: null,
+      choices: outcome,
+      ...totalsOf(event.id, outcome),
+      paidAt: existing?.paidAt ?? null,
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+    };
+
+    registrations = existing
+      ? registrations.map((registration) =>
+          registration.id === existing.id ? booking : registration,
+        )
+      : [...registrations, booking];
+
+    return HttpResponse.json(published(booking), { status: existing ? 200 : 201 });
+  }),
+
+  http.delete("/api/v1/events/:id/my-registration", ({ params }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+    const event = memberFormOf(Number(params.id));
+    const mine = event ? mineOn(event.id) : undefined;
+    if (!event || !mine) {
+      return notFound();
+    }
+    const refusal = windowRefusal(event);
+    if (refusal) {
+      return refusal;
+    }
+
+    registrations = registrations.filter((registration) => registration.id !== mine.id);
+
+    return HttpResponse.json({ ok: true });
   }),
 
   // The guest list, behind `registrations.view` alone. The `committee` role

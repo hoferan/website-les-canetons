@@ -136,6 +136,7 @@ class EventController extends Controller
 
         return EventResource::collection(
             $query->with([...self::myAttendance($request), 'tags', Event::POSTER])
+                ->withExists(self::myRegistration($request))
                 ->withCount(self::counts())
                 ->withSum(Event::guestCount(), 'quantity')
                 ->get()
@@ -159,6 +160,23 @@ class EventController extends Controller
 
         return [
             'attendance' => fn ($query) => $query->where('member_id', $memberId),
+        ];
+    }
+
+    /**
+     * Whether the caller has booked each event's members form (ADR 0034), as
+     * a subselect on the events query rather than a query of its own, scoped
+     * to the current member like myAttendance(). Read by
+     * EventResource::myRegistration().
+     *
+     * @return array<string, \Closure>
+     */
+    private static function myRegistration(Request $request): array
+    {
+        $memberId = $request->user()?->id;
+
+        return [
+            'registrations as '.EventResource::MY_REGISTRATION => fn ($query) => $query->where('member_id', $memberId),
         ];
     }
 
@@ -255,7 +273,7 @@ class EventController extends Controller
         // render() closure sees it. No closure in bootstrap/app.php is typed
         // on it, so this 404 has the framework's JSON shape rather than
         // ApiError's; EventIndexTest asserts only the status.
-        $event->load(self::myAttendance($request));
+        $event->load(self::myAttendance($request))->loadExists(self::myRegistration($request));
         $event->loadCount(self::counts());
         $event->loadSum(Event::guestCount(), 'quantity');
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
@@ -383,7 +401,7 @@ class EventController extends Controller
         // Loaded explicitly: an organiser who also plays has their own answer
         // on this event, and a response reporting myAttendance as null would
         // reset the buttons on their own screen. See EventResource.
-        $event->load(self::myAttendance($request));
+        $event->load(self::myAttendance($request))->loadExists(self::myRegistration($request));
         $event->loadCount(self::counts());
         $event->loadSum(Event::guestCount(), 'quantity');
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
@@ -470,7 +488,7 @@ class EventController extends Controller
     /** The event as every write answers with it, carrying the caller's own answer and the counts. */
     private function present(Request $request, Event $event): EventResource
     {
-        $event->load(self::myAttendance($request));
+        $event->load(self::myAttendance($request))->loadExists(self::myRegistration($request));
         $event->loadCount(self::counts());
         $event->loadSum(Event::guestCount(), 'quantity');
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
