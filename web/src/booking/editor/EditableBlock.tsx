@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-react";
-import { useState, type DragEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -72,6 +72,25 @@ export function EditableBlock({
   const preview = previewOf(row, -1 - position);
   const view = <BlockView option={preview} value={tried} onChange={setTried} />;
 
+  // The button that opens a block goes as the block opens, and "Terminé" as
+  // it closes, so focus would drop to <body> each time. It follows the block
+  // instead: into its first field on opening (a block just inserted
+  // included), back onto its button after "Terminé". Closing because another
+  // block opened leaves focus with that one.
+  const editButton = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+  const closedByDone = useRef(false);
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      document.getElementById(`label-${row.key}`)?.focus();
+    }
+    if (!open && closedByDone.current) {
+      closedByDone.current = false;
+      editButton.current?.focus();
+    }
+    wasOpen.current = open;
+  }, [open, row.key]);
+
   if (guest) {
     return view;
   }
@@ -91,11 +110,13 @@ export function EditableBlock({
       <div className="flex items-start gap-2">
         {/* A handle for the mouse only: a finger dragging here would scroll
             the page, and the arrows below do the same job for both. */}
+        {/* Above the button that covers a closed block, or that button takes
+            the press and no drag starts. */}
         <span
           draggable
           onDragStart={onDragStart}
           aria-hidden="true"
-          className="mt-1 hidden cursor-grab text-ink-muted pointer-fine:block"
+          className="relative z-10 mt-1 hidden cursor-grab text-ink-muted pointer-fine:block"
         >
           <GripVertical className="size-5" />
         </span>
@@ -137,7 +158,14 @@ export function EditableBlock({
             >
               <ArrowDown aria-hidden="true" />
             </Button>
-            <Button type="button" variant="raised-light" onClick={onClose}>
+            <Button
+              type="button"
+              variant="raised-light"
+              onClick={() => {
+                closedByDone.current = true;
+                onClose();
+              }}
+            >
               {t("registrationOptions.done")}
             </Button>
             {/* No remove for a block somebody answered: the server refuses
@@ -158,6 +186,7 @@ export function EditableBlock({
       ) : (
         // Over the whole card, so a tap anywhere on the block opens it.
         <button
+          ref={editButton}
           type="button"
           aria-label={t("registrationOptions.edit", { block: name })}
           onClick={onOpen}

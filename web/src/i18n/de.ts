@@ -861,6 +861,7 @@ export const de: typeof fr = {
     maxGuests: "Personen pro Anmeldung",
     maxGuestsHint:
       "Das Maximum, das eine Anmeldung abdecken kann, 1 bis 100. Leer: keine Begrenzung.",
+    maxGuestsInvalid: "Geben Sie eine ganze Zahl von 1 bis 100 ein, oder lassen Sie das Feld leer.",
     noClosingDate:
       "Ohne Anmeldeschluss kann sich niemand anmelden: Der Anlass hat dann kein Formular.",
     contactHeading: "Kontaktdaten",

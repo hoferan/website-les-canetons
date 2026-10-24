@@ -1156,6 +1156,7 @@ export const fr = {
     opensHint: "Vide : en ligne dès que les réservations sont ouvertes.",
     maxGuests: "Personnes par inscription",
     maxGuestsHint: "Le maximum qu’une inscription peut couvrir, de 1 à 100. Vide : pas de limite.",
+    maxGuestsInvalid: "Indiquez un nombre entier entre 1 et 100, ou laissez vide.",
     noClosingDate:
       "Sans date de clôture, personne ne peut réserver : l’événement n’a alors pas de formulaire.",
     contactHeading: "Coordonnées",

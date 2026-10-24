@@ -103,6 +103,22 @@ test("an empty closing date or cap is sent as null", () => {
   expect(settingsPayload(settings).registrationMaxGuests).toBeNull();
 });
 
+/**
+ * A cleared time box is the default time, not a broken instant: the date is
+ * what the committee means, as on the event form.
+ */
+test("a cleared time falls back to the start or the end of the day", () => {
+  const settings = {
+    ...settingsFrom(SOUPER),
+    closesTime: "",
+    opensDate: "2027-01-10",
+    opensTime: "",
+  };
+
+  expect(settingsPayload(settings).registrationClosesAt).toBe("2027-02-14T23:59:00+01:00");
+  expect(settingsPayload(settings).registrationOpensAt).toBe("2027-01-10T00:00:00+01:00");
+});
+
 test("a form with no dates yet offers the end of the closing day", () => {
   const settings = settingsFrom({ ...SOUPER, registrationClosesAt: null });
 

@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Link, Route, Routes } from "react-router-dom";
@@ -217,6 +217,58 @@ test("a block or an answer somebody booked cannot be removed", async () => {
   expect(
     block("Dessert").getByRole("button", { name: "Retirer la réponse 2" }),
   ).toBeInTheDocument();
+});
+
+/**
+ * A text box, so a desktop keyboard can type anything. `Number("10 pers.")`
+ * is NaN, which JSON sends as null: no cap, saved without a word.
+ */
+test("a people cap that is not a whole number is refused before the save", async () => {
+  const user = userEvent.setup();
+  const sent = capturePuts();
+  await renderEditor();
+
+  await user.clear(screen.getByLabelText("Personnes par inscription"));
+  await user.type(screen.getByLabelText("Personnes par inscription"), "10 pers.");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect(await screen.findByText(/nombre entier entre 1 et 100/)).toBeInTheDocument();
+  expect(screen.queryByText("Enregistré.")).not.toBeInTheDocument();
+  expect(sent).toHaveLength(0);
+});
+
+/**
+ * The button that opens a block goes away as it opens, and "Terminé" as it
+ * closes, so without this a keyboard or screen reader user lands on <body>.
+ */
+test("opening a block moves focus into it, and closing it moves focus back", async () => {
+  const user = userEvent.setup();
+  await renderEditor();
+
+  await user.click(screen.getByRole("button", { name: "Modifier «\u00a0Repas adulte\u00a0»" }));
+  expect(block("Repas adulte").getByLabelText("Intitulé")).toHaveFocus();
+
+  await user.click(block("Repas adulte").getByRole("button", { name: "Terminé" }));
+  expect(screen.getByRole("button", { name: "Modifier «\u00a0Repas adulte\u00a0»" })).toHaveFocus();
+});
+
+/** The grip's drag, simulated as the browser fires it. */
+test("dragging a block onto another puts it there", async () => {
+  await renderEditor();
+  const grip = (name: string) =>
+    screen.getByRole("listitem", { name }).querySelector("[draggable=true]")!;
+  const transfer = { setData: () => {}, setDragImage: () => {}, effectAllowed: "" };
+
+  fireEvent.dragStart(grip("Sans repas"), { dataTransfer: transfer });
+  fireEvent.dragOver(screen.getByRole("listitem", { name: "Repas adulte" }), {
+    dataTransfer: transfer,
+  });
+  fireEvent.drop(screen.getByRole("listitem", { name: "Repas adulte" }), {
+    dataTransfer: transfer,
+  });
+
+  const names = screen.getAllByRole("listitem").map((item) => item.getAttribute("aria-label"));
+  expect(names.slice(1, 4)).toEqual(["Sans repas", "Repas adulte", "Repas enfant"]);
 });
 
 test("without a closing date the strip says nobody can book", async () => {

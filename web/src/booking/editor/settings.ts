@@ -63,14 +63,25 @@ export function settingsPayload(settings: FormSettings): ReplaceRegistrationOpti
 
   return {
     registrationEnabled: settings.enabled,
-    registrationOpensAt: instantOrNull(settings.opensDate, settings.opensTime),
-    registrationClosesAt: instantOrNull(settings.closesDate, settings.closesTime),
-    // Sent as typed when it is not a number: the server's refusal names the
-    // field, which a silent null would not.
+    // A cleared time box is the default time: the date is what was meant.
+    registrationOpensAt: instantOrNull(settings.opensDate, settings.opensTime || OPENS_AT_DEFAULT),
+    registrationClosesAt: instantOrNull(
+      settings.closesDate,
+      settings.closesTime || CLOSES_AT_DEFAULT,
+    ),
+    // Checked by maxGuestsIsValid() before this is called: a NaN here would
+    // travel as JSON null, which is no cap.
     registrationMaxGuests: cap === "" ? null : Number(cap),
     registrationAsksAddress: settings.asksAddress,
     registrationAsksTable: settings.asksTable,
   };
+}
+
+/** Empty is no cap; anything else must be a whole number from 1 to 100, as the API takes. */
+export function maxGuestsIsValid(typed: string): boolean {
+  const cap = typed.trim();
+
+  return cap === "" || (/^\d+$/.test(cap) && Number(cap) >= 1 && Number(cap) <= 100);
 }
 
 /** A typed date and time as an instant, or null when no date was given. */

@@ -35,7 +35,12 @@ import {
   type Draft,
 } from "../booking/editor/drafts";
 import { EditableBlock, nameOf, type BlockProblems } from "../booking/editor/EditableBlock";
-import { settingsFrom, settingsPayload, type FormSettings } from "../booking/editor/settings";
+import {
+  maxGuestsIsValid,
+  settingsFrom,
+  settingsPayload,
+  type FormSettings,
+} from "../booking/editor/settings";
 import { SettingsStrip } from "../booking/editor/SettingsStrip";
 import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
@@ -94,6 +99,8 @@ export function EventFormEditor() {
   const [guest, setGuest] = useState(false);
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [localProblems, setLocalProblems] = useState<Record<string, BlockProblems>>({});
+  // The strip’s own check, which runs before anything is sent.
+  const [capProblem, setCapProblem] = useState<string | undefined>(undefined);
   // Beside the button, not in a toast: a toast is gone by the time somebody
   // looks up from the form.
   const [saved, setSaved] = useState(false);
@@ -243,6 +250,13 @@ export function EventFormEditor() {
     });
 
     setLocalProblems(problems);
+    const capFault = maxGuestsIsValid(settings.maxGuests)
+      ? undefined
+      : t("registrationOptions.maxGuestsInvalid");
+    setCapProblem(capFault);
+    if (capFault) {
+      return;
+    }
     const faulty = drafts.find((row) => problems[row.key]);
     if (faulty) {
       // A closed block shows no field, so the one in fault is opened.
@@ -436,7 +450,11 @@ export function EventFormEditor() {
 
             <SettingsStrip
               settings={settings}
-              problemFor={form.messageFor}
+              problemFor={(field) =>
+                field === "form.registrationMaxGuests"
+                  ? (capProblem ?? form.messageFor(field))
+                  : form.messageFor(field)
+              }
               onChange={(patch) => {
                 edited();
                 setSettings((current) => (current ? { ...current, ...patch } : current));
