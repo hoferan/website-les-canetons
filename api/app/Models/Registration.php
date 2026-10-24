@@ -12,7 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
- * One booking, made by a stranger from the public form.
+ * One booking: a stranger's from the public form, or a member's from a
+ * members-only form (`member_id` set, no email or phone; ADR 0034).
  *
  * Write-once from the public side (ADR 0020): no cancel token and no
  * self-service. The committee corrects and cancels on the guest list. Each
@@ -26,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $updated_at
  * @property Carbon|null $paid_at
  * @property string|null $phone_e164
+ * @property int|null $member_id
  * @property-read int $guest_count
  * @property-read int|null $total_cents
  */
@@ -36,6 +38,7 @@ class Registration extends Model
 
     protected $fillable = [
         'event_id',
+        'member_id',
         'first_name',
         'last_name',
         'email',
@@ -69,6 +72,18 @@ class Registration extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    /** @return BelongsTo<Member, $this> */
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(Member::class);
+    }
+
+    /** Whether a member made this booking with their account. */
+    public function isMember(): bool
+    {
+        return $this->member_id !== null;
     }
 
     /** @return HasMany<RegistrationChoice, $this> */
