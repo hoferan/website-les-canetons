@@ -29,6 +29,8 @@ class RegistrationFormResource extends JsonResource
             'event' => new PublicEventResource($this->resource),
             'options' => RegistrationOptionResource::collection($this->registrationOptions),
             'maxGuests' => $this->registration_max_guests,
+            /** `public`: anybody books, with contact details. `members`: the caller books with their account at `/api/v1/events/{event}/my-registration`, and no contact details are asked. */
+            'audience' => $this->registration_audience,
             /** Whether to ask for a postal address. A booking sent with one anyway stores none. */
             'asksAddress' => $this->registration_asks_address,
             /** Whether to ask who the guest would like to sit with. A booking sent with it anyway stores none. */

@@ -98,6 +98,8 @@ class EventResource extends JsonResource
             'registrationAsksAddress' => $this->registration_asks_address,
             /** Whether the form asks who the guest would like to sit with. */
             'registrationAsksTable' => $this->registration_asks_table,
+            /** Who may fill in the form: `public`, anybody, or `members`, logged-in members only. */
+            'registrationAudience' => $this->registration_audience,
             /** Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set. */
             'takesRegistrations' => $this->takesRegistrations(),
             /** The calling member's own answer for this event, or null if they have not replied. Never anybody else's. */

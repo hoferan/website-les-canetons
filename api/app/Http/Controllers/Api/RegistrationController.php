@@ -14,8 +14,10 @@ use App\Models\Registration;
 use App\Models\RegistrationChoice;
 use App\Models\RegistrationOption;
 use App\Support\Audit;
+use App\Support\EffectivePermissions;
 use App\Support\Emits;
 use App\Support\OptionKind;
+use App\Support\Permission;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\IgnoreResponse;
 use Dedoc\Scramble\Attributes\Response;
@@ -47,12 +49,23 @@ class RegistrationController extends Controller
      * when bookings start or that they have closed.
      *
      * `asksAddress` and `asksTable` say whether to show those two fields.
+     *
+     * A form for members only (`audience: members`) answers `404` to a caller
+     * without a session, the same as no form. A member reads it, and books
+     * through `/api/v1/events/{event}/my-registration`, not here.
      */
-    public function form(Event $event): RegistrationFormResource
+    public function form(Request $request, Event $event): RegistrationFormResource
     {
         // 404 rather than 403: whether an event exists without taking
         // bookings is private planning, and this endpoint needs no session.
         if (! $event->acceptsBookings()) {
+            abort(404);
+        }
+
+        // The same 404 for a members form, so a stranger cannot tell it from
+        // no form. events.view is what every account holds (ADR 0034).
+        if ($event->isMembersOnly()
+            && ! EffectivePermissions::ofRequest($request)->contains(Permission::EventsView)) {
             abort(404);
         }
 

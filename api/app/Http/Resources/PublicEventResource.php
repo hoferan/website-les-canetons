@@ -50,7 +50,8 @@ class PublicEventResource extends JsonResource
             /** The event's poster, or null when it has none. */
             'poster' => PhotoResource::of($this->poster?->image),
             /** Whether this event is taking public bookings right now. Link to the booking form only when it is true. */
-            'registrationOpen' => $this->registrationIsOpen(),
+            // A members form is not a public booking, whoever is asking.
+            'registrationOpen' => $this->registrationIsOpen() && ! $this->isMembersOnly(),
         ];
     }
 
