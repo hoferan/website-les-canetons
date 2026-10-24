@@ -1328,6 +1328,11 @@ export const getRegistrationOptionIndexResponseMock = (
     capacity: faker.helpers.arrayElement([faker.number.int(), null]),
     remaining: faker.helpers.arrayElement([faker.number.int(), null]),
     sortOrder: faker.number.int(),
+    answered: faker.datatype.boolean(),
+    pickedAnswerIds: Array.from(
+      { length: faker.number.int({ min: 1, max: 10 }) },
+      (_, i) => i + 1,
+    ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
@@ -1356,6 +1361,11 @@ export const getRegistrationOptionReplaceResponseMock = (
     capacity: faker.helpers.arrayElement([faker.number.int(), null]),
     remaining: faker.helpers.arrayElement([faker.number.int(), null]),
     sortOrder: faker.number.int(),
+    answered: faker.datatype.boolean(),
+    pickedAnswerIds: Array.from(
+      { length: faker.number.int({ min: 1, max: 10 }) },
+      (_, i) => i + 1,
+    ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,

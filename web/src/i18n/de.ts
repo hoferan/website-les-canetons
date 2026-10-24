@@ -242,6 +242,7 @@ export const de: typeof fr = {
     registrationEnabled: "Formular geöffnet",
     registrationAsksAddress: "Adresse erfragen",
     registrationAsksTable: "Tisch erfragen",
+    form: "Formulareinstellungen",
     sectionId: "Register",
     committeeFunctionId: "Funktion im Vorstand",
     instructorOfSectionId: "Registerleitung",
@@ -514,8 +515,8 @@ export const de: typeof fr = {
 
     registrations: "Anmeldungen",
     registrationsAria: "Anmeldungen zu {{title}}",
-    options: "Was buchbar ist",
-    optionsAria: "Was zu {{title}} gebucht werden kann",
+    options: "Anmeldeformular",
+    optionsAria: "Das Anmeldeformular von {{title}}",
     whoComingAria: "Wer kommt zu {{title}}",
     editAria: "{{title}} bearbeiten",
     deleteAria: "{{title}} löschen",
@@ -586,24 +587,6 @@ export const de: typeof fr = {
     isPublic: "Auf der öffentlichen Website sichtbar",
     tags: "Kategorien",
     notes: "Bemerkungen",
-
-    registrationsLegend: "Anmeldungen des Publikums",
-    registrationsHint:
-      "Tragen Sie ein Schlussdatum ein, um diesem Anlass ein Anmeldeformular zu geben. Lassen Sie es leer, wenn sich niemand anmeldet: Das trifft auf fast die ganze Planung zu.",
-    closesDate: "Anmeldeschluss",
-    closesTime: "Uhrzeit des Anmeldeschlusses",
-    opensDate: "Anmeldebeginn",
-    opensTime: "Uhrzeit des Anmeldebeginns",
-    opensHint:
-      "Sobald das Formular geöffnet ist, ist es ohne Anmeldebeginn sofort online. Tragen Sie ihn ein, damit es erst ab diesem Tag erscheint.",
-    maxGuests: "Personen pro Anmeldung",
-    maxGuestsHint:
-      "Das Maximum, das eine einzelne Anmeldung abdecken kann, zwischen 1 und 100. Leer lassen, um nicht zu begrenzen. Um den Saal zu begrenzen, geben Sie jedem Menü unter «Was buchbar ist» eine Anzahl Plätze.",
-    formOpen: "Formular geöffnet",
-    asksAddress: "Adresse erfragen",
-    asksTable: "Tisch erfragen",
-    formOpenHint:
-      "Das Formular erscheint nur angekreuzt und zwischen seinen Daten: Sie können es im Voraus vorbereiten und erst dann öffnen.",
   },
 
   seriesForm: {
@@ -729,6 +712,7 @@ export const de: typeof fr = {
   },
 
   booking: {
+    editForm: "Formular bearbeiten",
     fields: {
       lastName: "Name",
       firstName: "Vorname",
@@ -826,14 +810,9 @@ export const de: typeof fr = {
   registrationOptions: {
     saveFailed: "Das Speichern ist fehlgeschlagen.",
     loadFailedReload: "Die Liste konnte nicht geladen werden. Laden Sie die Seite neu.",
-    intro:
-      "Was das Publikum buchen kann, und zu welchem Preis. Lassen Sie den Preis leer für eine Option, die keinen hat; schreiben Sie 0 für eine kostenlose Option. Das ist nicht dasselbe.",
-    empty:
-      "Zurzeit wird nichts angeboten. Das öffentliche Formular zeigt den Anlass ohne Auswahl an.",
 
     label: "Bezeichnung",
     description: "Beschreibung",
-    blockHeading: "Block {{n}} · {{kind}}",
     kinds: {
       quantity: "Anzahl",
       text: "Freitext",
@@ -842,7 +821,6 @@ export const de: typeof fr = {
       heading: "Titel",
       paragraph: "Absatz",
     },
-    addBlock: "Block hinzufügen",
     required: "Antwort erforderlich",
     countsGuests: "Zählt als Personen",
     countsGuestsHint:
@@ -854,6 +832,7 @@ export const de: typeof fr = {
     removeAnswer: "Antwort {{n}} entfernen",
     tooFewAnswers: "Bieten Sie mindestens zwei Antworten an.",
     price: "Preis in Franken",
+    priceHint: "Leer: kein Preis angezeigt. 0: kostenlos.",
     priceInvalid: "Geben Sie einen Betrag ein, zum Beispiel 45 oder 45.50.",
     capacity: "Anzahl Plätze",
     capacityHint: "Leer: keine Begrenzung.",
@@ -868,6 +847,50 @@ export const de: typeof fr = {
 
     saved: "Gespeichert.",
     saving: "Wird gespeichert…",
+
+    editing: "Sie bearbeiten dieses Formular. Gäste sehen es so wie unten.",
+    settingsHeading: "Formulareinstellungen",
+    enabled: "Anmeldungen geöffnet",
+    enabledOn: "Geöffnet: Das Formular ist zwischen seinen Daten online.",
+    enabledOff: "Geschlossen: Noch niemand sieht das Formular.",
+    closesDate: "Anmeldeschluss",
+    closesTime: "Uhrzeit des Anmeldeschlusses",
+    opensDate: "Anmeldebeginn",
+    opensTime: "Uhrzeit des Anmeldebeginns",
+    opensHint: "Leer: online, sobald die Anmeldungen geöffnet sind.",
+    maxGuests: "Personen pro Anmeldung",
+    maxGuestsHint:
+      "Das Maximum, das eine Anmeldung abdecken kann, 1 bis 100. Leer: keine Begrenzung.",
+    maxGuestsInvalid: "Geben Sie eine ganze Zahl von 1 bis 100 ein, oder lassen Sie das Feld leer.",
+    noClosingDate:
+      "Ohne Anmeldeschluss kann sich niemand anmelden: Der Anlass hat dann kein Formular.",
+    contactHeading: "Kontaktdaten",
+    contactLocked: "Immer erfragt",
+    contactHint: "Name, Vorname, E-Mail und Telefon: Jede Anmeldung gibt sie an.",
+    asksAddress: "Adresse erfragen",
+    asksTable: "Erfragen, mit wem man am Tisch sitzt",
+    edit: "«{{block}}» bearbeiten",
+    done: "Fertig",
+    inUse: "Hat Antworten: kann weder entfernt noch in der Art geändert werden.",
+    insertFirst: "Block am Anfang hinzufügen",
+    insertAfter: "Block nach «{{block}}» hinzufügen",
+    insertHere: "Hier einen Block hinzufügen",
+    pickerHeading: "Was möchten Sie hinzufügen?",
+    kindHints: {
+      quantity: "Eine Zahl, mit Preis und Plätzen",
+      text: "Was der Gast sagen möchte",
+      choice: "Eine Antwort aus einer Liste",
+      yes_no: "Eine geschlossene Frage",
+      heading: "Teilt das Formular in Abschnitte",
+      paragraph: "Eine Information zum Lesen",
+    },
+    cancel: "Abbrechen",
+    preview: "Als Gast ansehen",
+    backToEditing: "Zurück zum Bearbeiten",
+    copyFrom: "Kopieren von…",
+    copyHint: "Übernimmt die Blöcke eines anderen Formulars, ohne dessen Anmeldungen.",
+    copyNone: "Kein anderer Anlass hat ein Formular.",
+    leave: "Das Formular hat ungespeicherte Änderungen. Trotzdem verlassen?",
   },
 
   auth: {

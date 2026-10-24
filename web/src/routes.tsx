@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
@@ -14,8 +14,8 @@ import { ContactMessages } from "./pages/ContactMessages";
 import { EventAttendance } from "./pages/EventAttendance";
 import { EventBooking } from "./pages/EventBooking";
 import { EventEdit } from "./pages/EventEdit";
+import { EventFormEditor } from "./pages/EventFormEditor";
 import { EventNew } from "./pages/EventNew";
-import { EventRegistrationOptions } from "./pages/EventRegistrationOptions";
 import { EventRegistrations } from "./pages/EventRegistrations";
 import { EventSeriesNew } from "./pages/EventSeriesNew";
 import { EventTags } from "./pages/EventTags";
@@ -48,8 +48,8 @@ const MediaDetail = lazy(() =>
  * `events.manage` and `members.manage` are different people, so there is no
  * single privileged area to name (ADR 0014). The nav may still group screens;
  * only the URL would encode authorization. `/events/:id/book`,
- * `/events/:id/registrations` and `/events/:id/registration-options` share a
- * prefix and answer to three different guards.
+ * `/events/:id/registrations` and `/events/:id/book/edit` share a prefix and
+ * answer to three different guards.
  *
  * MustChangePassword wraps the members' routes inside the layout: a
  * committee-issued password must be replaced before any of them is usable,
@@ -111,11 +111,14 @@ export function AppRoutes() {
             <Route path="/events/new/series" element={<EventSeriesNew />} />
             <Route path="/events/:id/edit" element={<EventEdit />} />
 
-            {/* What the event offers is part of the event, hence
-                `events.manage`. It writes on its own entity-tag facet,
-                `event.options`, so a dress code fix cannot refuse a pending
-                options edit and an option change cannot slip past one. */}
-            <Route path="/events/:id/registration-options" element={<EventRegistrationOptions />} />
+            {/* The booking form, built in place (#319). What the event
+                offers is part of the event, hence `events.manage`. It writes
+                on its own entity-tag facet, `event.options`, so a dress code
+                fix cannot refuse a pending form edit and a form change cannot
+                slip past one. */}
+            <Route path="/events/:id/book/edit" element={<EventFormEditor />} />
+            {/* The options screen it replaced, for a bookmark. */}
+            <Route path="/events/:id/registration-options" element={<ToFormEditor />} />
 
             {/* The tag list. Picking an event's tags is in the event's form. */}
             <Route path="/event-tags" element={<EventTags />} />
@@ -186,4 +189,11 @@ export function AppRoutes() {
       </Route>
     </Routes>
   );
+}
+
+/** The old options address, sent on to the form editor of the same event. */
+function ToFormEditor() {
+  const { id } = useParams();
+
+  return <Navigate replace to={`/events/${id}/book/edit`} />;
 }

@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ReplaceRegistrationOptionsRequest;
-use App\Http\Resources\RegistrationOptionResource;
+use App\Http\Resources\EditableRegistrationOptionResource;
 use App\Models\Event;
+use App\Models\RegistrationChoice;
 use App\Models\RegistrationOption;
 use App\Support\Audit;
 use App\Support\Emits;
@@ -37,13 +38,20 @@ class RegistrationOptionController extends Controller
      * answers 404 for an event that takes no bookings. This one answers with
      * an empty list instead, because configuring an event that does not take
      * bookings yet is exactly when the committee needs it.
+     *
+     * Each block also says whether a booking answered it (`answered`) and,
+     * for a choice, which answers were picked (`pickedAnswerIds`): what the
+     * PUT refuses to remove. Neither moves the tag.
+     *
+     * The tag also covers the form's six settings on the event
+     * (`registrationEnabled` and the rest), which the PUT may write. Read them
+     * from `GET /api/v1/events/{event}` after this read, so a change in
+     * between makes the PUT answer 412 rather than overwrite it.
      */
     #[Endpoint(operationId: 'registrationOption.index')]
     public function index(Event $event): AnonymousResourceCollection
     {
-        return RegistrationOptionResource::collection(
-            $event->registrationOptions()->withSum('choices', 'quantity')->get()
-        );
+        return EditableRegistrationOptionResource::collection(self::editable($event));
     }
 
     /**
@@ -75,6 +83,11 @@ class RegistrationOptionController extends Controller
      * answered keeps its kind and its `countsGuests`
      * (`409 option_shape_locked`), and a choice keeps every answer somebody
      * picked (`409 choice_answer_in_use`); its wording may change.
+     *
+     * `form`, optional, carries the form's six settings, written in the same
+     * transaction as the blocks so one save is one write. Send all six or
+     * leave `form` out to keep them. A null `registrationClosesAt` ends the
+     * form (ADR 0020): the blocks stay, nobody can book.
      */
     #[Endpoint(operationId: 'registrationOption.replace')]
     #[Emits('option_has_registrations', 'option_shape_locked', 'choice_answer_in_use')]
@@ -157,7 +170,21 @@ class RegistrationOptionController extends Controller
             ]];
         }
 
-        DB::transaction(function () use ($event, $rows): void {
+        /** @var array<string, mixed>|null $form */
+        $form = $request->validated()['form'] ?? null;
+
+        DB::transaction(function () use ($event, $rows, $form): void {
+            if ($form !== null) {
+                $event->update([
+                    'registration_enabled' => $form['registrationEnabled'],
+                    'registration_opens_at' => $form['registrationOpensAt'],
+                    'registration_closes_at' => $form['registrationClosesAt'],
+                    'registration_max_guests' => $form['registrationMaxGuests'],
+                    'registration_asks_address' => $form['registrationAsksAddress'],
+                    'registration_asks_table' => $form['registrationAsksTable'],
+                ]);
+            }
+
             $claimed = [];
 
             foreach ($rows as [$id, $attributes]) {
@@ -188,9 +215,41 @@ class RegistrationOptionController extends Controller
             $event->title,
         );
 
-        return response()->json(
-            RegistrationOptionResource::collection($event->registrationOptions()->withSum('choices', 'quantity')->get())
-        );
+        return response()->json(EditableRegistrationOptionResource::collection(self::editable($event)));
+    }
+
+    /**
+     * The event's blocks with what bookings already hold in place, in two
+     * queries whatever the number of blocks. The callers wrap it in the
+     * resource themselves, where Scramble can see which resource it is.
+     *
+     * @return Collection<int, RegistrationOption>
+     */
+    private static function editable(Event $event): Collection
+    {
+        $options = $event->registrationOptions()
+            ->withSum('choices', 'quantity')
+            ->withExists('choices as answered')
+            ->get();
+
+        $picked = RegistrationChoice::query()
+            ->whereIn('option_id', $options->modelKeys())
+            ->whereNotNull('value')
+            ->distinct()
+            ->get(['option_id', 'value'])
+            ->groupBy('option_id');
+
+        foreach ($options as $option) {
+            // Only a choice's values are answer ids; a text block's are what
+            // the guest typed.
+            $values = $option->kind === OptionKind::Choice
+                ? ($picked->get($option->id)?->pluck('value')->sort()->values()->all() ?? [])
+                : [];
+
+            $option->setAttribute('picked_answer_ids', $values);
+        }
+
+        return $options;
     }
 
     /**

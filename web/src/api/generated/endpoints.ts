@@ -4924,6 +4924,15 @@ export const getRegistrationOptionIndexUrl = (
  * answers 404 for an event that takes no bookings. This one answers with
  * an empty list instead, because configuring an event that does not take
  * bookings yet is exactly when the committee needs it.
+ *
+ * Each block also says whether a booking answered it (`answered`) and,
+ * for a choice, which answers were picked (`pickedAnswerIds`): what the
+ * PUT refuses to remove. Neither moves the tag.
+ *
+ * The tag also covers the form's six settings on the event
+ * (`registrationEnabled` and the rest), which the PUT may write. Read them
+ * from `GET /api/v1/events/{event}` after this read, so a change in
+ * between makes the PUT answer 412 rather than overwrite it.
  * @summary Read an event's bookable options
  */
 export const registrationOptionIndex = async (
@@ -5170,6 +5179,11 @@ export const getRegistrationOptionReplaceUrl = (event: number) => {
  * answered keeps its kind and its `countsGuests`
  * (`409 option_shape_locked`), and a choice keeps every answer somebody
  * picked (`409 choice_answer_in_use`); its wording may change.
+ *
+ * `form`, optional, carries the form's six settings, written in the same
+ * transaction as the blocks so one save is one write. Send all six or
+ * leave `form` out to keep them. A null `registrationClosesAt` ends the
+ * form (ADR 0020): the blocks stay, nobody can book.
  * @summary Replace an event's bookable options
  */
 export const registrationOptionReplace = async (

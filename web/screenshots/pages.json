@@ -133,11 +133,18 @@
     "heading": "Modifier l’événement"
   },
   {
+    "route": "/events/:id/book/edit",
+    "path": "/events/7/book/edit",
+    "as": "demo.direction",
+    "name": "form-editor",
+    "heading": "Souper de soutien"
+  },
+  {
     "route": "/events/:id/registration-options",
     "path": "/events/7/registration-options",
     "as": "demo.direction",
-    "name": "registration-options",
-    "heading": "Ce qu’on réserve"
+    "name": "registration-options-redirect",
+    "heading": "Souper de soutien"
   },
   {
     "route": "/event-tags",

@@ -22,27 +22,7 @@ export type EventDraft = {
   isPublic: boolean;
   tagIds: number[];
   notes: string;
-  registrationOpensDate: string;
-  registrationOpensTime: string;
-  registrationClosesDate: string;
-  registrationClosesTime: string;
-  registrationMaxGuests: string;
-  registrationEnabled: boolean;
-  registrationAsksAddress: boolean;
-  registrationAsksTable: boolean;
 };
-
-/**
- * The times a registration window gets when the committee has typed only its
- * dates.
- *
- * A window is a decision about days, and nobody has an opinion about the
- * minute. The defaults make the dates mean what they look like: bookings open
- * at the start of the opening day and shut at the end of the closing one. Both
- * times stay editable.
- */
-const OPENS_AT_DEFAULT = "00:00";
-const CLOSES_AT_DEFAULT = "23:59";
 
 /** An existing event as an editable draft, or an empty one for a new event. */
 export function draftFromEvent(event: EventResource | null): EventDraft {
@@ -50,8 +30,6 @@ export function draftFromEvent(event: EventResource | null): EventDraft {
   // draft may have no dates yet, and its boxes are then empty.
   const start = event?.startsAt ? bandZoneParts(event.startsAt) : null;
   const end = event?.endsAt ? bandZoneParts(event.endsAt) : null;
-  const opens = event?.registrationOpensAt ? bandZoneParts(event.registrationOpensAt) : null;
-  const closes = event?.registrationClosesAt ? bandZoneParts(event.registrationClosesAt) : null;
 
   return {
     title: event?.title ?? "",
@@ -64,20 +42,6 @@ export function draftFromEvent(event: EventResource | null): EventDraft {
     isPublic: event?.isPublic ?? false,
     tagIds: event?.tags.map((tag) => tag.id) ?? [],
     notes: event?.notes ?? "",
-    registrationOpensDate: opens?.date ?? "",
-    registrationOpensTime: opens?.time ?? OPENS_AT_DEFAULT,
-    registrationClosesDate: closes?.date ?? "",
-    registrationClosesTime: closes?.time ?? CLOSES_AT_DEFAULT,
-    // The empty string is "no cap", a different answer from any number
-    // including zero, and String(null) would put "null" in the field.
-    registrationMaxGuests:
-      event?.registrationMaxGuests === null || event?.registrationMaxGuests === undefined
-        ? ""
-        : String(event.registrationMaxGuests),
-    // A new form starts closed and asks for both details (ADR 0033).
-    registrationEnabled: event?.registrationEnabled ?? false,
-    registrationAsksAddress: event?.registrationAsksAddress ?? true,
-    registrationAsksTable: event?.registrationAsksTable ?? true,
   };
 }
 
@@ -107,20 +71,8 @@ export function eventBodyFrom(draft: EventDraft): StoreEventRequest {
     // arrives.
     tagIds: draft.tagIds,
     notes: draft.notes.trim() === "" ? null : draft.notes,
-    // The date is the switch; the time beside it is never read on its own. An
-    // empty closing date sends null, which turns public registration off.
-    // There is no separate flag to drift out of step (ADR 0020). Bookings
-    // already taken survive being switched off.
-    registrationOpensAt: instantOrNull(draft.registrationOpensDate, draft.registrationOpensTime),
-    registrationClosesAt: instantOrNull(draft.registrationClosesDate, draft.registrationClosesTime),
-    // Blank is checked first because `Number("")` is 0, and a cap of zero is
-    // an event nobody may book. Anything unparseable becomes NaN, which the
-    // server refuses against this field.
-    registrationMaxGuests:
-      draft.registrationMaxGuests.trim() === "" ? null : Number(draft.registrationMaxGuests),
-    registrationEnabled: draft.registrationEnabled,
-    registrationAsksAddress: draft.registrationAsksAddress,
-    registrationAsksTable: draft.registrationAsksTable,
+    // None of the booking form's six settings: the form editor writes them
+    // (#319), and sending what this screen loaded would undo its saves.
   };
 }
 
@@ -335,84 +287,6 @@ export function EventForm({
         value={poster ? poster.photo : (event?.poster ?? null)}
         onChange={(imageId, photo) => setPoster({ imageId, photo })}
       />
-
-      {/* The registration window. The closing date is the switch, with no
-          separate checkbox (ADR 0020); the hint below says so, because a
-          date field is not self-evidently a switch. */}
-      <fieldset className="flex flex-col gap-related rounded-md border border-line p-4">
-        <legend className="px-1 font-display text-lg">{t("eventForm.registrationsLegend")}</legend>
-
-        <p className="text-sm text-ink-muted">{t("eventForm.registrationsHint")}</p>
-
-        <div className="grid gap-related sm:grid-cols-2">
-          <FormField
-            id="registrationClosesDate"
-            label={t("eventForm.closesDate")}
-            type="date"
-            value={draft.registrationClosesDate}
-            onChange={(value) => set("registrationClosesDate", value)}
-            problem={problemFor("registrationClosesAt")}
-          />
-          <FormField
-            id="registrationClosesTime"
-            label={t("eventForm.closesTime")}
-            type="time"
-            value={draft.registrationClosesTime}
-            onChange={(value) => set("registrationClosesTime", value)}
-          />
-        </div>
-
-        <div className="grid gap-related sm:grid-cols-2">
-          <FormField
-            id="registrationOpensDate"
-            label={t("eventForm.opensDate")}
-            type="date"
-            value={draft.registrationOpensDate}
-            onChange={(value) => set("registrationOpensDate", value)}
-            problem={problemFor("registrationOpensAt")}
-          />
-          <FormField
-            id="registrationOpensTime"
-            label={t("eventForm.opensTime")}
-            type="time"
-            value={draft.registrationOpensTime}
-            onChange={(value) => set("registrationOpensTime", value)}
-          />
-        </div>
-
-        <p className="text-sm text-ink-muted">{t("eventForm.opensHint")}</p>
-
-        <FormField
-          id="registrationMaxGuests"
-          label={t("eventForm.maxGuests")}
-          type="number"
-          value={draft.registrationMaxGuests}
-          onChange={(value) => set("registrationMaxGuests", value)}
-          problem={problemFor("registrationMaxGuests")}
-        />
-        <p className="text-sm text-ink-muted">{t("eventForm.maxGuestsHint")}</p>
-
-        {/* The form's own switches, here until the form editor (#319) takes
-            them with the closing date and the cap. */}
-        {(
-          [
-            ["registrationEnabled", "eventForm.formOpen"],
-            ["registrationAsksAddress", "eventForm.asksAddress"],
-            ["registrationAsksTable", "eventForm.asksTable"],
-          ] as const
-        ).map(([field, label]) => (
-          <label key={field} className="flex min-h-touch items-center gap-2">
-            <input
-              type="checkbox"
-              className="size-5"
-              checked={draft[field]}
-              onChange={(changed) => set(field, changed.target.checked)}
-            />
-            {t(label)}
-          </label>
-        ))}
-        <p className="text-sm text-ink-muted">{t("eventForm.formOpenHint")}</p>
-      </fieldset>
 
       <FormError error={error} />
 

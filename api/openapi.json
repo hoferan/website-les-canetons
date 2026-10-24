@@ -2816,7 +2816,7 @@
         "/events/{event}/registration-options": {
             "get": {
                 "operationId": "registrationOption.index",
-                "description": "Requires `events.manage`. Returns the options in sort order.\n\nRead this before replacing them, and quote the `ETag` it returns in the\n`If-Match` header of the PUT. The tag covers the option list, not the\nevent: correcting the event's dress code does not invalidate a pending\noptions edit, and adding an option does, which catches a lost update.\n\nThe public booking form reads the same options from\n`GET /api/v1/events/{event}/registration`, which needs no session but\nanswers 404 for an event that takes no bookings. This one answers with\nan empty list instead, because configuring an event that does not take\nbookings yet is exactly when the committee needs it.",
+                "description": "Requires `events.manage`. Returns the options in sort order.\n\nRead this before replacing them, and quote the `ETag` it returns in the\n`If-Match` header of the PUT. The tag covers the option list, not the\nevent: correcting the event's dress code does not invalidate a pending\noptions edit, and adding an option does, which catches a lost update.\n\nThe public booking form reads the same options from\n`GET /api/v1/events/{event}/registration`, which needs no session but\nanswers 404 for an event that takes no bookings. This one answers with\nan empty list instead, because configuring an event that does not take\nbookings yet is exactly when the committee needs it.\n\nEach block also says whether a booking answered it (`answered`) and,\nfor a choice, which answers were picked (`pickedAnswerIds`): what the\nPUT refuses to remove. Neither moves the tag.\n\nThe tag also covers the form's six settings on the event\n(`registrationEnabled` and the rest), which the PUT may write. Read them\nfrom `GET /api/v1/events/{event}` after this read, so a change in\nbetween makes the PUT answer 412 rather than overwrite it.",
                 "summary": "Read an event's bookable options",
                 "tags": [
                     "Registration"
@@ -2855,7 +2855,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `RegistrationOptionResource`",
+                        "description": "Array of `EditableRegistrationOptionResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2865,7 +2865,7 @@
                                             "type": "array",
                                             "description": "This page of the collection, in the collection's own order.",
                                             "items": {
-                                                "$ref": "#/components/schemas/RegistrationOptionResource"
+                                                "$ref": "#/components/schemas/EditableRegistrationOptionResource"
                                             }
                                         },
                                         "meta": {
@@ -2932,7 +2932,7 @@
             },
             "put": {
                 "operationId": "registrationOption.replace",
-                "description": "Requires `events.manage`, because configuring what an event offers is\nconfiguring the event.\n\nSend the complete list. An entry carrying an `id` updates that option,\nan entry without one creates it, and an option missing from the list\nis deleted. Replaying the same body converges on the same list, so a\nretry after a timeout is safe.\n\n`priceCents` is a whole number of centimes and may be null, for an\noption that is free or whose price lives in its description.\n`capacity` caps how many of an option can be booked in all, and null\nor omitted is no limit. Each option comes back with `remaining`, the\nplaces still free. `sortOrder` may be left out, in which case the entry's position in the\nlist is used.\n\nReturns the event's options as they now stand, in sort order.\n\nRemoving an option somebody has already booked answers\n`409 option_has_registrations`, names the options in the way, and\nchanges nothing. An `id` belonging to another event's option, more\nthan 50 entries, or a missing label answers `400 validation_failed`.\n\nEach entry is one block of the form, by `kind`. A block somebody has\nanswered keeps its kind and its `countsGuests`\n(`409 option_shape_locked`), and a choice keeps every answer somebody\npicked (`409 choice_answer_in_use`); its wording may change.",
+                "description": "Requires `events.manage`, because configuring what an event offers is\nconfiguring the event.\n\nSend the complete list. An entry carrying an `id` updates that option,\nan entry without one creates it, and an option missing from the list\nis deleted. Replaying the same body converges on the same list, so a\nretry after a timeout is safe.\n\n`priceCents` is a whole number of centimes and may be null, for an\noption that is free or whose price lives in its description.\n`capacity` caps how many of an option can be booked in all, and null\nor omitted is no limit. Each option comes back with `remaining`, the\nplaces still free. `sortOrder` may be left out, in which case the entry's position in the\nlist is used.\n\nReturns the event's options as they now stand, in sort order.\n\nRemoving an option somebody has already booked answers\n`409 option_has_registrations`, names the options in the way, and\nchanges nothing. An `id` belonging to another event's option, more\nthan 50 entries, or a missing label answers `400 validation_failed`.\n\nEach entry is one block of the form, by `kind`. A block somebody has\nanswered keeps its kind and its `countsGuests`\n(`409 option_shape_locked`), and a choice keeps every answer somebody\npicked (`409 choice_answer_in_use`); its wording may change.\n\n`form`, optional, carries the form's six settings, written in the same\ntransaction as the blocks so one save is one write. Send all six or\nleave `form` out to keep them. A null `registrationClosesAt` ends the\nform (ADR 0020): the blocks stay, nobody can book.",
                 "summary": "Replace an event's bookable options",
                 "tags": [
                     "Registration"
@@ -2969,7 +2969,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Array of `RegistrationOptionResource`",
+                        "description": "Array of `EditableRegistrationOptionResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2979,7 +2979,7 @@
                                             "type": "array",
                                             "description": "This page of the collection, in the collection's own order.",
                                             "items": {
-                                                "$ref": "#/components/schemas/RegistrationOptionResource"
+                                                "$ref": "#/components/schemas/EditableRegistrationOptionResource"
                                             }
                                         },
                                         "meta": {
@@ -8271,6 +8271,111 @@
                 ],
                 "title": "ContactRequest"
             },
+            "EditableRegistrationOptionResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kind": {
+                        "description": "What this block is. `quantity`, `text`, `choice` and `yes_no` are answered; `heading` and `paragraph` are only read.",
+                        "$ref": "#/components/schemas/OptionKind"
+                    },
+                    "label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null only on a paragraph without a title."
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Help text under the label, or a paragraph's body."
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "description": "Whether a booking must answer this block. Always false on a heading or a paragraph."
+                    },
+                    "countsGuests": {
+                        "type": "boolean",
+                        "description": "Whether this quantity is people, added up against the per-booking maximum. Always false on other kinds."
+                    },
+                    "answers": {
+                        "type": "array",
+                        "description": "A choice's answers in order; empty on every other kind. A booking stores the `id`.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "label": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "label"
+                            ]
+                        }
+                    },
+                    "priceCents": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Price in centimes: 4500 is CHF 45.00. Null when the option is free or priced in its description."
+                    },
+                    "capacity": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "How many of this option can be booked across every guest. Null when there is no limit."
+                    },
+                    "remaining": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Places still free under `capacity`, never below 0; 0 is sold out. Null when there is no limit."
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "description": "Ascending display order."
+                    },
+                    "answered": {
+                        "type": "boolean",
+                        "description": "Whether any booking answered this block. Answered, it cannot be removed or change kind."
+                    },
+                    "pickedAnswerIds": {
+                        "type": "array",
+                        "description": "The answers of a choice that some booking picked, which cannot be removed. Empty on every other kind.",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "kind",
+                    "label",
+                    "description",
+                    "required",
+                    "countsGuests",
+                    "answers",
+                    "priceCents",
+                    "capacity",
+                    "remaining",
+                    "sortOrder",
+                    "answered",
+                    "pickedAnswerIds"
+                ],
+                "title": "EditableRegistrationOptionResource"
+            },
             "Environment": {
                 "type": "string",
                 "description": "Which deployment a response came from.\n",
@@ -9548,6 +9653,49 @@
                             }
                         },
                         "maxItems": 50
+                    },
+                    "form": {
+                        "type": "object",
+                        "description": "The form's settings, the same six the event carries. Omit to leave them as they are; send all six to change any.",
+                        "properties": {
+                            "registrationEnabled": {
+                                "type": "boolean",
+                                "description": "Whether the public may use the form (ADR 0033). Closed, the form answers 404."
+                            },
+                            "registrationOpensAt": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time",
+                                "description": "When public bookings start. Null means as soon as the form is open."
+                            },
+                            "registrationClosesAt": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time",
+                                "description": "When public bookings stop. Null means the event has no form: the blocks are kept, and nobody can book."
+                            },
+                            "registrationMaxGuests": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "description": "The largest number of people one booking may cover, 1 to 100. Null means no cap.",
+                                "minimum": 1,
+                                "maximum": 100
+                            },
+                            "registrationAsksAddress": {
+                                "type": "boolean",
+                                "description": "Whether the form asks for a postal address."
+                            },
+                            "registrationAsksTable": {
+                                "type": "boolean",
+                                "description": "Whether the form asks who the guest would like to sit with."
+                            }
+                        }
                     }
                 },
                 "required": [

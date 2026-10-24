@@ -144,6 +144,25 @@ class ReplaceRegistrationOptionsRequest extends FormRequest
             'options.*.answers.*.label' => ['required', 'string', 'max:255'],
             /** Where this option sits on the form, lowest first, ties broken by id. Omitted, it takes the entry position in the list you send. */
             'options.*.sortOrder' => ['nullable', 'integer', 'gte:0', 'max:1000'],
+
+            // The form's own settings, which the form editor saves with the
+            // blocks so one save is one write under one tag. All six or none:
+            // a missing one would be ambiguous between "unchanged" and
+            // "cleared", and the editor always has all six.
+            /** The form's settings, the same six the event carries. Omit to leave them as they are; send all six to change any. */
+            'form' => ['sometimes', 'array'],
+            /** Whether the public may use the form (ADR 0033). Closed, the form answers 404. */
+            'form.registrationEnabled' => ['required_with:form', 'boolean'],
+            /** When public bookings start. Null means as soon as the form is open. */
+            'form.registrationOpensAt' => ['present_with:form', 'nullable', 'date'],
+            /** When public bookings stop. Null means the event has no form: the blocks are kept, and nobody can book. */
+            'form.registrationClosesAt' => ['present_with:form', 'nullable', 'date', 'after:form.registrationOpensAt'],
+            /** The largest number of people one booking may cover, 1 to 100. Null means no cap. */
+            'form.registrationMaxGuests' => ['present_with:form', 'nullable', 'integer', 'gt:0', 'max:100'],
+            /** Whether the form asks for a postal address. */
+            'form.registrationAsksAddress' => ['required_with:form', 'boolean'],
+            /** Whether the form asks who the guest would like to sit with. */
+            'form.registrationAsksTable' => ['required_with:form', 'boolean'],
         ];
     }
 

@@ -12,6 +12,7 @@ import type {
   CommitteeFunctionResource,
   ContactMessageResource,
   ContactRequest,
+  EditableRegistrationOptionResource,
   EventResource,
   EventTagResource,
   HandleContactMessageRequest,
@@ -28,6 +29,7 @@ import type {
   RegistrationResource,
   RegistrationResourceChoicesItem,
   ReplaceRegistrationOptionsRequest,
+  ReplaceRegistrationOptionsRequestForm,
   RoleResource,
   StoreRegistrationRequest,
   UpdateRegistrationRequest,
@@ -2113,8 +2115,51 @@ function remainingOf(option: MockOption): number | null {
  */
 function optionsTag(eventId: number): string {
   // Without `remaining`, as App\Support\EntityTag has it: a guest booking
-  // must not 412 the committee's save.
-  return mockEntityTag(optionsFor(eventId).map((option) => ({ ...option, remaining: undefined })));
+  // must not 412 the committee's save. With the form's six settings, which
+  // the same PUT writes.
+  const event = events.find((candidate) => candidate.id === eventId);
+
+  return mockEntityTag({
+    options: optionsFor(eventId).map((option) => ({ ...option, remaining: undefined })),
+    form: event ? formSettingsOf(event) : null,
+  });
+}
+
+/** The six settings the options PUT carries beside the blocks. */
+function formSettingsOf(event: EventResource): ReplaceRegistrationOptionsRequestForm {
+  return {
+    registrationEnabled: event.registrationEnabled,
+    registrationOpensAt: event.registrationOpensAt,
+    registrationClosesAt: event.registrationClosesAt,
+    registrationMaxGuests: event.registrationMaxGuests,
+    registrationAsksAddress: event.registrationAsksAddress,
+    registrationAsksTable: event.registrationAsksTable,
+  };
+}
+
+/**
+ * The committee's read of the blocks: the public shape plus what bookings
+ * hold in place, as EditableRegistrationOptionResource adds it.
+ */
+function editableOptionsFor(eventId: number): EditableRegistrationOptionResource[] {
+  const answers = registrations
+    .filter((registration) => registration.eventId === eventId)
+    .flatMap((registration) => registration.choices);
+
+  return optionsFor(eventId).map((option) => {
+    const mine = answers.filter((choice) => choice.optionId === option.id);
+
+    return {
+      ...option,
+      answered: mine.length > 0,
+      pickedAnswerIds:
+        option.kind === "choice"
+          ? [...new Set(mine.flatMap((choice) => (choice.value === null ? [] : [choice.value])))]
+              .map(String)
+              .sort()
+          : [],
+    };
+  });
 }
 
 function registrationTag(registration: MockRegistration): string {
@@ -4729,7 +4774,7 @@ const overrides = [
     // An empty list rather than a 404 for an event taking no bookings, unlike
     // the public read: configuring an event that does not take them yet is
     // when the committee opens this.
-    return collection(optionsFor(eventId), request, 200, {
+    return collection(editableOptionsFor(eventId), request, 200, {
       ETag: optionsTag(eventId),
     });
   }),
@@ -4750,7 +4795,20 @@ const overrides = [
       return stale;
     }
 
-    const incoming = ((await request.json()) as ReplaceRegistrationOptionsRequest).options;
+    const body = (await request.json()) as ReplaceRegistrationOptionsRequest;
+    const incoming = body.options;
+
+    // The form's settings, refused before any block is written, as the Form
+    // Request does. Only the rule a screen can trip is mirrored here.
+    if (
+      body.form?.registrationOpensAt &&
+      body.form.registrationClosesAt &&
+      Date.parse(body.form.registrationClosesAt) <= Date.parse(body.form.registrationOpensAt)
+    ) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "form.registrationClosesAt", reason: "must_be_after" },
+      ]);
+    }
 
     const labelled = (id: number) =>
       registrations.some(
@@ -4863,7 +4921,14 @@ const overrides = [
 
     options = [...options.filter((option) => option.eventId !== eventId), ...rows];
 
-    return collection(optionsFor(eventId), request, 200, { ETag: optionsTag(eventId) });
+    const form = body.form;
+    if (form) {
+      events = events.map((candidate) =>
+        candidate.id === eventId ? withRegistrationFlag({ ...candidate, ...form }) : candidate,
+      );
+    }
+
+    return collection(editableOptionsFor(eventId), request, 200, { ETag: optionsTag(eventId) });
   }),
 
   /* ---------------------------------------------------------------------- *

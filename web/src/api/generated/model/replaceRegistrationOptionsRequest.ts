@@ -309,6 +309,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { ReplaceRegistrationOptionsRequestForm } from "./replaceRegistrationOptionsRequestForm";
 import type { ReplaceRegistrationOptionsRequestOptionsItem } from "./replaceRegistrationOptionsRequestOptionsItem";
 
 /**
@@ -343,4 +344,6 @@ export interface ReplaceRegistrationOptionsRequest {
    * @maxItems 50
    */
   options: ReplaceRegistrationOptionsRequestOptionsItem[];
+  /** The form's settings, the same six the event carries. Omit to leave them as they are; send all six to change any. */
+  form?: ReplaceRegistrationOptionsRequestForm;
 }
