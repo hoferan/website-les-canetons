@@ -692,8 +692,8 @@ export const fr = {
     // screen-reader user hears which row they are on.
     registrations: "Inscriptions",
     registrationsAria: "Inscriptions à {{title}}",
-    options: "Ce qu’on réserve",
-    optionsAria: "Ce qui peut être réservé à {{title}}",
+    options: "Formulaire d’inscription",
+    optionsAria: "Le formulaire d’inscription de {{title}}",
     whoComingAria: "Qui vient à {{title}}",
     editAria: "Modifier {{title}}",
     deleteAria: "Supprimer {{title}}",
@@ -793,24 +793,6 @@ export const fr = {
     isPublic: "Visible sur le site public",
     tags: "Catégories",
     notes: "Remarques",
-
-    registrationsLegend: "Inscriptions du public",
-    registrationsHint:
-      "Renseignez une date de clôture pour donner un formulaire d’inscription à cet événement. Laissez-la vide si personne ne s’inscrit\u00a0: c’est le cas de presque tout le planning.",
-    closesDate: "Clôture des inscriptions",
-    closesTime: "Heure de clôture",
-    opensDate: "Ouverture des inscriptions",
-    opensTime: "Heure d’ouverture",
-    opensHint:
-      "Une fois le formulaire ouvert, il est en ligne tout de suite s’il n’a pas de date d’ouverture. Renseignez-la pour qu’il n’apparaisse qu’à partir de ce jour-là.",
-    maxGuests: "Personnes par inscription",
-    maxGuestsHint:
-      "Le maximum qu’une seule inscription peut couvrir, entre 1 et 100. Laissez vide pour ne pas limiter. Pour limiter la salle, donnez un nombre de places à chaque menu dans «\u00a0Ce qu’on réserve\u00a0».",
-    formOpen: "Formulaire ouvert",
-    asksAddress: "Demander l’adresse",
-    asksTable: "Demander la table",
-    formOpenHint:
-      "Le formulaire n’apparaît au public que coché et entre ses dates\u00a0: vous pouvez le préparer à l’avance et ne l’ouvrir qu’ensuite.",
   },
 
   /**
@@ -985,6 +967,8 @@ export const fr = {
    * a German speaker booking a seat at the souper, on a phone, at the hall.
    */
   booking: {
+    // To the form editor, for whoever may manage events.
+    editForm: "Modifier le formulaire",
     fields: {
       lastName: "Nom",
       firstName: "Prénom",
@@ -1116,16 +1100,9 @@ export const fr = {
   registrationOptions: {
     saveFailed: "L’enregistrement a échoué.",
     loadFailedReload: "La liste n’a pas pu être chargée. Rechargez la page.",
-    intro:
-      "Ce que le public peut réserver, et à quel prix. Laissez le prix vide pour une option qui n’en a pas\u00a0; écrivez 0 pour une option gratuite. Ce n’est pas la même chose.",
-    empty:
-      "Rien n’est proposé pour l’instant. Le formulaire public affichera l’événement sans rien à choisir.",
 
     label: "Intitulé",
     description: "Description",
-    // The kind beside the number, since the fields differ from one kind to
-    // the next.
-    blockHeading: "Bloc {{n}} · {{kind}}",
     kinds: {
       quantity: "Quantité",
       text: "Texte libre",
@@ -1134,7 +1111,6 @@ export const fr = {
       heading: "Titre",
       paragraph: "Paragraphe",
     },
-    addBlock: "Ajouter un bloc",
     required: "Réponse obligatoire",
     countsGuests: "Compte comme personnes",
     countsGuestsHint:
@@ -1146,6 +1122,8 @@ export const fr = {
     removeAnswer: "Retirer la réponse {{n}}",
     tooFewAnswers: "Proposez au moins deux réponses.",
     price: "Prix en francs",
+    // No price stated is not the same as free, and the guest sees which.
+    priceHint: "Vide : aucun prix affiché. 0 : gratuit.",
     priceInvalid: "Indiquez un montant, par exemple 45 ou 45.50.",
     capacity: "Nombre de places",
     capacityHint: "Vide : pas de limite.",

@@ -5,6 +5,7 @@ import { Route, Routes } from "react-router-dom";
 import { beforeEach, expect, onTestFinished, test, vi } from "vitest";
 
 import { type Locale } from "../i18n/locale";
+import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { celebrate } from "../carnival/celebrate";
@@ -720,4 +721,33 @@ test("a form that does not ask for the address or the table shows neither field"
   expect(screen.queryByLabelText("Table", { exact: true })).not.toBeInTheDocument();
   // The three a committee always needs stay.
   expect(screen.getByLabelText("Téléphone")).toBeRequired();
+});
+
+/**
+ * The committee reaches the editor from the form it would change, and a
+ * guest never sees the way in.
+ */
+test("offers the form editor to whoever may manage events, and to nobody else", async () => {
+  setMockUser("demo.direction");
+  await renderBooking();
+  expect(await screen.findByRole("link", { name: "Modifier le formulaire" })).toHaveAttribute(
+    "href",
+    "/events/7/book/edit",
+  );
+});
+
+test("a guest sees no way into the form editor", async () => {
+  await renderBooking();
+  expect(screen.queryByRole("link", { name: "Modifier le formulaire" })).not.toBeInTheDocument();
+});
+
+// A closed form answers 404 to the public read, which is when the committee
+// most needs the way in.
+test("offers the form editor on a form that is not open", async () => {
+  setMockUser("demo.direction");
+  await renderBooking(REHEARSAL);
+  expect(await screen.findByRole("link", { name: "Modifier le formulaire" })).toHaveAttribute(
+    "href",
+    "/events/1/book/edit",
+  );
 });

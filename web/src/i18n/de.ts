@@ -515,8 +515,8 @@ export const de: typeof fr = {
 
     registrations: "Anmeldungen",
     registrationsAria: "Anmeldungen zu {{title}}",
-    options: "Was buchbar ist",
-    optionsAria: "Was zu {{title}} gebucht werden kann",
+    options: "Anmeldeformular",
+    optionsAria: "Das Anmeldeformular von {{title}}",
     whoComingAria: "Wer kommt zu {{title}}",
     editAria: "{{title}} bearbeiten",
     deleteAria: "{{title}} löschen",
@@ -587,24 +587,6 @@ export const de: typeof fr = {
     isPublic: "Auf der öffentlichen Website sichtbar",
     tags: "Kategorien",
     notes: "Bemerkungen",
-
-    registrationsLegend: "Anmeldungen des Publikums",
-    registrationsHint:
-      "Tragen Sie ein Schlussdatum ein, um diesem Anlass ein Anmeldeformular zu geben. Lassen Sie es leer, wenn sich niemand anmeldet: Das trifft auf fast die ganze Planung zu.",
-    closesDate: "Anmeldeschluss",
-    closesTime: "Uhrzeit des Anmeldeschlusses",
-    opensDate: "Anmeldebeginn",
-    opensTime: "Uhrzeit des Anmeldebeginns",
-    opensHint:
-      "Sobald das Formular geöffnet ist, ist es ohne Anmeldebeginn sofort online. Tragen Sie ihn ein, damit es erst ab diesem Tag erscheint.",
-    maxGuests: "Personen pro Anmeldung",
-    maxGuestsHint:
-      "Das Maximum, das eine einzelne Anmeldung abdecken kann, zwischen 1 und 100. Leer lassen, um nicht zu begrenzen. Um den Saal zu begrenzen, geben Sie jedem Menü unter «Was buchbar ist» eine Anzahl Plätze.",
-    formOpen: "Formular geöffnet",
-    asksAddress: "Adresse erfragen",
-    asksTable: "Tisch erfragen",
-    formOpenHint:
-      "Das Formular erscheint nur angekreuzt und zwischen seinen Daten: Sie können es im Voraus vorbereiten und erst dann öffnen.",
   },
 
   seriesForm: {
@@ -730,6 +712,7 @@ export const de: typeof fr = {
   },
 
   booking: {
+    editForm: "Formular bearbeiten",
     fields: {
       lastName: "Name",
       firstName: "Vorname",
@@ -827,14 +810,9 @@ export const de: typeof fr = {
   registrationOptions: {
     saveFailed: "Das Speichern ist fehlgeschlagen.",
     loadFailedReload: "Die Liste konnte nicht geladen werden. Laden Sie die Seite neu.",
-    intro:
-      "Was das Publikum buchen kann, und zu welchem Preis. Lassen Sie den Preis leer für eine Option, die keinen hat; schreiben Sie 0 für eine kostenlose Option. Das ist nicht dasselbe.",
-    empty:
-      "Zurzeit wird nichts angeboten. Das öffentliche Formular zeigt den Anlass ohne Auswahl an.",
 
     label: "Bezeichnung",
     description: "Beschreibung",
-    blockHeading: "Block {{n}} · {{kind}}",
     kinds: {
       quantity: "Anzahl",
       text: "Freitext",
@@ -843,7 +821,6 @@ export const de: typeof fr = {
       heading: "Titel",
       paragraph: "Absatz",
     },
-    addBlock: "Block hinzufügen",
     required: "Antwort erforderlich",
     countsGuests: "Zählt als Personen",
     countsGuestsHint:
@@ -855,6 +832,7 @@ export const de: typeof fr = {
     removeAnswer: "Antwort {{n}} entfernen",
     tooFewAnswers: "Bieten Sie mindestens zwei Antworten an.",
     price: "Preis in Franken",
+    priceHint: "Leer: kein Preis angezeigt. 0: kostenlos.",
     priceInvalid: "Geben Sie einen Betrag ein, zum Beispiel 45 oder 45.50.",
     capacity: "Anzahl Plätze",
     capacityHint: "Leer: keine Begrenzung.",

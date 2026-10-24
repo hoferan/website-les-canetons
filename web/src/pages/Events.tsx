@@ -239,7 +239,7 @@ export function Events() {
           key: "options",
           label: t("events.options"),
           ariaLabel: t("events.optionsAria", { title: event.title }),
-          to: `/events/${event.id}/registration-options`,
+          to: `/events/${event.id}/book/edit`,
         },
         {
           key: "edit",

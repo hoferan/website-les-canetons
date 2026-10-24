@@ -219,6 +219,7 @@ function BlockSettings({
               label={t("registrationOptions.price")}
               value={row.price}
               inputMode="decimal"
+              hint={t("registrationOptions.priceHint")}
               onChange={(value) => onChange({ price: value })}
               problem={problems.price}
             />

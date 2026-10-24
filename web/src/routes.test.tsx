@@ -186,3 +186,17 @@ test("/committee renders the committee", async () => {
   await renderWithSession(<AppRoutes />, { route: "/committee" });
   expect(await screen.findByRole("heading", { name: "Le comité" })).toBeInTheDocument();
 });
+
+// The form editor took over the options screen (#319); a bookmark of the old
+// address lands on it.
+test("the old options address opens the form editor", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/events/7/registration-options" });
+  expect(await screen.findByRole("region", { name: "Réglages du formulaire" })).toBeInTheDocument();
+});
+
+test("refuses the form editor in place for a member who may not manage events", async () => {
+  setMockUser("demo.committee");
+  await renderWithSession(<AppRoutes />, { route: "/events/7/book/edit" });
+  expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
+});

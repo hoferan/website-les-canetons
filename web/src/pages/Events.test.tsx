@@ -854,7 +854,7 @@ test("offers the guest list only on an event that takes bookings", async () => {
  * The options editor, unlike the guest list, belongs on every card: an event
  * that takes no bookings yet is when the committee fills it in.
  */
-test("offers the options editor on every event, bookable or not", async () => {
+test("offers the form editor on every event, bookable or not", async () => {
   const user = userEvent.setup();
   await renderPlanning("demo.direction");
 
@@ -864,8 +864,10 @@ test("offers the options editor on every event, bookable or not", async () => {
     "Autres actions pour Souper de soutien",
   );
   expect(
-    within(souper).getByRole("menuitem", { name: "Ce qui peut être réservé à Souper de soutien" }),
-  ).toHaveAttribute("href", "/events/7/registration-options");
+    within(souper).getByRole("menuitem", {
+      name: "Le formulaire d’inscription de Souper de soutien",
+    }),
+  ).toHaveAttribute("href", "/events/7/book/edit");
 
   // Waited for: see "offers the guest list only on an event that takes
   // bookings".
@@ -878,7 +880,7 @@ test("offers the options editor on every event, bookable or not", async () => {
     "Autres actions pour Répétition",
   );
   expect(
-    within(rehearsal).getByRole("menuitem", { name: /^Ce qui peut être réservé à Répétition/ }),
+    within(rehearsal).getByRole("menuitem", { name: /^Le formulaire d’inscription de Répétition/ }),
   ).toBeInTheDocument();
 });
 
@@ -896,7 +898,7 @@ test("a guest-list reader gets that link and no other", async () => {
   ).toBeInTheDocument();
 
   // The trigger's absence is the assertion, since a shut menu holds nothing.
-  expectNoSuchAction(/^Ce qui peut être réservé/);
+  expectNoSuchAction(/^Le formulaire d’inscription de/);
   expectNoSuchAction(/^Modifier/);
 
   // A page-wide query is enough here: this action is the inline one, so it is

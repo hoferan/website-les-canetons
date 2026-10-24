@@ -63,24 +63,57 @@ test("shows the submit as busy without disabling it", async () => {
 });
 
 /* ---------------------------------------------------------------------------
- * The registration window
+ * The booking form's settings
  * -------------------------------------------------------------------------- */
 
-test("offers the registration window, and says which field is the switch", async () => {
-  // Asserts the rendered controls: a label in fr.ts proves nothing about an
-  // input existing.
+/**
+ * The closing date, the cap and the form's three switches belong to the
+ * form, and its editor carries them (#319).
+ */
+test("the event form leaves the booking form's settings to the form editor", async () => {
   await renderForm();
 
-  expect(screen.getByLabelText("Clôture des inscriptions")).toBeInTheDocument();
-  expect(screen.getByLabelText("Heure de clôture")).toBeInTheDocument();
-  expect(screen.getByLabelText("Ouverture des inscriptions")).toBeInTheDocument();
-  expect(screen.getByLabelText("Heure d’ouverture")).toBeInTheDocument();
-  expect(screen.getByLabelText("Personnes par inscription")).toBeInTheDocument();
+  expect(screen.queryByLabelText("Clôture des inscriptions")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Personnes par inscription")).not.toBeInTheDocument();
+  expect(screen.queryByRole("checkbox", { name: "Formulaire ouvert" })).not.toBeInTheDocument();
+});
 
-  // A date field is not obviously a switch, so the copy beside it matters.
-  expect(
-    screen.getByText(/date de clôture pour donner un formulaire d’inscription/),
-  ).toBeInTheDocument();
+/**
+ * An edit sends none of the six settings, or correcting the dress code would
+ * put back the settings this screen happened to load, over whatever the form
+ * editor saved since.
+ *
+ * Mutation test: send `registrationEnabled` from eventBodyFrom again and this
+ * fails.
+ */
+test("an edit sends none of the booking form's settings", async () => {
+  let body: Record<string, unknown> | null = null;
+  server.events.removeAllListeners("request:start");
+  server.events.on("request:start", ({ request }) => {
+    if (request.method === "PATCH" && request.url.endsWith("/events/7")) {
+      void request
+        .clone()
+        .json()
+        .then((sent) => (body = sent as Record<string, unknown>));
+    }
+  });
+
+  await renderEdit(7);
+  await userEvent.type(screen.getByLabelText("Remarques"), " Merci.");
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await screen.findByText("planning");
+  await waitFor(() => expect(body).not.toBeNull());
+  for (const key of [
+    "registrationEnabled",
+    "registrationOpensAt",
+    "registrationClosesAt",
+    "registrationMaxGuests",
+    "registrationAsksAddress",
+    "registrationAsksTable",
+  ]) {
+    expect(body).not.toHaveProperty(key);
+  }
 });
 
 /**
@@ -116,65 +149,6 @@ async function fillIn(fields: Record<string, string>) {
   }
 }
 
-test("a new event takes no bookings until a closing date is typed", async () => {
-  // Mutation test: make eventBodyFrom compose the closing instant
-  // unconditionally and this fails.
-  await renderForm();
-
-  await fillIn({
-    Titre: "Répétition de novembre",
-    Lieu: "Werkhof",
-    "Date de début": "2026-11-07",
-    "Heure de début": "10:00",
-    "Heure de fin": "12:00",
-  });
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
-
-  const created = await createdEvent("Répétition de novembre");
-  expect(created.registrationClosesAt).toBeNull();
-  expect(created.takesRegistrations).toBe(false);
-});
-
-test("typing a closing date gives the event a form, closed until it is opened", async () => {
-  await renderForm();
-
-  await fillIn({
-    Titre: "Souper de novembre",
-    Lieu: "Grenette",
-    "Date de début": "2026-11-21",
-    "Heure de début": "18:30",
-    "Heure de fin": "23:30",
-    "Clôture des inscriptions": "2026-11-14",
-  });
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
-
-  const created = await createdEvent("Souper de novembre");
-  // November, so +01:00: the season runs through both offsets. 23:59 is the
-  // default beside the date field, so a closing day means the whole of it.
-  expect(created.registrationClosesAt).toBe("2026-11-14T23:59:00+01:00");
-  expect(created.takesRegistrations).toBe(true);
-  // ADR 0033: built now, opened when the committee says so.
-  expect(created.registrationEnabled).toBe(false);
-});
-
-test("an empty guest cap is no cap, not a cap of zero", async () => {
-  // Mutation test: pass the field through `Number()` unguarded and this fails,
-  // because `Number("")` is 0.
-  await renderForm();
-
-  await fillIn({
-    Titre: "Loto de novembre",
-    Lieu: "Grenette",
-    "Date de début": "2026-11-28",
-    "Heure de début": "19:00",
-    "Heure de fin": "22:00",
-    "Clôture des inscriptions": "2026-11-21",
-  });
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
-
-  expect((await createdEvent("Loto de novembre")).registrationMaxGuests).toBeNull();
-});
-
 /* ---------------------------------------------------------------------------
  * The form in German
  * -------------------------------------------------------------------------- */
@@ -190,8 +164,6 @@ test("every control is German", async () => {
   expect(screen.getByLabelText("Ort")).toBeInTheDocument();
   expect(screen.getByLabelText("Kleidung")).toBeInTheDocument();
   expect(screen.getByLabelText("Bemerkungen")).toBeInTheDocument();
-  expect(screen.getByLabelText("Anmeldeschluss")).toBeInTheDocument();
-  expect(screen.getByLabelText("Personen pro Anmeldung")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Entwurf speichern" })).toBeInTheDocument();
 });
 
@@ -411,57 +383,4 @@ test("the form stays busy from the create through the publish, so a second tap m
   const planning = await eventIndex({ limit: 1000 });
   const rows = planning.status === 200 ? planning.data.data : [];
   expect(rows.filter((event) => event.title === "Un seul concert")).toHaveLength(1);
-});
-
-test("the committee opens the form with its own switch", async () => {
-  await renderForm();
-
-  await fillIn({
-    Titre: "Souper de décembre",
-    Lieu: "Grenette",
-    "Date de début": "2026-12-05",
-    "Heure de début": "18:30",
-    "Heure de fin": "23:30",
-    "Clôture des inscriptions": "2026-11-28",
-  });
-  await userEvent.click(screen.getByRole("checkbox", { name: "Formulaire ouvert" }));
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
-
-  const created = await createdEvent("Souper de décembre");
-  expect(created.registrationEnabled).toBe(true);
-});
-
-test("a form can stop asking for the address and the table", async () => {
-  await renderForm();
-
-  // Both asked by default, which is what every form did.
-  expect(screen.getByRole("checkbox", { name: "Demander l’adresse" })).toBeChecked();
-  expect(screen.getByRole("checkbox", { name: "Demander la table" })).toBeChecked();
-
-  await fillIn({
-    Titre: "Pique-nique",
-    Lieu: "Lac de la Gruyère",
-    "Date de début": "2027-06-12",
-    "Heure de début": "11:00",
-    "Heure de fin": "16:00",
-  });
-  await userEvent.click(screen.getByRole("checkbox", { name: "Demander l’adresse" }));
-  await userEvent.click(screen.getByRole("checkbox", { name: "Demander la table" }));
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
-
-  const created = await createdEvent("Pique-nique");
-  expect(created.registrationAsksAddress).toBe(false);
-  expect(created.registrationAsksTable).toBe(false);
-});
-
-/**
- * The dates and the switch together decide whether the public sees a form
- * (ADR 0033), so neither hint may claim the dates alone do.
- */
-test("the hints say the form shows once it is open and within its dates", async () => {
-  await renderForm();
-
-  expect(screen.queryByText(/le formulaire est en ligne dès maintenant/)).not.toBeInTheDocument();
-  expect(screen.getByText(/Une fois le formulaire ouvert/)).toBeInTheDocument();
-  expect(screen.getByText(/n’apparaît au public que coché et entre ses dates/)).toBeInTheDocument();
 });

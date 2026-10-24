@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -31,6 +31,7 @@ import { formatEventWhen } from "../events/formatEventWhen";
 import { t } from "../i18n";
 import { formatDay } from "../lib/date";
 import { formatCents } from "../money";
+import { useSession } from "../session/SessionProvider";
 
 /**
  * Book a place at an event.
@@ -53,6 +54,15 @@ import { formatCents } from "../money";
 export function EventBooking() {
   const { id } = useParams();
   const eventId = Number(id);
+  const { can } = useSession();
+
+  // The way into the editor, from the form it changes. Offered beside a
+  // closed form too, which answers 404 to everybody, the committee included.
+  const editLink = can("events.manage") ? (
+    <Button asChild variant="raised-light" className="mb-related w-fit">
+      <Link to={`/events/${eventId}/book/edit`}>{t("booking.editForm")}</Link>
+    </Button>
+  ) : null;
 
   const [contact, setContact] = useState<Contact>(EMPTY);
   const [website, setWebsite] = useState("");
@@ -188,6 +198,7 @@ export function EventBooking() {
       <>
         <PageHero title={t("events.registrations")} seed={13} width="text" />
         <PageSection width="text">
+          {editLink}
           <p className="text-ink-muted">
             {form.error instanceof ApiError && form.error.status === 404
               ? t("booking.notOpen")
@@ -255,6 +266,7 @@ export function EventBooking() {
       </PageHero>
 
       <PageSection width="text">
+        {editLink}
         {!offer.open ? (
           <p className={cn(RAISED_CARD, "bg-yellow p-4")} role="status">
             {offer.opensAt !== null && Date.parse(offer.opensAt) > Date.now()
