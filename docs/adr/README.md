@@ -58,3 +58,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0032](0032-compose-a-booking-form-from-blocks.md) | Compose an event's booking form from blocks the committee assembles |
 | [0033](0033-a-booking-form-opens-with-its-own-switch.md) | Open a booking form with its own switch, and let it ask for address and table |
 | [0034](0034-members-book-on-the-same-form.md) | Let members book a form with their account, in the same table as guests |
+| [0035](0035-shared-read-marks-and-a-booking-change-journal.md) | Track booking changes in a journal, and mark a guest list read once for the whole committee |
