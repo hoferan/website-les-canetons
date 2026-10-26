@@ -309,6 +309,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { EventBookingsFactsResource } from "./eventBookingsFactsResource";
 
 export interface InboxItemResource {
   /** Which source this came from, e.g. `contactMessage`. */
@@ -320,4 +321,5 @@ export interface InboxItemResource {
   arrivedAt: string;
   /** Where to go to deal with it, relative to the site root. */
   path: string;
+  facts: EventBookingsFactsResource | null;
 }

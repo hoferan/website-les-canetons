@@ -12,7 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-#[Group('Committee inbox', 'The messages the public has sent, and whether anybody has dealt with them.', weight: 45)]
+#[Group('Committee inbox', 'What is waiting for the committee: messages the public has sent, and events whose bookings changed since somebody last read the guest list.', weight: 45)]
 class InboxController extends Controller
 {
     public function __construct(private readonly InboxRegistry $registry) {}

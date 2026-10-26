@@ -31,6 +31,8 @@ class InboxItemResource extends JsonResource
             'arrivedAt' => Iso8601::utc($this->arrivedAt),
             /** Where to go to deal with it, relative to the site root. */
             'path' => $this->path,
+            /** The progress of an `eventBookings` item; null for every other kind. */
+            'facts' => $this->facts === null ? null : new EventBookingsFactsResource($this->facts),
         ];
     }
 }

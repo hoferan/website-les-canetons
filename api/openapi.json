@@ -34,7 +34,7 @@
         },
         {
             "name": "Committee inbox",
-            "description": "The messages the public has sent, and whether anybody has dealt with them."
+            "description": "What is waiting for the committee: messages the public has sent, and events whose bookings changed since somebody last read the guest list."
         },
         {
             "name": "Members",
@@ -8659,6 +8659,96 @@
                 ],
                 "title": "Environment"
             },
+            "EventBookingsFactsResource": {
+                "type": "object",
+                "properties": {
+                    "startsAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "bookings": {
+                        "type": "integer",
+                        "description": "Bookings on the guest list now."
+                    },
+                    "guests": {
+                        "type": "integer",
+                        "description": "People those bookings cover, counted from the blocks that count guests."
+                    },
+                    "closesAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "closed": {
+                        "type": "boolean",
+                        "description": "Whether bookings have closed, so the next export is the final list."
+                    },
+                    "changes": {
+                        "type": "object",
+                        "description": "Bookings that moved since the last read: made since (`new`),\nchanged since (`changed`), or gone since (`cancelled`).",
+                        "properties": {
+                            "new": {
+                                "type": "integer"
+                            },
+                            "changed": {
+                                "type": "integer"
+                            },
+                            "cancelled": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "new",
+                            "changed",
+                            "cancelled"
+                        ]
+                    },
+                    "actors": {
+                        "type": "array",
+                        "description": "Who made those changes, newest first. Guests on the public form\nhave no account and are left out.",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "latestChangeId": {
+                        "type": "integer",
+                        "description": "The newest journal entry for this event. Send it as `upTo` to mark the item read."
+                    },
+                    "nearlyFull": {
+                        "type": "array",
+                        "description": "Capped blocks with five places or fewer left; `remaining` 0 is full.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "label": {
+                                    "type": "string"
+                                },
+                                "remaining": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "label",
+                                "remaining"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "startsAt",
+                    "bookings",
+                    "guests",
+                    "closesAt",
+                    "closed",
+                    "changes",
+                    "actors",
+                    "latestChangeId",
+                    "nearlyFull"
+                ],
+                "title": "EventBookingsFactsResource"
+            },
             "EventResource": {
                 "type": "object",
                 "properties": {
@@ -9130,6 +9220,17 @@
                     "path": {
                         "type": "string",
                         "description": "Where to go to deal with it, relative to the site root."
+                    },
+                    "facts": {
+                        "anyOf": [
+                            {
+                                "description": "The progress of an `eventBookings` item; null for every other kind.",
+                                "$ref": "#/components/schemas/EventBookingsFactsResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -9138,7 +9239,8 @@
                     "title",
                     "summary",
                     "arrivedAt",
-                    "path"
+                    "path",
+                    "facts"
                 ],
                 "title": "InboxItemResource"
             },

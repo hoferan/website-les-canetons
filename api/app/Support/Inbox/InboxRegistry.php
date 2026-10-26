@@ -13,15 +13,15 @@ use Illuminate\Support\Collection;
  * hidden from them, and the summary endpoint has to stay safe to call on every
  * navigation without the client first working out whether it is allowed to.
  *
- * The source list is hard-coded rather than injected. There is one source, and
- * a second is one line here.
+ * The source list is hard-coded rather than injected: adding a source is one
+ * line here.
  */
 class InboxRegistry
 {
     /** @return list<InboxSource> */
     private function sources(): array
     {
-        return [new ContactMessageSource];
+        return [new ContactMessageSource, new EventBookingsSource];
     }
 
     /** @return list<InboxSource> */

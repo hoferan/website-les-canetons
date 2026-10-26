@@ -124,6 +124,13 @@ class Event extends Model
             // The poster's slot goes too, or the library would count its image
             // as in use and refuse to delete it.
             $event->poster()->delete();
+
+            // The booking journal goes by foreign key; the read marks are
+            // keyed by inbox kind and have none.
+            InboxRead::query()
+                ->where('kind', InboxRead::EVENT_BOOKINGS)
+                ->where('subject_id', $event->id)
+                ->delete();
         });
     }
 

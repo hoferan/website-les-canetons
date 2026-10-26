@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\BookingChange;
 use App\Models\ContactMessage;
+use App\Models\Event;
 use App\Models\Member;
+use App\Models\Registration;
 use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -77,6 +80,30 @@ class InboxEndpointTest extends TestCase
         // An empty counts map must serialize as `{}`, never `[]`. In object
         // mode json_decode() gives a stdClass only for `{}`.
         $this->assertInstanceOf(\stdClass::class, json_decode($response->getContent())->counts);
+    }
+
+    public function test_index_carries_facts_for_event_bookings(): void
+    {
+        $event = Event::factory()->takingRegistrations()->create();
+        Registration::factory()->create(['event_id' => $event->id]);
+
+        $this->actingAsMember($this->committeeMember())
+            ->getJson('/api/v1/inbox')
+            ->assertOk()
+            ->assertJsonPath('data.0.kind', 'eventBookings')
+            ->assertJsonPath('data.0.id', $event->id)
+            ->assertJsonPath('data.0.facts.changes.new', 1)
+            ->assertJsonPath('data.0.facts.latestChangeId', (int) BookingChange::max('id'));
+    }
+
+    public function test_a_contact_message_carries_no_facts(): void
+    {
+        ContactMessage::factory()->create();
+
+        $this->actingAsMember($this->committeeMember())
+            ->getJson('/api/v1/inbox')
+            ->assertOk()
+            ->assertJsonPath('data.0.facts', null);
     }
 
     private function committeeMember(): Member

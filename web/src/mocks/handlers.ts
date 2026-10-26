@@ -2725,6 +2725,7 @@ function toInboxItem(message: ContactMessageResource): InboxItemResource {
     summary: message.subject || limitedTo(message.message, 120),
     arrivedAt: message.receivedAt,
     path: `/contact-messages?open=${message.id}`,
+    facts: null,
   };
 }
 

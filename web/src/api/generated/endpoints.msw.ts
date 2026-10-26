@@ -1511,6 +1511,35 @@ export const getInboxIndexResponseMock = (
     summary: faker.string.alpha({ length: { min: 10, max: 20 } }),
     arrivedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    facts: faker.helpers.arrayElement([
+      {
+        startsAt: faker.helpers.arrayElement([
+          faker.date.past().toISOString().slice(0, 19) + "Z",
+          null,
+        ]),
+        bookings: faker.number.int(),
+        guests: faker.number.int(),
+        closesAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+        closed: faker.datatype.boolean(),
+        changes: {
+          new: faker.number.int(),
+          changed: faker.number.int(),
+          cancelled: faker.number.int(),
+        },
+        actors: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+          () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+        ),
+        latestChangeId: faker.number.int(),
+        nearlyFull: Array.from(
+          { length: faker.number.int({ min: 1, max: 10 }) },
+          (_, i) => i + 1,
+        ).map(() => ({
+          label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          remaining: faker.number.int(),
+        })),
+      },
+      null,
+    ]),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
