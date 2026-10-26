@@ -18,7 +18,8 @@ class MarkBookingsReadRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        /** @var Event $event */
+        // No route outside a request: ApiErrorVocabularyTest reads these keys
+        // from a bare instance.
         $event = $this->route('event');
 
         return [
@@ -26,7 +27,8 @@ class MarkBookingsReadRequest extends FormRequest
             'upTo' => [
                 'required',
                 'integer',
-                Rule::exists('booking_changes', 'id')->where('event_id', $event->id),
+                Rule::exists('booking_changes', 'id')
+                    ->where('event_id', $event instanceof Event ? $event->id : null),
             ],
         ];
     }
