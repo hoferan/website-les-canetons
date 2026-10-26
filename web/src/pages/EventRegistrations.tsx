@@ -13,6 +13,8 @@ import {
   registrationShow,
   registrationUpdate,
   useEventShow,
+  getBookingReadShowQueryKey,
+  useBookingReadShow,
   useRegistrationForm,
   useRegistrationIndex,
 } from "../api/generated/endpoints";
@@ -23,6 +25,7 @@ import type {
   UpdateRegistrationRequest,
 } from "../api/generated/model";
 import { BlockView } from "../booking/BlockView";
+import { BookingReadLine } from "../booking/BookingReadLine";
 import type { Typed } from "../booking/useAnswers";
 import { ApiError } from "../api/http";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
@@ -148,6 +151,11 @@ export function EventRegistrations() {
   const bookingCount = totalOf(list.data);
   const mayManage = can("registrations.manage");
 
+  // What moved since the committee last read this list (ADR 0035), to tag
+  // those cards. The same query as BookingReadLine's, so one request.
+  const readState = useBookingReadShow(eventId);
+  const since = readState.data?.status === 200 ? readState.data.data : null;
+
   // The blocks a correction offers (#317), since the list carries none. A
   // form switched off answers 404, and its answers are then not corrected
   // here.
@@ -163,8 +171,12 @@ export function EventRegistrations() {
 
   const title = event.data?.status === 200 ? event.data.data : null;
 
+  // A correction or cancellation made here is a change since the read too.
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: getRegistrationIndexQueryKey(eventId) });
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: getRegistrationIndexQueryKey(eventId) }),
+      queryClient.invalidateQueries({ queryKey: getBookingReadShowQueryKey(eventId) }),
+    ]);
 
   /** Reads one booking, and keeps the tag that read handed out. */
   async function read(
@@ -336,6 +348,8 @@ export function EventRegistrations() {
         </p>
       ) : null}
 
+      {!list.isPending && !list.isError ? <BookingReadLine eventId={eventId} /> : null}
+
       {/* What the kitchen is told: a sum of the quantities the server sent
           per booking, the same numbers as every download's totals row. */}
       {perOption.length > 0 ? (
@@ -479,6 +493,16 @@ export function EventRegistrations() {
                       className="rounded-full border-2 border-ink bg-lilac px-2 text-xs font-semibold"
                     >
                       {t("registrations.memberBadge")}
+                    </span>
+                  ) : null}
+                  {since?.newIds.includes(booking.id) || since?.changedIds.includes(booking.id) ? (
+                    <span
+                      data-testid="read-tag"
+                      className="rounded-full border-2 border-ink bg-yellow px-2 text-xs font-semibold"
+                    >
+                      {since.newIds.includes(booking.id)
+                        ? t("registrations.readLine.tagNew")
+                        : t("registrations.readLine.tagChanged")}
                     </span>
                   ) : null}
                 </p>

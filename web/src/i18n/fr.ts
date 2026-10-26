@@ -1084,6 +1084,17 @@ export const fr = {
     tableLabel: "Table\u00a0: {{value}}",
     // Beside the name of a booking a member made with their account.
     memberBadge: "Membre",
+    // The committee's shared read mark on this list (#123, ADR 0035). What
+    // changed since is worded by booking/bookingProgress.ts, as in the inbox.
+    readLine: {
+      read: "Lu le {{when}} par {{name}}",
+      notRead: "Pas encore lu",
+      nothingSince: "Aucun changement depuis.",
+      markUnread: "Marquer comme non lu",
+      failed: "La lecture n’a pas pu être enregistrée. Réessayez.",
+      tagNew: "nouvelle depuis la lecture",
+      tagChanged: "modifiée depuis la lecture",
+    },
     bookings_one: "{{count}} inscription",
     bookings_other: "{{count}} inscriptions",
     // The counts line joins its parts with a middot; the parts are counted

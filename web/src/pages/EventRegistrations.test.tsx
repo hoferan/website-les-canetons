@@ -902,3 +902,41 @@ test("a refused answer is shown at its block", async () => {
     .poll(() => allergies.closest("div")?.textContent ?? "")
     .toContain("Merci de répondre à cette question.");
 });
+
+test("tags a booking new since the read, and says when it was read", async () => {
+  server.use(
+    http.get("/api/v1/events/7/booking-read", () =>
+      HttpResponse.json({
+        readAt: "2026-11-08T09:05:00Z",
+        readBy: "Marie Comité",
+        latestChangeId: 12,
+        changes: { new: 1, changed: 0, cancelled: 0 },
+        newIds: [1],
+        changedIds: [],
+        actors: [],
+      }),
+    ),
+  );
+  await renderGuestList("demo.committee");
+
+  const tagged = await within(cards()).findByText("nouvelle depuis la lecture");
+  expect(tagged.closest("li")).toHaveTextContent("Aebischer");
+  expect(within(cards()).getAllByText("nouvelle depuis la lecture")).toHaveLength(1);
+  expect(screen.getByTestId("booking-read")).toHaveTextContent("par Marie Comité");
+});
+
+test("a cancellation here shows up in what changed since the read", async () => {
+  // The mock's seeded bookings start out read, so the list opens quiet.
+  const user = userEvent.setup();
+  await renderGuestList();
+  expect(await screen.findByTestId("booking-read")).toHaveTextContent("Aucun changement depuis");
+
+  await user.click(
+    within(cards()).getByRole("button", { name: "Annuler l’inscription de Jeanne Aebischer" }),
+  );
+  const dialog = await screen.findByRole("alertdialog");
+  await user.type(within(dialog).getByLabelText(/Tapez/), "Aebischer");
+  await user.click(within(dialog).getByRole("button", { name: "Annuler l’inscription" }));
+
+  await expect.poll(() => screen.getByTestId("booking-read").textContent).toContain("1 annulée");
+});

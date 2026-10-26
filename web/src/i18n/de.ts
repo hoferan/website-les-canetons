@@ -806,6 +806,15 @@ export const de: typeof fr = {
 
     tableLabel: "Tisch: {{value}}",
     memberBadge: "Mitglied",
+    readLine: {
+      read: "Gelesen am {{when}} von {{name}}",
+      notRead: "Noch nicht gelesen",
+      nothingSince: "Seither keine Änderung.",
+      markUnread: "Als ungelesen markieren",
+      failed: "Das konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      tagNew: "neu seit dem Lesen",
+      tagChanged: "geändert seit dem Lesen",
+    },
     bookings_one: "{{count}} Anmeldung",
     bookings_other: "{{count}} Anmeldungen",
     countsSeparator: " · ",
