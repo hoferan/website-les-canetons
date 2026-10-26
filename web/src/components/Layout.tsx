@@ -37,6 +37,7 @@ import {
 import { buttonVariants } from "./ui/button";
 import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
+import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 
 /**
  * The public nav in order of importance, left to right. The desktop bar folds
@@ -65,18 +66,23 @@ const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
  *
  * A member without the permission never sees the entry: a link that leads to
  * "Accès refusé" teaches people that parts of the site are broken for them.
- * Gated on a permission, never a role name (ADR 0014).
+ * Gated on a permission, never a role name (ADR 0014). A list means any one
+ * of them.
  */
-const TOOLS: Array<{ to: string; labelKey: TranslationKey; permission: string; icon: LucideIcon }> =
-  [
-    // First, beside Événements: the tags label the planning.
-    { to: "/event-tags", labelKey: "nav.eventTags", permission: "events.manage", icon: Tags },
-    { to: "/members", labelKey: "nav.members", permission: "members.manage", icon: Users },
-    { to: "/inbox", labelKey: "nav.inbox", permission: "messages.view", icon: Inbox },
-    { to: "/media", labelKey: "nav.media", permission: "images.manage", icon: Images },
-    { to: "/registers", labelKey: "nav.registers", permission: "members.manage", icon: Drum },
-    { to: "/roles", labelKey: "nav.roles", permission: "roles.manage", icon: ShieldCheck },
-  ];
+const TOOLS: Array<{
+  to: string;
+  labelKey: TranslationKey;
+  permission: string | readonly string[];
+  icon: LucideIcon;
+}> = [
+  // First, beside Événements: the tags label the planning.
+  { to: "/event-tags", labelKey: "nav.eventTags", permission: "events.manage", icon: Tags },
+  { to: "/members", labelKey: "nav.members", permission: "members.manage", icon: Users },
+  { to: "/inbox", labelKey: "nav.inbox", permission: INBOX_PERMISSIONS, icon: Inbox },
+  { to: "/media", labelKey: "nav.media", permission: "images.manage", icon: Images },
+  { to: "/registers", labelKey: "nav.registers", permission: "members.manage", icon: Drum },
+  { to: "/roles", labelKey: "nav.roles", permission: "roles.manage", icon: ShieldCheck },
+];
 
 export function Layout() {
   const { config, user, can } = useSession();
@@ -91,7 +97,9 @@ export function Layout() {
   useEffect(() => setOpen(false), [pathname]);
   const active = pathname;
 
-  const mayReadInbox = can("messages.view");
+  const canAny = (permission: string | readonly string[]) =>
+    (typeof permission === "string" ? [permission] : permission).some((one) => can(one));
+  const mayReadInbox = canAny(INBOX_PERMISSIONS);
   // Disabled for anyone who may not read the inbox, so the permission check
   // happens once here instead of at every read of `.data`.
   const inboxSummary = useInboxSummary({ query: { enabled: user !== null && mayReadInbox } });
@@ -135,7 +143,7 @@ export function Layout() {
   const memberEntries: NavEntry[] = mayReadPlanning
     ? [{ key: "/events", to: "/events", label: t("nav.events") }]
     : [];
-  const tools = TOOLS.filter((item) => can(item.permission));
+  const tools = TOOLS.filter((item) => canAny(item.permission));
   const countFor = (to: string) => (to === "/inbox" ? inboxTotal : 0);
   const accountTools: AccountTool[] = tools.map((item) => ({
     to: item.to,

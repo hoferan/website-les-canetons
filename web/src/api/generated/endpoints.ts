@@ -348,6 +348,8 @@ import type {
   AuthMe200,
   BandIndex200,
   BandIndexParams,
+  BookingReadResource,
+  BookingReadUnmarkParams,
   CommitteeFunctionIndex200,
   CommitteeFunctionIndexParams,
   CommitteeIndex200,
@@ -393,6 +395,7 @@ import type {
   InboxIndex200,
   InboxIndexParams,
   InboxSummary200,
+  MarkBookingsReadRequest,
   MemberAttendanceDestroy200,
   MemberAttendanceDestroy409,
   MemberAttendanceUpdate403,
@@ -4306,6 +4309,531 @@ export function useRegistrationExport<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type bookingReadShowResponse200 = {
+  data: BookingReadResource;
+  status: 200;
+};
+
+export type bookingReadShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type bookingReadShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type bookingReadShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type bookingReadShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type bookingReadShowResponseSuccess = bookingReadShowResponse200 & {
+  headers: Headers;
+};
+export type bookingReadShowResponseError = (
+  | bookingReadShowResponse401
+  | bookingReadShowResponse403
+  | bookingReadShowResponse404
+  | bookingReadShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type bookingReadShowResponse = bookingReadShowResponseSuccess | bookingReadShowResponseError;
+
+export const getBookingReadShowUrl = (event: number) => {
+  return `/events/${event}/booking-read`;
+};
+
+/**
+ * The screen keeps `latestChangeId` from this read and sends it back to
+ * mark the list read.
+ * @summary Read whether the guest list was read, and what moved since
+ */
+export const bookingReadShow = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<bookingReadShowResponse> => {
+  return customFetch<bookingReadShowResponse>(getBookingReadShowUrl(event), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getBookingReadShowQueryKey = (event: number) => {
+  return [`/events/${event}/booking-read`] as const;
+};
+
+export const getBookingReadShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof bookingReadShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof bookingReadShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getBookingReadShowQueryKey(event);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof bookingReadShow>>> = ({ signal }) =>
+    bookingReadShow(event, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: event !== null && event !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof bookingReadShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type BookingReadShowQueryResult = NonNullable<Awaited<ReturnType<typeof bookingReadShow>>>;
+export type BookingReadShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useBookingReadShow<
+  TData = Awaited<ReturnType<typeof bookingReadShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof bookingReadShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof bookingReadShow>>,
+          TError,
+          Awaited<ReturnType<typeof bookingReadShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useBookingReadShow<
+  TData = Awaited<ReturnType<typeof bookingReadShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof bookingReadShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof bookingReadShow>>,
+          TError,
+          Awaited<ReturnType<typeof bookingReadShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useBookingReadShow<
+  TData = Awaited<ReturnType<typeof bookingReadShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof bookingReadShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read whether the guest list was read, and what moved since
+ */
+
+export function useBookingReadShow<
+  TData = Awaited<ReturnType<typeof bookingReadShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof bookingReadShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getBookingReadShowQueryOptions(event, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type bookingReadMarkResponse200 = {
+  data: BookingReadResource;
+  status: 200;
+};
+
+export type bookingReadMarkResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type bookingReadMarkResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type bookingReadMarkResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type bookingReadMarkResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type bookingReadMarkResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type bookingReadMarkResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type bookingReadMarkResponseSuccess = bookingReadMarkResponse200 & {
+  headers: Headers;
+};
+export type bookingReadMarkResponseError = (
+  | bookingReadMarkResponse400
+  | bookingReadMarkResponse401
+  | bookingReadMarkResponse403
+  | bookingReadMarkResponse404
+  | bookingReadMarkResponse419
+  | bookingReadMarkResponse503
+) & {
+  headers: Headers;
+};
+
+export type bookingReadMarkResponse = bookingReadMarkResponseSuccess | bookingReadMarkResponseError;
+
+export const getBookingReadMarkUrl = (event: number) => {
+  return `/events/${event}/booking-read`;
+};
+
+/**
+ * Everything up to `upTo` stops counting, for the whole committee. A
+ * booking journaled after it stays unread, so a change that lands while
+ * somebody is reading is never swallowed. Marking again with an `upTo`
+ * the mark already covers writes nothing.
+ * @summary Mark the guest list read, up to what the screen showed
+ */
+export const bookingReadMark = async (
+  event: number,
+  markBookingsReadRequest: MarkBookingsReadRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<bookingReadMarkResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<bookingReadMarkResponse>(getBookingReadMarkUrl(event), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(markBookingsReadRequest),
+  });
+};
+
+export const getBookingReadMarkMutationKey = () => ["bookingReadMark"] as const;
+
+export const getBookingReadMarkMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bookingReadMark>>,
+    TError,
+    BookingReadMarkMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bookingReadMark>>,
+  TError,
+  BookingReadMarkMutationVariables,
+  TContext
+> => {
+  const mutationKey = getBookingReadMarkMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bookingReadMark>>,
+    BookingReadMarkMutationVariables
+  > = (props) => {
+    const { event, data } = props ?? {};
+
+    return bookingReadMark(event, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BookingReadMarkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bookingReadMark>>
+>;
+export type BookingReadMarkMutationBody = MarkBookingsReadRequest;
+export type BookingReadMarkMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem419Response
+  | Problem503Response;
+export type BookingReadMarkMutationVariables = { event: number; data: MarkBookingsReadRequest };
+
+/**
+ * @summary Mark the guest list read, up to what the screen showed
+ */
+export const useBookingReadMark = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof bookingReadMark>>,
+      TError,
+      BookingReadMarkMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof bookingReadMark>>,
+  TError,
+  BookingReadMarkMutationVariables,
+  TContext
+> => {
+  return useMutation(getBookingReadMarkMutationOptions(options), queryClient);
+};
+
+export type bookingReadUnmarkResponse200 = {
+  data: BookingReadResource;
+  status: 200;
+};
+
+export type bookingReadUnmarkResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type bookingReadUnmarkResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type bookingReadUnmarkResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type bookingReadUnmarkResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type bookingReadUnmarkResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type bookingReadUnmarkResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type bookingReadUnmarkResponseSuccess = bookingReadUnmarkResponse200 & {
+  headers: Headers;
+};
+export type bookingReadUnmarkResponseError = (
+  | bookingReadUnmarkResponse400
+  | bookingReadUnmarkResponse401
+  | bookingReadUnmarkResponse403
+  | bookingReadUnmarkResponse404
+  | bookingReadUnmarkResponse419
+  | bookingReadUnmarkResponse503
+) & {
+  headers: Headers;
+};
+
+export type bookingReadUnmarkResponse =
+  bookingReadUnmarkResponseSuccess | bookingReadUnmarkResponseError;
+
+export const getBookingReadUnmarkUrl = (event: number, params: BookingReadUnmarkParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/events/${event}/booking-read?${stringifiedParams}`
+    : `/events/${event}/booking-read`;
+};
+
+/**
+ * Takes back the mark in force, whoever set it, and the counts return to
+ * what they were since the mark before. `mark` must be the `markId` this
+ * screen read: when somebody has marked the list read since, nothing
+ * changes and the fresh state comes back, so a stale tab cannot undo a
+ * colleague's read.
+ * @summary Mark the guest list unread
+ */
+export const bookingReadUnmark = async (
+  event: number,
+  params: BookingReadUnmarkParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<bookingReadUnmarkResponse> => {
+  return customFetch<bookingReadUnmarkResponse>(getBookingReadUnmarkUrl(event, params), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getBookingReadUnmarkMutationKey = () => ["bookingReadUnmark"] as const;
+
+export const getBookingReadUnmarkMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bookingReadUnmark>>,
+    TError,
+    BookingReadUnmarkMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bookingReadUnmark>>,
+  TError,
+  BookingReadUnmarkMutationVariables,
+  TContext
+> => {
+  const mutationKey = getBookingReadUnmarkMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bookingReadUnmark>>,
+    BookingReadUnmarkMutationVariables
+  > = (props) => {
+    const { event, params } = props ?? {};
+
+    return bookingReadUnmark(event, params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BookingReadUnmarkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bookingReadUnmark>>
+>;
+
+export type BookingReadUnmarkMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem419Response
+  | Problem503Response;
+export type BookingReadUnmarkMutationVariables = { event: number; params: BookingReadUnmarkParams };
+
+/**
+ * @summary Mark the guest list unread
+ */
+export const useBookingReadUnmark = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof bookingReadUnmark>>,
+      TError,
+      BookingReadUnmarkMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof bookingReadUnmark>>,
+  TError,
+  BookingReadUnmarkMutationVariables,
+  TContext
+> => {
+  return useMutation(getBookingReadUnmarkMutationOptions(options), queryClient);
+};
 
 export type registrationShowResponse200 = {
   data: RegistrationResource;

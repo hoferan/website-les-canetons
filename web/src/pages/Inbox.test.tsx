@@ -1,7 +1,9 @@
 import { HttpResponse, http } from "msw";
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
+import type { InboxItemResource } from "../api/generated/model";
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
@@ -48,6 +50,82 @@ test("links each item to where it is dealt with", async () => {
       .getAllByRole("link")
       .map((link) => link.getAttribute("href")),
   ).toEqual(["/contact-messages?open=3", "/contact-messages?open=2"]);
+});
+
+/** An `eventBookings` item as EventBookingsSource renders it. */
+const SOUPER: InboxItemResource = {
+  kind: "eventBookings",
+  id: 7,
+  title: "Souper de soutien",
+  summary: "",
+  arrivedAt: "2026-10-26T09:00:00Z",
+  path: "/events/7/registrations",
+  facts: {
+    startsAt: "2026-12-05T17:30:00Z",
+    bookings: 31,
+    guests: 84,
+    closesAt: "2026-11-28T22:59:00Z",
+    closed: false,
+    changes: { new: 2, changed: 1, cancelled: 0 },
+    actors: ["Paul Direction"],
+    latestChangeId: 42,
+    nearlyFull: [
+      { label: "Viande", remaining: 4 },
+      { label: "Enfant", remaining: 0 },
+    ],
+  },
+};
+
+test("renders an event's bookings with its progress", async () => {
+  server.use(
+    http.get("/api/v1/inbox", () =>
+      HttpResponse.json({ data: [SOUPER], meta: { total: 1, limit: 500, offset: 0 } }),
+    ),
+  );
+  await renderInbox();
+
+  const row = within(screen.getByTestId("inbox-item"));
+  expect(row.getByText("Inscriptions")).toBeInTheDocument();
+  expect(row.getByTestId("inbox-item-title")).toHaveTextContent("Souper de soutien");
+  expect(row.getByText(/84 personnes/)).toBeInTheDocument();
+  expect(row.getByText(/2 nouvelles et 1 modifiée/)).toBeInTheDocument();
+  expect(row.getByText(/par Paul Direction/)).toBeInTheDocument();
+  expect(row.getByText(/Viande : 4 places restantes/)).toBeInTheDocument();
+  expect(row.getByText(/Enfant : complet/)).toBeInTheDocument();
+  expect(row.getByRole("link")).toHaveAttribute("href", "/events/7/registrations");
+});
+
+test("marking read sends the newest change and drops the row", async () => {
+  let sent: unknown = null;
+  server.use(
+    http.get("/api/v1/inbox", () =>
+      HttpResponse.json(
+        sent === null
+          ? { data: [SOUPER], meta: { total: 1, limit: 500, offset: 0 } }
+          : { data: [], meta: { total: 0, limit: 500, offset: 0 } },
+      ),
+    ),
+    http.put("/api/v1/events/7/booking-read", async ({ request }) => {
+      sent = await request.json();
+      return HttpResponse.json({});
+    }),
+  );
+  const user = userEvent.setup();
+  await renderInbox();
+
+  await user.click(screen.getByRole("button", { name: "Marquer comme lu" }));
+
+  expect(sent).toEqual({ upTo: 42 });
+  expect(await screen.findByText(/rien n.attend/i)).toBeInTheDocument();
+});
+
+test("opens for a member who may only read guest lists", async () => {
+  setMockUser("demo.guestlists");
+  await renderWithSession(<AppRoutes />, { route: "/inbox" });
+
+  expect(
+    await screen.findByRole("heading", { level: 1, name: "Boîte de réception" }),
+  ).toBeVisible();
 });
 
 test("renders a calm empty state when nothing is waiting", async () => {

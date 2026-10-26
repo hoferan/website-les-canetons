@@ -34,7 +34,7 @@
         },
         {
             "name": "Committee inbox",
-            "description": "The messages the public has sent, and whether anybody has dealt with them."
+            "description": "What is waiting for the committee: messages the public has sent, and events whose bookings changed since somebody last read the guest list."
         },
         {
             "name": "Members",
@@ -2604,6 +2604,168 @@
                                 }
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/events/{event}/booking-read": {
+            "get": {
+                "operationId": "bookingRead.show",
+                "description": "The screen keeps `latestChangeId` from this read and sends it back to\nmark the list read.",
+                "summary": "Read whether the guest list was read, and what moved since",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`BookingReadResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BookingReadResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "bookingRead.mark",
+                "description": "Everything up to `upTo` stops counting, for the whole committee. A\nbooking journaled after it stays unread, so a change that lands while\nsomebody is reading is never swallowed. Marking again with an `upTo`\nthe mark already covers writes nothing.",
+                "summary": "Mark the guest list read, up to what the screen showed",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MarkBookingsReadRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`BookingReadResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BookingReadResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "bookingRead.unmark",
+                "description": "Takes back the mark in force, whoever set it, and the counts return to\nwhat they were since the mark before. `mark` must be the `markId` this\nscreen read: when somebody has marked the list read since, nothing\nchanges and the fresh state comes back, so a stale tab cannot undo a\ncolleague's read.",
+                "summary": "Mark the guest list unread",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "mark",
+                        "in": "query",
+                        "required": true,
+                        "description": "`markId` from the read this screen opened with, as a query parameter.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`BookingReadResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BookingReadResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -8347,6 +8509,88 @@
                 ],
                 "title": "AttendanceStatus"
             },
+            "BookingReadResource": {
+                "type": "object",
+                "properties": {
+                    "markId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "The mark in force; send it as `mark` to mark the list unread. Null when nobody has read the list yet."
+                    },
+                    "readAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "When the mark in force was set; null when nobody has read the list yet."
+                    },
+                    "readBy": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Who set it, as they were named then."
+                    },
+                    "latestChangeId": {
+                        "type": "integer",
+                        "description": "The newest journal entry for this event, 0 when there is none. Send it as `upTo` to mark the list read."
+                    },
+                    "changes": {
+                        "type": "object",
+                        "properties": {
+                            "new": {
+                                "type": "integer"
+                            },
+                            "changed": {
+                                "type": "integer"
+                            },
+                            "cancelled": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "new",
+                            "changed",
+                            "cancelled"
+                        ]
+                    },
+                    "newIds": {
+                        "type": "array",
+                        "description": "Bookings made since the mark and still on the list.",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "changedIds": {
+                        "type": "array",
+                        "description": "Bookings that existed at the mark and changed since.",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "actors": {
+                        "type": "array",
+                        "description": "Who made those changes, newest first. Guests are left out.",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "markId",
+                    "readAt",
+                    "readBy",
+                    "latestChangeId",
+                    "changes",
+                    "newIds",
+                    "changedIds",
+                    "actors"
+                ],
+                "title": "BookingReadResource"
+            },
             "ChaseListEntryResource": {
                 "type": "object",
                 "properties": {
@@ -8658,6 +8902,96 @@
                     "prod"
                 ],
                 "title": "Environment"
+            },
+            "EventBookingsFactsResource": {
+                "type": "object",
+                "properties": {
+                    "startsAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "bookings": {
+                        "type": "integer",
+                        "description": "Bookings on the guest list now."
+                    },
+                    "guests": {
+                        "type": "integer",
+                        "description": "People those bookings cover, counted from the blocks that count guests."
+                    },
+                    "closesAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "closed": {
+                        "type": "boolean",
+                        "description": "Whether bookings have closed, so the next export is the final list."
+                    },
+                    "changes": {
+                        "type": "object",
+                        "description": "Bookings that moved since the last read: made since (`new`),\nchanged since (`changed`), or gone since (`cancelled`).",
+                        "properties": {
+                            "new": {
+                                "type": "integer"
+                            },
+                            "changed": {
+                                "type": "integer"
+                            },
+                            "cancelled": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "new",
+                            "changed",
+                            "cancelled"
+                        ]
+                    },
+                    "actors": {
+                        "type": "array",
+                        "description": "Who made those changes, newest first. Guests on the public form\nhave no account and are left out.",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "latestChangeId": {
+                        "type": "integer",
+                        "description": "The newest journal entry for this event. Send it as `upTo` to mark the item read."
+                    },
+                    "nearlyFull": {
+                        "type": "array",
+                        "description": "Capped blocks with five places or fewer left; `remaining` 0 is full.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "label": {
+                                    "type": "string"
+                                },
+                                "remaining": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "label",
+                                "remaining"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "startsAt",
+                    "bookings",
+                    "guests",
+                    "closesAt",
+                    "closed",
+                    "changes",
+                    "actors",
+                    "latestChangeId",
+                    "nearlyFull"
+                ],
+                "title": "EventBookingsFactsResource"
             },
             "EventResource": {
                 "type": "object",
@@ -9130,6 +9464,17 @@
                     "path": {
                         "type": "string",
                         "description": "Where to go to deal with it, relative to the site root."
+                    },
+                    "facts": {
+                        "anyOf": [
+                            {
+                                "description": "The progress of an `eventBookings` item; null for every other kind.",
+                                "$ref": "#/components/schemas/EventBookingsFactsResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -9138,9 +9483,24 @@
                     "title",
                     "summary",
                     "arrivedAt",
-                    "path"
+                    "path",
+                    "facts"
                 ],
                 "title": "InboxItemResource"
+            },
+            "MarkBookingsReadRequest": {
+                "type": "object",
+                "description": "Marking an event's guest list read, up to the change the screen showed.\n\n`upTo` is the cursor rather than \"now\", so a booking that lands while\nsomebody reads stays unread for everyone (ADR 0035). It has to be one of\nthis event's own journal entries.",
+                "properties": {
+                    "upTo": {
+                        "type": "integer",
+                        "description": "`latestChangeId` from the read this screen opened with."
+                    }
+                },
+                "required": [
+                    "upTo"
+                ],
+                "title": "MarkBookingsReadRequest"
             },
             "MemberResource": {
                 "type": "object",

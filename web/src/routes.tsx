@@ -31,6 +31,7 @@ import { Registers } from "./pages/Registers";
 import { Roles } from "./pages/Roles";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
+import { INBOX_PERMISSIONS } from "./lib/inboxPermissions";
 
 // The library's two pages are a chunk of their own: only `images.manage` opens
 // them, and they bring the upload queue and the shrink step. A navigation here
@@ -148,10 +149,13 @@ export function AppRoutes() {
             <Route path="/history/:id/edit" element={<HistoryEdit />} />
           </Route>
 
-          {/* The worklist across every open source and the archive for one
-              of them, on the token the nav offers both links for. */}
-          <Route element={<RequirePermission permission="messages.view" />}>
+          {/* The worklist across every open source, for anybody who may see
+              one of them, and the archive of the public's messages on its own
+              token. */}
+          <Route element={<RequirePermission permission={INBOX_PERMISSIONS} />}>
             <Route path="/inbox" element={<Inbox />} />
+          </Route>
+          <Route element={<RequirePermission permission="messages.view" />}>
             <Route path="/contact-messages" element={<ContactMessages />} />
           </Route>
 

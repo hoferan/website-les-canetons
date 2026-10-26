@@ -316,6 +316,9 @@ export const fr = {
     // `choices.0.optionId` to `optionId`, `options.2.priceCents` to
     // `priceCents`.
     tableName: "Table",
+    // Marking a guest list read (ADR 0035): only a stale screen gets it wrong.
+    upTo: "Dernière modification lue",
+    mark: "Lecture à annuler",
     choices: "Choix",
     optionId: "Option",
     quantity: "Quantité",
@@ -513,11 +516,37 @@ export const fr = {
     heading: "Boîte de réception",
     kinds: {
       contactMessage: "Message du site",
+      eventBookings: "Inscriptions",
     },
     // The normal case: a cleared worklist, unlike contactMessages.empty, an
     // archive with nothing in it yet.
     empty: "Rien n’attend de réponse. La boîte de réception est à jour.",
     loadError: "La boîte de réception n’a pas pu être chargée.",
+    /**
+     * An event whose bookings moved since the committee last read its guest
+     * list (#123). The pieces are joined by booking/bookingProgress.ts, with
+     * Intl.ListFormat for the "et", so no sentence is assembled in JSX.
+     */
+    eventBookings: {
+      new_one: "{{count}} nouvelle",
+      new_other: "{{count}} nouvelles",
+      changed_one: "{{count}} modifiée",
+      changed_other: "{{count}} modifiées",
+      cancelled_one: "{{count}} annulée",
+      cancelled_other: "{{count}} annulées",
+      by: "par {{names}}",
+      others_one: "{{count}} autre",
+      others_other: "{{count}} autres",
+      closesIn_one: "clôture dans {{count}} jour",
+      closesIn_other: "clôture dans {{count}} jours",
+      closesToday: "clôture aujourd’hui",
+      closed: "inscriptions closes",
+      left_one: "{{label}} : {{count}} place restante",
+      left_other: "{{label}} : {{count}} places restantes",
+      full: "{{label}} : complet",
+      markRead: "Marquer comme lu",
+      markReadFailed: "Le marquage n’a pas pu être enregistré. Réessayez.",
+    },
   },
 
   /**
@@ -1056,6 +1085,17 @@ export const fr = {
     tableLabel: "Table\u00a0: {{value}}",
     // Beside the name of a booking a member made with their account.
     memberBadge: "Membre",
+    // The committee's shared read mark on this list (#123, ADR 0035). What
+    // changed since is worded by booking/bookingProgress.ts, as in the inbox.
+    readLine: {
+      read: "Lu le {{when}} par {{name}}",
+      notRead: "Pas encore lu",
+      nothingSince: "Aucun changement depuis.",
+      markUnread: "Marquer comme non lu",
+      failed: "La lecture n’a pas pu être enregistrée. Réessayez.",
+      tagNew: "nouvelle depuis la lecture",
+      tagChanged: "modifiée depuis la lecture",
+    },
     bookings_one: "{{count}} inscription",
     bookings_other: "{{count}} inscriptions",
     // The counts line joins its parts with a middot; the parts are counted

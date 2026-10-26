@@ -63,5 +63,5 @@ Today there is one source, `ContactMessageSource`, where an item is open while
 
 ## More Information
 
-Issue #123 tracks new bookings as the next source, and the question of where their
-open state lives.
+ADR 0035 adds bookings as the second source (#123). Their open state is a shared read
+mark against a journal of booking changes.

@@ -20,5 +20,8 @@ final readonly class InboxItem
         public string $summary,
         public CarbonInterface $arrivedAt,
         public string $path,
+        // Numbers the SPA words on screen; null for a kind with none.
+        // Computed language is translated in the SPA, so it travels as data.
+        public ?EventBookingsFacts $facts = null,
     ) {}
 }

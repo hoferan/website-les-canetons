@@ -21,6 +21,15 @@ function navLink(page: Page, name: string) {
     .locator("visible=true");
 }
 
+/** Signs in through the nav, which keeps the page and its mocked bookings. */
+async function logInInPlace(page: Page, username: string) {
+  await page.getByRole("link", { name: "Connexion" }).locator("visible=true").first().click();
+  await page.getByLabel("Identifiant").fill(username);
+  await page.getByLabel("Mot de passe", { exact: true }).fill("demo");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page.getByRole("button", { name: `Compte de ${username}` })).toBeVisible();
+}
+
 test("a visitor books the souper from the agenda, and the committee finds them on the guest list", async ({
   page,
 }) => {
@@ -54,11 +63,7 @@ test("a visitor books the souper from the agenda, and the committee finds them o
   // Signing in through the nav because the booking above exists only in this
   // page's mocked backend, and the page.goto in other specs' logIn would
   // reload it.
-  await page.getByRole("link", { name: "Connexion" }).locator("visible=true").first().click();
-  await page.getByLabel("Identifiant").fill("demo.committee");
-  await page.getByLabel("Mot de passe", { exact: true }).fill("demo");
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.getByRole("button", { name: "Compte de demo.committee" })).toBeVisible();
+  await logInInPlace(page, "demo.committee");
 
   await navLink(page, "Événements").click();
   await page.getByRole("link", { name: "Inscriptions à Souper de soutien" }).click();
@@ -91,4 +96,44 @@ test("a visitor books the souper from the agenda, and the committee finds them o
   // theirs to read, never to amend, cancel or mark paid.
   await expect(page.getByRole("button", { name: /^Annuler l’inscription de/ })).toHaveCount(0);
   await expect(page.getByRole("checkbox")).toHaveCount(0);
+});
+
+test("a new booking reaches the committee's inbox, and reading the guest list clears it", async ({
+  page,
+}) => {
+  // The seed's bookings start out read, so only this one is news (#123).
+  await page.goto("/events/7/book");
+  await page.getByLabel("Nom", { exact: true }).fill("Bulliard");
+  await page.getByLabel("Prénom", { exact: true }).fill("Sophie");
+  await page.getByLabel("E-mail", { exact: true }).fill("sophie.bulliard@example.ch");
+  await page.getByLabel("Téléphone", { exact: true }).fill("079 555 12 34");
+  await page.getByLabel("Repas adulte").fill("2");
+  await page.getByRole("button", { name: "M’inscrire" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Inscription enregistrée");
+
+  await logInInPlace(page, "demo.committee");
+  const account = page.getByRole("button", { name: /^Compte de demo\.committee/ });
+  await account.click();
+  await page.getByRole("menuitem", { name: "Boîte de réception" }).click();
+
+  const item = page.getByTestId("inbox-item").filter({ hasText: "Souper de soutien" });
+  await expect(item).toContainText("Inscriptions");
+  await expect(item).toContainText("1 nouvelle");
+  await item.getByRole("link").click();
+
+  await expect(page).toHaveURL(/\/events\/7\/registrations$/);
+  const cards = page.getByTestId("guest-cards").locator(":scope > li");
+  await expect(cards.filter({ hasText: "Bulliard Sophie" })).toContainText(
+    "nouvelle depuis la lecture",
+  );
+  await page.getByTestId("booking-read").getByRole("button", { name: "Marquer comme lu" }).click();
+  await expect(page.getByTestId("booking-read")).toContainText("Aucun changement depuis");
+  await expect(page.getByText("nouvelle depuis la lecture")).toHaveCount(0);
+
+  await account.click();
+  await page.getByRole("menuitem", { name: "Boîte de réception" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Boîte de réception");
+  await expect(page.getByTestId("inbox-item").filter({ hasText: "Souper de soutien" })).toHaveCount(
+    0,
+  );
 });

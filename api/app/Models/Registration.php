@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\BookingChangeKind;
+use App\Support\BookingJournal;
 use App\Support\OptionKind;
 use App\Support\PhoneNumber;
 use Database\Factories\RegistrationFactory;
@@ -51,9 +53,20 @@ class Registration extends Model
     ];
 
     /**
+     * Columns whose change the committee would not notice on the guest list:
+     * payment lives in its spreadsheet, and the dial string follows the
+     * number. A write touching only these is not a change (ADR 0035).
+     */
+    private const UNJOURNALED = ['paid_at', 'phone_e164', 'updated_at'];
+
+    /**
      * The dial string follows the number as typed, on every write. See
      * App\Support\PhoneNumber for why it is a companion and never a
      * replacement.
+     *
+     * Every booking write also lands in the journal here, on the model, so no
+     * controller can forget it (ADR 0035). Answers are journaled by
+     * writeChoices(), which the row's own events do not see.
      */
     protected static function booted(): void
     {
@@ -62,6 +75,20 @@ class Registration extends Model
                 $registration->phone_e164 = PhoneNumber::e164((string) $registration->phone);
             }
         });
+
+        static::created(fn (Registration $registration) => BookingJournal::record($registration, BookingChangeKind::Created));
+        static::deleted(fn (Registration $registration) => BookingJournal::record($registration, BookingChangeKind::Cancelled));
+        static::updated(function (Registration $registration): void {
+            if ($registration->changedForJournal()) {
+                BookingJournal::record($registration, BookingChangeKind::Changed);
+            }
+        });
+    }
+
+    /** Whether the last save changed something the guest list shows. */
+    private function changedForJournal(): bool
+    {
+        return array_diff(array_keys($this->getChanges()), self::UNJOURNALED) !== [];
     }
 
     /** @return array<string, string> */
@@ -109,6 +136,8 @@ class Registration extends Model
      */
     public function writeChoices(array $choices, Collection $kinds, bool $answersOnly = false): void
     {
+        $before = $this->wasRecentlyCreated ? null : $this->answerSnapshot();
+
         // Only a booking that had answers. On a new one the DELETE would take
         // a gap lock at the end of the index, and two bookings doing that at
         // once deadlock each other's inserts.
@@ -133,6 +162,29 @@ class Registration extends Model
         }
 
         $this->unsetRelation('choices');
+
+        // One journal row per booking per write: a new booking is already
+        // `new`, and a save that changed the row itself already said
+        // `changed`. A member's screen resends every answer, so only a real
+        // difference counts.
+        if ($before !== null && ! $this->changedForJournal() && $before !== $this->answerSnapshot()) {
+            BookingJournal::record($this, BookingChangeKind::Changed);
+        }
+    }
+
+    /**
+     * The answers as comparable strings, in a fixed order.
+     *
+     * @return list<string>
+     */
+    private function answerSnapshot(): array
+    {
+        return $this->choices()
+            ->get(['option_id', 'quantity', 'value'])
+            ->map(fn (RegistrationChoice $choice) => "{$choice->option_id}|{$choice->quantity}|{$choice->value}")
+            ->sort()
+            ->values()
+            ->all();
     }
 
     public function fullName(): string
