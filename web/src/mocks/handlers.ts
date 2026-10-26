@@ -2305,13 +2305,16 @@ function registrationTag(registration: MockRegistration): string {
  * ValidatesBookingAnswers and BookingCapacity check them: the choices to
  * store, or the refusal. Shared by a guest's booking and a member's
  * (ADR 0034). `exceptId` leaves that booking's own places out of the
- * capacity count, for a member changing their answers.
+ * capacity count, for a member changing their answers. `answersOnly` is the
+ * committee's correction (#317): a quantity block is not an answer it takes,
+ * and the quantities are neither required nor counted again.
  */
 function checkedAnswers(
   event: EventResource,
   sent: { optionId: number; quantity?: number | null; value?: string | null }[],
   extra: { field: string; reason: string }[],
   exceptId: number | null,
+  answersOnly = false,
 ): RegistrationResourceChoicesItem[] | Response {
   const eventOptions = optionsFor(event.id);
   const optionOf = (id: number) => eventOptions.find((candidate) => candidate.id === id);
@@ -2328,6 +2331,9 @@ function checkedAnswers(
     const option = optionOf(choice.optionId);
     const value = choice.value ?? null;
 
+    if (option?.kind === "quantity" && answersOnly) {
+      return [{ field: `choices.${index}.value`, reason: "not_an_answer" }];
+    }
     if (option?.kind === "quantity") {
       return choice.quantity == null
         ? [{ field: `choices.${index}.quantity`, reason: "required" }]
@@ -2353,6 +2359,7 @@ function checkedAnswers(
     );
   const unanswered = eventOptions
     .filter((option) => option.required && !answered(option))
+    .filter((option) => !(answersOnly && option.kind === "quantity"))
     .map((option) => ({ field: `answers.${option.id}`, reason: "required" }));
 
   // The per-booking cap compares the whole choices array with a number on
@@ -2364,7 +2371,7 @@ function checkedAnswers(
     .filter((choice) => people.some((option) => option.id === choice.optionId))
     .reduce((sum, choice) => sum + (choice.quantity ?? 0), 0);
   const size =
-    people.length === 0
+    people.length === 0 || answersOnly
       ? []
       : guests === 0
         ? [{ field: "choices", reason: "no_guests" }]
@@ -4973,11 +4980,24 @@ const overrides = [
 
     const patch = (await request.json()) as UpdateRegistrationRequest;
 
-    // What was ordered is not editable: `choices` on the body is ignored,
-    // matching UpdateRegistrationRequest, which has no such field. A wrong
-    // order is cancelled and re-booked.
+    // `choices` replaces the text, choice and yes/no answers and keeps the
+    // quantities, as UpdateRegistrationRequest does (#317). A wrong order is
+    // cancelled and re-booked.
+    let choices = existing.choices;
+    if (patch.choices !== undefined) {
+      const event = events.find((candidate) => candidate.id === existing.eventId);
+      const outcome = event
+        ? checkedAnswers(event, patch.choices, [], existing.id, true)
+        : notFound();
+      if (outcome instanceof Response) {
+        return outcome;
+      }
+      choices = [...existing.choices.filter((choice) => choice.kind === "quantity"), ...outcome];
+    }
+
     const updated: MockRegistration = {
       ...existing,
+      choices,
       firstName: patch.firstName ?? existing.firstName,
       lastName: patch.lastName ?? existing.lastName,
       email: patch.email ?? existing.email,

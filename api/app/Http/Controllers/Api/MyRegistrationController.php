@@ -91,6 +91,16 @@ class MyRegistrationController extends Controller
                 ->where('member_id', $member->id)
                 ->first();
 
+            // FOR UPDATE, so the committee's correction (#317), which checks
+            // its tag under the same row lock, waits for this write and then
+            // finds its tag stale, instead of passing and overwriting it.
+            // By primary key and only once the booking exists: a locking read
+            // that finds no row takes a gap lock, and two first bookings would
+            // deadlock each other's inserts.
+            if ($registration !== null) {
+                $registration = Registration::query()->whereKey($registration->id)->lockForUpdate()->first();
+            }
+
             BookingCapacity::refuse($event, $choices, $registration?->id);
 
             $created = $registration === null;

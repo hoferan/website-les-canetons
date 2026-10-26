@@ -13,13 +13,17 @@ import {
   registrationShow,
   registrationUpdate,
   useEventShow,
+  useRegistrationForm,
   useRegistrationIndex,
 } from "../api/generated/endpoints";
 import type {
+  RegistrationOptionResource,
   RegistrationResource,
   RegistrationResourceChoicesItem,
   UpdateRegistrationRequest,
 } from "../api/generated/model";
+import { BlockView } from "../booking/BlockView";
+import type { Typed } from "../booking/useAnswers";
 import { ApiError } from "../api/http";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
@@ -143,6 +147,12 @@ export function EventRegistrations() {
   const bookings = rowsOf<RegistrationResource>(list.data);
   const bookingCount = totalOf(list.data);
   const mayManage = can("registrations.manage");
+
+  // The blocks a correction offers (#317), since the list carries none. A
+  // form switched off answers 404, and its answers are then not corrected
+  // here.
+  const offer = useRegistrationForm(eventId, { query: { enabled: mayManage, retry: false } });
+  const questions = offer.data?.status === 200 ? offer.data.data.options.filter(isQuestion) : [];
 
   const guests = bookings.reduce((sum, booking) => sum + booking.guestCount, 0);
   const priced = bookings.filter((booking) => booking.totalCents !== null);
@@ -421,6 +431,7 @@ export function EventRegistrations() {
       {amending ? (
         <AmendForm
           booking={amending.booking}
+          questions={questions}
           busy={amend.isPending}
           error={form.error}
           problemFor={form.messageFor}
@@ -531,6 +542,7 @@ export function EventRegistrations() {
                 {mayManage ? (
                   <BookingActions
                     booking={booking}
+                    hasQuestions={questions.length > 0}
                     busy={opening === booking.id}
                     onAmend={() => void openAmend(booking)}
                     onCancel={() => void openCancel(booking)}
@@ -572,6 +584,11 @@ function orderOf(booking: RegistrationResource): string {
     .filter((choice) => choice.kind === "quantity")
     .map((choice) => `${choice.quantity} × ${choice.label}`)
     .join(", ");
+}
+
+/** A block the committee may correct the answer to: never a quantity (#317). */
+function isQuestion(option: RegistrationOptionResource): boolean {
+  return option.kind === "text" || option.kind === "choice" || option.kind === "yes_no";
 }
 
 /** A booking's other answers, as the guest gave them. */
@@ -799,11 +816,13 @@ function PaymentLine({
  */
 function BookingActions({
   booking,
+  hasQuestions,
   busy,
   onAmend,
   onCancel,
 }: {
   booking: RegistrationResource;
+  hasQuestions: boolean;
   busy: boolean;
   onAmend: () => void;
   onCancel: () => void;
@@ -811,10 +830,11 @@ function BookingActions({
   const who = `${booking.firstName} ${booking.lastName}`;
 
   const actions: RowAction[] = [
-    // Not on a member's booking: its name comes from the account and is
-    // copied again on the member's next change, and it has no contact
-    // details to correct (ADR 0034).
-    ...(booking.isMember
+    // On a member's booking only when the form asks questions: its name
+    // comes from the account and is copied again on the member's next
+    // change, and it has no contact details (ADR 0034), so the answers are
+    // all there is to correct.
+    ...(booking.isMember && !hasQuestions
       ? []
       : [
           {
@@ -847,15 +867,23 @@ function BookingActions({
 }
 
 /**
- * Correcting a booking's contact details.
+ * Correcting a booking's contact details and its answers (#317).
  *
- * What was ordered is not here, matching the API, whose PATCH has no
- * `choices`: changing an order would need the per-booking cap re-checked and
- * arguably the confirmation re-sent. A wrong order is cancelled and re-booked.
- * The panel says so, so nobody hunts for the field.
+ * A member's booking shows the answers alone: its name comes from the
+ * account and it has no contact details (ADR 0034).
+ *
+ * What was ordered is not here, matching the API, which refuses a quantity:
+ * changing an order would need the per-booking cap and the capacity
+ * re-checked. A wrong order is cancelled and re-booked. The panel says so,
+ * so nobody hunts for the field.
+ *
+ * The answers are sent only when one changed. The PATCH replaces them all
+ * and checks the required blocks, so a block made required after the guest
+ * booked would otherwise refuse a phone number fix.
  */
 function AmendForm({
   booking,
+  questions,
   busy,
   error,
   problemFor,
@@ -863,6 +891,7 @@ function AmendForm({
   onCancel,
 }: {
   booking: RegistrationResource;
+  questions: RegistrationOptionResource[];
   busy: boolean;
   error: ReturnType<typeof useApiFormError>["error"];
   problemFor: (field: string) => string | undefined;
@@ -877,6 +906,21 @@ function AmendForm({
     address: booking.address ?? "",
     tableName: booking.tableName ?? "",
   });
+  const [given] = useState(() => answersOf(booking));
+  const [answers, setAnswers] = useState<Typed>(() =>
+    Object.fromEntries(given.map((choice) => [choice.optionId, choice.value ?? ""])),
+  );
+
+  // What is sent, in this order: the server names a refused answer by its
+  // position, `choices.N.value`.
+  const sent = questions
+    .filter((question) => (answers[question.id] ?? "").trim() !== "")
+    .map((question) => ({ optionId: question.id, value: answers[question.id] ?? "" }));
+  const changed = questions.some(
+    (question) =>
+      (answers[question.id] ?? "") !==
+      (given.find((choice) => choice.optionId === question.id)?.value ?? ""),
+  );
 
   return (
     <form
@@ -888,14 +932,20 @@ function AmendForm({
           return;
         }
         onSubmit({
-          lastName: draft.lastName,
-          firstName: draft.firstName,
-          email: draft.email,
-          phone: draft.phone,
-          // An explicit null clears an optional field; an empty string would
-          // store one. The API reads the two differently on purpose.
-          address: draft.address.trim() === "" ? null : draft.address,
-          tableName: draft.tableName.trim() === "" ? null : draft.tableName,
+          ...(booking.isMember
+            ? {}
+            : {
+                lastName: draft.lastName,
+                firstName: draft.firstName,
+                email: draft.email,
+                phone: draft.phone,
+                // An explicit null clears an optional field; an empty string
+                // would store one. The API reads the two differently on
+                // purpose.
+                address: draft.address.trim() === "" ? null : draft.address,
+                tableName: draft.tableName.trim() === "" ? null : draft.tableName,
+              }),
+          ...(changed ? { choices: sent } : {}),
         });
       }}
     >
@@ -905,20 +955,51 @@ function AmendForm({
 
       <RequiredLegend />
 
-      {AMENDABLE.map((field) => (
-        <FormField
-          key={field.name}
-          id={`amend-${field.name}`}
-          label={t(field.labelKey)}
-          type={field.type}
-          required={field.required}
-          value={draft[field.name as keyof typeof draft]}
-          onChange={(value) => setDraft((current) => ({ ...current, [field.name]: value }))}
-          problem={problemFor(field.name)}
-        />
-      ))}
+      {booking.isMember
+        ? null
+        : AMENDABLE.map((field) => (
+            <FormField
+              key={field.name}
+              id={`amend-${field.name}`}
+              label={t(field.labelKey)}
+              type={field.type}
+              required={field.required}
+              value={draft[field.name as keyof typeof draft]}
+              onChange={(value) => setDraft((current) => ({ ...current, [field.name]: value }))}
+              problem={problemFor(field.name)}
+            />
+          ))}
 
-      <p className="text-sm text-ink-muted">{t("registrations.orderNotHere")}</p>
+      {/* The public form's own widgets, so the committee sees the question
+          as the guest did. min-w-0 for the reason BlockView's radios give. */}
+      {questions.length > 0 ? (
+        <fieldset className="flex min-w-0 flex-col gap-related">
+          <legend className="mb-tight font-semibold">{t("registrations.answersLegend")}</legend>
+          {questions.map((question) => {
+            const position = sent.findIndex((line) => line.optionId === question.id);
+            return (
+              <BlockView
+                key={question.id}
+                option={question}
+                value={answers[question.id] ?? ""}
+                onChange={(value) =>
+                  setAnswers((current) => ({ ...current, [question.id]: value }))
+                }
+                // By position in what was sent, or by option id for a
+                // required block left out, as on the public form.
+                problem={
+                  problemFor(`choices.${position}.value`) ??
+                  (problemFor(`answers.${question.id}`) ? t("booking.answerRequired") : undefined)
+                }
+              />
+            );
+          })}
+        </fieldset>
+      ) : null}
+
+      {booking.choices.some((choice) => choice.kind === "quantity") ? (
+        <p className="text-sm text-ink-muted">{t("registrations.orderNotHere")}</p>
+      ) : null}
 
       <FormError error={error} />
 

@@ -821,6 +821,7 @@ export const de: typeof fr = {
 
     amend: "Korrigieren",
     amendTitle: "Anmeldung von {{name}} korrigieren",
+    answersLegend: "Antworten",
     orderNotHere:
       "Die Bestellung wird nicht hier geändert. Stornieren Sie dafür die Anmeldung und erfassen Sie sie neu.",
     saving: "Wird gespeichert…",

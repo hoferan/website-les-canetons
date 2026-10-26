@@ -1116,6 +1116,8 @@ export const fr = {
     // The row button's accessible name and the amend form's heading, so the
     // two cannot disagree, as with members.deleteTitle.
     amendTitle: "Corriger l’inscription de {{name}}",
+    // Above the questions of the form, in the amend panel.
+    answersLegend: "Réponses",
     orderNotHere:
       "La commande ne se modifie pas ici. Pour la changer, annulez l’inscription et refaites-la.",
     saving: "Enregistrement…",
