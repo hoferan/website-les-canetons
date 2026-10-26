@@ -337,6 +337,18 @@ test("an account holding nothing is offered neither Événements nor Mon compte"
   expect(within(layer).getByRole("button", { name: "Déconnexion" })).toBeInTheDocument();
 });
 
+test("shows the inbox to a member who may only read guest lists", async () => {
+  // The bookings source answers to registrations.view (#123), so a role that
+  // reads guest lists but not the public's messages still has an inbox.
+  const user = userEvent.setup();
+  setMockUser("demo.guestlists");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  await user.click(await screen.findByRole("button", { name: "Compte de demo.guestlists" }));
+  const items = await screen.findAllByRole("menuitem");
+  expect(items.map((item) => item.textContent)).toContain("Boîte de réception");
+});
+
 test("hides Événements from an anonymous visitor", async () => {
   // The planning is the members' tool. The public agenda is a separate page.
   await renderWithSession(<AppRoutes />, { route: "/login" });

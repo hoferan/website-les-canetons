@@ -32,8 +32,11 @@ function useAttemptedPath(): string {
  * There is no session-only guard. The planning and one's own account ask for
  * `events.view` and `account.manage`, the permissions their endpoints check,
  * and the baseline role grants both to every account.
+ *
+ * A list means any one of them: the inbox gathers sources gated on different
+ * permissions, and holding any of them gives it something to show.
  */
-export function RequirePermission({ permission }: { permission: string }) {
+export function RequirePermission({ permission }: { permission: string | readonly string[] }) {
   const { user, can } = useSession();
   const from = useAttemptedPath();
 
@@ -45,7 +48,7 @@ export function RequirePermission({ permission }: { permission: string }) {
 
   // A member is refused in place. Sending them to the login form would read
   // as "your session expired" and invite them to log in again, repeatedly.
-  if (!can(permission)) {
+  if (!(typeof permission === "string" ? [permission] : permission).some((one) => can(one))) {
     return <AccessDenied />;
   }
 

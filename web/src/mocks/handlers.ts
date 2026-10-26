@@ -20,6 +20,8 @@ import type {
   ImageResource,
   ImageResourceUsagesItem,
   InboxItemResource,
+  BookingReadResource,
+  MarkBookingsReadRequest,
   InboxSummary200Counts,
   MemberResource,
   OptionKind,
@@ -255,6 +257,20 @@ const USERS = {
     committeeFunctionName: null,
     roles: seeded(),
     permissions: [],
+  },
+  // A role reading guest lists but not the public's messages: roles are data,
+  // so the committee may make one, and its inbox still has bookings (#123).
+  "demo.guestlists": {
+    id: 11,
+    username: "demo.guestlists",
+    firstName: "Gaëlle",
+    lastName: "Guestlists",
+    mustChangePassword: false,
+    sectionName: null,
+    sectionNameDe: null,
+    committeeFunctionName: null,
+    roles: seeded("member"),
+    permissions: ["events.view", "account.manage", "registrations.view"],
   },
 } satisfies Record<string, MockUser>;
 
@@ -2197,6 +2213,181 @@ function resetRegistrations(): void {
   registrations = initialRegistrations();
   nextOptionId = 8;
   nextRegistrationId = 4;
+  bookingChanges = initialBookingChanges();
+  bookingReads = initialBookingReads();
+}
+
+/*
+ * The booking journal and the committee's read marks (#123, ADR 0035),
+ * mirroring booking_changes, inbox_reads and App\Support\Inbox\BookingDelta.
+ *
+ * The seeded bookings start out read, so a fresh mock opens with an inbox of
+ * contact messages only; a booking made, corrected or cancelled in the mock
+ * puts its event in the inbox.
+ */
+type MockBookingChange = {
+  id: number;
+  eventId: number;
+  registrationId: number;
+  change: "new" | "changed" | "cancelled";
+  actor: string | null;
+  at: string;
+};
+type MockBookingRead = { id: number; eventId: number; upTo: number; by: string; at: string };
+
+function initialBookingChanges(): MockBookingChange[] {
+  return initialRegistrations().map((booking, index) => ({
+    id: index + 1,
+    eventId: booking.eventId,
+    registrationId: booking.id,
+    change: "new",
+    actor: booking.isMember ? `${booking.firstName} ${booking.lastName}` : null,
+    at: booking.createdAt,
+  }));
+}
+
+function initialBookingReads(): MockBookingRead[] {
+  const changes = initialBookingChanges();
+  return [...new Set(changes.map((change) => change.eventId))].map((eventId, index) => ({
+    id: index + 1,
+    eventId,
+    upTo: Math.max(...changes.filter((change) => change.eventId === eventId).map((c) => c.id)),
+    by: "Dominique Direction",
+    at: "2026-10-21T08:00:00.000Z",
+  }));
+}
+
+let bookingChanges: MockBookingChange[] = initialBookingChanges();
+let bookingReads: MockBookingRead[] = initialBookingReads();
+
+/** BookingJournal::record(), minus the after-commit: the mock has no transactions. */
+function journal(booking: MockRegistration, change: MockBookingChange["change"]): void {
+  bookingChanges.push({
+    id: Math.max(0, ...bookingChanges.map((row) => row.id)) + 1,
+    eventId: booking.eventId,
+    registrationId: booking.id,
+    change,
+    actor: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : null,
+    at: new Date().toISOString(),
+  });
+}
+
+function latestBookingRead(eventId: number): MockBookingRead | null {
+  return bookingReads.filter((read) => read.eventId === eventId).at(-1) ?? null;
+}
+
+/** BookingDelta::for(): net per booking since the read mark in force. */
+function bookingDelta(eventId: number) {
+  const mark = latestBookingRead(eventId);
+  const journalOf = bookingChanges.filter((row) => row.eventId === eventId);
+  const since = journalOf.filter((row) => row.id > (mark?.upTo ?? 0));
+  const newIds: number[] = [];
+  const changedIds: number[] = [];
+  let cancelled = 0;
+  const netted: MockBookingChange[] = [];
+
+  for (const id of [...new Set(since.map((row) => row.registrationId))]) {
+    const rows = since.filter((row) => row.registrationId === id);
+    const exists = registrations.some((booking) => booking.id === id);
+    const createdSince = rows.some((row) => row.change === "new");
+    if (exists && createdSince) {
+      newIds.push(id);
+    } else if (exists) {
+      changedIds.push(id);
+    } else if (!createdSince) {
+      cancelled++;
+    } else {
+      continue;
+    }
+    netted.push(...rows);
+  }
+
+  netted.sort((a, b) => b.id - a.id);
+
+  return {
+    mark,
+    latestChangeId: Math.max(0, ...journalOf.map((row) => row.id)),
+    newIds,
+    changedIds,
+    cancelled,
+    actors: [...new Set(netted.flatMap((row) => (row.actor ? [row.actor] : [])))],
+    lastChangeAt: netted[0]?.at ?? null,
+    open: newIds.length > 0 || changedIds.length > 0 || cancelled > 0,
+  };
+}
+
+/** BookingReadResource. */
+function bookingRead(eventId: number): BookingReadResource {
+  const delta = bookingDelta(eventId);
+  return {
+    readAt: delta.mark?.at ?? null,
+    readBy: delta.mark?.by ?? null,
+    latestChangeId: delta.latestChangeId,
+    changes: {
+      new: delta.newIds.length,
+      changed: delta.changedIds.length,
+      cancelled: delta.cancelled,
+    },
+    newIds: delta.newIds,
+    changedIds: delta.changedIds,
+    actors: delta.actors,
+  };
+}
+
+/** EventBookingsSource: published, with a form, its day not over, and moved since the read. */
+function openBookingItems(): InboxItemResource[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return events.flatMap((event) => {
+    const delta = bookingDelta(event.id);
+    const last = new Date(event.endsAt ?? event.startsAt ?? 0);
+    if (
+      event.publishedAt === null ||
+      event.registrationClosesAt === null ||
+      last < today ||
+      !delta.open
+    ) {
+      return [];
+    }
+
+    const booked = registrations.filter((booking) => booking.eventId === event.id);
+    const nearlyFull = options
+      .filter((option) => option.eventId === event.id && option.capacity !== null)
+      .map((option) => ({ label: option.label ?? "", remaining: remainingOf(option) ?? 0 }))
+      .filter((option) => option.remaining <= 5);
+
+    return [
+      {
+        kind: "eventBookings",
+        id: event.id,
+        title: event.title,
+        summary: "",
+        arrivedAt: delta.lastChangeAt ?? new Date().toISOString(),
+        path: `/events/${event.id}/registrations`,
+        facts: {
+          startsAt: event.startsAt,
+          bookings: booked.length,
+          guests: booked.reduce((sum, booking) => sum + booking.guestCount, 0),
+          closesAt: event.registrationClosesAt,
+          closed: new Date(event.registrationClosesAt) < new Date(),
+          changes: {
+            new: delta.newIds.length,
+            changed: delta.changedIds.length,
+            cancelled: delta.cancelled,
+          },
+          actors: delta.actors,
+          latestChangeId: delta.latestChangeId,
+          nearlyFull,
+        },
+      },
+    ];
+  });
+}
+
+/** Whether the caller holds `registrations.view`, which the bookings source filters on. */
+function mayReadGuestLists(): boolean {
+  return currentUser?.permissions.includes("registrations.view") ?? false;
 }
 
 /**
@@ -4770,6 +4961,7 @@ const overrides = [
     };
 
     registrations = [...registrations, booking];
+    journal(booking, "new");
 
     return HttpResponse.json(published(booking), { status: 201 });
   }),
@@ -4830,6 +5022,12 @@ const overrides = [
           registration.id === existing.id ? booking : registration,
         )
       : [...registrations, booking];
+    // An untouched re-save is no change (Registration::writeChoices()).
+    if (!existing) {
+      journal(booking, "new");
+    } else if (JSON.stringify(existing.choices) !== JSON.stringify(booking.choices)) {
+      journal(booking, "changed");
+    }
 
     return HttpResponse.json(published(booking), { status: existing ? 200 : 201 });
   }),
@@ -4849,6 +5047,7 @@ const overrides = [
     }
 
     registrations = registrations.filter((registration) => registration.id !== mine.id);
+    journal(mine, "cancelled");
 
     return HttpResponse.json({ ok: true });
   }),
@@ -5022,6 +5221,12 @@ const overrides = [
     registrations = registrations.map((candidate) =>
       candidate.id === updated.id ? updated : candidate,
     );
+    // Ticking "paid" is not a change the inbox reports (ADR 0035).
+    if (
+      JSON.stringify({ ...existing, paidAt: null }) !== JSON.stringify({ ...updated, paidAt: null })
+    ) {
+      journal(updated, "changed");
+    }
 
     return HttpResponse.json(published(updated), {
       headers: { ETag: registrationTag(updated) },
@@ -5045,7 +5250,51 @@ const overrides = [
     }
 
     registrations = registrations.filter((candidate) => candidate.id !== existing.id);
+    journal(existing, "cancelled");
     return HttpResponse.json({ ok: true });
+  }),
+
+  // The committee's shared read mark on a guest list (ADR 0035), as
+  // BookingReadController answers it.
+  http.get("/api/v1/events/:id/booking-read", ({ params }) => {
+    const refusal = refuseWithout("registrations.view");
+    return refusal ?? HttpResponse.json(bookingRead(Number(params.id)));
+  }),
+
+  http.put("/api/v1/events/:id/booking-read", async ({ request, params }) => {
+    const refusal = refuseWithout("registrations.view");
+    if (refusal) {
+      return refusal;
+    }
+    const eventId = Number(params.id);
+    const { upTo } = (await request.json()) as MarkBookingsReadRequest;
+    if (!bookingChanges.some((row) => row.eventId === eventId && row.id === upTo)) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "upTo", reason: upTo == null ? "required" : "invalid_format" },
+      ]);
+    }
+    const mark = latestBookingRead(eventId);
+    if (!mark || mark.upTo < upTo) {
+      bookingReads.push({
+        id: Math.max(0, ...bookingReads.map((read) => read.id)) + 1,
+        eventId,
+        upTo,
+        by: `${currentUser?.firstName ?? ""} ${currentUser?.lastName ?? ""}`.trim(),
+        at: new Date().toISOString(),
+      });
+    }
+    return HttpResponse.json(bookingRead(eventId));
+  }),
+
+  http.delete("/api/v1/events/:id/booking-read", ({ params }) => {
+    const refusal = refuseWithout("registrations.view");
+    if (refusal) {
+      return refusal;
+    }
+    const eventId = Number(params.id);
+    const mark = latestBookingRead(eventId);
+    bookingReads = bookingReads.filter((read) => read !== mark);
+    return HttpResponse.json(bookingRead(eventId));
   }),
 
   // What an event offers is part of the event, so both of these are
@@ -5230,7 +5479,11 @@ const overrides = [
     if (!currentUser) {
       return unauthenticated();
     }
-    return collection(mayReadMessages() ? openContactMessages().map(toInboxItem) : [], request);
+    const items = [
+      ...(mayReadMessages() ? openContactMessages().map(toInboxItem) : []),
+      ...(mayReadGuestLists() ? openBookingItems() : []),
+    ].sort((a, b) => b.arrivedAt.localeCompare(a.arrivedAt));
+    return collection(items, request);
   }),
 
   // Not a list: bare {total, counts}, matching InboxController::summary.
@@ -5240,9 +5493,12 @@ const overrides = [
     if (!currentUser) {
       return unauthenticated();
     }
-    const open = mayReadMessages() ? openContactMessages().length : 0;
-    const counts: InboxSummary200Counts = mayReadMessages() ? { contactMessage: open } : {};
-    return HttpResponse.json({ total: open, counts });
+    const counts: InboxSummary200Counts = {
+      ...(mayReadMessages() ? { contactMessage: openContactMessages().length } : {}),
+      ...(mayReadGuestLists() ? { eventBookings: openBookingItems().length } : {}),
+    };
+    const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+    return HttpResponse.json({ total, counts });
   }),
 
   // The archive. Gated on messages.view, unlike the inbox above: a caller who
