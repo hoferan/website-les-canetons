@@ -43,7 +43,7 @@ final readonly class BookingDelta
         $journal = BookingChange::query()->where('event_id', $event->id);
         $latestChangeId = (int) (clone $journal)->max('id');
 
-        $rows = $journal->where('id', '>', $mark?->read_up_to ?? 0)->orderBy('id')->get();
+        $rows = $journal->where('id', '>', $mark->read_up_to ?? 0)->orderBy('id')->get();
         $stillThere = Registration::query()
             ->whereIn('id', $rows->pluck('registration_id')->filter()->unique())
             ->pluck('id')
