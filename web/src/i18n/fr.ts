@@ -318,6 +318,7 @@ export const fr = {
     tableName: "Table",
     // Marking a guest list read (ADR 0035): only a stale screen gets it wrong.
     upTo: "Dernière modification lue",
+    mark: "Lecture à annuler",
     choices: "Choix",
     optionId: "Option",
     quantity: "Quantité",

@@ -131,10 +131,12 @@ class BookingReadEndpointTest extends TestCase
         $camille = $this->camille();
         $this->actingAsMember($camille)->putJson($this->url(), ['upTo' => $this->latest()])->assertOk();
         Registration::factory()->create(['event_id' => $this->event->id]);
-        $this->actingAsMember($camille)->putJson($this->url(), ['upTo' => $this->latest()])->assertOk();
+        $second = $this->actingAsMember($camille)
+            ->putJson($this->url(), ['upTo' => $this->latest()])
+            ->json('markId');
 
         $this->actingAsMember($camille)
-            ->deleteJson($this->url())
+            ->deleteJson($this->url()."?mark={$second}")
             ->assertOk()
             ->assertJsonPath('changes.new', 1)
             ->assertJsonPath('readBy', 'Camille Committee');
@@ -143,12 +145,39 @@ class BookingReadEndpointTest extends TestCase
         $this->assertNotContains($luc->id, $this->actingAsMember($camille)->getJson($this->url())->json('newIds'));
     }
 
+    public function test_unmark_from_a_stale_screen_leaves_a_newer_mark(): void
+    {
+        // Marie's tab still shows her Monday mark; Paul marked it read since.
+        Registration::factory()->create(['event_id' => $this->event->id]);
+        $camille = $this->camille();
+        $monday = $this->actingAsMember($camille)
+            ->putJson($this->url(), ['upTo' => $this->latest()])
+            ->json('markId');
+        Registration::factory()->create(['event_id' => $this->event->id]);
+        $this->actingAsMember($camille)->putJson($this->url(), ['upTo' => $this->latest()])->assertOk();
+
+        $this->actingAsMember($camille)
+            ->deleteJson($this->url()."?mark={$monday}")
+            ->assertOk()
+            ->assertJsonPath('changes.new', 0);
+
+        $this->assertSame(2, InboxRead::count());
+    }
+
+    public function test_unmark_needs_the_mark_it_undoes(): void
+    {
+        $this->actingAsMember($this->camille())
+            ->deleteJson($this->url())
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'mark');
+    }
+
     public function test_unmark_without_a_mark_is_harmless(): void
     {
         Registration::factory()->create(['event_id' => $this->event->id]);
 
         $this->actingAsMember($this->camille())
-            ->deleteJson($this->url())
+            ->deleteJson($this->url().'?mark=1')
             ->assertOk()
             ->assertJsonPath('readAt', null)
             ->assertJsonPath('changes.new', 1);

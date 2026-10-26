@@ -1277,6 +1277,7 @@ export const getRegistrationExportResponseMock = (
 export const getBookingReadShowResponseMock = (
   overrideResponse: Partial<Extract<BookingReadResource, object>> = {},
 ): BookingReadResource => ({
+  markId: faker.helpers.arrayElement([faker.number.int(), null]),
   readAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   readBy: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   latestChangeId: faker.number.int(),
@@ -1296,6 +1297,7 @@ export const getBookingReadShowResponseMock = (
 export const getBookingReadMarkResponseMock = (
   overrideResponse: Partial<Extract<BookingReadResource, object>> = {},
 ): BookingReadResource => ({
+  markId: faker.helpers.arrayElement([faker.number.int(), null]),
   readAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   readBy: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   latestChangeId: faker.number.int(),
@@ -1315,6 +1317,7 @@ export const getBookingReadMarkResponseMock = (
 export const getBookingReadUnmarkResponseMock = (
   overrideResponse: Partial<Extract<BookingReadResource, object>> = {},
 ): BookingReadResource => ({
+  markId: faker.helpers.arrayElement([faker.number.int(), null]),
   readAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   readBy: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   latestChangeId: faker.number.int(),

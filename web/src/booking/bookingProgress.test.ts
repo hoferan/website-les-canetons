@@ -30,6 +30,16 @@ test("counts the days to the close, or says it has closed", () => {
   expect(closingText("2026-10-30T22:59:00Z", true)).toBe("inscriptions closes");
 });
 
+test("counts calendar days in Fribourg, not 24-hour blocks", () => {
+  // 21:00 in Fribourg; the form closes at 19:00 tomorrow, which is less than
+  // 24 hours away but still tomorrow.
+  vi.setSystemTime(new Date("2026-11-01T20:00:00Z"));
+  expect(closingText("2026-11-02T18:00:00Z", false)).toBe("clôture dans 1 jour");
+  // 00:30 in Fribourg is still the previous day in UTC.
+  vi.setSystemTime(new Date("2026-11-01T23:30:00Z"));
+  expect(closingText("2026-11-02T22:00:00Z", false)).toBe("clôture aujourd’hui");
+});
+
 test("says how many places are left, or that an option is full", () => {
   expect(placesText({ label: "Viande", remaining: 4 })).toBe("Viande : 4 places restantes");
   expect(placesText({ label: "Viande", remaining: 1 })).toBe("Viande : 1 place restante");

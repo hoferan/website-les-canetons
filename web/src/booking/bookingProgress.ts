@@ -2,6 +2,7 @@ import type {
   EventBookingsFactsResourceChanges,
   EventBookingsFactsResourceNearlyFullItem,
 } from "../api/generated/model";
+import { bandZoneParts } from "../events/bandTime";
 import { currentLocale, t } from "../i18n";
 
 /**
@@ -48,12 +49,18 @@ export function actorsText(actors: string[]): string {
   return t("inbox.eventBookings.by", { names: joined(names) });
 }
 
-/** "clôture dans 5 jours", "clôture aujourd’hui", or "inscriptions closes". */
+/**
+ * "clôture dans 5 jours", "clôture aujourd’hui", or "inscriptions closes".
+ *
+ * Calendar days in Fribourg, not 24-hour blocks: a form closing at 19:00
+ * tomorrow closes "dans 1 jour" even when read at 21:00 today.
+ */
 export function closingText(closesAt: string, closed: boolean): string {
   if (closed) {
     return t("inbox.eventBookings.closed");
   }
-  const days = Math.floor((new Date(closesAt).getTime() - Date.now()) / DAY_MS);
+  const day = (iso: string) => Date.parse(`${bandZoneParts(iso).date}T00:00:00Z`);
+  const days = Math.round((day(closesAt) - day(new Date().toISOString())) / DAY_MS);
   return days < 1
     ? t("inbox.eventBookings.closesToday")
     : t("inbox.eventBookings.closesIn", { count: days });

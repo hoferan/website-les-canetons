@@ -313,6 +313,11 @@ import type { BookingReadResourceChanges } from "./bookingReadResourceChanges";
 
 export interface BookingReadResource {
   /**
+   * The mark in force; send it as `mark` to mark the list unread. Null when nobody has read the list yet.
+   * @nullable
+   */
+  markId: number | null;
+  /**
    * When the mark in force was set; null when nobody has read the list yet.
    * @nullable
    */

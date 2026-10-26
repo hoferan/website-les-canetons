@@ -32,7 +32,7 @@ return new class extends Migration
                 // No foreign key: a cancelled booking's row is gone, and this
                 // id is all that is left of it.
                 $table->unsignedBigInteger('registration_id')->nullable();
-                $table->string('change', 16);
+                $table->string('kind', 16);
                 $table->foreignId('actor_member_id')->nullable()->constrained('members')->nullOnDelete();
                 $table->string('actor_label')->nullable();
                 $table->timestamp('created_at')->nullable();
@@ -85,7 +85,7 @@ return new class extends Migration
             DB::table('booking_changes')->insert([
                 'event_id' => $booking->event_id,
                 'registration_id' => $booking->id,
-                'change' => 'new',
+                'kind' => 'new',
                 'actor_member_id' => $booking->member_id,
                 // A guest has no account, so no actor; a member booked their own.
                 'actor_label' => $booking->member_id === null

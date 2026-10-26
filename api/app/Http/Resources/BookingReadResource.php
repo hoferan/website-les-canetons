@@ -21,6 +21,8 @@ class BookingReadResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            /** The mark in force; send it as `mark` to mark the list unread. Null when nobody has read the list yet. */
+            'markId' => $this->mark?->id,
             /** When the mark in force was set; null when nobody has read the list yet. */
             'readAt' => $this->mark === null ? null : Iso8601::utc($this->mark->created_at),
             /** Who set it, as they were named then. */

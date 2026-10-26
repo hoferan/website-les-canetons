@@ -399,9 +399,9 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
 
         // The committee's shared read mark on this list (ADR 0035). Reading
         // the list is enough: marking it read changes no booking. No `etag:`
-        // facet, because `upTo` already carries what the screen saw. Unmark
-        // takes back the newest mark whoever set it; the worst a stale screen
-        // does is bring the item back.
+        // facet, because `upTo` and `mark` already carry what the screen saw:
+        // a stale screen can neither swallow a newer booking nor undo a
+        // colleague's newer read.
         Route::get('/events/{event}/booking-read', [BookingReadController::class, 'show']);
         Route::put('/events/{event}/booking-read', [BookingReadController::class, 'mark']);
         Route::delete('/events/{event}/booking-read', [BookingReadController::class, 'unmark']);

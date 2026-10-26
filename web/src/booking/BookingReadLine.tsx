@@ -34,6 +34,12 @@ export function BookingReadLine({ eventId }: { eventId: number }) {
     return null;
   }
   const state = read.data.data;
+  // Nothing journaled and never read: a past event whose bookings predate the
+  // journal. "No change since" would have nothing to be since.
+  if (state.latestChangeId === 0 && state.markId === null) {
+    return null;
+  }
+  const markId = state.markId;
   const moved = [changesText(state.changes), actorsText(state.actors)].filter(Boolean).join(" ");
 
   async function save(write: () => Promise<{ status: number; data: unknown }>) {
@@ -78,13 +84,13 @@ export function BookingReadLine({ eventId }: { eventId: number }) {
             {t("inbox.eventBookings.markRead")}
           </Button>
         ) : null}
-        {state.readAt ? (
+        {markId !== null ? (
           <Button
             type="button"
             size="sm"
             variant="raised-light"
             aria-disabled={saving}
-            onClick={() => void save(() => bookingReadUnmark(eventId))}
+            onClick={() => void save(() => bookingReadUnmark(eventId, { mark: markId }))}
           >
             {t("registrations.readLine.markUnread")}
           </Button>

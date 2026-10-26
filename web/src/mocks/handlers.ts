@@ -2320,6 +2320,7 @@ function bookingDelta(eventId: number) {
 function bookingRead(eventId: number): BookingReadResource {
   const delta = bookingDelta(eventId);
   return {
+    markId: delta.mark?.id ?? null,
     readAt: delta.mark?.at ?? null,
     readBy: delta.mark?.by ?? null,
     latestChangeId: delta.latestChangeId,
@@ -5286,14 +5287,24 @@ const overrides = [
     return HttpResponse.json(bookingRead(eventId));
   }),
 
-  http.delete("/api/v1/events/:id/booking-read", ({ params }) => {
+  // Undoes only the mark the screen showed, so a stale tab cannot take back
+  // a colleague's newer read.
+  http.delete("/api/v1/events/:id/booking-read", ({ request, params }) => {
     const refusal = refuseWithout("registrations.view");
     if (refusal) {
       return refusal;
     }
+    const shown = new URL(request.url).searchParams.get("mark");
+    if (shown === null) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "mark", reason: "required" },
+      ]);
+    }
     const eventId = Number(params.id);
     const mark = latestBookingRead(eventId);
-    bookingReads = bookingReads.filter((read) => read !== mark);
+    if (mark && mark.id === Number(shown)) {
+      bookingReads = bookingReads.filter((read) => read !== mark);
+    }
     return HttpResponse.json(bookingRead(eventId));
   }),
 

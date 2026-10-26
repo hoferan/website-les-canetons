@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\RegistrationConfirmation;
 use App\Models\BookingChange;
 use App\Models\Event;
 use App\Models\Member;
@@ -12,6 +13,7 @@ use App\Support\FormAudience;
 use App\Support\OptionKind;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
 use RuntimeException;
 use Tests\TestCase;
@@ -32,7 +34,7 @@ class BookingJournalTest extends TestCase
         $this->bookPublicly($event, [['optionId' => $meal->id, 'quantity' => 2]])->assertCreated();
 
         $row = BookingChange::sole();
-        $this->assertSame(BookingChangeKind::Created, $row->change);
+        $this->assertSame(BookingChangeKind::Created, $row->kind);
         $this->assertSame($event->id, $row->event_id);
         $this->assertSame(Registration::sole()->id, $row->registration_id);
         $this->assertNull($row->actor_member_id);
@@ -47,7 +49,7 @@ class BookingJournalTest extends TestCase
         $this->bookAs($anna, $event, [['optionId' => $meal->id, 'quantity' => 1]]);
 
         $row = BookingChange::sole();
-        $this->assertSame(BookingChangeKind::Created, $row->change);
+        $this->assertSame(BookingChangeKind::Created, $row->kind);
         $this->assertSame($anna->id, $row->actor_member_id);
         $this->assertSame('Anna Muster', $row->actor_label);
     }
@@ -62,7 +64,7 @@ class BookingJournalTest extends TestCase
         // The screen sends the answers back in another order; still no change.
         $this->bookAs($anna, $event, array_reverse($answers));
 
-        $this->assertSame([BookingChangeKind::Created], BookingChange::pluck('change')->all());
+        $this->assertSame([BookingChangeKind::Created], BookingChange::pluck('kind')->all());
     }
 
     public function test_a_member_changing_an_answer_records_one_changed(): void
@@ -75,7 +77,7 @@ class BookingJournalTest extends TestCase
 
         $this->assertSame(
             [BookingChangeKind::Created, BookingChangeKind::Changed],
-            BookingChange::orderBy('id')->pluck('change')->all(),
+            BookingChange::orderBy('id')->pluck('kind')->all(),
         );
     }
 
@@ -90,7 +92,7 @@ class BookingJournalTest extends TestCase
 
         $this->bookAs($anna, $event, [['optionId' => $meal->id, 'quantity' => 1], ['optionId' => $size->id, 'value' => 'S']]);
 
-        $this->assertSame(1, BookingChange::where('change', BookingChangeKind::Changed)->count());
+        $this->assertSame(1, BookingChange::where('kind', BookingChangeKind::Changed)->count());
     }
 
     public function test_a_committee_correction_records_changed_by_the_corrector(): void
@@ -105,7 +107,7 @@ class BookingJournalTest extends TestCase
             ->assertOk();
 
         $row = BookingChange::sole();
-        $this->assertSame(BookingChangeKind::Changed, $row->change);
+        $this->assertSame(BookingChangeKind::Changed, $row->kind);
         $this->assertSame($paul->id, $row->actor_member_id);
         $this->assertSame('Paul Direction', $row->actor_label);
     }
@@ -134,7 +136,7 @@ class BookingJournalTest extends TestCase
             ->assertOk();
 
         $row = BookingChange::sole();
-        $this->assertSame(BookingChangeKind::Cancelled, $row->change);
+        $this->assertSame(BookingChangeKind::Cancelled, $row->kind);
         $this->assertSame($booking->id, $row->registration_id);
         $this->assertSame($booking->event_id, $row->event_id);
     }
@@ -149,7 +151,7 @@ class BookingJournalTest extends TestCase
 
         $this->assertSame(
             [BookingChangeKind::Created, BookingChangeKind::Cancelled],
-            BookingChange::orderBy('id')->pluck('change')->all(),
+            BookingChange::orderBy('id')->pluck('kind')->all(),
         );
     }
 
@@ -195,6 +197,30 @@ class BookingJournalTest extends TestCase
         });
 
         $this->assertSame(1, BookingChange::count());
+    }
+
+    public function test_a_journal_that_cannot_be_written_never_fails_a_saved_booking(): void
+    {
+        // The booking has committed by then: a 500 would tell the guest it
+        // failed, release the idempotency key, and the retry would book twice.
+        Mail::fake();
+        BookingChange::creating(fn () => throw new RuntimeException('journal unavailable'));
+        $event = Event::factory()->takingRegistrations()->create();
+        $meal = RegistrationOption::factory()->create(['event_id' => $event->id]);
+
+        $this->bookPublicly($event, [['optionId' => $meal->id, 'quantity' => 1]])->assertCreated();
+
+        $this->assertSame(1, Registration::count());
+        Mail::assertSent(RegistrationConfirmation::class);
+    }
+
+    public function test_the_kind_column_is_named_kind(): void
+    {
+        // `change` is a reserved word in MariaDB: raw SQL and DbGate would
+        // need backticks around it.
+        Registration::factory()->create();
+
+        $this->assertSame('new', DB::selectOne('select kind from booking_changes')->kind);
     }
 
     public function test_deleting_the_event_removes_its_journal(): void

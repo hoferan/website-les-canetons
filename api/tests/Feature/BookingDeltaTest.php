@@ -112,7 +112,7 @@ class BookingDeltaTest extends TestCase
         BookingChange::create([
             'event_id' => $other->id,
             'registration_id' => 9998,
-            'change' => BookingChangeKind::Created,
+            'kind' => BookingChangeKind::Created,
         ]);
 
         $delta = BookingDelta::for($this->event);
@@ -188,7 +188,7 @@ class BookingDeltaTest extends TestCase
         return BookingChange::create([
             'event_id' => $this->event->id,
             'registration_id' => $registrationId,
-            'change' => $kind,
+            'kind' => $kind,
             'actor_member_id' => $actor?->id,
             'actor_label' => $actor?->fullName(),
         ]);

@@ -36,8 +36,10 @@ cancelled bookings, records who made each change, and is written in one place
 that no controller can forget.
 
 - `booking_changes` holds one row per booking per write: `new`, `changed` or
-  `cancelled`, with the actor's name captured at the time. `Registration`'s model
-  hooks and `writeChoices()` write it, after the transaction commits.
+  `cancelled` in its `kind` column, with the actor's name captured at the time.
+  `Registration`'s model hooks and `writeChoices()` write it, after the
+  transaction commits. A row that fails to write is reported and dropped: the
+  booking has committed by then, and an error would make a guest book twice.
   Ticking "paid", saving a booking unchanged, and editing the form are not
   changes.
 - `inbox_reads` holds the committee's read marks, keyed by inbox kind and item.
@@ -58,8 +60,12 @@ that no controller can forget.
 
 - Good, because a new write path is journaled without anyone remembering to: the
   hook sits on the model.
-- Good, because the cursor cannot swallow a change the reader never saw: journal
-  ids follow commit order, since rows are written after commit.
+- Good, because the cursor does not swallow a change the reader never saw. Rows
+  are written after commit, so their ids follow commit order closely enough. Two
+  rows written in the same instant can still take their ids out of order, a
+  window microseconds wide.
+- Good, because "mark as unread" names the mark the screen showed, so a tab left
+  open for days cannot take back a colleague's newer read.
 - Good, because the next inbox source that needs a shared read mark reuses
   `inbox_reads` without a migration.
 - Bad, because two tables and a backfill ship for a feature with a handful of

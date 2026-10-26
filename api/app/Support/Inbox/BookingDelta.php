@@ -56,7 +56,7 @@ final readonly class BookingDelta
 
         foreach ($rows->whereNotNull('registration_id')->groupBy('registration_id') as $id => $group) {
             $exists = $stillThere->has($id);
-            $createdSince = $group->contains('change', BookingChangeKind::Created);
+            $createdSince = $group->contains('kind', BookingChangeKind::Created);
 
             if ($exists && $createdSince) {
                 $newIds[] = (int) $id;

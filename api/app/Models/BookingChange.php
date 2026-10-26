@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $event_id
  * @property int|null $registration_id
- * @property BookingChangeKind $change
+ * @property BookingChangeKind $kind
  * @property int|null $actor_member_id
  * @property string|null $actor_label
  * @property Carbon $created_at
@@ -33,7 +33,7 @@ class BookingChange extends Model
     protected $fillable = [
         'event_id',
         'registration_id',
-        'change',
+        'kind',
         'actor_member_id',
         'actor_label',
     ];
@@ -41,6 +41,6 @@ class BookingChange extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['change' => BookingChangeKind::class, 'created_at' => 'datetime'];
+        return ['kind' => BookingChangeKind::class, 'created_at' => 'datetime'];
     }
 }

@@ -2713,7 +2713,7 @@
             },
             "delete": {
                 "operationId": "bookingRead.unmark",
-                "description": "Takes back the mark in force, whoever set it, and the counts return to\nwhat they were since the mark before. With no mark, nothing changes.",
+                "description": "Takes back the mark in force, whoever set it, and the counts return to\nwhat they were since the mark before. `mark` must be the `markId` this\nscreen read: when somebody has marked the list read since, nothing\nchanges and the fresh state comes back, so a stale tab cannot undo a\ncolleague's read.",
                 "summary": "Mark the guest list unread",
                 "tags": [
                     "Registration"
@@ -2724,6 +2724,15 @@
                         "in": "path",
                         "required": true,
                         "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "mark",
+                        "in": "query",
+                        "required": true,
+                        "description": "`markId` from the read this screen opened with, as a query parameter.",
                         "schema": {
                             "type": "integer"
                         }
@@ -2745,6 +2754,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
@@ -8500,6 +8512,13 @@
             "BookingReadResource": {
                 "type": "object",
                 "properties": {
+                    "markId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "The mark in force; send it as `mark` to mark the list unread. Null when nobody has read the list yet."
+                    },
                     "readAt": {
                         "type": [
                             "string",
@@ -8561,6 +8580,7 @@
                     }
                 },
                 "required": [
+                    "markId",
                     "readAt",
                     "readBy",
                     "latestChangeId",

@@ -56,7 +56,7 @@ class BookingJournalSchemaTest extends TestCase
 
         $rows = BookingChange::orderBy('id')->get();
         $this->assertCount(2, $rows);
-        $this->assertSame([BookingChangeKind::Created, BookingChangeKind::Created], $rows->pluck('change')->all());
+        $this->assertSame([BookingChangeKind::Created, BookingChangeKind::Created], $rows->pluck('kind')->all());
         $this->assertNull($rows->firstWhere('registration_id', $guest->id)->actor_member_id);
         $this->assertSame($paul->id, $rows->firstWhere('registration_id', $own->id)->actor_member_id);
         $this->assertSame('Paul Player', $rows->firstWhere('registration_id', $own->id)->actor_label);

@@ -276,6 +276,7 @@ export const de: typeof fr = {
     note: "Begründung",
     tableName: "Tisch",
     upTo: "Zuletzt gelesene Änderung",
+    mark: "Zurückzunehmende Lesemarke",
     choices: "Auswahl",
     optionId: "Option",
     quantity: "Anzahl",

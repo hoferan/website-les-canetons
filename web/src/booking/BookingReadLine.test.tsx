@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
@@ -11,6 +11,7 @@ import { BookingReadLine } from "./BookingReadLine";
 
 /** Read by Marie, then two bookings made and one cancelled, one by Paul. */
 const READ: BookingReadResource = {
+  markId: 5,
   readAt: "2026-11-08T09:05:00Z",
   readBy: "Marie Comité",
   latestChangeId: 12,
@@ -47,7 +48,7 @@ test("says who read it and what changed since", async () => {
 });
 
 test("says when nobody has read it yet", async () => {
-  serve({ ...READ, readAt: null, readBy: null });
+  serve({ ...READ, markId: null, readAt: null, readBy: null });
 
   const line = await renderLine();
 
@@ -55,7 +56,7 @@ test("says when nobody has read it yet", async () => {
 });
 
 test("offers unread only after a read", async () => {
-  serve({ ...READ, readAt: null, readBy: null });
+  serve({ ...READ, markId: null, readAt: null, readBy: null });
   await renderLine();
   expect(screen.queryByRole("button", { name: "Marquer comme non lu" })).toBeNull();
   expect(screen.getByRole("button", { name: "Marquer comme lu" })).toBeInTheDocument();
@@ -90,13 +91,44 @@ test("mark read sends the loaded latest change", async () => {
   expect(line).toHaveTextContent("par Camille Committee");
 });
 
-test("mark unread brings the changes back", async () => {
+test("mark unread names the mark it showed, and brings the changes back", async () => {
   serve(QUIET);
-  server.use(http.delete("/api/v1/events/7/booking-read", () => HttpResponse.json(READ)));
+  let undone: string | null = null;
+  server.use(
+    http.delete("/api/v1/events/7/booking-read", ({ request }) => {
+      undone = new URL(request.url).searchParams.get("mark");
+      return HttpResponse.json(READ);
+    }),
+  );
   const user = userEvent.setup();
   await renderLine();
 
   await user.click(screen.getByRole("button", { name: "Marquer comme non lu" }));
 
   expect(await screen.findByText(/2 nouvelles et 1 annulée/)).toBeInTheDocument();
+  expect(undone).toBe("5");
+});
+
+test("says nothing on a list nothing was ever recorded for", async () => {
+  // A past event, whose bookings predate the journal: "no change since"
+  // would have nothing to be since.
+  let asked = false;
+  server.use(
+    http.get("/api/v1/events/7/booking-read", () => {
+      asked = true;
+      return HttpResponse.json({
+        ...QUIET,
+        markId: null,
+        readAt: null,
+        readBy: null,
+        latestChangeId: 0,
+      });
+    }),
+  );
+  setMockUser("demo.committee");
+  await renderWithSession(<BookingReadLine eventId={7} />, { route: "/events/7/registrations" });
+
+  await waitFor(() => expect(asked).toBe(true));
+  await new Promise((settle) => setTimeout(settle, 50));
+  expect(screen.queryByTestId("booking-read")).toBeNull();
 });

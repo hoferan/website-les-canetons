@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\MarkBookingsReadRequest;
+use App\Http\Requests\UnmarkBookingsReadRequest;
 use App\Http\Resources\BookingReadResource;
 use App\Models\Event;
 use App\Models\InboxRead;
@@ -62,12 +63,19 @@ class BookingReadController extends Controller
      * Mark the guest list unread.
      *
      * Takes back the mark in force, whoever set it, and the counts return to
-     * what they were since the mark before. With no mark, nothing changes.
+     * what they were since the mark before. `mark` must be the `markId` this
+     * screen read: when somebody has marked the list read since, nothing
+     * changes and the fresh state comes back, so a stale tab cannot undo a
+     * colleague's read.
      */
     #[Endpoint(operationId: 'bookingRead.unmark')]
-    public function unmark(Event $event): BookingReadResource
+    public function unmark(UnmarkBookingsReadRequest $request, Event $event): BookingReadResource
     {
-        InboxRead::latestFor(InboxRead::EVENT_BOOKINGS, $event->id)?->delete();
+        $current = InboxRead::latestFor(InboxRead::EVENT_BOOKINGS, $event->id);
+
+        if ($current !== null && $current->id === $request->mark()) {
+            $current->delete();
+        }
 
         return new BookingReadResource(BookingDelta::for($event));
     }

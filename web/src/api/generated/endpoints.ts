@@ -349,6 +349,7 @@ import type {
   BandIndex200,
   BandIndexParams,
   BookingReadResource,
+  BookingReadUnmarkParams,
   CommitteeFunctionIndex200,
   CommitteeFunctionIndexParams,
   CommitteeIndex200,
@@ -4663,6 +4664,11 @@ export type bookingReadUnmarkResponse200 = {
   status: 200;
 };
 
+export type bookingReadUnmarkResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
 export type bookingReadUnmarkResponse401 = {
   data: Problem401Response;
   status: 401;
@@ -4692,6 +4698,7 @@ export type bookingReadUnmarkResponseSuccess = bookingReadUnmarkResponse200 & {
   headers: Headers;
 };
 export type bookingReadUnmarkResponseError = (
+  | bookingReadUnmarkResponse400
   | bookingReadUnmarkResponse401
   | bookingReadUnmarkResponse403
   | bookingReadUnmarkResponse404
@@ -4704,20 +4711,36 @@ export type bookingReadUnmarkResponseError = (
 export type bookingReadUnmarkResponse =
   bookingReadUnmarkResponseSuccess | bookingReadUnmarkResponseError;
 
-export const getBookingReadUnmarkUrl = (event: number) => {
-  return `/events/${event}/booking-read`;
+export const getBookingReadUnmarkUrl = (event: number, params: BookingReadUnmarkParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/events/${event}/booking-read?${stringifiedParams}`
+    : `/events/${event}/booking-read`;
 };
 
 /**
  * Takes back the mark in force, whoever set it, and the counts return to
- * what they were since the mark before. With no mark, nothing changes.
+ * what they were since the mark before. `mark` must be the `markId` this
+ * screen read: when somebody has marked the list read since, nothing
+ * changes and the fresh state comes back, so a stale tab cannot undo a
+ * colleague's read.
  * @summary Mark the guest list unread
  */
 export const bookingReadUnmark = async (
   event: number,
+  params: BookingReadUnmarkParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<bookingReadUnmarkResponse> => {
-  return customFetch<bookingReadUnmarkResponse>(getBookingReadUnmarkUrl(event), {
+  return customFetch<bookingReadUnmarkResponse>(getBookingReadUnmarkUrl(event, params), {
     ...options,
     method: "DELETE",
   });
@@ -4727,6 +4750,7 @@ export const getBookingReadUnmarkMutationKey = () => ["bookingReadUnmark"] as co
 
 export const getBookingReadUnmarkMutationOptions = <
   TError =
+    | Problem400Response
     | Problem401Response
     | Problem403Response
     | Problem404Response
@@ -4758,9 +4782,9 @@ export const getBookingReadUnmarkMutationOptions = <
     Awaited<ReturnType<typeof bookingReadUnmark>>,
     BookingReadUnmarkMutationVariables
   > = (props) => {
-    const { event } = props ?? {};
+    const { event, params } = props ?? {};
 
-    return bookingReadUnmark(event, requestOptions);
+    return bookingReadUnmark(event, params, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -4771,18 +4795,20 @@ export type BookingReadUnmarkMutationResult = NonNullable<
 >;
 
 export type BookingReadUnmarkMutationError =
+  | Problem400Response
   | Problem401Response
   | Problem403Response
   | Problem404Response
   | Problem419Response
   | Problem503Response;
-export type BookingReadUnmarkMutationVariables = { event: number };
+export type BookingReadUnmarkMutationVariables = { event: number; params: BookingReadUnmarkParams };
 
 /**
  * @summary Mark the guest list unread
  */
 export const useBookingReadUnmark = <
   TError =
+    | Problem400Response
     | Problem401Response
     | Problem403Response
     | Problem404Response
