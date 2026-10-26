@@ -2663,8 +2663,8 @@
             },
             "patch": {
                 "operationId": "registration.update",
-                "description": "Requires `registrations.manage`. Guests cannot amend their own\nbooking, so this is how a misspelled name, a wrong number or a\nseating change is fixed.\n\nSend only the fields that change. An explicit `null` clears an\noptional field; an omitted field is left alone.\n\n`{\"paid\": true}` records the payment and `paidAt` says when. Sending it\nagain keeps the first time. `{\"paid\": false}` clears it.\n\nWhat was ordered cannot be changed here. Cancel the booking and make\na new one instead.",
-                "summary": "Correct a booking's details, or record that it has been paid",
+                "description": "Requires `registrations.manage`. Guests cannot amend their own\nbooking, so this is how a misspelled name, a wrong number, a seating\nchange or a forgotten allergy is fixed, after the form has closed too.\n\nSend only the fields that change. An explicit `null` clears an\noptional field; an omitted field is left alone.\n\n`choices` replaces the text, choice and yes/no answers, with the same\nrules as the public form. A member's booking takes these too.\n\n`{\"paid\": true}` records the payment and `paidAt` says when. Sending it\nagain keeps the first time. `{\"paid\": false}` clears it.\n\nThe quantities cannot be changed here. Cancel the booking and make a\nnew one instead.",
+                "summary": "Correct a booking's details or answers, or record that it has been paid",
                 "tags": [
                     "Registration"
                 ],
@@ -10964,7 +10964,7 @@
             },
             "UpdateRegistrationRequest": {
                 "type": "object",
-                "description": "Corrections to a booking's contact details, and whether it has been paid.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears `address` or `tableName`.\n\nWhat was ordered cannot be changed here; there is no `choices` field.\nCancel the booking and make a new one instead. No mail is sent when a\nbooking is corrected.",
+                "description": "Corrections to a booking's contact details and answers, and whether it has\nbeen paid.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears `address` or `tableName`.\n\n`choices` corrects the text, choice and yes/no answers: `{optionId, value}`\nper block answered, the same values as the public form. When it is sent it\nreplaces every such answer, so a block left out is no longer answered; a\nrequired block left out fails against `answers.<optionId>` with `required`.\nThe quantities cannot be changed here: a quantity block fails with\n`not_an_answer`. Cancel the booking and make a new one instead. No mail is\nsent when a booking is corrected.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -11004,6 +11004,43 @@
                     "paid": {
                         "type": "boolean",
                         "description": "`true` records the payment, `false` takes it back. Sending `true` for a booking already paid keeps the original time."
+                    },
+                    "choices": {
+                        "type": "array",
+                        "description": "The text, choice and yes/no answers, one entry per block answered, at most 20. Replaces every such answer; a block left out is no longer answered. Omit it to leave the answers alone. Quantities are not accepted.",
+                        "examples": [
+                            [
+                                {
+                                    "optionId": 9,
+                                    "value": "yes"
+                                },
+                                {
+                                    "optionId": 11,
+                                    "value": "Nut allergy"
+                                }
+                            ]
+                        ],
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "optionId": {
+                                    "type": "integer",
+                                    "description": "An option offered by this event, from `GET /api/v1/events/{event}/registration`. Each option may appear at most once in `choices`."
+                                },
+                                "value": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "Every other answered kind: the text, up to 1000 characters; the chosen answer's `id`; or `yes` / `no`. Anything else fails with `not_an_answer`.",
+                                    "maxLength": 1000
+                                }
+                            },
+                            "required": [
+                                "optionId"
+                            ]
+                        },
+                        "maxItems": 20
                     }
                 },
                 "title": "UpdateRegistrationRequest"

@@ -2,20 +2,30 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesBookingAnswers;
+use App\Models\Event;
+use App\Models\Registration;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Corrections to a booking's contact details, and whether it has been paid.
+ * Corrections to a booking's contact details and answers, and whether it has
+ * been paid.
  *
  * A PATCH: send only the fields that change. An omitted field is left as it
  * is, and an explicit `null` clears `address` or `tableName`.
  *
- * What was ordered cannot be changed here; there is no `choices` field.
- * Cancel the booking and make a new one instead. No mail is sent when a
- * booking is corrected.
+ * `choices` corrects the text, choice and yes/no answers: `{optionId, value}`
+ * per block answered, the same values as the public form. When it is sent it
+ * replaces every such answer, so a block left out is no longer answered; a
+ * required block left out fails against `answers.<optionId>` with `required`.
+ * The quantities cannot be changed here: a quantity block fails with
+ * `not_an_answer`. Cancel the booking and make a new one instead. No mail is
+ * sent when a booking is corrected.
  */
 class UpdateRegistrationRequest extends FormRequest
 {
+    use ValidatesBookingAnswers;
+
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
@@ -23,9 +33,13 @@ class UpdateRegistrationRequest extends FormRequest
         // not blank the rest; the two optional columns also need `nullable`
         // (see UpdateMemberRequest).
         //
-        // No `choices` field: changing an order would need the guest cap
-        // re-checked and arguably the confirmation re-sent. A wrong order is
-        // cancelled and re-booked, which leaves an honest audit trail.
+        // No quantity in `choices`: changing an order would need the guest cap
+        // and the capacity re-checked, and arguably the confirmation re-sent.
+        // A wrong order is cancelled and re-booked, which leaves an honest
+        // audit trail.
+        $choices = $this->choiceRules();
+        unset($choices['choices.*.quantity']);
+
         return [
             'firstName' => ['sometimes', 'required', 'string', 'max:255'],
             'lastName' => ['sometimes', 'required', 'string', 'max:255'],
@@ -39,6 +53,28 @@ class UpdateRegistrationRequest extends FormRequest
             'tableName' => ['sometimes', 'nullable', 'string', 'max:255'],
             /** `true` records the payment, `false` takes it back. Sending `true` for a booking already paid keeps the original time. */
             'paid' => ['sometimes', 'boolean'],
+
+            ...$choices,
+
+            /**
+             * The text, choice and yes/no answers, one entry per block answered, at most 20. Replaces every such answer; a block left out is no longer answered. Omit it to leave the answers alone. Quantities are not accepted.
+             *
+             * @example [{"optionId":9,"value":"yes"},{"optionId":11,"value":"Nut allergy"}]
+             */
+            'choices' => ['sometimes', 'array', 'max:20'],
         ];
+    }
+
+    /** The answers, checked against the booking's event: see ValidatesBookingAnswers. */
+    public function after(): array
+    {
+        return $this->has('choices') ? [$this->answersCheck(answersOnly: true)] : [];
+    }
+
+    protected function bookingEvent(): ?Event
+    {
+        $registration = $this->route('registration');
+
+        return $registration instanceof Registration ? $registration->event : null;
     }
 }

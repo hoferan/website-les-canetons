@@ -101,16 +101,19 @@ class Registration extends Model
      * and a blank text is no answer: the request let it through as such, and
      * an empty row would read as answered.
      *
+     * `$answersOnly` keeps the quantities, the only rows with one: the
+     * committee corrects answers, never an order (#317).
+     *
      * @param  list<array{optionId: int, quantity?: int|null, value?: string|null}>  $choices
      * @param  Collection<int, OptionKind>  $kinds  each option's kind, by id
      */
-    public function writeChoices(array $choices, Collection $kinds): void
+    public function writeChoices(array $choices, Collection $kinds, bool $answersOnly = false): void
     {
         // Only a booking that had answers. On a new one the DELETE would take
         // a gap lock at the end of the index, and two bookings doing that at
         // once deadlock each other's inserts.
         if (! $this->wasRecentlyCreated) {
-            $this->choices()->delete();
+            $this->choices()->when($answersOnly, fn ($rows) => $rows->whereNull('quantity'))->delete();
         }
 
         foreach ($choices as $choice) {

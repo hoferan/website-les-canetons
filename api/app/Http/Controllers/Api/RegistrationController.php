@@ -206,26 +206,26 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Correct a booking's details, or record that it has been paid.
+     * Correct a booking's details or answers, or record that it has been paid.
      *
      * Requires `registrations.manage`. Guests cannot amend their own
-     * booking, so this is how a misspelled name, a wrong number or a
-     * seating change is fixed.
+     * booking, so this is how a misspelled name, a wrong number, a seating
+     * change or a forgotten allergy is fixed, after the form has closed too.
      *
      * Send only the fields that change. An explicit `null` clears an
      * optional field; an omitted field is left alone.
      *
+     * `choices` replaces the text, choice and yes/no answers, with the same
+     * rules as the public form. A member's booking takes these too.
+     *
      * `{"paid": true}` records the payment and `paidAt` says when. Sending it
      * again keeps the first time. `{"paid": false}` clears it.
      *
-     * What was ordered cannot be changed here. Cancel the booking and make
-     * a new one instead.
+     * The quantities cannot be changed here. Cancel the booking and make a
+     * new one instead.
      */
     public function update(UpdateRegistrationRequest $request, Registration $registration): RegistrationResource
     {
-        // The choices are not editable: changing an order would need the
-        // per-booking cap re-checked and arguably the confirmation re-sent.
-        //
         // array_key_exists, not isset, which is false for an explicit null,
         // so clearing an address would silently do nothing.
         $data = $request->validated();
@@ -255,6 +255,15 @@ class RegistrationController extends Controller
         }
 
         $registration->save();
+
+        // Inside ConditionalWrite's transaction, which holds this booking's
+        // row from the tag check on, so the answers cannot change under it.
+        if (array_key_exists('choices', $data)) {
+            $kinds = $registration->event->registrationOptions()->get()->mapWithKeys(
+                fn (RegistrationOption $option): array => [$option->id => $option->kind]
+            );
+            $registration->writeChoices($data['choices'], $kinds, answersOnly: true);
+        }
 
         Audit::record(
             $request->user(),

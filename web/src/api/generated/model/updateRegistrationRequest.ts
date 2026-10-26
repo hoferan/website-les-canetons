@@ -309,16 +309,22 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { UpdateRegistrationRequestChoicesItem } from "./updateRegistrationRequestChoicesItem";
 
 /**
- * Corrections to a booking's contact details, and whether it has been paid.
+ * Corrections to a booking's contact details and answers, and whether it has
+ * been paid.
  *
  * A PATCH: send only the fields that change. An omitted field is left as it
  * is, and an explicit `null` clears `address` or `tableName`.
  *
- * What was ordered cannot be changed here; there is no `choices` field.
- * Cancel the booking and make a new one instead. No mail is sent when a
- * booking is corrected.
+ * `choices` corrects the text, choice and yes/no answers: `{optionId, value}`
+ * per block answered, the same values as the public form. When it is sent it
+ * replaces every such answer, so a block left out is no longer answered; a
+ * required block left out fails against `answers.<optionId>` with `required`.
+ * The quantities cannot be changed here: a quantity block fails with
+ * `not_an_answer`. Cancel the booking and make a new one instead. No mail is
+ * sent when a booking is corrected.
  */
 export interface UpdateRegistrationRequest {
   /** @maxLength 255 */
@@ -349,4 +355,9 @@ export interface UpdateRegistrationRequest {
   tableName?: string | null;
   /** `true` records the payment, `false` takes it back. Sending `true` for a booking already paid keeps the original time. */
   paid?: boolean;
+  /**
+   * The text, choice and yes/no answers, one entry per block answered, at most 20. Replaces every such answer; a block left out is no longer answered. Omit it to leave the answers alone. Quantities are not accepted.
+   * @maxItems 20
+   */
+  choices?: UpdateRegistrationRequestChoicesItem[];
 }

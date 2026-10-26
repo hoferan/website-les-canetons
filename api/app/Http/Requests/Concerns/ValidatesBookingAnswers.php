@@ -10,14 +10,24 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * The answers half of a booking, shared by a guest's booking and a member's
- * (ADR 0032, ADR 0034): `choices`, each answer against its block's kind, the
- * required blocks, and the people count against both ends.
+ * The answers half of a booking, shared by a guest's booking, a member's
+ * (ADR 0032, ADR 0034) and the committee's correction (#317): `choices`, each
+ * answer against its block's kind, the required blocks, and the people count
+ * against both ends.
  *
- * The using request reads the event from its `{event}` route parameter.
+ * The event comes from the `{event}` route parameter unless the using request
+ * overrides bookingEvent().
  */
 trait ValidatesBookingAnswers
 {
+    /** The event whose blocks the answers are checked against. */
+    protected function bookingEvent(): ?Event
+    {
+        $event = $this->route('event');
+
+        return $event instanceof Event ? $event : null;
+    }
+
     /**
      * `choices` is capped at 20 because each element costs an exists query.
      * Each `optionId` is scoped to this event's options, since the foreign key
@@ -28,8 +38,7 @@ trait ValidatesBookingAnswers
      */
     protected function choiceRules(): array
     {
-        $event = $this->route('event');
-        $eventId = $event instanceof Event ? $event->id : 0;
+        $eventId = $this->bookingEvent()->id ?? 0;
 
         return [
             /**
@@ -64,13 +73,17 @@ trait ValidatesBookingAnswers
      * tokens must stay without params: ApiError's closure-added branch emits
      * `field` and `reason` only, and i18next prints a missing interpolation
      * literally.
+     *
+     * `$answersOnly` is the committee's correction, which leaves the
+     * quantities as booked: a quantity block is not an answer it takes, and
+     * neither the required quantities nor the people count are checked again.
      */
-    protected function answersCheck(): Closure
+    protected function answersCheck(bool $answersOnly = false): Closure
     {
-        return function (Validator $validator): void {
-            $event = $this->route('event');
+        return function (Validator $validator) use ($answersOnly): void {
+            $event = $this->bookingEvent();
 
-            if (! $event instanceof Event) {
+            if ($event === null) {
                 return;
             }
 
@@ -84,7 +97,9 @@ trait ValidatesBookingAnswers
                     continue;
                 }
 
-                if ($option->kind === OptionKind::Quantity) {
+                if ($option->kind === OptionKind::Quantity && $answersOnly) {
+                    $validator->errors()->add("choices.{$index}.value", 'not_an_answer');
+                } elseif ($option->kind === OptionKind::Quantity) {
                     if (($choice['quantity'] ?? null) === null) {
                         $validator->errors()->add("choices.{$index}.quantity", 'required');
                     }
@@ -96,10 +111,17 @@ trait ValidatesBookingAnswers
             // Against `answers.<optionId>`, not a position in `choices`:
             // an unanswered block has no position, and the form needs to
             // know which block to mark.
-            foreach ($options->filter(fn (RegistrationOption $o) => $o->required && $o->kind->isInput()) as $option) {
+            $asked = $options->filter(fn (RegistrationOption $o) => $o->required && $o->kind->isInput()
+                && ! ($answersOnly && $o->kind === OptionKind::Quantity));
+
+            foreach ($asked as $option) {
                 if (! self::answers($option, $choices)) {
                     $validator->errors()->add("answers.{$option->id}", 'required');
                 }
+            }
+
+            if ($answersOnly) {
+                return;
             }
 
             $people = $options->filter(fn (RegistrationOption $o) => $o->counts_guests);

@@ -4548,18 +4548,21 @@ export const getRegistrationUpdateUrl = (registration: number) => {
 
 /**
  * Requires `registrations.manage`. Guests cannot amend their own
- * booking, so this is how a misspelled name, a wrong number or a
- * seating change is fixed.
+ * booking, so this is how a misspelled name, a wrong number, a seating
+ * change or a forgotten allergy is fixed, after the form has closed too.
  *
  * Send only the fields that change. An explicit `null` clears an
  * optional field; an omitted field is left alone.
  *
+ * `choices` replaces the text, choice and yes/no answers, with the same
+ * rules as the public form. A member's booking takes these too.
+ *
  * `{"paid": true}` records the payment and `paidAt` says when. Sending it
  * again keeps the first time. `{"paid": false}` clears it.
  *
- * What was ordered cannot be changed here. Cancel the booking and make
- * a new one instead.
- * @summary Correct a booking's details, or record that it has been paid
+ * The quantities cannot be changed here. Cancel the booking and make a
+ * new one instead.
+ * @summary Correct a booking's details or answers, or record that it has been paid
  */
 export const registrationUpdate = async (
   registration: number,
@@ -4658,7 +4661,7 @@ export type RegistrationUpdateMutationVariables = {
 };
 
 /**
- * @summary Correct a booking's details, or record that it has been paid
+ * @summary Correct a booking's details or answers, or record that it has been paid
  */
 export const useRegistrationUpdate = <
   TError =

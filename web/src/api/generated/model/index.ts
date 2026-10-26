@@ -622,3 +622,4 @@ export * from "./updateEventRequest";
 export * from "./updateImageRequest";
 export * from "./updateMemberRequest";
 export * from "./updateRegistrationRequest";
+export * from "./updateRegistrationRequestChoicesItem";
