@@ -779,29 +779,126 @@ test("a yes/no's tally says how many gave no answer", async () => {
 
 /**
  * A member's booking has no contact details, and its name comes from the
- * account, so there is nothing to correct; cancelling stays.
+ * account, so its correction holds the answers alone (#317); cancelling
+ * stays.
  *
- * Mutation test: render the amend action for every row and this fails.
+ * Mutation test: render the contact fields for every booking and this fails.
  */
-test("a member's booking is marked, and offers no correction", async () => {
+test("a member's booking is marked, and its correction holds only the answers", async () => {
+  const user = userEvent.setup();
   setMockUser("demo.player");
   await myRegistrationPut(4, { choices: [{ optionId: 8, value: "m" }] });
 
   await renderGuestList("demo.direction", 4);
 
-  const card = within(cards())
-    .getByText(/Player Perrine/)
-    .closest("li");
-  expect(card).not.toBeNull();
-  expect(within(card as HTMLElement).getByTestId("member-badge")).toHaveTextContent("Membre");
+  const card = cardFor("Player Perrine");
+  expect(within(card).getByTestId("member-badge")).toHaveTextContent("Membre");
   expect(
-    within(card as HTMLElement).queryByRole("button", {
-      name: "Corriger l’inscription de Perrine Player",
-    }),
-  ).toBeNull();
-  expect(
-    within(card as HTMLElement).getByRole("button", {
-      name: "Annuler l’inscription de Perrine Player",
-    }),
+    within(card).getByRole("button", { name: "Annuler l’inscription de Perrine Player" }),
   ).toBeInTheDocument();
+
+  await user.click(
+    within(card).getByRole("button", { name: "Corriger l’inscription de Perrine Player" }),
+  );
+  const size = await screen.findByRole("group", { name: /Taille de t-shirt/ });
+  expect(screen.queryByLabelText("Téléphone")).toBeNull();
+  expect(screen.queryByLabelText(/^Nom/)).toBeNull();
+
+  await user.click(within(size).getByLabelText("XL"));
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => screen.queryByRole("group", { name: /Taille de t-shirt/ })).toBeNull();
+  expect(cardFor("Player Perrine")).toHaveTextContent("Taille de t-shirt : XL");
+});
+
+/* ------------------------------------------------- correcting answers (#317) */
+
+/**
+ * The committee corrects what a guest answered, in the same panel as the
+ * contact details and with the widgets of the public form. The quantities
+ * stay as booked.
+ */
+test("a guest's answers are corrected in the panel, and the order stays", async () => {
+  const user = userEvent.setup();
+  await renderGuestList();
+
+  await user.click(
+    within(cards()).getByRole("button", { name: "Corriger l’inscription de Jeanne Aebischer" }),
+  );
+
+  const veggie = await screen.findByRole("group", { name: /Végétarien/ });
+  expect(within(veggie).getByLabelText("Non")).toBeChecked();
+  await user.click(within(veggie).getByLabelText("Oui"));
+  await user.type(screen.getByLabelText(/Allergies/), "Noix");
+  // The quantities are not in the panel.
+  expect(screen.queryByLabelText(/Repas adulte/)).toBeNull();
+
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => screen.queryByRole("group", { name: /Végétarien/ })).toBeNull();
+  const answers = within(cardFor("Aebischer Jeanne")).getByTestId("guest-answers");
+  expect(
+    within(answers)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent),
+  ).toEqual(["Végétarien ? : Oui", "Dessert : Meringue et double crème", "Allergies : Noix"]);
+  expect(cardFor("Aebischer Jeanne")).toHaveTextContent("2 × Repas adulte, 3 × Repas enfant");
+});
+
+/**
+ * Correcting a phone number sends no answers, so a block made required after
+ * the guest booked cannot hold the phone fix hostage.
+ *
+ * Mutation test: always send `choices` and this fails.
+ */
+test("a correction that leaves the answers alone does not send them", async () => {
+  const user = userEvent.setup();
+  let body: Record<string, unknown> | null = null;
+  server.use(
+    http.patch("/api/v1/registrations/:id", async ({ request }) => {
+      body = (await request.clone().json()) as Record<string, unknown>;
+      return undefined;
+    }),
+  );
+  await renderGuestList();
+
+  await user.click(
+    within(cards()).getByRole("button", { name: "Corriger l’inscription de Jeanne Aebischer" }),
+  );
+  const phone = await screen.findByLabelText("Téléphone");
+  await user.clear(phone);
+  await user.type(phone, "079 999 99 99");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => body).not.toBeNull();
+  expect(body).not.toHaveProperty("choices");
+  expect(body).toHaveProperty("phone", "079 999 99 99");
+});
+
+/**
+ * The server's refusal of one answer lands on that block, named by option id
+ * for a required one, as on the public form.
+ */
+test("a refused answer is shown at its block", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.patch("/api/v1/registrations/:id", () =>
+      problem(400, "validation_failed", "Invalid form submission", [
+        { field: "answers.7", reason: "required" },
+      ]),
+    ),
+  );
+  await renderGuestList();
+
+  await user.click(
+    within(cards()).getByRole("button", { name: "Corriger l’inscription de Jeanne Aebischer" }),
+  );
+  const veggie = await screen.findByRole("group", { name: /Végétarien/ });
+  await user.click(within(veggie).getByLabelText("Oui"));
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  const allergies = await screen.findByLabelText(/Allergies/);
+  await expect
+    .poll(() => allergies.closest("div")?.textContent ?? "")
+    .toContain("Merci de répondre à cette question.");
 });
