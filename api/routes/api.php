@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AgendaController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BandController;
+use App\Http\Controllers\Api\BookingReadController;
 use App\Http\Controllers\Api\CommitteeController;
 use App\Http\Controllers\Api\CommitteeFunctionController;
 use App\Http\Controllers\Api\ConfigController;
@@ -395,6 +396,15 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // router and never reaches the controller.
         Route::get('/events/{event}/registrations.{format}', GuestListExportController::class)
             ->where('format', 'xlsx|csv|md|json');
+
+        // The committee's shared read mark on this list (ADR 0035). Reading
+        // the list is enough: marking it read changes no booking. No `etag:`
+        // facet, because `upTo` already carries what the screen saw. Unmark
+        // takes back the newest mark whoever set it; the worst a stale screen
+        // does is bring the item back.
+        Route::get('/events/{event}/booking-read', [BookingReadController::class, 'show']);
+        Route::put('/events/{event}/booking-read', [BookingReadController::class, 'mark']);
+        Route::delete('/events/{event}/booking-read', [BookingReadController::class, 'unmark']);
     });
 
     // Correcting and cancelling a booking: `registrations.manage`. Guests get

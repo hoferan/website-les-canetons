@@ -316,6 +316,8 @@ export const fr = {
     // `choices.0.optionId` to `optionId`, `options.2.priceCents` to
     // `priceCents`.
     tableName: "Table",
+    // Marking a guest list read (ADR 0035): only a stale screen gets it wrong.
+    upTo: "Dernière modification lue",
     choices: "Choix",
     optionId: "Option",
     quantity: "Quantité",

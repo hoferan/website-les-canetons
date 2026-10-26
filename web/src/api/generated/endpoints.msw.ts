@@ -325,6 +325,7 @@ import type {
   AuthLogout200,
   AuthMe200,
   BandIndex200,
+  BookingReadResource,
   CommitteeFunctionIndex200,
   CommitteeIndex200,
   ConfigShow200,
@@ -1272,6 +1273,63 @@ export const getRegistrationExportResponseMock = (
       ...overrideResponse,
     },
   ]);
+
+export const getBookingReadShowResponseMock = (
+  overrideResponse: Partial<Extract<BookingReadResource, object>> = {},
+): BookingReadResource => ({
+  readAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  readBy: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  latestChangeId: faker.number.int(),
+  changes: { new: faker.number.int(), changed: faker.number.int(), cancelled: faker.number.int() },
+  newIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
+    faker.number.int(),
+  ),
+  changedIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => faker.number.int(),
+  ),
+  actors: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ),
+  ...overrideResponse,
+});
+
+export const getBookingReadMarkResponseMock = (
+  overrideResponse: Partial<Extract<BookingReadResource, object>> = {},
+): BookingReadResource => ({
+  readAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  readBy: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  latestChangeId: faker.number.int(),
+  changes: { new: faker.number.int(), changed: faker.number.int(), cancelled: faker.number.int() },
+  newIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
+    faker.number.int(),
+  ),
+  changedIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => faker.number.int(),
+  ),
+  actors: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ),
+  ...overrideResponse,
+});
+
+export const getBookingReadUnmarkResponseMock = (
+  overrideResponse: Partial<Extract<BookingReadResource, object>> = {},
+): BookingReadResource => ({
+  readAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  readBy: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  latestChangeId: faker.number.int(),
+  changes: { new: faker.number.int(), changed: faker.number.int(), cancelled: faker.number.int() },
+  newIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
+    faker.number.int(),
+  ),
+  changedIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => faker.number.int(),
+  ),
+  actors: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ),
+  ...overrideResponse,
+});
 
 export const getRegistrationShowResponseMock = (
   overrideResponse: Partial<Extract<RegistrationResource, object>> = {},
@@ -3118,6 +3176,78 @@ export const getRegistrationExportMockHandler = (
   );
 };
 
+export const getBookingReadShowMockHandler = (
+  overrideResponse?:
+    | BookingReadResource
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<BookingReadResource> | BookingReadResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "/api/v1/events/:event/booking-read",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getBookingReadShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getBookingReadMarkMockHandler = (
+  overrideResponse?:
+    | BookingReadResource
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<BookingReadResource> | BookingReadResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "/api/v1/events/:event/booking-read",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getBookingReadMarkResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getBookingReadUnmarkMockHandler = (
+  overrideResponse?:
+    | BookingReadResource
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<BookingReadResource> | BookingReadResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "/api/v1/events/:event/booking-read",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getBookingReadUnmarkResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getRegistrationShowMockHandler = (
   overrideResponse?:
     | RegistrationResource
@@ -4571,6 +4701,9 @@ export const getLesCanetonsAPIMock = () => [
   getRegistrationIndexMockHandler(),
   getRegistrationFormMockHandler(),
   getRegistrationExportMockHandler(),
+  getBookingReadShowMockHandler(),
+  getBookingReadMarkMockHandler(),
+  getBookingReadUnmarkMockHandler(),
   getRegistrationShowMockHandler(),
   getRegistrationUpdateMockHandler(),
   getRegistrationDestroyMockHandler(),
