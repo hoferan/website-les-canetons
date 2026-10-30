@@ -13,6 +13,7 @@ use App\Support\GuestList;
 use App\Support\OptionKind;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use OpenSpout\Reader\XLSX\Reader;
 use Tests\TestCase;
 
 /**
@@ -923,6 +924,99 @@ class GuestListTest extends TestCase
         $this->book();
 
         $this->assertFalse(GuestList::for($this->event->fresh())->hasTables());
+    }
+
+    // ------------------------------------------------------- the workbook
+
+    public function test_the_xlsx_has_the_list_the_till_and_the_tables(): void
+    {
+        $this->atTable($this->book('Zbinden'), 'Müller');
+
+        $sheets = $this->sheets();
+
+        $this->assertSame(['Inscriptions', 'Caisse', 'Tables'], array_keys($sheets));
+        $this->assertSame(GuestList::for($this->event)->headers(), $sheets['Inscriptions'][0]);
+        $this->assertSame('Nom', $sheets['Caisse'][0][0]);
+        $this->assertSame('Zbinden', $sheets['Caisse'][1][0]);
+        $this->assertSame('Müller', $sheets['Tables'][1][0]);
+    }
+
+    public function test_the_xlsx_has_no_tables_sheet_without_tables(): void
+    {
+        $this->event->update(['registration_asks_table' => false]);
+        $this->book();
+
+        $this->assertSame(['Inscriptions', 'Caisse'], array_keys($this->sheets()));
+    }
+
+    public function test_the_sheets_print_landscape_one_page_wide_with_the_header_on_every_page(): void
+    {
+        $this->book();
+
+        $sheet = $this->xlsxPart('xl/worksheets/sheet2.xml');
+
+        $this->assertStringContainsString('orientation="landscape"', $sheet);
+        $this->assertStringContainsString('paperSize="9"', $sheet);
+        // OOXML's fitToHeight defaults to 1, which would squeeze a long list
+        // onto one page.
+        $this->assertStringContainsString('fitToHeight="0"', $sheet);
+        $this->assertStringContainsString('fitToWidth="1"', $sheet);
+        $this->assertStringContainsString('<definedName name="_xlnm.Print_Titles" localSheetId="1">Caisse!$1:$1</definedName>', $this->xlsxPart('xl/workbook.xml'));
+    }
+
+    public function test_an_ampersand_in_the_title_survives_the_page_header(): void
+    {
+        // & opens a control code in an Excel header, and the header is XML.
+        $this->event->update(['title' => 'Souper & Bal <2027>']);
+        $this->book();
+
+        $this->assertStringContainsString(
+            '<oddHeader>&amp;LSouper &amp;&amp; Bal &lt;2027&gt;&amp;R&amp;D</oddHeader>',
+            $this->xlsxPart('xl/worksheets/sheet2.xml'),
+        );
+    }
+
+    /**
+     * The downloaded workbook, read back: sheet name => rows of cell values.
+     *
+     * @return array<string, list<list<mixed>>>
+     */
+    private function sheets(): array
+    {
+        $reader = new Reader;
+        $reader->open($this->downloadedXlsx());
+
+        $sheets = [];
+        foreach ($reader->getSheetIterator() as $sheet) {
+            foreach ($sheet->getRowIterator() as $row) {
+                $sheets[$sheet->getName()][] = $row->toArray();
+            }
+        }
+        $reader->close();
+
+        return $sheets;
+    }
+
+    /** One XML part of the downloaded workbook, as written. */
+    private function xlsxPart(string $part): string
+    {
+        $zip = new \ZipArchive;
+        $zip->open($this->downloadedXlsx());
+        $xml = (string) $zip->getFromName($part);
+        $zip->close();
+
+        return $xml;
+    }
+
+    private function downloadedXlsx(): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'guests').'.xlsx';
+        file_put_contents($path, $this->actingAsMember($this->organiser)
+            ->get("/api/v1/events/{$this->event->id}/registrations.xlsx")
+            ->assertOk()
+            ->streamedContent());
+
+        return $path;
     }
 
     private function atTable(Registration $booking, string $table): Registration

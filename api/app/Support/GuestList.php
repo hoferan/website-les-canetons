@@ -50,6 +50,12 @@ final class GuestList
         );
     }
 
+    /** The event's title, for the top of a printed page. */
+    public function title(): string
+    {
+        return $this->event->title;
+    }
+
     /** The filename stem, e.g. `souper-2027-inscriptions`. */
     public function filename(): string
     {

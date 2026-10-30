@@ -4172,6 +4172,15 @@ export const getRegistrationExportUrl = (event: number, format: "xlsx" | "csv" |
  * closing totals row for the caterer. Every format carries the same rows
  * in the same order.
  *
+ * The XLSX holds that list on its first sheet, `Inscriptions`, and two
+ * more, set up to print on A4 landscape. `Caisse` is the till: one row per
+ * booking in name order, with the table, the quantities under their unit
+ * prices, the total, and two blank columns to fill in by hand at the door,
+ * unless the booking is already marked paid. `Tables`, present when the
+ * form asks for a table or a booking has one, groups the bookings by table
+ * with each table's sums and the answers to the form's questions, and no
+ * prices.
+ *
  * The CSV is semicolon-separated and carries a UTF-8 byte order mark, so
  * Excel opens it in columns and with accents intact.
  *
