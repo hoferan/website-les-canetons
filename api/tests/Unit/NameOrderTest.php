@@ -17,4 +17,14 @@ class NameOrderTest extends TestCase
 
         $this->assertSame(['Aebischer', 'de Weck', 'égger', 'Zbinden'], $names);
     }
+
+    public function test_numbered_tables_come_in_number_order(): void
+    {
+        // Tables are often numbered; a plan reading 1, 10, 11, 2 is wrong.
+        $tables = ['Table 10', 'Table 2', 'Table 1'];
+
+        usort($tables, NameOrder::compare(...));
+
+        $this->assertSame(['Table 1', 'Table 2', 'Table 10'], $tables);
+    }
 }

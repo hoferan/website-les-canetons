@@ -183,6 +183,10 @@ class GuestListExportController extends Controller
     /**
      * A bordered cell. openspout cannot set "print gridlines", so borders
      * draw the grid a volunteer writes into.
+     *
+     * Wrapped, because every cell's neighbour is filled: an unwrapped
+     * "Menu viande (45.–)" is cut off at the column edge, price first, and so
+     * is a long answer the kitchen needs to read.
      */
     private static function cell(bool $bold = false, bool $shaded = false): Style
     {
@@ -194,7 +198,8 @@ class GuestListExportController extends Controller
                 $line(BorderName::LEFT),
                 $line(BorderName::RIGHT),
             ))
-            ->withFontBold($bold);
+            ->withFontBold($bold)
+            ->withShouldWrapText(true);
 
         return $shaded ? $style->withBackgroundColor('EEEEEE') : $style;
     }

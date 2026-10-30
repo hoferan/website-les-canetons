@@ -964,6 +964,15 @@ class GuestListTest extends TestCase
         $this->assertStringContainsString('<definedName name="_xlnm.Print_Titles" localSheetId="1">Caisse!$1:$1</definedName>', $this->xlsxPart('xl/workbook.xml'));
     }
 
+    public function test_a_long_heading_wraps_instead_of_losing_its_price(): void
+    {
+        // Every heading's neighbour is filled, so an unwrapped "Menu viande
+        // (45.–)" is cut off at the column edge, price first.
+        $this->book();
+
+        $this->assertStringContainsString('wrapText="1"', $this->xlsxPart('xl/styles.xml'));
+    }
+
     public function test_an_ampersand_in_the_title_survives_the_page_header(): void
     {
         // & opens a control code in an Excel header, and the header is XML.
