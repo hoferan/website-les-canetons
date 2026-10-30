@@ -118,14 +118,7 @@ final class GuestList
      */
     public function totals(): array
     {
-        // Tallied in one pass rather than searching every booking's choices
-        // once per option, which would be O(bookings x options).
-        $tally = [];
-        foreach ($this->registrations as $registration) {
-            foreach ($registration->choices as $choice) {
-                $tally[$choice->option_id] = ($tally[$choice->option_id] ?? 0) + (int) $choice->quantity;
-            }
-        }
+        $tally = $this->tally();
 
         // An answer column totals nothing: a count of "Oui" is on the screen,
         // and a sum of words would be a blank cell anyway.
@@ -149,6 +142,105 @@ final class GuestList
                 '',
             ],
         );
+    }
+
+    /**
+     * The sheet a volunteer ticks off at the door, with a pen.
+     *
+     * One row per booking in name order, because a guest arriving gives the
+     * name the booking was made under, and the table only as a hint. The
+     * quantities are there so the amount can be worked out again for whoever
+     * actually came. `Venu` and `Payé CHF` stay blank for the pen, except on a
+     * booking already marked paid, which says so: the volunteer must not take
+     * the money twice.
+     *
+     * @return array{headers: list<string>, rows: list<list<string|int|float|null>>, totals: list<string|int|float|null>}
+     */
+    public function till(): array
+    {
+        $quantities = $this->quantityOptions();
+
+        $rows = $this->byName($this->registrations)->map(function (Registration $registration) use ($quantities): array {
+            $taken = $registration->choices->keyBy('option_id');
+
+            return array_merge(
+                [$registration->last_name, $registration->first_name, TableName::key($registration->table_name)],
+                $quantities->map(fn (RegistrationOption $o): int => (int) ($taken->get($o->id)->quantity ?? 0))->all(),
+                [
+                    self::francs($registration->total_cents),
+                    '',
+                    $registration->paid_at === null
+                        ? ''
+                        : 'payé le '.$registration->paid_at->setTimezone(BandTime::ZONE)->format('d.m.'),
+                ],
+            );
+        })->all();
+
+        $totalCents = $this->registrations
+            ->map(fn (Registration $r): ?int => $r->total_cents)
+            ->filter(fn (?int $cents) => $cents !== null);
+
+        return [
+            'headers' => array_merge(
+                ['Nom', 'Prénom', 'Table'],
+                $quantities->map(fn (RegistrationOption $o): string => $o->price_cents === null
+                    ? $o->label
+                    : $o->label.' ('.self::price($o->price_cents).')')->all(),
+                ['Total CHF', 'Venu', 'Payé CHF'],
+            ),
+            'rows' => $rows,
+            'totals' => array_merge(
+                ['Total', '', ''],
+                $quantities->map(fn (RegistrationOption $o): int => $this->tally()[$o->id] ?? 0)->all(),
+                [$totalCents->isEmpty() ? null : self::francs((int) $totalCents->sum()), '', ''],
+            ),
+        ];
+    }
+
+    /** @return Collection<int, RegistrationOption> */
+    private function quantityOptions(): Collection
+    {
+        return $this->options->filter(fn (RegistrationOption $o): bool => $o->kind === OptionKind::Quantity)->values();
+    }
+
+    /**
+     * The bookings in the order a reader looks names up: last name, then first.
+     *
+     * @param  Collection<int, Registration>  $registrations
+     * @return Collection<int, Registration>
+     */
+    private function byName(Collection $registrations): Collection
+    {
+        return $registrations->sort(fn (Registration $a, Registration $b): int => NameOrder::compare($a->last_name, $b->last_name)
+            ?: NameOrder::compare($a->first_name, $b->first_name))->values();
+    }
+
+    /**
+     * How many of each option were booked in all, keyed by option id.
+     *
+     * One pass rather than searching every booking's choices once per option,
+     * which would be O(bookings x options).
+     *
+     * @return array<int, int>
+     */
+    private function tally(): array
+    {
+        $tally = [];
+        foreach ($this->registrations as $registration) {
+            foreach ($registration->choices as $choice) {
+                $tally[$choice->option_id] = ($tally[$choice->option_id] ?? 0) + (int) $choice->quantity;
+            }
+        }
+
+        return $tally;
+    }
+
+    /** A unit price as a Swiss menu writes it: `45.–` for whole francs, `12.50` otherwise. */
+    private static function price(int $cents): string
+    {
+        return $cents % 100 === 0
+            ? intdiv($cents, 100).'.–'
+            : number_format($cents / 100, 2, '.', '');
     }
 
     /**

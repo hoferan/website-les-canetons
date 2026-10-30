@@ -9,6 +9,7 @@ use App\Models\Registration;
 use App\Models\RegistrationChoice;
 use App\Models\RegistrationOption;
 use App\Models\Role;
+use App\Support\GuestList;
 use App\Support\OptionKind;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -772,6 +773,72 @@ class GuestListTest extends TestCase
         $this->assertStringContainsString('Menu viande 2', $text);
         $this->assertStringContainsString('Végétarien ? Non', $text);
         $this->assertStringContainsString('Allergies Noix', $text);
+    }
+
+    // ------------------------------------------------------- the till sheet
+
+    public function test_the_till_is_sorted_by_name_whatever_the_booking_order(): void
+    {
+        $this->book('Zbinden');
+        $this->book('égger');
+        $this->book('Aebischer');
+
+        $names = array_column(GuestList::for($this->event)->till()['rows'], 0);
+
+        $this->assertSame(['Aebischer', 'égger', 'Zbinden'], $names);
+    }
+
+    public function test_the_till_heads_each_quantity_with_its_price(): void
+    {
+        $this->assertSame(
+            ['Nom', 'Prénom', 'Table', 'Menu viande (45.–)', 'Menu enfant (20.–)', 'Total CHF', 'Venu', 'Payé CHF'],
+            GuestList::for($this->event)->till()['headers'],
+        );
+    }
+
+    public function test_the_till_heads_an_unpriced_quantity_with_its_label_alone(): void
+    {
+        $this->child->update(['price_cents' => null]);
+
+        $this->assertSame('Menu enfant', GuestList::for($this->event)->till()['headers'][4]);
+    }
+
+    public function test_the_till_leaves_venu_and_paye_blank_for_the_pen(): void
+    {
+        $this->book('Maillard', 2, 1);
+
+        $row = GuestList::for($this->event)->till()['rows'][0];
+
+        $this->assertSame([2, 1, 110.0, '', ''], array_slice($row, 3));
+    }
+
+    public function test_a_booking_paid_in_advance_says_so_on_the_till(): void
+    {
+        // 18:30 UTC is 19:30 in Fribourg, the same day.
+        $this->book()->forceFill(['paid_at' => '2027-03-10 18:30:00'])->save();
+
+        $this->assertSame('payé le 10.03.', GuestList::for($this->event)->till()['rows'][0][7]);
+    }
+
+    public function test_a_booking_with_no_quantity_still_gets_a_till_row_with_zeros(): void
+    {
+        Registration::factory()->create(['event_id' => $this->event->id, 'last_name' => 'Rien']);
+
+        $row = GuestList::for($this->event)->till()['rows'][0];
+
+        // Nothing priced was taken, so the amount is unknown, not CHF 0.
+        $this->assertSame(['Rien', 0, 0, null], [$row[0], $row[3], $row[4], $row[5]]);
+    }
+
+    public function test_the_till_totals_sum_the_quantities_and_the_money(): void
+    {
+        $this->book('A', 2, 1);
+        $this->book('B', 1, 0);
+
+        $this->assertSame(
+            ['Total', '', '', 3, 1, 155.0, '', ''],
+            GuestList::for($this->event)->till()['totals'],
+        );
     }
 
     private function block(OptionKind $kind, string $label): RegistrationOption
