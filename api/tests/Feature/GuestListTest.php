@@ -43,11 +43,12 @@ class GuestListTest extends TestCase
 
     private ?Registration $lastBooking = null;
 
-    private function book(string $last = 'Maillard', int $meat = 2, int $child = 0): Registration
+    private function book(string $last = 'Maillard', int $meat = 2, int $child = 0, string $first = 'Anne'): Registration
     {
         $booking = Registration::factory()->create([
             'event_id' => $this->event->id,
             'last_name' => $last,
+            'first_name' => $first,
         ]);
 
         if ($meat > 0) {
@@ -839,6 +840,96 @@ class GuestListTest extends TestCase
             ['Total', '', '', 3, 1, 155.0, '', ''],
             GuestList::for($this->event)->till()['totals'],
         );
+    }
+
+    // ------------------------------------------------------- the table plan
+
+    public function test_bookings_at_one_table_form_one_block(): void
+    {
+        $this->atTable($this->book('Müller', 2, 0, 'Peter'), 'Müller');
+        $this->atTable($this->book('Jakob', 2, 1, 'Hans'), ' Müller ');
+        $this->book('Bovet', 1, 0, 'Luc');
+
+        $plan = GuestList::for($this->event)->tablePlan();
+
+        $this->assertSame(['Müller', null], array_column($plan['blocks'], 'table'));
+        $this->assertSame(['Müller', 4, 1, 5], $plan['blocks'][0]['summary']);
+        $this->assertSame(['Jakob Hans', 'Müller Peter'], array_column($plan['blocks'][0]['rows'], 0));
+        $this->assertSame('Sans table', $plan['blocks'][1]['summary'][0]);
+    }
+
+    public function test_tables_come_in_name_order_and_no_table_comes_last(): void
+    {
+        $this->book('Sans');
+        $this->atTable($this->book('B'), 'Zbinden');
+        $this->atTable($this->book('C'), 'égger');
+
+        $tables = array_column(GuestList::for($this->event)->tablePlan()['blocks'], 'table');
+
+        $this->assertSame(['égger', 'Zbinden', null], $tables);
+    }
+
+    public function test_case_makes_a_different_table(): void
+    {
+        // Two families called Müller may each start a table; guessing they are
+        // one would seat strangers together.
+        $this->atTable($this->book('A'), 'Müller');
+        $this->atTable($this->book('B'), 'müller');
+
+        $this->assertCount(2, GuestList::for($this->event)->tablePlan()['blocks']);
+    }
+
+    public function test_the_table_plan_carries_the_answers_and_no_prices(): void
+    {
+        $veggie = $this->block(OptionKind::YesNo, 'Végétarien ?');
+        $this->answer($this->atTable($this->book(), 'Müller'), $veggie, 'yes');
+
+        $plan = GuestList::for($this->event)->tablePlan();
+
+        $this->assertSame(['Table / Nom', 'Menu viande', 'Menu enfant', 'Personnes', 'Végétarien ?'], $plan['headers']);
+        $this->assertSame('Oui', $plan['blocks'][0]['rows'][0][4]);
+        $this->assertSame('', $plan['blocks'][0]['summary'][4]);
+    }
+
+    public function test_a_booking_with_no_quantity_still_sits_in_the_plan(): void
+    {
+        $this->atTable(Registration::factory()->create(['event_id' => $this->event->id]), 'Müller');
+
+        $block = GuestList::for($this->event)->tablePlan()['blocks'][0];
+
+        $this->assertSame(['Müller', 0, 0, 0], $block['summary']);
+    }
+
+    public function test_there_is_a_table_plan_when_the_form_asks_for_a_table(): void
+    {
+        $this->event->update(['registration_asks_table' => true]);
+        $this->book();
+
+        $this->assertTrue(GuestList::for($this->event->fresh())->hasTables());
+    }
+
+    public function test_there_is_a_table_plan_when_somebody_gave_a_table_anyway(): void
+    {
+        // A form that stopped asking still holds the tables given before.
+        $this->event->update(['registration_asks_table' => false]);
+        $this->atTable($this->book(), 'Müller');
+
+        $this->assertTrue(GuestList::for($this->event->fresh())->hasTables());
+    }
+
+    public function test_no_table_plan_when_nobody_was_asked_and_nobody_gave_one(): void
+    {
+        $this->event->update(['registration_asks_table' => false]);
+        $this->book();
+
+        $this->assertFalse(GuestList::for($this->event->fresh())->hasTables());
+    }
+
+    private function atTable(Registration $booking, string $table): Registration
+    {
+        $booking->update(['table_name' => $table]);
+
+        return $booking;
     }
 
     private function block(OptionKind $kind, string $label): RegistrationOption

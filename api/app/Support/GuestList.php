@@ -197,6 +197,99 @@ final class GuestList
         ];
     }
 
+    /**
+     * Whether a table plan means anything: the form asks for a table, or a
+     * booking holds one from when it did.
+     */
+    public function hasTables(): bool
+    {
+        return $this->event->registration_asks_table
+            || $this->registrations->contains(fn (Registration $r): bool => TableName::key($r->table_name) !== null);
+    }
+
+    /**
+     * The sheet the committee plans the seating from: one block per table.
+     *
+     * Each block opens with a row naming the table and adding up what its
+     * bookings ordered, then lists those bookings with their answers, which
+     * is where "Végétarien ?" matters to the kitchen and the seating. No prices
+     * and no contact details: this sheet is pinned up, not used to take money.
+     * Tables come in name order; the bookings without one come last.
+     *
+     * @return array{headers: list<string>, blocks: list<array{table: ?string, summary: list<string|int|null>, rows: list<list<string|int|null>>}>}
+     */
+    public function tablePlan(): array
+    {
+        $quantities = $this->quantityOptions();
+        $questions = $this->options->reject(fn (RegistrationOption $o): bool => $o->kind === OptionKind::Quantity)->values();
+
+        // Keyed in PHP, not grouped in SQL; TableName says why. The prefix
+        // keeps a table called "12" a string key instead of a list index.
+        $tables = [];
+        $unseated = [];
+        foreach ($this->byName($this->registrations) as $registration) {
+            $key = TableName::key($registration->table_name);
+            if ($key === null) {
+                $unseated[] = $registration;
+            } else {
+                $tables['t:'.$key][] = $registration;
+            }
+        }
+        uksort($tables, fn (string $a, string $b): int => NameOrder::compare(substr($a, 2), substr($b, 2)));
+
+        $groups = [];
+        foreach ($tables as $key => $bookings) {
+            $groups[] = [substr($key, 2), $bookings];
+        }
+        if ($unseated !== []) {
+            $groups[] = [null, $unseated];
+        }
+
+        $blocks = array_map(function (array $group) use ($quantities, $questions): array {
+            [$table, $bookings] = $group;
+            $taken = fn (Registration $r, RegistrationOption $o): int => (int) ($r->choices->firstWhere('option_id', $o->id)->quantity ?? 0);
+
+            return [
+                'table' => $table,
+                'summary' => array_merge(
+                    [$table ?? 'Sans table'],
+                    $quantities->map(fn (RegistrationOption $o): int => array_sum(array_map(fn (Registration $r): int => $taken($r, $o), $bookings)))->all(),
+                    [$this->seated($bookings)],
+                    $questions->map(fn (): string => '')->all(),
+                ),
+                'rows' => array_map(fn (Registration $r): array => array_merge(
+                    [$r->last_name.' '.$r->first_name],
+                    $quantities->map(fn (RegistrationOption $o): int => $taken($r, $o))->all(),
+                    [$this->countsGuests ? $r->guest_count : null],
+                    $questions->map(fn (RegistrationOption $o): ?string => $r->choices->firstWhere('option_id', $o->id)?->answerText())->all(),
+                ), $bookings),
+            ];
+        }, $groups);
+
+        return [
+            'headers' => array_merge(
+                ['Table / Nom'],
+                $quantities->map(fn (RegistrationOption $o): string => $o->label)->all(),
+                ['Personnes'],
+                $questions->map(fn (RegistrationOption $o): string => $o->label)->all(),
+            ),
+            'blocks' => $blocks,
+        ];
+    }
+
+    /**
+     * How many people a table's bookings bring, or null on a form that counts
+     * nobody.
+     *
+     * @param  list<Registration>  $bookings
+     */
+    private function seated(array $bookings): ?int
+    {
+        return $this->countsGuests
+            ? array_sum(array_map(fn (Registration $r): int => $r->guest_count, $bookings))
+            : null;
+    }
+
     /** @return Collection<int, RegistrationOption> */
     private function quantityOptions(): Collection
     {
