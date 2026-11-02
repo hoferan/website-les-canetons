@@ -5,7 +5,16 @@ import { de } from "./de";
 import { fr } from "./fr";
 import type { Locale } from "./locale";
 
-const CATALOGUES: Record<Locale, unknown> = { fr, "de-CH": de };
+/**
+ * Copies, taken before any text is applied. i18next writes an added resource
+ * into the very object it was initialised with, so the catalogue modules
+ * themselves end up holding the band's wording, and a default read from them
+ * after a save would be that save.
+ */
+const CATALOGUES: Record<Locale, unknown> = {
+  fr: structuredClone(fr),
+  "de-CH": structuredClone(de),
+};
 
 /**
  * A text as the code ships it, read from the catalogue itself rather than from
@@ -21,8 +30,13 @@ export function catalogueValue(locale: Locale, key: string): string | undefined 
   return typeof node === "string" ? node : undefined;
 }
 
-/** The keys the last call wrote, so the next can put back what it drops. */
-let applied = new Set<string>();
+/** The rows the last call wrote, by key, so the next can put back what it drops. */
+let applied = new Map<string, TextOverrideResource>();
+
+/** The band's stored row for a text, or undefined while it shows the catalogue. */
+export function storedText(key: string): TextOverrideResource | undefined {
+  return applied.get(key);
+}
 
 /**
  * Writes the band's texts over the catalogue, so `t()` returns them with no
@@ -38,7 +52,7 @@ let applied = new Set<string>();
  * does not gets its catalogue wording back.
  */
 export function applyOverrides(rows: TextOverrideResource[]): void {
-  const next = new Set<string>();
+  const next = new Map<string, TextOverrideResource>();
 
   for (const row of rows) {
     const frDefault = catalogueValue("fr", row.key);
@@ -46,10 +60,10 @@ export function applyOverrides(rows: TextOverrideResource[]): void {
     if (frDefault === undefined || deDefault === undefined) continue;
 
     write(row.key, row.fr ?? frDefault, row.de ?? row.fr ?? deDefault);
-    next.add(row.key);
+    next.set(row.key, row);
   }
 
-  for (const key of applied) {
+  for (const key of applied.keys()) {
     if (!next.has(key)) {
       write(key, catalogueValue("fr", key) ?? "", catalogueValue("de-CH", key) ?? "");
     }

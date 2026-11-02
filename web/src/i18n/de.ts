@@ -1267,6 +1267,7 @@ export const de: typeof fr = {
     contactHeading: "Kontakt der Canetons",
     writeToCommittee: "Dem Vorstand schreiben",
     booking: "Um die Canetons zu buchen:",
+    bookingNumber: "",
   },
 
   join: {
@@ -1326,6 +1327,18 @@ export const de: typeof fr = {
   notFound: {
     heading: "Seite nicht gefunden",
     body: "Hoppla! Die gesuchte Seite existiert nicht oder wurde verschoben.",
+  },
+
+  texts: {
+    edit: "Text bearbeiten: {{label}}",
+    title: "Text bearbeiten",
+    french: "Français",
+    german: "Deutsch",
+    single: "Text",
+    multilineHint: "Eine Zeile pro Eintrag.",
+    save: "Speichern",
+    reset: "Ursprünglichen Text wiederherstellen",
+    saveFailed: "Der Text konnte nicht gespeichert werden. Bitte erneut versuchen.",
   },
 
   editMode: {

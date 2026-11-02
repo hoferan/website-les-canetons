@@ -1675,6 +1675,9 @@ export const fr = {
     contactHeading: "Contact des Canetons",
     writeToCommittee: "Écrire au comité",
     booking: "Pour réserver les Canetons :",
+    // Empty until the band stores one from the page (#106); the page then
+    // shows a placeholder, never a guessed number.
+    bookingNumber: "",
   },
 
   /** /join: how to join, for a parent or a curious child. */
@@ -1743,6 +1746,19 @@ export const fr = {
    * a translated string, never a fragment glued together outside the
    * catalogue.
    */
+  /** A text of a public page, changed where it is shown (#106). */
+  texts: {
+    edit: "Modifier le texte : {{label}}",
+    title: "Modifier le texte",
+    french: "Français",
+    german: "Deutsch",
+    single: "Texte",
+    multilineHint: "Une ligne par entrée.",
+    save: "Enregistrer",
+    reset: "Rétablir le texte d’origine",
+    saveFailed: "Le texte n’a pas pu être enregistré. Réessayez.",
+  },
+
   /** The switch that shows the pencils on a public page (#106). */
   editMode: {
     start: "Modifier la page",

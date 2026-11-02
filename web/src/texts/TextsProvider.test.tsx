@@ -73,5 +73,7 @@ test("a failing texts request still renders the children with the catalogue word
   server.use(http.get("/api/v1/texts", () => HttpResponse.json({}, { status: 500 })));
   renderProvider();
 
-  expect(await screen.findByTestId("intro")).toHaveTextContent(t("join.intro"));
+  // Compared exactly: the catalogue wording carries no-break spaces, which
+  // toHaveTextContent normalises on one side only.
+  expect((await screen.findByTestId("intro")).textContent).toBe(t("join.intro"));
 });

@@ -56,3 +56,15 @@ test("a key the catalogue does not have is ignored", () => {
 
   expect(t("join.intro")).toBe("Bonjour");
 });
+
+test("the catalogue wording survives an override", () => {
+  // i18next writes added resources into the object it was initialised with,
+  // which is the catalogue module itself.
+  const original = catalogueValue("fr", "join.facts.schedule.day");
+
+  applyOverrides([row("join.facts.schedule.day", "Le dimanche", null)]);
+
+  expect(catalogueValue("fr", "join.facts.schedule.day")).toBe(original);
+  applyOverrides([]);
+  expect(t("join.facts.schedule.day")).toBe(original);
+});
