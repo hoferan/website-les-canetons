@@ -81,6 +81,10 @@ export const fr = {
       label: "Gérer les photos",
       hint: "Ajoute et supprime des photos, et choisit celles du site.",
     },
+    content_manage: {
+      label: "Modifier les textes du site",
+      hint: "Change les textes et les coordonnées des pages publiques, là où ils s’affichent.",
+    },
     roles_manage: {
       label: "Gérer les rôles",
       hint: "Crée les rôles et choisit ce que chacun permet.",

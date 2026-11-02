@@ -78,6 +78,10 @@ export const de: typeof fr = {
       label: "Fotos verwalten",
       hint: "Lädt Fotos hoch, löscht sie und wählt jene der Website.",
     },
+    content_manage: {
+      label: "Texte der Website bearbeiten",
+      hint: "Ändert Texte und Kontaktangaben der öffentlichen Seiten direkt dort, wo sie stehen.",
+    },
     roles_manage: {
       label: "Rollen verwalten",
       hint: "Erstellt Rollen und legt fest, was jede erlaubt.",
