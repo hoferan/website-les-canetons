@@ -20,6 +20,8 @@ export type FormSettings = {
   maxGuests: string;
   asksAddress: boolean;
   asksTable: boolean;
+  /** As typed; empty shows no seats. */
+  tableSeats: string;
   /** Only logged-in members fill it in, with their account (ADR 0034). */
   membersOnly: boolean;
 };
@@ -40,6 +42,7 @@ type Settings = Pick<
   | "registrationMaxGuests"
   | "registrationAsksAddress"
   | "registrationAsksTable"
+  | "registrationTableSeats"
   | "registrationAudience"
 >;
 
@@ -57,6 +60,7 @@ export function settingsFrom(event: Settings): FormSettings {
     maxGuests: event.registrationMaxGuests === null ? "" : String(event.registrationMaxGuests),
     asksAddress: event.registrationAsksAddress,
     asksTable: event.registrationAsksTable,
+    tableSeats: event.registrationTableSeats === null ? "" : String(event.registrationTableSeats),
     membersOnly: event.registrationAudience === "members",
   };
 }
@@ -64,6 +68,7 @@ export function settingsFrom(event: Settings): FormSettings {
 /** What the options PUT takes as `form`. */
 export function settingsPayload(settings: FormSettings): ReplaceRegistrationOptionsRequestForm {
   const cap = settings.maxGuests.trim();
+  const seats = settings.tableSeats.trim();
 
   return {
     registrationEnabled: settings.enabled,
@@ -78,6 +83,9 @@ export function settingsPayload(settings: FormSettings): ReplaceRegistrationOpti
     registrationMaxGuests: cap === "" ? null : Number(cap),
     registrationAsksAddress: settings.asksAddress,
     registrationAsksTable: settings.asksTable,
+    // Always sent, since this screen knows the field. Checked by
+    // tableSeatsIsValid() first, like the cap.
+    registrationTableSeats: seats === "" ? null : Number(seats),
     registrationAudience: settings.membersOnly ? "members" : "public",
   };
 }
@@ -87,6 +95,13 @@ export function maxGuestsIsValid(typed: string): boolean {
   const cap = typed.trim();
 
   return cap === "" || (/^\d+$/.test(cap) && Number(cap) >= 1 && Number(cap) <= 100);
+}
+
+/** Empty shows no seats; anything else must be a whole number from 1 to 50, as the API takes. */
+export function tableSeatsIsValid(typed: string): boolean {
+  const seats = typed.trim();
+
+  return seats === "" || (/^\d+$/.test(seats) && Number(seats) >= 1 && Number(seats) <= 50);
 }
 
 /** A typed date and time as an instant, or null when no date was given. */

@@ -101,6 +101,8 @@ class EventResource extends JsonResource
             'registrationAsksAddress' => $this->registration_asks_address,
             /** Whether the form asks who the guest would like to sit with. */
             'registrationAsksTable' => $this->registration_asks_table,
+            /** How many seats a table has, 1 to 50. The form then shows how full each table is. Null shows no seats. */
+            'registrationTableSeats' => $this->registration_table_seats,
             /** Who may fill in the form: `public`, anybody, or `members`, logged-in members only. */
             'registrationAudience' => $this->registration_audience,
             /** Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set. */

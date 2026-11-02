@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Http\Middleware\PublicWriteGuard;
 use App\Mail\RegistrationConfirmation;
 use App\Models\Event;
+use App\Models\Member;
 use App\Models\Registration;
 use App\Models\RegistrationOption;
+use App\Support\FormAudience;
 use App\Support\FormToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -154,6 +156,22 @@ class RegistrationPublicTest extends TestCase
             RegistrationConfirmation::class,
             fn (RegistrationConfirmation $mail) => $mail->hasTo('delphine@example.test')
         );
+    }
+
+    public function test_the_mail_says_payment_is_at_the_entrance_and_not_by_card(): void
+    {
+        $registration = Registration::factory()
+            ->withChoice($this->meat)
+            ->create(['event_id' => $this->event->id]);
+
+        $text = html_entity_decode(strip_tags(
+            (new RegistrationConfirmation($registration->fresh(), $this->event))->render(),
+        ), ENT_QUOTES | ENT_HTML5);
+
+        $this->assertStringContainsString('Le paiement se fait à l’entrée, au nom de cette inscription.', $text);
+        $this->assertStringContainsString('Les cartes ne sont pas acceptées.', $text);
+        // Not promised: the band does not always have it.
+        $this->assertStringNotContainsString('TWINT', $text);
     }
 
     public function test_the_confirmation_puts_each_detail_on_its_own_line(): void
@@ -451,5 +469,92 @@ class RegistrationPublicTest extends TestCase
         $this->postJson($this->url(), $this->payload(), $this->headers())
             ->assertStatus(422)
             ->assertJson(['code' => 'spam_suspected']);
+    }
+
+    // ------------------------------------------------- the tables on the form
+
+    public function test_the_form_lists_the_tables_already_booked_with_their_head_count(): void
+    {
+        $this->seat('Müller', 2);
+        $this->seat(' Müller ', 3);
+        $this->seat('Clerc', 1);
+        $this->seat(null, 4);
+
+        $this->getJson("/api/v1/events/{$this->event->id}/registration")
+            ->assertOk()
+            ->assertJsonPath('tables', [
+                ['name' => 'Clerc', 'guests' => 1],
+                ['name' => 'Müller', 'guests' => 5],
+            ]);
+    }
+
+    public function test_tables_that_differ_in_case_stay_two_tables(): void
+    {
+        // Two unrelated families may both pick "Müller".
+        $this->seat('Müller', 2);
+        $this->seat('müller', 1);
+
+        $tables = $this->getJson("/api/v1/events/{$this->event->id}/registration")->json('tables');
+
+        $this->assertEqualsCanonicalizing(
+            [['name' => 'Müller', 'guests' => 2], ['name' => 'müller', 'guests' => 1]],
+            $tables,
+        );
+    }
+
+    public function test_a_cancelled_booking_takes_its_table_off_the_form(): void
+    {
+        $this->seat('Spam', 1)->delete();
+
+        $this->getJson("/api/v1/events/{$this->event->id}/registration")
+            ->assertJsonPath('tables', []);
+    }
+
+    public function test_a_table_whose_bookings_count_nobody_holds_zero(): void
+    {
+        $bottles = RegistrationOption::factory()->uncounted()->create(['event_id' => $this->event->id]);
+        Registration::factory()->withChoice($bottles, 5)
+            ->create(['event_id' => $this->event->id, 'table_name' => 'Fanfare']);
+
+        $this->getJson("/api/v1/events/{$this->event->id}/registration")
+            ->assertJsonPath('tables', [['name' => 'Fanfare', 'guests' => 0]]);
+    }
+
+    public function test_no_tables_when_the_form_does_not_ask_for_one(): void
+    {
+        $this->event->update(['registration_asks_table' => false]);
+        $this->seat('Müller', 2);
+
+        $this->getJson("/api/v1/events/{$this->event->id}/registration")
+            ->assertJsonPath('tables', []);
+    }
+
+    public function test_a_members_form_lists_no_tables(): void
+    {
+        $this->event->update(['registration_audience' => FormAudience::Members]);
+        $this->seat('Müller', 2);
+
+        $this->actingAsMember(Member::factory()->create())
+            ->getJson("/api/v1/events/{$this->event->id}/registration")
+            ->assertOk()
+            ->assertJsonPath('tables', []);
+    }
+
+    public function test_the_form_carries_the_seats(): void
+    {
+        $this->getJson("/api/v1/events/{$this->event->id}/registration")
+            ->assertJsonPath('tableSeats', null);
+
+        $this->event->update(['registration_table_seats' => 10]);
+
+        $this->getJson("/api/v1/events/{$this->event->id}/registration")
+            ->assertJsonPath('tableSeats', 10);
+    }
+
+    /** A booking at the given table for that many people. */
+    private function seat(?string $table, int $guests): Registration
+    {
+        return Registration::factory()->withChoice($this->meat, $guests)
+            ->create(['event_id' => $this->event->id, 'table_name' => $table]);
     }
 }

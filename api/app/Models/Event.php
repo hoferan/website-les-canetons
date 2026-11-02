@@ -41,6 +41,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property bool $registration_enabled
  * @property bool $registration_asks_address
  * @property bool $registration_asks_table
+ * @property int|null $registration_table_seats
  * @property FormAudience $registration_audience
  */
 class Event extends Model
@@ -80,6 +81,7 @@ class Event extends Model
         'registration_enabled',
         'registration_asks_address',
         'registration_asks_table',
+        'registration_table_seats',
         'registration_audience',
         'published_at',
     ];
@@ -307,6 +309,7 @@ class Event extends Model
             'registration_enabled' => 'boolean',
             'registration_asks_address' => 'boolean',
             'registration_asks_table' => 'boolean',
+            'registration_table_seats' => 'integer',
             'registration_audience' => FormAudience::class,
         ];
     }

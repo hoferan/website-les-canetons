@@ -311,6 +311,7 @@
  */
 import type { FormAudience } from "./formAudience";
 import type { PublicEventResource } from "./publicEventResource";
+import type { RegistrationFormResourceTablesItem } from "./registrationFormResourceTablesItem";
 import type { RegistrationOptionResource } from "./registrationOptionResource";
 
 export interface RegistrationFormResource {
@@ -324,6 +325,13 @@ export interface RegistrationFormResource {
   asksAddress: boolean;
   /** Whether to ask who the guest would like to sit with. A booking sent with it anyway stores none. */
   asksTable: boolean;
+  /** The tables already booked for this event and how many people each holds, to pick from. Empty unless a public form asks for a table. Public: anybody who opens the form sees them (ADR 0036). */
+  tables: RegistrationFormResourceTablesItem[];
+  /**
+   * How many seats a table has, to show how full each one is. Null shows no seats. A full table can still be booked.
+   * @nullable
+   */
+  tableSeats: number | null;
   /** @nullable */
   opensAt: string | null;
   /** @nullable */

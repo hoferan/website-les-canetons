@@ -6,6 +6,7 @@ import { OUTLINED_CARD } from "../../carnival/raised";
 import { FormField } from "../../components/FormField";
 import { t } from "../../i18n";
 import { FIELDS } from "../contactFields";
+import { TablePicker } from "../TablePicker";
 import { Toggle } from "./EditableBlock";
 
 /**
@@ -19,21 +20,25 @@ import { Toggle } from "./EditableBlock";
 export function ContactBlock({
   asksAddress,
   asksTable,
+  tableSeats,
+  tableSeatsProblem,
   membersOnly,
   guest,
   onChange,
 }: {
   asksAddress: boolean;
   asksTable: boolean;
+  /** As typed; empty shows no seats. */
+  tableSeats: string;
+  tableSeatsProblem?: string;
   membersOnly: boolean;
   guest: boolean;
-  onChange: (patch: { asksAddress?: boolean; asksTable?: boolean }) => void;
+  onChange: (patch: { asksAddress?: boolean; asksTable?: boolean; tableSeats?: string }) => void;
 }) {
   const fields = (
     <div className="flex flex-col gap-related">
       {FIELDS.filter(
-        (field) =>
-          (field.name !== "address" || asksAddress) && (field.name !== "tableName" || asksTable),
+        (field) => (field.name !== "address" || asksAddress) && field.name !== "tableName",
       ).map((field) => (
         <FormField
           key={field.name}
@@ -46,6 +51,10 @@ export function ContactBlock({
           onChange={() => {}}
         />
       ))}
+      {/* The guest's picker, empty: which tables exist depends on bookings. */}
+      {asksTable ? (
+        <TablePicker id="contact-tableName" tables={[]} seats={null} value="" onChange={() => {}} />
+      ) : null}
     </div>
   );
 
@@ -91,6 +100,19 @@ export function ContactBlock({
         checked={asksTable}
         onChange={(checked) => onChange({ asksTable: checked })}
       />
+      {/* Under the switch it belongs to, and only while there is a table to
+        seat people at. */}
+      {asksTable ? (
+        <FormField
+          id="asks-table-seats"
+          label={t("registrationOptions.tableSeats")}
+          inputMode="numeric"
+          value={tableSeats}
+          hint={t("registrationOptions.tableSeatsHint")}
+          onChange={(value) => onChange({ tableSeats: value })}
+          problem={tableSeatsProblem}
+        />
+      ) : null}
     </div>
   );
 }

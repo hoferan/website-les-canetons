@@ -247,6 +247,7 @@ test("the planning's card shows the event's poster", async () => {
     registrationEnabled: false,
     registrationAsksAddress: true,
     registrationAsksTable: true,
+    registrationTableSeats: null,
     registrationAudience: "public",
     takesRegistrations: false,
     myAttendance: null,

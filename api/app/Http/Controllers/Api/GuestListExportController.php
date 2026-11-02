@@ -135,7 +135,9 @@ class GuestListExportController extends Controller
                 self::lay($sheet, count($plan['headers']));
                 $writer->addRow(Row::fromValuesWithStyle($plan['headers'], self::cell(bold: true)));
                 foreach ($plan['blocks'] as $block) {
-                    $writer->addRow(Row::fromValuesWithStyle($block['summary'], self::cell(bold: true, shaded: true)));
+                    // Red where a table holds more people than it seats, so
+                    // whoever plans the seating sees it on paper.
+                    $writer->addRow(Row::fromValuesWithStyle($block['summary'], self::cell(bold: true, shaded: true, alarm: $block['overfull'])));
                     foreach ($block['rows'] as $row) {
                         $writer->addRow(Row::fromValuesWithStyle($row, self::cell()));
                     }
@@ -188,7 +190,7 @@ class GuestListExportController extends Controller
      * "Menu viande (45.–)" is cut off at the column edge, price first, and so
      * is a long answer the kitchen needs to read.
      */
-    private static function cell(bool $bold = false, bool $shaded = false): Style
+    private static function cell(bool $bold = false, bool $shaded = false, bool $alarm = false): Style
     {
         $line = fn (BorderName $side): BorderPart => new BorderPart($side, Color::BLACK, BorderWidth::THIN, BorderStyle::SOLID);
         $style = (new Style)
@@ -200,6 +202,10 @@ class GuestListExportController extends Controller
             ))
             ->withFontBold($bold)
             ->withShouldWrapText(true);
+
+        if ($alarm) {
+            $style = $style->withFontColor(Color::RED);
+        }
 
         return $shaded ? $style->withBackgroundColor('EEEEEE') : $style;
     }

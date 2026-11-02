@@ -26,6 +26,8 @@ import type {
 } from "../api/generated/model";
 import { BlockView } from "../booking/BlockView";
 import { BookingReadLine } from "../booking/BookingReadLine";
+import { TablePicker } from "../booking/TablePicker";
+import { tablesOf, type TableChoice } from "../booking/tables";
 import type { Typed } from "../booking/useAnswers";
 import { ApiError } from "../api/http";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
@@ -76,7 +78,6 @@ const AMENDABLE: {
   { name: "email", labelKey: "booking.fields.email", type: "email", required: true },
   { name: "phone", labelKey: "booking.fields.phone", type: "tel", required: true },
   { name: "address", labelKey: "booking.fields.address" },
-  { name: "tableName", labelKey: "booking.fields.tableName" },
 ];
 
 /**
@@ -445,6 +446,8 @@ export function EventRegistrations() {
       {amending ? (
         <AmendForm
           booking={amending.booking}
+          tables={tablesOf(bookings)}
+          seats={title?.registrationTableSeats ?? null}
           questions={questions}
           busy={amend.isPending}
           error={form.error}
@@ -907,6 +910,8 @@ function BookingActions({
  */
 function AmendForm({
   booking,
+  tables,
+  seats,
   questions,
   busy,
   error,
@@ -915,6 +920,9 @@ function AmendForm({
   onCancel,
 }: {
   booking: RegistrationResource;
+  /** The guest list's tables, this booking's own among them. */
+  tables: TableChoice[];
+  seats: number | null;
   questions: RegistrationOptionResource[];
   busy: boolean;
   error: ReturnType<typeof useApiFormError>["error"];
@@ -993,6 +1001,19 @@ function AmendForm({
               problem={problemFor(field.name)}
             />
           ))}
+
+      {/* The guest's picker, so a correction cannot start a variant of a
+          table that already exists. */}
+      {booking.isMember ? null : (
+        <TablePicker
+          id="amend-tableName"
+          tables={tables}
+          seats={seats}
+          value={draft.tableName}
+          onChange={(tableName) => setDraft((current) => ({ ...current, tableName }))}
+          problem={problemFor("tableName")}
+        />
+      )}
 
       {/* The public form's own widgets, so the committee sees the question
           as the guest did. min-w-0 for the reason BlockView's radios give. */}

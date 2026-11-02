@@ -391,6 +391,11 @@ export interface EventResource {
   registrationAsksAddress: boolean;
   /** Whether the form asks who the guest would like to sit with. */
   registrationAsksTable: boolean;
+  /**
+   * How many seats a table has, 1 to 50. The form then shows how full each table is. Null shows no seats.
+   * @nullable
+   */
+  registrationTableSeats: number | null;
   /** Who may fill in the form: `public`, anybody, or `members`, logged-in members only. */
   registrationAudience: FormAudience;
   /** Whether this event has a booking form at all, open or not. True exactly when `registrationClosesAt` is set. */

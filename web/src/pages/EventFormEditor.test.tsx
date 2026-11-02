@@ -237,6 +237,51 @@ test("a people cap that is not a whole number is refused before the save", async
   expect(sent).toHaveLength(0);
 });
 
+test("the contact block shows the table as the guest picks it", async () => {
+  await renderEditor();
+
+  expect(
+    within(screen.getByRole("listitem", { name: "Coordonnées" })).getByRole("combobox", {
+      name: "Table",
+    }),
+  ).toBeInTheDocument();
+});
+
+test("seats per table are asked only while the form asks for a table, and saved", async () => {
+  const user = userEvent.setup();
+  const sent = capturePuts();
+  await renderEditor();
+
+  // The seeded souper asks for a table and seats ten.
+  expect(screen.getByLabelText("Places par table")).toHaveValue("10");
+  await user.click(screen.getByRole("switch", { name: "Demander avec qui être à table" }));
+  expect(screen.queryByLabelText("Places par table")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("switch", { name: "Demander avec qui être à table" }));
+
+  await user.clear(screen.getByLabelText("Places par table"));
+  await user.type(screen.getByLabelText("Places par table"), "8");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect(await screen.findByText("Enregistré.")).toBeInTheDocument();
+  expect(sent[0]?.body.form?.registrationTableSeats).toBe(8);
+});
+
+test("seats that are not a whole number from 1 to 50 are refused before the save", async () => {
+  const user = userEvent.setup();
+  const sent = capturePuts();
+  await renderEditor();
+
+  await user.clear(screen.getByLabelText("Places par table"));
+  await user.type(screen.getByLabelText("Places par table"), "60");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect(screen.getByLabelText("Places par table")).toHaveAccessibleDescription(
+    /Indiquez un nombre entier entre 1 et 50, ou laissez vide\./,
+  );
+  expect(screen.queryByText("Enregistré.")).not.toBeInTheDocument();
+  expect(sent).toHaveLength(0);
+});
+
 /**
  * The button that opens a block goes away as it opens, and "Terminé" as it
  * closes, so without this a keyboard or screen reader user lands on <body>.

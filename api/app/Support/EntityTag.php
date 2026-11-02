@@ -60,6 +60,7 @@ final class EntityTag
         'registrationMaxGuests',
         'registrationAsksAddress',
         'registrationAsksTable',
+        'registrationTableSeats',
         'registrationAudience',
     ];
 

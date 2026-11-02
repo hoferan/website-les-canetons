@@ -45,7 +45,7 @@ Nous avons bien reçu votre inscription pour **{{ $event->title }}**.
 @if ($registration->total_cents !== null)
 **Total : CHF {{ number_format($registration->total_cents / 100, 2, '.', '’') }}**
 
-Le montant est à régler sur place.
+Le paiement se fait à l’entrée, au nom de cette inscription. Les cartes ne sont pas acceptées.
 @endif
 
 @if ($registration->table_name)

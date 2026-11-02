@@ -273,6 +273,7 @@ export const fr = {
     registrationEnabled: "Formulaire ouvert",
     registrationAsksAddress: "Demander l’adresse",
     registrationAsksTable: "Demander la table",
+    registrationTableSeats: "Places par table",
     registrationAudience: "Réservé aux membres",
     // The settings above, together, on the form editor's save.
     form: "Réglages du formulaire",
@@ -1033,8 +1034,18 @@ export const fr = {
     contactLegend: "Vos coordonnées",
     choiceLegend: "Votre choix",
     // Under the Table field. Which fields are optional is said by the star on
-    // the others; what "table" means here is not said anywhere else.
-    tableHint: "Avec qui vous aimeriez être placé.",
+    // the others; what "table" means here is not said anywhere else. A table
+    // is its name, so the hint says that the same name is the same table.
+    tableHint:
+      "Choisissez la table que vous rejoignez. Si elle n’existe pas encore, créez-en une : le même nom, c’est la même table.",
+    table: {
+      none: "Pas de table",
+      new: "Nouvelle table…",
+      newName: "Nom de la nouvelle table",
+      occupancy: "{{name}} ({{guests}}/{{seats}})",
+      // Information only: a full table can still be picked.
+      full: "{{name}} ({{guests}}/{{seats}}, complet)",
+    },
     nothingOffered: "Rien n’est encore proposé pour cette soirée. Revenez d’ici quelques jours.",
     // Only for an option with a capacity; the server counts, see `remaining`.
     placesLeft_one: "Plus qu’une place",
@@ -1235,6 +1246,10 @@ export const fr = {
     contactHint: "Nom, prénom, e-mail et téléphone : chaque inscription les donne.",
     asksAddress: "Demander l’adresse",
     asksTable: "Demander avec qui être à table",
+    tableSeats: "Places par table",
+    tableSeatsHint:
+      "Facultatif, de 1 à 50. Le formulaire montre alors combien de places sont prises à chaque table.",
+    tableSeatsInvalid: "Indiquez un nombre entier entre 1 et 50, ou laissez vide.",
     // The contact block of a members form, which asks for nothing.
     memberContactLocked: "Avec le compte",
     memberContactHint:

@@ -46,6 +46,8 @@ class RegistrationController extends Controller
      * when bookings start or that they have closed.
      *
      * `asksAddress` and `asksTable` say whether to show those two fields.
+     * When the form asks for a table, `tables` lists the ones already booked
+     * with how many people each holds, and `tableSeats` how many fit at one.
      *
      * A form for members only (`audience: members`) answers `404` to a caller
      * without a session, the same as no form. A member reads it, and books

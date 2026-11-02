@@ -901,6 +901,38 @@ class GuestListTest extends TestCase
         $this->assertSame(['Müller', 0, 0, 0], $block['summary']);
     }
 
+    public function test_the_table_plan_shows_seats_and_flags_an_over_full_table(): void
+    {
+        $this->event->update(['registration_table_seats' => 10]);
+        $this->atTable($this->book('A', 6), 'Fanfare');
+        $this->atTable($this->book('B', 5), 'Fanfare');
+        $this->atTable($this->book('C', 5), 'Müller');
+        $this->book('D', 12);
+
+        $blocks = GuestList::for($this->event)->tablePlan()['blocks'];
+
+        $this->assertSame(['11 / 10', '5 / 10', 12], array_column(array_column($blocks, 'summary'), 3));
+        $this->assertSame([true, false, false], array_column($blocks, 'overfull'));
+    }
+
+    public function test_a_full_table_is_not_over_full(): void
+    {
+        $this->event->update(['registration_table_seats' => 10]);
+        $this->atTable($this->book('A', 10), 'Fanfare');
+
+        $this->assertFalse(GuestList::for($this->event)->tablePlan()['blocks'][0]['overfull']);
+    }
+
+    public function test_the_table_plan_without_seats_keeps_the_number(): void
+    {
+        $this->atTable($this->book('A', 5), 'Müller');
+
+        $block = GuestList::for($this->event)->tablePlan()['blocks'][0];
+
+        $this->assertSame(5, $block['summary'][3]);
+        $this->assertFalse($block['overfull']);
+    }
+
     public function test_there_is_a_table_plan_when_the_form_asks_for_a_table(): void
     {
         $this->event->update(['registration_asks_table' => true]);
@@ -971,6 +1003,17 @@ class GuestListTest extends TestCase
         $this->book();
 
         $this->assertStringContainsString('wrapText="1"', $this->xlsxPart('xl/styles.xml'));
+    }
+
+    public function test_an_over_full_table_prints_in_red(): void
+    {
+        $this->atTable($this->book('A', 5), 'Fanfare');
+
+        $this->assertStringNotContainsString('rgb="FFFF0000"', $this->xlsxPart('xl/styles.xml'));
+
+        $this->event->update(['registration_table_seats' => 4]);
+
+        $this->assertStringContainsString('rgb="FFFF0000"', $this->xlsxPart('xl/styles.xml'));
     }
 
     public function test_an_ampersand_in_the_title_survives_the_page_header(): void

@@ -23,6 +23,7 @@ import { PageSection } from "../components/PageSection";
 import { AnswerFields } from "../booking/AnswerFields";
 import { AnswersSummary } from "../booking/AnswersSummary";
 import { EMPTY, FIELDS, type Contact } from "../booking/contactFields";
+import { TablePicker } from "../booking/TablePicker";
 import { MemberBooking } from "../booking/MemberBooking";
 import { useAnswers } from "../booking/useAnswers";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
@@ -253,11 +254,11 @@ export function EventBooking() {
                   </legend>
                   <RequiredLegend />
                   {/* Address and table are the form's to ask for (ADR 0033);
-                    the other four every booking needs. */}
+                    the other four every booking needs. The table is picked
+                    from the ones already booked, below. */}
                   {FIELDS.filter(
                     (field) =>
-                      (field.name !== "address" || offer.asksAddress) &&
-                      (field.name !== "tableName" || offer.asksTable),
+                      (field.name !== "address" || offer.asksAddress) && field.name !== "tableName",
                   ).map((field) => (
                     <FormField
                       key={field.name}
@@ -274,6 +275,16 @@ export function EventBooking() {
                       }
                     />
                   ))}
+                  {offer.asksTable ? (
+                    <TablePicker
+                      id="booking-tableName"
+                      tables={offer.tables}
+                      seats={offer.tableSeats}
+                      value={contact.tableName}
+                      problem={messageFor("tableName")}
+                      onChange={(tableName) => setContact((current) => ({ ...current, tableName }))}
+                    />
+                  ) : null}
                 </fieldset>
 
                 <AnswerFields offer={offer} form={typed} messageFor={messageFor} />

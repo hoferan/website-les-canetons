@@ -185,6 +185,11 @@ class RegistrationOptionController extends Controller
                     ...(isset($form['registrationAudience'])
                         ? ['registration_audience' => $form['registrationAudience']]
                         : []),
+                    // array_key_exists, not isset: null is a value here, the
+                    // one that turns the seats off.
+                    ...(array_key_exists('registrationTableSeats', $form)
+                        ? ['registration_table_seats' => $form['registrationTableSeats']]
+                        : []),
                 ]);
             }
 

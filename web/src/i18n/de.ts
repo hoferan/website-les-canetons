@@ -242,6 +242,7 @@ export const de: typeof fr = {
     registrationEnabled: "Formular geöffnet",
     registrationAsksAddress: "Adresse erfragen",
     registrationAsksTable: "Tisch erfragen",
+    registrationTableSeats: "Plätze pro Tisch",
     registrationAudience: "Nur für Mitglieder",
     form: "Formulareinstellungen",
     sectionId: "Register",
@@ -767,7 +768,15 @@ export const de: typeof fr = {
 
     contactLegend: "Ihre Kontaktangaben",
     choiceLegend: "Ihre Auswahl",
-    tableHint: "Neben wem Sie gerne sitzen möchten.",
+    tableHint:
+      "Wählen Sie den Tisch, an den Sie sich setzen. Gibt es ihn noch nicht, legen Sie einen neuen an: gleicher Name heisst gleicher Tisch.",
+    table: {
+      none: "Kein Tisch",
+      new: "Neuer Tisch…",
+      newName: "Name des neuen Tischs",
+      occupancy: "{{name}} ({{guests}}/{{seats}})",
+      full: "{{name}} ({{guests}}/{{seats}}, voll)",
+    },
     nothingOffered:
       "Für diesen Abend wird noch nichts angeboten. Schauen Sie in ein paar Tagen wieder vorbei.",
     placesLeft_one: "Noch {{count}} Platz frei",
@@ -925,6 +934,10 @@ export const de: typeof fr = {
     contactHint: "Name, Vorname, E-Mail und Telefon: Jede Anmeldung gibt sie an.",
     asksAddress: "Adresse erfragen",
     asksTable: "Erfragen, mit wem man am Tisch sitzt",
+    tableSeats: "Plätze pro Tisch",
+    tableSeatsHint:
+      "Optional, 1 bis 50. Das Formular zeigt dann, wie viele Plätze an jedem Tisch belegt sind.",
+    tableSeatsInvalid: "Geben Sie eine ganze Zahl von 1 bis 50 ein, oder lassen Sie das Feld leer.",
     memberContactLocked: "Mit dem Konto",
     memberContactHint:
       "Keine Kontaktangaben: Jedes Mitglied antwortet mit seinem Konto, unter seinem Namen.",
