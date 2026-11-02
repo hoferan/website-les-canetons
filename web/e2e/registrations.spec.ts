@@ -43,7 +43,9 @@ test("a visitor books the souper from the agenda, and the committee finds them o
   await page.getByLabel("Prénom", { exact: true }).fill("Sophie");
   await page.getByLabel("E-mail", { exact: true }).fill("sophie.bulliard@example.ch");
   await page.getByLabel("Téléphone", { exact: true }).fill("079 555 12 34");
-  await page.getByLabel("Table", { exact: true }).fill("Avec les Python");
+  // A table nobody has booked yet: picked as a new one, then named.
+  await page.getByLabel("Table", { exact: true }).selectOption({ label: "Nouvelle table…" });
+  await page.getByLabel("Nom de la nouvelle table").fill("Avec les Python");
 
   // The running total is what a guest reads before deciding, so it is
   // checked before the submit.
