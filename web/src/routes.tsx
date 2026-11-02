@@ -29,7 +29,6 @@ import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
 import { Registers } from "./pages/Registers";
 import { Roles } from "./pages/Roles";
-import { Website } from "./pages/Website";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
 import { INBOX_PERMISSIONS } from "./lib/inboxPermissions";
@@ -41,6 +40,11 @@ import { INBOX_PERMISSIONS } from "./lib/inboxPermissions";
 const Media = lazy(() => import("./pages/Media").then((module) => ({ default: module.Media })));
 const MediaDetail = lazy(() =>
   import("./pages/MediaDetail").then((module) => ({ default: module.MediaDetail })),
+);
+// The website export and import pull in a zip library and the upload queue,
+// which only an administrator ever needs (#336).
+const Website = lazy(() =>
+  import("./pages/Website").then((module) => ({ default: module.Website })),
 );
 
 /**
@@ -191,7 +195,14 @@ export function AppRoutes() {
 
           {/* The whole public site, carried between servers (#336). */}
           <Route element={<RequirePermission permission="content.manage" />}>
-            <Route path="/website" element={<Website />} />
+            <Route
+              path="/website"
+              element={
+                <Suspense fallback={null}>
+                  <Website />
+                </Suspense>
+              }
+            />
           </Route>
 
           <Route path="*" element={<NotFound />} />

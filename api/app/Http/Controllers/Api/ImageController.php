@@ -49,13 +49,16 @@ class ImageController extends Controller
      * envelope is the same on every list and carries paging only.
      */
     #[Endpoint(operationId: 'image.summary')]
-    #[Response(200, 'The number of images, how many the library holds at most, and their total size in bytes.')]
+    #[Response(200, 'The number of images, how many the library holds at most, their total size in bytes, and the most bytes it holds.')]
     public function summary(): JsonResponse
     {
         return response()->json([
             'count' => Image::query()->count(),
             'capacity' => (int) config('api.images.capacity'),
             'bytesTotal' => (int) Image::query()->sum('bytes'),
+            // The other cap an upload can hit, so an import can check for room
+            // before it uploads anything (#336).
+            'maxBytes' => (int) config('api.images.max_total_bytes'),
         ]);
     }
 

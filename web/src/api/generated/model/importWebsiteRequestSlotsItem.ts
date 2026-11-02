@@ -328,10 +328,6 @@ export type ImportWebsiteRequestSlotsItem = {
    * @nullable
    */
   path?: string | null;
-  /**
-   * For a register's photo, the register's name: the slot goes to the register of that name here.
-   * @maxLength 255
-   * @nullable
-   */
-  registerName?: string | null;
+  /** For a register's photo, the register's name: the slot goes to the register of that name here. */
+  registerName?: string;
 };

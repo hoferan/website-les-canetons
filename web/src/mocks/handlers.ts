@@ -689,6 +689,8 @@ const GENERATED_PASSWORD = "kanu-7rex-mp34";
 
 /** App\Models\Image's cap, from api.images.capacity. */
 const IMAGE_CAPACITY = 100;
+/** api.images.max_total_bytes. */
+const IMAGE_MAX_BYTES = 150 * 1024 * 1024;
 
 /** How many sizes one upload carries, from api.images.max_parts. */
 const IMAGE_MAX_PARTS = 3;
@@ -3284,10 +3286,21 @@ const overrides = [
   ),
 
   // The website as one document, as WebsiteController::export writes it.
-  http.get("/api/v1/website/export", () => {
+  http.get("/api/v1/website/export", async () => {
     const refusal = refuseWithoutWebsite();
     if (refusal) {
       return refusal;
+    }
+    // On the server a size's name is the digest of its bytes. The fixtures'
+    // names are made up, and their file route serves a placeholder, so each
+    // size is named here by the digest of what that route answers; an import
+    // checks it.
+    const servedDigest = new Map<string, string>();
+    for (const image of images) {
+      for (const size of image.sizes) {
+        const bytes = size.data ?? new TextEncoder().encode(placeholderSvg(image, size));
+        servedDigest.set(size.sha256, await sha256Hex(bytes as Uint8Array<ArrayBuffer>));
+      }
     }
     const shaOf = (imageId: number) => images.find((image) => image.id === imageId)?.sha256 ?? "";
     const registerOf = (slot: string) => {
@@ -3308,7 +3321,7 @@ const overrides = [
           .map((size) => ({
             width: size.width,
             height: size.height,
-            sha256: size.sha256,
+            sha256: servedDigest.get(size.sha256) ?? size.sha256,
             url: `/api/v1/images/${size.sha256}.jpg`,
           })),
       })),
@@ -3354,7 +3367,7 @@ const overrides = [
         sha256: string;
         label: string | null;
         path: string | null;
-        registerName: string | null;
+        registerName?: string | null;
       }>;
       history: Array<
         Omit<HistoryEntryResource, "id" | "createdAt" | "updatedAt"> & {
@@ -3380,7 +3393,7 @@ const overrides = [
     );
     for (const slot of body.slots) {
       let key = slot.slot;
-      if (slot.registerName !== null) {
+      if (slot.registerName != null) {
         const register = sections.find((section) => section.name === slot.registerName);
         if (!register) {
           skipped.push({ slot: slot.slot, registerName: slot.registerName });
@@ -4537,6 +4550,7 @@ const overrides = [
       count: images.length,
       capacity: IMAGE_CAPACITY,
       bytesTotal: images.reduce((total, image) => total + image.bytes, 0),
+      maxBytes: IMAGE_MAX_BYTES,
     });
   }),
 

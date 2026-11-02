@@ -650,7 +650,7 @@ class ImageLibraryTest extends TestCase
 
         $this->actingAsMember($this->manager)->getJson('/api/v1/images/summary')
             ->assertOk()
-            ->assertExactJson(['count' => 2, 'capacity' => 100, 'bytesTotal' => 3500]);
+            ->assertExactJson(['count' => 2, 'capacity' => 100, 'bytesTotal' => 3500, 'maxBytes' => 150 * 1024 * 1024]);
     }
 
     public function test_the_single_read_hands_out_the_tag(): void

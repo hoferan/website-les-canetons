@@ -2378,6 +2378,7 @@ export const getImageSummaryResponseMock = (
   count: faker.number.int({ min: 0 }),
   capacity: faker.number.int(),
   bytesTotal: faker.number.int(),
+  maxBytes: faker.number.int(),
   ...overrideResponse,
 });
 

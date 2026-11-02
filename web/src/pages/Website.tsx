@@ -67,7 +67,11 @@ function ExportCard() {
       const zip = await buildBundle(site, async (url) => {
         // A photo file, not an API call: public, cached for a year, and read
         // as bytes, which the JSON mutator does not do.
-        const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
+        const file = await fetch(url);
+        // An error page saved as a photo would only fail on the other
+        // server, half way through an import.
+        if (!file.ok) throw new Error(`photo ${url}: ${file.status}`);
+        const bytes = new Uint8Array(await file.arrayBuffer());
         done += 1;
         setProgress({ done, total });
         return bytes;
@@ -112,7 +116,9 @@ function save(zip: Uint8Array, name: string) {
   link.href = url;
   link.download = name;
   link.click();
-  URL.revokeObjectURL(url);
+  // Later, not at once: some browsers cancel a download whose URL goes away
+  // while it starts.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 type Stage =
@@ -262,7 +268,9 @@ function Result({ result }: { result: WebsiteImport200 }) {
 }
 
 function messageFor(error: unknown): string {
-  if (error instanceof ImportRefused) return t("website.libraryFull");
+  if (error instanceof ImportRefused) {
+    return t(error.reason === "corrupt" ? "website.missingImage" : "website.libraryFull");
+  }
   if (error instanceof ApiError) return translateApiError(error).message;
   return t("website.importFailed");
 }

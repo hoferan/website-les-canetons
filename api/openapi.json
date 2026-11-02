@@ -7448,7 +7448,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "The number of images, how many the library holds at most, and their total size in bytes.",
+                        "description": "The number of images, how many the library holds at most, their total size in bytes, and the most bytes it holds.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7463,12 +7463,17 @@
                                         },
                                         "bytesTotal": {
                                             "type": "integer"
+                                        },
+                                        "maxBytes": {
+                                            "type": "integer",
+                                            "description": "The other cap an upload can hit, so an import can check for room\nbefore it uploads anything (#336)."
                                         }
                                     },
                                     "required": [
                                         "count",
                                         "capacity",
-                                        "bytesTotal"
+                                        "bytesTotal",
+                                        "maxBytes"
                                     ]
                                 }
                             }
@@ -10010,12 +10015,8 @@
                                     "maxLength": 255
                                 },
                                 "registerName": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ],
-                                    "description": "For a register's photo, the register's name: the slot goes to the register of that name here.",
-                                    "maxLength": 255
+                                    "type": "string",
+                                    "description": "For a register's photo, the register's name: the slot goes to the register of that name here."
                                 }
                             },
                             "required": [

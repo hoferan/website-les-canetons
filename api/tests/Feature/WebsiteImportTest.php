@@ -13,6 +13,7 @@ use App\Models\TextOverride;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use RuntimeException;
 use Tests\Support\LibraryImage;
 use Tests\TestCase;
 
@@ -142,6 +143,71 @@ class WebsiteImportTest extends TestCase
 
         $this->assertSame('Ancien', TextOverride::query()->findOrFail('join.intro')->fr);
         $this->assertNotNull(HistoryEntry::query()->find($kept->id));
+    }
+
+    public function test_a_failure_inside_the_transaction_changes_nothing(): void
+    {
+        // Past validation: the texts and slots are already rewritten when the
+        // history insert fails, so only the transaction stands between PROD
+        // and a half-replaced site.
+        $image = $this->image('j');
+        TextOverride::query()->create(['key' => 'join.intro', 'fr' => 'Ancien', 'de' => null]);
+        $this->place('band', $image);
+        $kept = $this->entry('Gardée');
+        HistoryEntry::creating(fn () => throw new RuntimeException('disk full'));
+
+        try {
+            $this->withoutExceptionHandling();
+            $this->import([
+                'texts' => [['key' => 'join.intro', 'fr' => 'Nouveau', 'de' => null]],
+                'slots' => [],
+                'history' => [$this->historyRow('Nouvelle', null)],
+            ]);
+            $this->fail('The import should have failed.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('disk full', $e->getMessage());
+        } finally {
+            HistoryEntry::flushEventListeners();
+        }
+
+        $this->assertSame('Ancien', TextOverride::query()->findOrFail('join.intro')->fr);
+        $this->assertSame($image->id, PhotoSlot::query()->findOrFail('band')->image_id);
+        $this->assertNotNull(HistoryEntry::query()->find($kept->id));
+    }
+
+    public function test_a_text_or_slot_named_twice_is_refused(): void
+    {
+        $image = $this->image('k');
+
+        $this->import([
+            'texts' => [
+                ['key' => 'join.intro', 'fr' => 'Un', 'de' => null],
+                ['key' => 'join.intro', 'fr' => 'Deux', 'de' => null],
+            ],
+            'slots' => [],
+            'history' => [],
+        ])->assertStatus(400)->assertJsonPath('errors.0.field', 'texts.0.key');
+
+        $this->import([
+            'texts' => [],
+            'slots' => [$this->slot('band', $image), $this->slot('band', $image)],
+            'history' => [],
+        ])->assertStatus(400)->assertJsonPath('errors.0.field', 'slots.0.slot');
+    }
+
+    public function test_a_register_slot_must_name_its_register_and_no_other_slot_may(): void
+    {
+        // Without the name, register-5 would land on whatever register has
+        // id 5 here, which may be another instrument.
+        $image = $this->image('l');
+
+        $this->import(['texts' => [], 'slots' => [$this->slot('register-5', $image)], 'history' => []])
+            ->assertStatus(400)->assertJsonPath('errors.0.field', 'slots.0.registerName');
+
+        $this->import(['texts' => [], 'slots' => [$this->slot('band', $image, null, null, 'Cloches')], 'history' => []])
+            ->assertStatus(400)->assertJsonPath('errors.0.field', 'slots.0.registerName');
+
+        $this->assertSame(0, PhotoSlot::query()->count());
     }
 
     public function test_event_and_history_slots_cannot_be_imported_as_slots(): void

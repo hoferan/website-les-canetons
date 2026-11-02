@@ -8,6 +8,8 @@ use App\Models\TextOverride;
 use App\Support\HistoryIcon;
 use App\Support\HistoryPrecision;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\NestedRules;
+use Illuminate\Validation\Rule;
 
 /**
  * A website as GET /website/export wrote it, less the photos: the browser
@@ -17,7 +19,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class ImportWebsiteRequest extends FormRequest
 {
-    /** @return array<string, array<int, mixed>> */
+    /** @return array<string, array<int, mixed>|NestedRules> */
     public function rules(): array
     {
         $sha256 = ['string', 'size:64', 'exists:images,sha256'];
@@ -28,17 +30,22 @@ class ImportWebsiteRequest extends FormRequest
             'format' => ['required', 'integer', 'min:'.WebsiteController::FORMAT, 'max:'.WebsiteController::FORMAT],
             /** The changed texts, as GET /texts lists them. They replace every stored text. */
             'texts' => ['present', 'array', 'max:500'],
-            'texts.*.key' => ['required', 'string', 'max:'.TextOverride::MAX_KEY_LENGTH, 'regex:/^'.TextOverride::KEY.'$/'],
+            'texts.*.key' => ['required', 'distinct', 'string', 'max:'.TextOverride::MAX_KEY_LENGTH, 'regex:/^'.TextOverride::KEY.'$/'],
             'texts.*.fr' => ['present', 'nullable', 'string', 'max:'.TextOverride::MAX_LENGTH],
             'texts.*.de' => ['present', 'nullable', 'string', 'max:'.TextOverride::MAX_LENGTH],
             /** The photo slots, an event's poster and a history entry's photo aside. They replace every other slot. */
             'slots' => ['present', 'array', 'max:200'],
-            'slots.*.slot' => ['required', 'string', 'regex:/^'.PhotoSlot::KEY.'$/', 'not_regex:/^(event|history)-\d+$/'],
+            'slots.*.slot' => ['required', 'distinct', 'string', 'regex:/^'.PhotoSlot::KEY.'$/', 'not_regex:/^(event|history)-\d+$/'],
             'slots.*.sha256' => ['required', ...$sha256],
             'slots.*.label' => ['nullable', 'string', 'max:120'],
             'slots.*.path' => ['nullable', 'string', 'max:255', 'starts_with:/'],
             /** For a register's photo, the register's name: the slot goes to the register of that name here. */
-            'slots.*.registerName' => ['nullable', 'string', 'max:255'],
+            // Required on a register's photo and refused anywhere else: without
+            // it, register-5 would land on whatever register has id 5 here.
+            'slots.*.registerName' => Rule::forEach(fn (mixed $value, string $attribute): array => preg_match(
+                '/^register-\d+$/',
+                (string) $this->input(str_replace('.registerName', '.slot', $attribute)),
+            ) === 1 ? ['required', 'string', 'max:255'] : ['prohibited']),
             /** The history, oldest first. It replaces every entry. */
             'history' => ['present', 'array', 'max:500'],
             'history.*.occurredOn' => ['required', 'date'],

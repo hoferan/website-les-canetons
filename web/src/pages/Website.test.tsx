@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { strToU8, zipSync } from "fflate";
@@ -16,7 +18,9 @@ import { Website } from "./Website";
  * (#336). jsdom cannot send a multipart body, so the photo upload is injected.
  */
 
-const SHA = "1".repeat(64);
+/** The photo's one size, named by the digest of its bytes as on the server. */
+const PHOTO_BYTES = "jpeg bytes";
+const SHA = createHash("sha256").update(PHOTO_BYTES).digest("hex");
 const SITE: WebsiteExport200 = {
   format: 1,
   exportedAt: "2026-11-02T10:00:00+00:00",
@@ -50,7 +54,7 @@ const readFile = async (file: File) => contents.get(file.name)!;
 
 function bundleFile(site: unknown = SITE, withImage = true): File {
   const files: Record<string, Uint8Array> = { "site.json": u8(JSON.stringify(site)) };
-  if (withImage) files[`images/${SHA}.jpg`] = u8("jpeg bytes");
+  if (withImage) files[`images/${SHA}.jpg`] = u8(PHOTO_BYTES);
   contents.set("site.zip", zipSync(files));
   return new File(["zip"], "site.zip", { type: "application/zip" });
 }
@@ -68,7 +72,7 @@ test("the export button downloads a zip", async () => {
   setMockUser("demo.direction");
   const created = vi.fn((_blob: Blob | MediaSource) => "blob:site");
   vi.spyOn(URL, "createObjectURL").mockImplementation(created);
-  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  const revoked = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
   const clicked: string[] = [];
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
     this: HTMLAnchorElement,
@@ -82,6 +86,27 @@ test("the export button downloads a zip", async () => {
   await waitFor(() => expect(clicked).toHaveLength(1));
   expect(clicked[0]).toMatch(/^site-.+-\d{4}-\d{2}-\d{2}\.zip$/);
   expect((created.mock.calls[0]![0] as Blob).type).toBe("application/zip");
+  // Revoked at once, the link can cancel the download it just started in
+  // some browsers.
+  expect(revoked).not.toHaveBeenCalled();
+});
+
+test("a photo the server fails to send fails the export, and nothing is saved", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  server.use(
+    http.get("/api/v1/website/export", () => HttpResponse.json(SITE)),
+    http.get("/api/v1/images/:file", () => new HttpResponse("gone", { status: 404 })),
+  );
+  const clicked = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  await renderWithSession(<Website />, { route: "/website" });
+
+  await user.click(screen.getByRole("button", { name: "Télécharger le site" }));
+
+  expect(
+    await screen.findByText("Le site n’a pas pu être exporté. Réessayez."),
+  ).toBeInTheDocument();
+  expect(clicked).not.toHaveBeenCalled();
 });
 
 test("a file shows what it holds before anything is replaced", async () => {

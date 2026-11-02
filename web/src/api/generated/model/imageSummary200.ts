@@ -315,4 +315,9 @@ export type ImageSummary200 = {
   count: number;
   capacity: number;
   bytesTotal: number;
+  /**
+   * The other cap an upload can hit, so an import can check for room
+   * before it uploads anything (#336).
+   */
+  maxBytes: number;
 };
