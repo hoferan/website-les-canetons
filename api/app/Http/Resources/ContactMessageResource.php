@@ -40,6 +40,12 @@ class ContactMessageResource extends JsonResource
                     : trim($this->handledBy->first_name.' '.$this->handledBy->last_name),
                 null,
             ),
+            /**
+             * The fields that carried a link or markup when it arrived, empty when none did: `firstName`, `lastName`, `subject` or `message`. `messages.manage` clears the flag.
+             *
+             * @var list<string>
+             */
+            'suspectFields' => $this->suspect_fields ?? [],
         ];
     }
 }

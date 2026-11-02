@@ -23,5 +23,7 @@ final readonly class InboxItem
         // Numbers the SPA words on screen; null for a kind with none.
         // Computed language is translated in the SPA, so it travels as data.
         public ?EventBookingsFacts $facts = null,
+        // Whether the row behind it is flagged as spam (#332).
+        public bool $suspect = false,
     ) {}
 }

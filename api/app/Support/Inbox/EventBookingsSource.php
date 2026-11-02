@@ -88,6 +88,9 @@ final class EventBookingsSource implements InboxSource
                 actors: $delta->actors,
                 latestChangeId: $delta->latestChangeId,
                 nearlyFull: $this->nearlyFull($event),
+                // Every flagged booking still on the list, not only the ones
+                // since the last read: each waits for somebody to clear it.
+                suspect: $event->registrations()->whereNotNull('suspect_fields')->count(),
             ),
         );
     }

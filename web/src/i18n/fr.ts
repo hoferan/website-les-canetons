@@ -293,6 +293,7 @@ export const fr = {
     message: "Message",
     handled: "Traité",
     paid: "Payé",
+    suspect: "Suspect",
     first_name: "Prénom",
     last_name: "Nom",
     address: "Adresse",

@@ -261,6 +261,7 @@ export const de: typeof fr = {
     message: "Nachricht",
     handled: "Erledigt",
     paid: "Bezahlt",
+    suspect: "Verdächtig",
     first_name: "Vorname",
     last_name: "Nachname",
     address: "Adresse",

@@ -52,6 +52,8 @@ class EventBookingsFactsResource extends JsonResource
              * @var list<array{label: string, remaining: int}>
              */
             'nearlyFull' => $this->nearlyFull,
+            /** Bookings on the list flagged as spam and not yet cleared, whenever they came in. */
+            'suspect' => $this->suspect,
         ];
     }
 }

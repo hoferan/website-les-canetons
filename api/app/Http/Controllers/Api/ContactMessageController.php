@@ -70,18 +70,27 @@ class ContactMessageController extends Controller
      * clears both. Reopening is allowed, so a message marked handled by
      * mistake can be corrected.
      *
+     * `{"suspect": false}` clears the spam flag (see `suspectFields`) and
+     * leaves `handled` as it was unless that is sent too.
+     *
      * Requires `If-Match` with the tag from reading this message. Without one
      * the request answers `428`; with a stale one, `412`.
      */
     #[Endpoint(operationId: 'contactMessage.handle')]
     public function handle(HandleContactMessageRequest $request, ContactMessage $contactMessage): ContactMessageResource
     {
-        $handled = $request->boolean('handled');
+        if ($request->has('handled')) {
+            $handled = $request->boolean('handled');
+            $contactMessage->handled_at = $handled ? now() : null;
+            $contactMessage->handled_by_member_id = $handled ? $request->user()->id : null;
+        }
 
-        $contactMessage->update([
-            'handled_at' => $handled ? now() : null,
-            'handled_by_member_id' => $handled ? $request->user()->id : null,
-        ]);
+        // Only `false` passes validation.
+        if ($request->has('suspect')) {
+            $contactMessage->suspect_fields = null;
+        }
+
+        $contactMessage->save();
 
         return new ContactMessageResource($contactMessage->load('handledBy'));
     }
