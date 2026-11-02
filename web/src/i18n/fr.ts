@@ -508,6 +508,33 @@ export const fr = {
   },
 
   /**
+   * A public booking or contact message the spam check flagged (#332): the
+   * badge, why, and the button that clears it. `fields` names the API's
+   * `suspectFields` tokens.
+   */
+  suspect: {
+    // Feminine for "une inscription", masculine for "un message".
+    booking: "Suspecte",
+    message: "Suspect",
+    reasons: "Lien ou balise dans : {{fields}}.",
+    mailHeld: "Confirmation pas encore envoyée.",
+    clear: "Pas du spam",
+    clearAria: "{{name}} : pas du spam",
+    clearFailed: "Le signalement n’a pas pu être levé. Réessayez.",
+    inbox_one: "{{count}} inscription suspecte",
+    inbox_other: "{{count}} inscriptions suspectes",
+    fields: {
+      firstName: "prénom",
+      lastName: "nom",
+      address: "adresse",
+      tableName: "table",
+      answers: "réponses",
+      subject: "sujet",
+      message: "message",
+    },
+  },
+
+  /**
    * The inbox worklist (/inbox) and its nav badge.
    *
    * `kinds` maps the API's `kind` token to what a committee member reads;

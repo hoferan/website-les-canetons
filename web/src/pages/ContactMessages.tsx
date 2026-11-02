@@ -23,11 +23,12 @@ import {
   getInboxSummaryQueryKey,
   useContactMessageIndex,
 } from "../api/generated/endpoints";
-import type { ContactMessageResource } from "../api/generated/model";
+import type { ContactMessageResource, HandleContactMessageRequest } from "../api/generated/model";
 import { rowsOf, totalOf } from "../api/collection";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
+import { SuspectBadge, SuspectReasons } from "../components/SuspectFlag";
 import { t } from "../i18n";
 import { formatInstant } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
@@ -107,8 +108,15 @@ export function ContactMessages() {
   // their request options when created; the tag differs per call. See
   // web/src/api/ifMatch.ts.
   const handle = useMutation({
-    mutationFn: ({ id, handled, etag }: { id: number; handled: boolean; etag: string }) =>
-      contactMessageHandle(id, { handled }, ifMatch(etag)),
+    mutationFn: ({
+      id,
+      body,
+      etag,
+    }: {
+      id: number;
+      body: HandleContactMessageRequest;
+      etag: string;
+    }) => contactMessageHandle(id, body, ifMatch(etag)),
   });
   const destroy = useMutation({
     mutationFn: ({ id, etag }: { id: number; etag: string }) =>
@@ -192,7 +200,8 @@ export function ContactMessages() {
     action.clear();
   }
 
-  async function toggleHandled(next: boolean) {
+  /** Either write the panel offers: Traité, or clearing a spam flag (#332). */
+  async function save(body: HandleContactMessageRequest) {
     if (!opened) {
       return;
     }
@@ -205,7 +214,7 @@ export function ContactMessages() {
     try {
       const saved = await handle.mutateAsync({
         id: opened.message.id,
-        handled: next,
+        body,
         etag: opened.etag,
       });
       if (saved.status !== 200) {
@@ -306,7 +315,8 @@ export function ContactMessages() {
           busy={handle.isPending || destroy.isPending}
           error={action.error}
           mayManage={mayManage}
-          onToggleHandled={toggleHandled}
+          onToggleHandled={(handled) => save({ handled })}
+          onClearSuspect={() => save({ suspect: false })}
           onDelete={openDeleteDialog}
           onClose={closePanel}
         />
@@ -416,9 +426,13 @@ function MessageSummary({
 
   return (
     <>
-      <p className="font-semibold">
-        {message.firstName} <span data-testid="message-last-name">{message.lastName}</span>
+      <p className="flex flex-wrap items-center gap-tight font-semibold">
+        <span>
+          {message.firstName} <span data-testid="message-last-name">{message.lastName}</span>
+        </span>
+        <SuspectBadge kind="message" flagged={message.suspectFields.length > 0} />
       </p>
+      <SuspectReasons fields={message.suspectFields} />
       <p className="text-sm text-ink-muted">{formatInstant(message.receivedAt)}</p>
       <p className="mt-tight text-sm">{preview(message)}</p>
       <p className="text-sm">
@@ -463,6 +477,7 @@ function MessagePanel({
   error,
   mayManage,
   onToggleHandled,
+  onClearSuspect,
   onDelete,
   onClose,
 }: {
@@ -471,6 +486,7 @@ function MessagePanel({
   error: ReturnType<typeof useApiFormError>["error"];
   mayManage: boolean;
   onToggleHandled: (handled: boolean) => Promise<void>;
+  onClearSuspect: () => Promise<void>;
   onDelete: () => void;
   onClose: () => void;
 }) {
@@ -521,6 +537,27 @@ function MessagePanel({
           <X aria-hidden="true" />
         </Button>
       </div>
+
+      {message.suspectFields.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-related">
+          <SuspectBadge kind="message" flagged />
+          <SuspectReasons fields={message.suspectFields} />
+          {mayManage ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="raised-light"
+              aria-disabled={busy}
+              onClick={() => {
+                if (busy) return;
+                void onClearSuspect();
+              }}
+            >
+              {t("suspect.clear")}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {message.subject ? <p className="font-semibold">{message.subject}</p> : null}
 

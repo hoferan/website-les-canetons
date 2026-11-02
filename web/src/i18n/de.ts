@@ -397,6 +397,27 @@ export const de: typeof fr = {
     actionFailed: "Die Aktion konnte nicht ausgeführt werden.",
   },
 
+  suspect: {
+    booking: "Verdächtig",
+    message: "Verdächtig",
+    reasons: "Link oder Markup in: {{fields}}.",
+    mailHeld: "Bestätigung noch nicht verschickt.",
+    clear: "Kein Spam",
+    clearAria: "{{name}}: kein Spam",
+    clearFailed: "Die Markierung konnte nicht aufgehoben werden. Versuchen Sie es erneut.",
+    inbox_one: "{{count}} verdächtige Anmeldung",
+    inbox_other: "{{count}} verdächtige Anmeldungen",
+    fields: {
+      firstName: "Vorname",
+      lastName: "Nachname",
+      address: "Adresse",
+      tableName: "Tisch",
+      answers: "Antworten",
+      subject: "Betreff",
+      message: "Nachricht",
+    },
+  },
+
   inbox: {
     heading: "Posteingang",
     kinds: {

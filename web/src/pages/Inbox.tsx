@@ -12,6 +12,7 @@ import {
 import type { EventBookingsFactsResource, InboxItemResource } from "../api/generated/model";
 import { actorsText, changesText, closingText, placesText } from "../booking/bookingProgress";
 import { PageSection } from "../components/PageSection";
+import { SuspectBadge } from "../components/SuspectFlag";
 import { Button } from "@/components/ui/button";
 import { t } from "../i18n";
 import { formatDay, formatInstant } from "../lib/date";
@@ -80,8 +81,11 @@ export function Inbox() {
                   className={`${OUTLINED_CARD} focus-ring block p-4 hover:border-violet`}
                 >
                   <p className="text-sm text-ink-muted">{kindLabel(item.kind)}</p>
-                  <p data-testid="inbox-item-title" className="font-semibold">
-                    {item.title}
+                  <p className="flex flex-wrap items-center gap-tight">
+                    <span data-testid="inbox-item-title" className="font-semibold">
+                      {item.title}
+                    </span>
+                    <SuspectBadge kind="message" flagged={item.suspect} />
                   </p>
                   <p className="mt-tight text-sm">{item.summary}</p>
                   <p className="mt-tight text-sm text-ink-muted">{formatInstant(item.arrivedAt)}</p>
@@ -156,6 +160,13 @@ function BookingsRow({
         <p className="mt-tight text-sm">
           {people} · {moved}
         </p>
+        {/* Every flagged booking still on the list, not only the new ones:
+            each waits for somebody to clear it (#332). */}
+        {facts.suspect > 0 ? (
+          <p className="mt-tight text-sm font-semibold text-danger">
+            {t("suspect.inbox", { count: facts.suspect })}
+          </p>
+        ) : null}
         <p className="mt-tight text-sm text-ink-muted">
           {[closingText(facts.closesAt, facts.closed), ...places].join(" · ")}
         </p>
