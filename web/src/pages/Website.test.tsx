@@ -1,0 +1,155 @@
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { strToU8, zipSync } from "fflate";
+import { HttpResponse, http } from "msw";
+import { expect, test, vi } from "vitest";
+
+import type { WebsiteExport200 } from "../api/generated/model";
+import { setMockUser } from "../mocks/handlers";
+import { server } from "../mocks/node";
+import { renderWithSession } from "../test/renderWithSession";
+import type { UploadFn } from "../images/uploadQueue";
+import { Website } from "./Website";
+
+/**
+ * /website: the whole public site, carried from one server to another
+ * (#336). jsdom cannot send a multipart body, so the photo upload is injected.
+ */
+
+const SHA = "1".repeat(64);
+const SITE: WebsiteExport200 = {
+  format: 1,
+  exportedAt: "2026-11-02T10:00:00+00:00",
+  texts: [{ key: "committee.bookingNumber", fr: "026 000 00 03", de: "026 000 00 03" }],
+  images: [
+    {
+      sha256: SHA,
+      name: "Le groupe",
+      sizes: [{ width: 800, height: 600, sha256: SHA, url: `/api/v1/images/${SHA}.jpg` }],
+    },
+  ],
+  slots: [
+    { slot: "register-9", sha256: SHA, label: "Tubas", path: "/band", registerName: "Tubas" },
+  ],
+  history: [],
+};
+
+/**
+ * Files by name, with the bytes the page reads for each. jsdom's File turns
+ * a typed array from Node's realm into text, so the page's reader is
+ * replaced by a lookup here.
+ */
+const contents = new Map<string, Uint8Array>();
+
+/**
+ * Bytes in Node's own Uint8Array. Under jsdom, strToU8 answers one from
+ * jsdom's TextEncoder, another realm, and zipSync then takes it for a folder.
+ */
+const u8 = (text: string) => Uint8Array.from(strToU8(text));
+const readFile = async (file: File) => contents.get(file.name)!;
+
+function bundleFile(site: unknown = SITE, withImage = true): File {
+  const files: Record<string, Uint8Array> = { "site.json": u8(JSON.stringify(site)) };
+  if (withImage) files[`images/${SHA}.jpg`] = u8("jpeg bytes");
+  contents.set("site.zip", zipSync(files));
+  return new File(["zip"], "site.zip", { type: "application/zip" });
+}
+
+function otherZip(): File {
+  contents.set("x.zip", zipSync({ "x.txt": u8("x") }));
+  return new File(["zip"], "x.zip", { type: "application/zip" });
+}
+
+/** An upload that puts the photo in the mock's library under the bundle's SHA-256. */
+const fakeUpload: UploadFn = async () => ({ status: 201, id: 1 });
+
+test("the export button downloads a zip", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  const created = vi.fn((_blob: Blob | MediaSource) => "blob:site");
+  vi.spyOn(URL, "createObjectURL").mockImplementation(created);
+  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  const clicked: string[] = [];
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    clicked.push(this.download);
+  });
+  await renderWithSession(<Website />, { route: "/website" });
+
+  await user.click(screen.getByRole("button", { name: "Télécharger le site" }));
+
+  await waitFor(() => expect(clicked).toHaveLength(1));
+  expect(clicked[0]).toMatch(/^site-.+-\d{4}-\d{2}-\d{2}\.zip$/);
+  expect((created.mock.calls[0]![0] as Blob).type).toBe("application/zip");
+});
+
+test("a file shows what it holds before anything is replaced", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  let imported = false;
+  server.use(
+    http.post("/api/v1/website/import", () => {
+      imported = true;
+      return HttpResponse.json({});
+    }),
+  );
+  await renderWithSession(<Website upload={fakeUpload} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile());
+
+  const summary = await screen.findByRole("region", { name: "Contenu du fichier" });
+  expect(summary).toHaveTextContent("1 texte");
+  expect(summary).toHaveTextContent("1 photo");
+  expect(imported).toBe(false);
+});
+
+test("import replaces the site after the typed confirmation, and names a skipped register photo", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  const bodies: unknown[] = [];
+  server.use(
+    http.get("/api/v1/website/export", () =>
+      HttpResponse.json({ ...SITE, texts: [], images: [], slots: [] }),
+    ),
+    http.post("/api/v1/website/import", async ({ request }) => {
+      bodies.push(await request.json());
+      return HttpResponse.json({
+        texts: 1,
+        slots: 0,
+        history: 0,
+        skipped: [{ slot: "register-9", registerName: "Tubas" }],
+      });
+    }),
+  );
+  await renderWithSession(<Website upload={fakeUpload} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile());
+  await user.click(await screen.findByRole("button", { name: "Remplacer le site" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await user.type(within(dialog).getByRole("textbox"), "REMPLACER");
+  await user.click(within(dialog).getByRole("button", { name: "Remplacer le site" }));
+
+  const importCard = screen.getByRole("region", { name: "Importer un site" });
+  const result = within(importCard).getByRole("status");
+  await waitFor(() => expect(result).toHaveTextContent("Site importé"));
+  expect(result).toHaveTextContent("Tubas");
+  expect(bodies).toHaveLength(1);
+});
+
+test("a file that is not a site is refused in French, and nothing is sent", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<Website upload={fakeUpload} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  await user.upload(screen.getByLabelText("Fichier du site"), otherZip());
+
+  expect(await screen.findByText(/n’est pas un fichier de site/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Remplacer le site" })).toBeNull();
+});

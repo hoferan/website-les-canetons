@@ -442,6 +442,7 @@ export const fr = {
   },
 
   nav: {
+    website: "Site web",
     primary: "Navigation principale",
     // The first thing a Tab reaches on every page, hidden until focused.
     skipToContent: "Aller au contenu",
@@ -1777,6 +1778,46 @@ export const fr = {
    * a translated string, never a fragment glued together outside the
    * catalogue.
    */
+  /** /website: the public site carried from one server to another (#336). */
+  website: {
+    heading: "Site web",
+    intro:
+      "Le site public dans un fichier : les textes, les photos et l’historique. Pour préparer le site sur un serveur et le reprendre tel quel sur un autre.",
+    exportHeading: "Exporter le site",
+    exportBody:
+      "Un fichier .zip avec les textes, toutes les photos de la bibliothèque, leurs emplacements et l’historique. Ni membres, ni événements, ni inscriptions.",
+    exportButton: "Télécharger le site",
+    exporting: "Préparation du fichier : {{done}} / {{total}} photos",
+    exportFailed: "Le site n’a pas pu être exporté. Réessayez.",
+    importHeading: "Importer un site",
+    importBody:
+      "Remplace les textes, les emplacements de photo et l’historique de ce site par ceux du fichier. Les photos s’ajoutent à la bibliothèque, où rien n’est supprimé.",
+    fileLabel: "Fichier du site",
+    summaryRegion: "Contenu du fichier",
+    countTexts_one: "{{count}} texte",
+    countTexts_other: "{{count}} textes",
+    countPhotos_one: "{{count}} photo",
+    countPhotos_other: "{{count}} photos",
+    countSlots_one: "{{count}} emplacement de photo",
+    countSlots_other: "{{count}} emplacements de photo",
+    countHistory_one: "{{count}} entrée d’historique",
+    countHistory_other: "{{count}} entrées d’historique",
+    replace: "Remplacer le site",
+    confirmTitle: "Remplacer le site de ce serveur ?",
+    confirmBody:
+      "Les textes, les emplacements de photo et l’historique d’ici seront remplacés par ceux du fichier. Les événements, les membres et les inscriptions ne changent pas.",
+    confirmPhrase: "REMPLACER",
+    uploading: "Photos envoyées : {{done}} / {{total}}",
+    done: "Site importé : {{texts}} textes, {{slots}} emplacements de photo, {{history}} entrées d’historique.",
+    skipped: "Une photo n’a pas été placée : il n’y a pas de registre « {{name}} » ici.",
+    notABundle: "Ce fichier n’est pas un fichier de site exporté depuis cette page.",
+    unknownFormat: "Ce fichier vient d’une autre version du site et ne peut pas être lu ici.",
+    missingImage: "Il manque des photos dans ce fichier. Exportez-le à nouveau.",
+    libraryFull:
+      "La bibliothèque de ce serveur n’a pas la place pour les photos du fichier. Supprimez des photos inutilisées sur la page Médias, puis réessayez.",
+    importFailed: "L’import a échoué. Le site n’a pas changé.",
+  },
+
   /** A text of a public page, changed where it is shown (#106). */
   texts: {
     edit: "Modifier le texte : {{label}}",

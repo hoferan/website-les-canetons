@@ -29,6 +29,7 @@ import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
 import { Registers } from "./pages/Registers";
 import { Roles } from "./pages/Roles";
+import { Website } from "./pages/Website";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
 import { INBOX_PERMISSIONS } from "./lib/inboxPermissions";
@@ -186,6 +187,11 @@ export function AppRoutes() {
                 </Suspense>
               }
             />
+          </Route>
+
+          {/* The whole public site, carried between servers (#336). */}
+          <Route element={<RequirePermission permission="content.manage" />}>
+            <Route path="/website" element={<Website />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

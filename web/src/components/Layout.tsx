@@ -1,6 +1,7 @@
 import {
   Calendar,
   Drum,
+  Globe,
   Images,
   Inbox,
   type LucideIcon,
@@ -78,6 +79,9 @@ const TOOLS: Array<{
   { to: "/media", labelKey: "nav.media", permission: "images.manage", icon: Images },
   { to: "/registers", labelKey: "nav.registers", permission: "members.manage", icon: Drum },
   { to: "/roles", labelKey: "nav.roles", permission: "roles.manage", icon: ShieldCheck },
+  // The server also asks for images.manage and history.manage; every role
+  // that holds content.manage holds both today (ADR 0038).
+  { to: "/website", labelKey: "nav.website", permission: "content.manage", icon: Globe },
 ];
 
 export function Layout() {

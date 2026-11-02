@@ -1073,6 +1073,12 @@ function refuseWithout(permission: string) {
 
 const refuseWithoutMembersManage = () => refuseWithout("members.manage");
 
+/** The website routes ask for all three, as WebsiteController's middleware does. */
+const refuseWithoutWebsite = () =>
+  refuseWithout("content.manage") ??
+  refuseWithout("images.manage") ??
+  refuseWithout("history.manage");
+
 /** `exists:images,id`, which the real error map leaves on the generic reason. */
 function refuseUnknownImage(imageId: number | null | undefined) {
   return imageId != null && !images.some((image) => image.id === imageId)
@@ -3276,6 +3282,137 @@ const overrides = [
       request,
     ),
   ),
+
+  // The website as one document, as WebsiteController::export writes it.
+  http.get("/api/v1/website/export", () => {
+    const refusal = refuseWithoutWebsite();
+    if (refusal) {
+      return refusal;
+    }
+    const shaOf = (imageId: number) => images.find((image) => image.id === imageId)?.sha256 ?? "";
+    const registerOf = (slot: string) => {
+      const id = /^register-(\d+)$/.exec(slot)?.[1];
+      return id ? (sections.find((section) => section.id === Number(id))?.name ?? null) : null;
+    };
+    return HttpResponse.json({
+      format: 1,
+      exportedAt: new Date().toISOString(),
+      texts: Object.keys(texts)
+        .sort()
+        .map((key) => ({ key, fr: texts[key]!.fr, de: texts[key]!.de })),
+      images: images.map((image) => ({
+        sha256: image.sha256,
+        name: image.name,
+        sizes: [...image.sizes]
+          .sort((a, b) => b.width - a.width)
+          .map((size) => ({
+            width: size.width,
+            height: size.height,
+            sha256: size.sha256,
+            url: `/api/v1/images/${size.sha256}.jpg`,
+          })),
+      })),
+      slots: Object.keys(photoSlots)
+        .filter((slot) => !/^(event|history)-\d+$/.test(slot))
+        .sort()
+        .map((slot) => ({
+          slot,
+          sha256: shaOf(photoSlots[slot]!.imageId),
+          label: photoSlots[slot]!.label,
+          path: photoSlots[slot]!.path,
+          registerName: registerOf(slot),
+        })),
+      history: historyEntries.map((entry) => {
+        const placed = photoSlots[`history-${entry.id}`];
+        return {
+          occurredOn: entry.occurredOn,
+          precision: entry.precision,
+          titleFr: entry.titleFr,
+          bodyFr: entry.bodyFr,
+          titleDe: entry.titleDe,
+          bodyDe: entry.bodyDe,
+          important: entry.important,
+          icon: entry.icon,
+          photoSha256: placed ? shaOf(placed.imageId) : null,
+        };
+      }),
+    });
+  }),
+
+  // Replaces the texts, the slots but event posters, and the history, as
+  // WebsiteImport does. Every photo must already be in the library.
+  http.post("/api/v1/website/import", async ({ request }) => {
+    const refusal = refuseWithoutWebsite();
+    if (refusal) {
+      return refusal;
+    }
+    const body = (await request.json()) as {
+      format: number;
+      texts: Array<{ key: string; fr: string | null; de: string | null }>;
+      slots: Array<{
+        slot: string;
+        sha256: string;
+        label: string | null;
+        path: string | null;
+        registerName: string | null;
+      }>;
+      history: Array<
+        Omit<HistoryEntryResource, "id" | "createdAt" | "updatedAt"> & {
+          photoSha256: string | null;
+        }
+      >;
+    };
+    if (body.format !== 1) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "format", reason: "invalid_value" },
+      ]);
+    }
+    const idOf = (sha256: string) => images.find((image) => image.sha256 === sha256)?.id;
+    const unknown = body.slots.findIndex((slot) => idOf(slot.sha256) === undefined);
+    if (unknown !== -1) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: `slots.${unknown}.sha256`, reason: "invalid_value" },
+      ]);
+    }
+    const skipped: Array<{ slot: string; registerName: string }> = [];
+    const kept = Object.fromEntries(
+      Object.entries(photoSlots).filter(([slot]) => /^event-\d+$/.test(slot)),
+    );
+    for (const slot of body.slots) {
+      let key = slot.slot;
+      if (slot.registerName !== null) {
+        const register = sections.find((section) => section.name === slot.registerName);
+        if (!register) {
+          skipped.push({ slot: slot.slot, registerName: slot.registerName });
+          continue;
+        }
+        key = `register-${register.id}`;
+      }
+      kept[key] = { imageId: idOf(slot.sha256)!, label: slot.label, path: slot.path };
+    }
+    texts = Object.fromEntries(
+      body.texts.map((text) => [
+        text.key,
+        { fr: text.fr, de: text.de, updatedAt: new Date().toISOString() },
+      ]),
+    );
+    const now = new Date().toISOString();
+    historyEntries = body.history.map(({ photoSha256, ...row }) => {
+      const entry = { ...row, id: nextHistoryId++, createdAt: now, updatedAt: now };
+      const imageId = photoSha256 ? idOf(photoSha256) : undefined;
+      if (imageId !== undefined) {
+        kept[`history-${entry.id}`] = { imageId, label: null, path: "/history" };
+      }
+      return entry;
+    });
+    photoSlots = kept;
+    return HttpResponse.json({
+      texts: body.texts.length,
+      slots: body.slots.length - skipped.length,
+      history: body.history.length,
+      skipped,
+    });
+  }),
 
   // Public: every changed text, by key, as TextOverrideController lists them.
   http.get("/api/v1/texts", ({ request }) =>

@@ -352,6 +352,7 @@ export const de: typeof fr = {
   },
 
   nav: {
+    website: "Website",
     primary: "Hauptnavigation",
     skipToContent: "Zum Inhalt springen",
     menu: "Menü",
@@ -1345,6 +1346,46 @@ export const de: typeof fr = {
   notFound: {
     heading: "Seite nicht gefunden",
     body: "Hoppla! Die gesuchte Seite existiert nicht oder wurde verschoben.",
+  },
+
+  website: {
+    heading: "Website",
+    intro:
+      "Die öffentliche Website in einer Datei: Texte, Fotos und Geschichte. Um die Website auf einem Server vorzubereiten und unverändert auf einen anderen zu übernehmen.",
+    exportHeading: "Website exportieren",
+    exportBody:
+      "Eine .zip-Datei mit den Texten, allen Fotos der Bibliothek, ihren Plätzen und der Geschichte. Keine Mitglieder, keine Anlässe, keine Anmeldungen.",
+    exportButton: "Website herunterladen",
+    exporting: "Datei wird vorbereitet: {{done}} / {{total}} Fotos",
+    exportFailed: "Die Website konnte nicht exportiert werden. Bitte erneut versuchen.",
+    importHeading: "Website importieren",
+    importBody:
+      "Ersetzt die Texte, die Fotoplätze und die Geschichte dieser Website durch jene der Datei. Die Fotos kommen in die Bibliothek, wo nichts gelöscht wird.",
+    fileLabel: "Datei der Website",
+    summaryRegion: "Inhalt der Datei",
+    countTexts_one: "{{count}} Text",
+    countTexts_other: "{{count}} Texte",
+    countPhotos_one: "{{count}} Foto",
+    countPhotos_other: "{{count}} Fotos",
+    countSlots_one: "{{count}} Fotoplatz",
+    countSlots_other: "{{count}} Fotoplätze",
+    countHistory_one: "{{count}} Eintrag der Geschichte",
+    countHistory_other: "{{count}} Einträge der Geschichte",
+    replace: "Website ersetzen",
+    confirmTitle: "Die Website dieses Servers ersetzen?",
+    confirmBody:
+      "Die Texte, die Fotoplätze und die Geschichte hier werden durch jene der Datei ersetzt. Anlässe, Mitglieder und Anmeldungen bleiben unverändert.",
+    confirmPhrase: "ERSETZEN",
+    uploading: "Gesendete Fotos: {{done}} / {{total}}",
+    done: "Website importiert: {{texts}} Texte, {{slots}} Fotoplätze, {{history}} Einträge der Geschichte.",
+    skipped: "Ein Foto wurde nicht platziert: Hier gibt es kein Register «{{name}}».",
+    notABundle: "Diese Datei ist keine auf dieser Seite exportierte Website.",
+    unknownFormat:
+      "Diese Datei stammt aus einer anderen Version der Website und kann hier nicht gelesen werden.",
+    missingImage: "In dieser Datei fehlen Fotos. Bitte erneut exportieren.",
+    libraryFull:
+      "Die Bibliothek dieses Servers hat keinen Platz für die Fotos der Datei. Löschen Sie ungenutzte Fotos auf der Seite Medien und versuchen Sie es erneut.",
+    importFailed: "Der Import ist fehlgeschlagen. Die Website ist unverändert.",
   },
 
   texts: {

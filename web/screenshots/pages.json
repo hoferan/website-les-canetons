@@ -203,6 +203,13 @@
     "heading": "Médias"
   },
   {
+    "route": "/website",
+    "path": "/website",
+    "as": "demo.direction",
+    "name": "website",
+    "heading": "Site web"
+  },
+  {
     "route": "/media/:id",
     "path": "/media/1",
     "as": "demo.direction",
