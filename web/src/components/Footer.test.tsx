@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
@@ -30,27 +30,24 @@ test("the band's name in the footer and the header follows the stored name", asy
   expect(screen.getAllByRole("link", { name: "Les Petits Canards" }).length).toBeGreaterThan(0);
 });
 
-test("a network whose link was emptied disappears from the nav and the footer", async () => {
-  // Blank, as the dialog never stores it: a row written by another client.
-  server.use(
-    http.get("/api/v1/texts", () =>
-      HttpResponse.json({
-        data: [
-          {
-            key: "site.instagramUrl",
-            fr: " ",
-            de: " ",
-            updatedAt: "2026-11-02T10:00:00+00:00",
-          },
-        ],
-        meta: { total: 1, limit: 500, offset: 0 },
-      }),
-    ),
-  );
+test("an editor removes a network by emptying its address, and can put one back", async () => {
+  const user = userEvent.setup();
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/join" });
 
-  expect(screen.queryAllByRole("link", { name: /Instagram/ })).toHaveLength(0);
+  const footer = screen.getByRole("contentinfo");
+  await user.click(within(footer).getByRole("button", { name: "Modifier le texte : Instagram" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.clear(within(dialog).getByLabelText("Texte"));
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(screen.queryAllByRole("link", { name: /Instagram/ })).toHaveLength(0));
   expect(screen.getAllByRole("link", { name: /Facebook/ }).length).toBeGreaterThan(0);
+  // The pencil stays, so the address can be given again.
+  expect(
+    within(footer).getByRole("button", { name: "Modifier le texte : Instagram" }),
+  ).toBeInTheDocument();
 });
 
 test("a stored link replaces the network's address everywhere", async () => {

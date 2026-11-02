@@ -36,16 +36,19 @@ new code on the server and no new key to invent.
 
 - `text_overrides` holds one row per changed text: its catalogue key, a French and a German
   value. `GET /api/v1/texts` lists them for everyone. `PUT /api/v1/texts/{key}` sets one and
-  needs `content.manage`. Blank in both languages deletes the row. Like a photo slot's write,
-  it carries no `If-Match`: it sets one text, and the last save is what the page shows.
+  needs `content.manage`. Null in both languages deletes the row, so the page shows its
+  default again. An empty string is stored and means "nothing here": a band with no Flickr
+  account empties that address and the network is left out. The route is exempt from
+  Laravel's empty-string-to-null conversion for that reason. Like a photo slot's write, it
+  carries no `If-Match`: it sets one text, and the last save is what the page shows.
 - The SPA reads them before the first render and writes them into i18next's resources, so
   `t()` returns the band's wording at every call site, document title included. A German
-  page with only a French value shows the French one. A failed read renders the catalogue
-  wording.
+  page with only a French value shows the French one. The first paint waits for them at most
+  1.5 seconds; a failed or slow read renders the catalogue wording.
 - `<EditableText k="…">` renders a text and, in edit mode, a pencil that opens a French and
   German dialog, or one field for a text that is the same in both languages (a name, a
-  number, a link). Saving the original wording unchanged stores nothing. "Rétablir le texte
-  d'origine" deletes the row.
+  number, a link). Saving the original wording unchanged stores nothing, and a German field
+  left blank keeps the German wording. "Rétablir le texte d'origine" deletes the row.
 - One edit-mode switch ("Modifier la page") on the public pages shows every pencil, the
   photo slots' included. Off, an editor sees the page as a visitor does.
 - `content.manage` is a permission of its own, granted by migration to every role that held

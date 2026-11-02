@@ -5,8 +5,8 @@ import { t } from "../i18n";
  * drift apart (#224).
  *
  * The addresses are texts the band changes in place (#106), so they are read
- * at render time. An empty one means the band has no such account, and the
- * network is left out.
+ * at render time. An empty one (stored by emptying the field) means the band
+ * has no such account, and the network is left out.
  *
  * The marks are Simple Icons paths (CC0), inlined because lucide-react ships
  * no brand icons.

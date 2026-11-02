@@ -36,7 +36,8 @@ class TextOverrideController extends Controller
      *
      * `{key}` is the text's path in the SPA's catalogue: two to eight
      * dot-separated segments of letters and digits, at most 128 characters.
-     * Send both languages; null or blank in both puts the default back. No
+     * Send both languages; null in both puts the default back, and an empty
+     * string stores "nothing here" for that language. No
      * `If-Match`: the write sets one text, and the last save is what the page
      * shows, with both in the audit log.
      */

@@ -311,12 +311,12 @@
  */
 
 /**
- * One public text in both languages. Null or blank in a language means the
- * page shows its default there.
+ * One public text in both languages. Null in a language means the page shows
+ * its default there; an empty string means it shows nothing (ADR 0037).
  */
 export interface UpdateTextRequest {
   /**
-   * The French wording, or null for the page's default.
+   * The French wording, null for the page's default, or "" for nothing.
    * @maxLength 2000
    * @nullable
    */

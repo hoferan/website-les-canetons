@@ -23,6 +23,7 @@ type Props = {
   neutral: boolean;
   multiline: boolean;
   validate?: ((value: string) => string | null) | undefined;
+  allowEmpty: boolean;
   onClose: () => void;
 };
 
@@ -35,7 +36,7 @@ type Props = {
  * later correction in the code. "Rétablir le texte d'origine" does the same on
  * purpose, whatever is in the fields.
  */
-export function TextDialog({ k, label, neutral, multiline, validate, onClose }: Props) {
+export function TextDialog({ k, label, neutral, multiline, validate, allowEmpty, onClose }: Props) {
   const queryClient = useQueryClient();
   const stored = storedText(k);
   const frDefault = catalogueValue("fr", k) ?? "";
@@ -63,7 +64,14 @@ export function TextDialog({ k, label, neutral, multiline, validate, onClose }: 
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const fr = french.trim() === "" ? null : french;
+    // Blank means "nothing here" where the page allows it (a network the band
+    // has no account on), and "the original" everywhere else.
+    const blank = french.trim() === "";
+    if (blank && allowEmpty) {
+      save("", "");
+      return;
+    }
+    const fr = blank ? null : french;
     if (fr !== null && validate) {
       const refusal = validate(fr);
       setProblem(refusal ?? undefined);
@@ -73,7 +81,9 @@ export function TextDialog({ k, label, neutral, multiline, validate, onClose }: 
       save(fr === frDefault ? null : fr, fr === frDefault ? null : fr);
       return;
     }
-    const de = german.trim() === "" ? null : german;
+    // A blank German keeps the German wording: stored as null, the German
+    // page would show the French.
+    const de = german.trim() === "" ? deDefault : german;
     if (fr === frDefault && de === deDefault) {
       save(null, null);
       return;

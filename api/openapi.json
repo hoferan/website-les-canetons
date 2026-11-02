@@ -8038,7 +8038,7 @@
         "/texts/{key}": {
             "put": {
                 "operationId": "text.update",
-                "description": "`{key}` is the text's path in the SPA's catalogue: two to eight\ndot-separated segments of letters and digits, at most 128 characters.\nSend both languages; null or blank in both puts the default back. No\n`If-Match`: the write sets one text, and the last save is what the page\nshows, with both in the audit log.",
+                "description": "`{key}` is the text's path in the SPA's catalogue: two to eight\ndot-separated segments of letters and digits, at most 128 characters.\nSend both languages; null in both puts the default back, and an empty\nstring stores \"nothing here\" for that language. No\n`If-Match`: the write sets one text, and the last save is what the page\nshows, with both in the audit log.",
                 "summary": "Changes one text, or puts it back. Requires `content.manage`",
                 "tags": [
                     "Texts"
@@ -11659,14 +11659,14 @@
             },
             "UpdateTextRequest": {
                 "type": "object",
-                "description": "One public text in both languages. Null or blank in a language means the\npage shows its default there.",
+                "description": "One public text in both languages. Null in a language means the page shows\nits default there; an empty string means it shows nothing (ADR 0037).",
                 "properties": {
                     "fr": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "description": "The French wording, or null for the page's default.",
+                        "description": "The French wording, null for the page's default, or \"\" for nothing.",
                         "maxLength": 2000
                     },
                     "de": {

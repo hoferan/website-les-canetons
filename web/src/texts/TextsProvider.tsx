@@ -1,4 +1,4 @@
-import { createContext, use, useEffect, type ReactNode } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 
 import { rowsOf } from "../api/collection";
 import { useTextIndex } from "../api/generated/endpoints";
@@ -14,6 +14,13 @@ import { applyOverrides } from "../i18n/overrides";
  */
 const TextsVersion = createContext(0);
 
+/**
+ * How long the first paint waits for the texts. Past it the page renders in
+ * the catalogue wording, and the band's arrives with a re-render: a slow
+ * server costs a flash at worst, never a blank page.
+ */
+const TEXTS_WAIT_MS = 1500;
+
 export function useTextsVersion(): number {
   return use(TextsVersion);
 }
@@ -21,10 +28,13 @@ export function useTextsVersion(): number {
 /**
  * The band's texts, written over the catalogue before anything renders.
  *
- * Children wait for them like they wait for the session: a first paint in the
- * catalogue wording would flash and then change. A failed read is not a
- * failed boot, though. Every text has its catalogue wording to fall back on,
- * so the site renders with that and the failure goes to the console.
+ * Children wait for them, briefly: a first paint in the catalogue wording
+ * would flash and then change. A failed or slow read is not a failed boot,
+ * though. Every text has its catalogue wording to fall back on, so the site
+ * renders with that and the failure goes to the console.
+ *
+ * It needs no session, so main.tsx puts it above SessionProvider and the
+ * texts are read beside the config and the session, not after them.
  *
  * Applied during render rather than in an effect, so the children of that
  * same render already see them. It is idempotent, and StrictMode's second
@@ -32,6 +42,12 @@ export function useTextsVersion(): number {
  */
 export function TextsProvider({ children }: { children: ReactNode }) {
   const texts = useTextIndex(undefined, { query: { retry: false, staleTime: Infinity } });
+  const [waitedEnough, setWaitedEnough] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setWaitedEnough(true), TEXTS_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (texts.isSuccess) {
     applyOverrides(rowsOf<TextOverrideResource>(texts.data));
@@ -51,7 +67,7 @@ export function TextsProvider({ children }: { children: ReactNode }) {
     }
   }, [texts.isSuccess, texts.dataUpdatedAt]);
 
-  if (texts.isPending) {
+  if (texts.isPending && !waitedEnough) {
     return null;
   }
 

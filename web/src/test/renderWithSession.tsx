@@ -45,15 +45,15 @@ export async function renderWithSession(
         path: "*",
         element: (
           <QueryClientProvider client={queryClient}>
-            <SessionProvider>
-              <TextsProvider>
+            <TextsProvider>
+              <SessionProvider>
                 <EditModeProvider>
                   <LeaveGuardProvider>
                     <div data-testid="booted">{ui}</div>
                   </LeaveGuardProvider>
                 </EditModeProvider>
-              </TextsProvider>
-            </SessionProvider>
+              </SessionProvider>
+            </TextsProvider>
           </QueryClientProvider>
         ),
       },

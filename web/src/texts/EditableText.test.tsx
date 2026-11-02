@@ -113,6 +113,25 @@ test("Rétablir puts the original wording back", async () => {
   expect(puts.at(-1)?.body).toEqual({ fr: null, de: null });
 });
 
+test("a German field left blank keeps the German wording", async () => {
+  const user = userEvent.setup();
+  const puts = recordPuts();
+  await asEditor();
+  await renderWithSession(<EditableText k="join.facts.schedule.day" as="p" />);
+
+  await user.click(screen.getByRole("button", { name: /^Modifier le texte/ }));
+  const dialog = await screen.findByRole("dialog");
+  const french = within(dialog).getByLabelText("Français");
+  await user.clear(french);
+  await user.type(french, "Le samedi matin");
+  await user.clear(within(dialog).getByLabelText("Deutsch"));
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await screen.findByText("Le samedi matin");
+  // Blank would show the French on the German page, which nobody means by it.
+  expect(puts.at(-1)?.body).toEqual({ fr: "Le samedi matin", de: "Samstagvormittags" });
+});
+
 test("a language-neutral text has one field and is stored in both languages", async () => {
   const user = userEvent.setup();
   const puts = recordPuts();

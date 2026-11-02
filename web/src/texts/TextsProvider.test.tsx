@@ -30,7 +30,7 @@ const stored = (fr: string) =>
     }),
   );
 
-test("children wait for the texts", async () => {
+test("children wait for the texts, briefly", async () => {
   server.use(
     http.get("/api/v1/texts", async () => {
       await delay("infinite");
@@ -42,6 +42,36 @@ test("children wait for the texts", async () => {
   // A first paint in the catalogue wording would flash, then change.
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(screen.queryByTestId("intro")).toBeNull();
+});
+
+test("a texts request that never answers lets the page render with the catalogue wording", async () => {
+  server.use(
+    http.get("/api/v1/texts", async () => {
+      await delay("infinite");
+      return HttpResponse.json({});
+    }),
+  );
+  renderProvider();
+
+  // Every default ships with the code, so a slow server costs a flash at
+  // worst, never a blank page.
+  expect((await screen.findByTestId("intro", {}, { timeout: 3000 })).textContent).toBe(
+    t("join.intro"),
+  );
+});
+
+test("the texts are read without waiting for the session", async () => {
+  // The provider asks for nothing but the texts, so main.tsx can start it
+  // beside the session's requests rather than after them.
+  const requests: string[] = [];
+  server.events.on("request:start", ({ request }) => {
+    requests.push(new URL(request.url).pathname);
+  });
+  renderProvider();
+
+  await screen.findByTestId("intro");
+  server.events.removeAllListeners();
+  expect(requests).toEqual(["/api/v1/texts"]);
 });
 
 test("the stored texts reach t() before the children render", async () => {

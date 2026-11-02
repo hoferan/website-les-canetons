@@ -37,6 +37,11 @@ type Props = {
   label?: string;
   /** A check on a value before it is saved: null, or what is wrong with it. */
   validate?: (value: string) => string | null;
+  /**
+   * A blank field stores "nothing here" instead of putting the original back,
+   * for a text the page can do without (a network the band has no account on).
+   */
+  allowEmpty?: boolean;
   /** Renders the text another way (a link around it, say); the pencil stays. */
   children?: (text: string) => ReactNode;
 };
@@ -59,6 +64,7 @@ export function EditableText({
   empty,
   label,
   validate,
+  allowEmpty = false,
   children,
 }: Props) {
   // Read so a saved text renders again: t() itself is a plain function.
@@ -90,6 +96,7 @@ export function EditableText({
         neutral={neutral}
         multiline={multiline}
         validate={validate}
+        allowEmpty={allowEmpty}
         onClose={() => setEditing(false)}
       />
     </Suspense>

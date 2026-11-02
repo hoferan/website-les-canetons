@@ -105,6 +105,7 @@ export function Footer({ above }: { above: string | null }) {
                       neutral
                       label={name}
                       validate={checkNetworkUrl}
+                      allowEmpty
                     >
                       {() => null}
                     </EditableText>

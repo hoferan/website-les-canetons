@@ -72,6 +72,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // whatever the Accept header says.
         $middleware->redirectGuestsTo(fn () => null);
 
+        // A public text tells "the page's default" (null) from "nothing here"
+        // (an empty string): a band without a Flickr account stores an empty
+        // address to leave the network out (ADR 0037). Everywhere else a
+        // blank field still arrives as null.
+        $middleware->convertEmptyStringsToNull(except: [
+            fn (Request $request): bool => $request->is('api/v1/texts/*'),
+        ]);
+
         // Self-healing schema: CI cannot reach POST /api/migrate through the
         // host's firewall, so the request path is a deployed server's only
         // migration trigger (App\Http\Middleware\RunPendingMigrations, ADR 0008).

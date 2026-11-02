@@ -3288,7 +3288,8 @@ const overrides = [
   ),
 
   // One text per write with no If-Match, as TextOverrideController does it.
-  // Blank in both languages puts the default back and deletes the row.
+  // Null in both languages puts the default back and deletes the row; an
+  // empty string stores "nothing here".
   http.put("/api/v1/texts/:key", async ({ request, params }) => {
     const refusal = refuseWithout("content.manage");
     if (refusal) {
@@ -3313,7 +3314,7 @@ const overrides = [
       }
     }
     const blank = (value: unknown) =>
-      typeof value === "string" && value.trim() !== "" ? value : null;
+      typeof value === "string" ? (value.trim() === "" ? "" : value) : null;
     const fr = blank(body.fr);
     const de = blank(body.de);
     if (fr === null && de === null) {

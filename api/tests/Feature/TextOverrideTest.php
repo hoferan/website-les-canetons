@@ -79,18 +79,33 @@ class TextOverrideTest extends TestCase
         $this->saveText('join.intro', ['fr' => 'Un', 'de' => 'Eins']);
 
         $this->actingAsMember($this->manager)
-            ->putJson('/api/v1/texts/join.intro', ['fr' => '', 'de' => null])
+            ->putJson('/api/v1/texts/join.intro', ['fr' => null, 'de' => null])
             ->assertStatus(200)
             ->assertJsonPath('text', null);
 
         $this->assertSame(0, TextOverride::query()->count());
     }
 
-    public function test_a_whitespace_value_counts_as_empty(): void
+    public function test_an_empty_value_is_stored_as_an_empty_text(): void
     {
-        $this->saveText('join.intro', ['fr' => "  \n ", 'de' => ' ']);
+        // Null is "the page's default"; an empty string is "nothing here", how
+        // a band with no Flickr account leaves the network out.
+        $this->actingAsMember($this->manager)
+            ->putJson('/api/v1/texts/site.flickrUrl', ['fr' => '', 'de' => ''])
+            ->assertStatus(200)
+            ->assertJsonPath('text.fr', '')
+            ->assertJsonPath('text.de', '');
 
-        $this->assertSame(0, TextOverride::query()->count());
+        $row = TextOverride::query()->findOrFail('site.flickrUrl');
+        $this->assertSame(['', ''], [$row->fr, $row->de]);
+    }
+
+    public function test_a_whitespace_value_is_stored_as_an_empty_text(): void
+    {
+        $this->saveText('join.intro', ['fr' => "  \n ", 'de' => null]);
+
+        $row = TextOverride::query()->findOrFail('join.intro');
+        $this->assertSame(['', null], [$row->fr, $row->de]);
     }
 
     public function test_values_over_2000_characters_are_refused(): void

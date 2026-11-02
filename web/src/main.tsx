@@ -69,13 +69,13 @@ if (redirecting) {
   createRoot(root).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <SessionProvider>
-          <TextsProvider>
+        <TextsProvider>
+          <SessionProvider>
             <EditModeProvider>
               <App router={router} />
             </EditModeProvider>
-          </TextsProvider>
-        </SessionProvider>
+          </SessionProvider>
+        </TextsProvider>
       </QueryClientProvider>
     </StrictMode>,
   );
