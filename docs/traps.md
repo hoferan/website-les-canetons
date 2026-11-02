@@ -307,10 +307,11 @@ for that reason. Keep both off the generated functions.
 
 ## Laravel's `image`, `mimes` and `dimensions` rules need extensions this host may lack
 
-`image`, `mimes`, `mimetypes` and `dimensions` need `fileinfo`. Nobody has
-recorded which extensions the host loads, and without `fileinfo` the rule fails
-on a valid file or throws. `App\Support\JpegInspector` needs only
-`getimagesize()`, which is core PHP; use it (ADR 0028).
+`image`, `mimes`, `mimetypes` and `dimensions` need `fileinfo`, and without it
+the rule fails on a valid file or throws. TEST, QA and PROD all loaded
+`fileinfo` (with `zip`, `intl`, `gd` and `sodium`) when probed on 2026-11-02,
+but a host can drop an extension without notice. `App\Support\JpegInspector`
+needs only `getimagesize()`, which is core PHP; use it (ADR 0028).
 
 ## The host's size limits fail an upload without naming themselves
 
@@ -323,21 +324,29 @@ over `max_allowed_packet` fails the `INSERT` with MariaDB error 1153, which
 `ImageController` reports as 507 `image_storage_full`, the same answer as a
 full disk.
 
-The host sets all three. `GET /api/health` reports them under `limits`:
+The host sets all three. `GET /api/health` reports them under `limits`. A
+server still on the old site has no `/api/health`, so QA and PROD were read
+with `npm run probe-host:<env>` (`tools/host-probe.mjs`), a one-shot PHP file
+that deletes itself after one answer:
 
 | Server | `upload_max_filesize` | `post_max_size` | `max_allowed_packet` | Read |
 | --- | --- | --- | --- | --- |
-| TEST | 32M | 32M | 64 MiB | 2026-10-22, deploy `45c3fd2` |
-| QA | not read | not read | not read | still the old site |
-| PROD | not read | not read | not read | still the old site |
+| TEST | 32M | 32M | 64 MiB | 2026-10-22 by `/api/health`, again by the probe on 2026-11-02 |
+| QA | 32M | 32M | 64 MiB | 2026-11-02 by the probe, still the old site |
+| PROD | 32M | 32M | 64 MiB | 2026-11-02 by the probe, still the old site |
 
-TEST clears what an upload needs (1.9 MB, 600 KB and 600 KB) many times over.
-Read QA and PROD the same way after their cutover, before anyone uploads a
-photo there. If a PHP value is too low, a `.user.ini` in `_api/public/` may
-raise it; `max_allowed_packet` is the host's to change.
+All three servers clear what an upload needs (1.9 MB, 600 KB and 600 KB) many
+times over. They also agree on the rest: PHP 8.4.27 under `cgi-fcgi`,
+`memory_limit` 192M, `max_execution_time` 30, MariaDB 10.3.8. If a PHP value
+ever turns out too low, a `.user.ini` in `_api/public/` can raise it: the
+probe found `user_ini.filename` set to `.user.ini` under FastCGI, so PHP looks
+for one in each directory it runs from and rereads it every 300 seconds. `max_allowed_packet` is the host's to
+change.
 
 The account's disk quota is not on that list, because nothing in PHP can read
-it. A write refused for want of room also answers 507 `image_storage_full`.
+it. `disk_total_space()` answers about 10 TB, which is the shared disk, not the
+account. A write refused for want of room also answers 507
+`image_storage_full`.
 
 ## `inline-block` is 32px wide here
 
