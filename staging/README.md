@@ -336,6 +336,30 @@ value, so `strict` here is the check that the fix works on the host. Then
 for a bare curl, because Sanctum only starts a session for an `Origin` in
 `SANCTUM_STATEFUL_DOMAINS`.
 
+## Moving the website from QA to PROD
+
+The public website is set up and approved on QA, then carried to PROD as one
+file (ADR 0038). There is no shell on the host, so this is the only way content
+moves between servers. Members, events, bookings, roles, registers, committee
+seats and event tags do not travel: the roster is entered on PROD, where the
+members will log in.
+
+1. On QA, as an account holding `content.manage`, `images.manage` and
+   `history.manage` (the `direction` role), open **Site web** under the avatar
+   and press **Télécharger le site**. The `.zip` holds the texts, every photo of
+   the library, where each is shown, and the history.
+2. On PROD, with the same permissions, open **Site web**, choose the file, check
+   the counts it shows, press **Remplacer le site** and type `REMPLACER`.
+3. Read the result. A register photo whose register does not exist on PROD
+   under the same French name is listed there and not placed; create the
+   register on `/registers` and import again.
+
+The import replaces PROD's texts, photo slots and history in one transaction:
+a refused import changes nothing, and it can be run again. Photos are uploaded
+one per request before that, so no request comes near the host's upload limit,
+and they stay in the library if the import is refused. Library photos are never
+deleted, and an event's poster is never touched.
+
 ## `.htaccess` and `.htpasswd`
 
 Edit the tracked sources here (`staging/<env>/.htaccess`, `robots.txt`).
