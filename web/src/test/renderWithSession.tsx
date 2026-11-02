@@ -7,6 +7,7 @@ import { LeaveGuardProvider } from "../components/LeaveGuard";
 import { setLocale } from "../i18n";
 import { type Locale } from "../i18n/locale";
 import { SessionProvider } from "../session/SessionProvider";
+import { TextsProvider } from "../texts/TextsProvider";
 
 /**
  * Renders a node behind the real providers and waits for the boot gate.
@@ -44,9 +45,11 @@ export async function renderWithSession(
         element: (
           <QueryClientProvider client={queryClient}>
             <SessionProvider>
-              <LeaveGuardProvider>
-                <div data-testid="booted">{ui}</div>
-              </LeaveGuardProvider>
+              <TextsProvider>
+                <LeaveGuardProvider>
+                  <div data-testid="booted">{ui}</div>
+                </LeaveGuardProvider>
+              </TextsProvider>
             </SessionProvider>
           </QueryClientProvider>
         ),

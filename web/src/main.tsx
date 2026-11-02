@@ -7,6 +7,7 @@ import { applyDocumentMeta } from "./i18n/documentMeta";
 import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
 import { SessionProvider } from "./session/SessionProvider";
+import { TextsProvider } from "./texts/TextsProvider";
 import "./styles.css";
 
 // The mocked backend, opted into with `npm run dev:mock`. Guarded on
@@ -68,7 +69,9 @@ if (redirecting) {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
-          <App router={router} />
+          <TextsProvider>
+            <App router={router} />
+          </TextsProvider>
         </SessionProvider>
       </QueryClientProvider>
     </StrictMode>,

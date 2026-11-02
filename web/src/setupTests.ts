@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { setLocale } from "./i18n";
 import { resetMockState } from "./mocks/handlers";
 import { server } from "./mocks/node";
+import { applyOverrides } from "./i18n/overrides";
 
 // Guarded on `typeof window`: this setup file also runs for tests that opt
 // into `@vitest-environment node`, which have no window or document.
@@ -38,6 +39,9 @@ afterEach(async () => {
   // clears the session the handlers keep, or a login leaks into the next test.
   server.resetHandlers();
   resetMockState();
+
+  // The band's texts live in i18next's resources, which outlive a test.
+  applyOverrides([]);
 
   // A test that rendered in German would otherwise leak the locale into the
   // next one. Awaited, or it can settle after the next test's first render.
