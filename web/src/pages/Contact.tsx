@@ -16,6 +16,7 @@ import { RAISED_CARD } from "../carnival/raised";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { Notice } from "../components/Notice";
 import { type TranslationKey, t } from "../i18n";
+import { EditableText } from "../texts/EditableText";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -139,8 +140,8 @@ export function Contact() {
 
   return (
     <>
-      <PageHero title={t("contact.heading")} seed={23} width="text">
-        <p>{t("contact.intro")}</p>
+      <PageHero title={t("contact.heading")} titleKey="contact.heading" seed={23} width="text">
+        <EditableText k="contact.intro" as="p" />
       </PageHero>
 
       <PageSection width="text">

@@ -1,15 +1,35 @@
+import { t } from "../i18n";
+
 /**
  * The band's accounts elsewhere, in one place so the nav and the footer cannot
  * drift apart (#224).
+ *
+ * The addresses are texts the band changes in place (#106), so they are read
+ * at render time. An empty one means the band has no such account, and the
+ * network is left out.
  *
  * The marks are Simple Icons paths (CC0), inlined because lucide-react ships
  * no brand icons.
  */
 
-export const GALLERY_URL = "https://www.flickr.com/photos/201962767@N02/collections";
-export const INSTAGRAM_URL = "https://www.instagram.com/guggen_lescanetons/";
-export const FACEBOOK_URL =
-  "https://www.facebook.com/p/Guggenmusik-Les-Canetons-de-Fribourg-100063571537707";
+export type Network = "instagram" | "facebook" | "flickr";
+
+export const NETWORK_KEYS = {
+  instagram: "site.instagramUrl",
+  facebook: "site.facebookUrl",
+  flickr: "site.flickrUrl",
+} as const;
+
+/** The network's address, or null when the band has none. */
+export function networkUrl(network: Network): string | null {
+  const url = t(NETWORK_KEYS[network]).trim();
+  return url === "" ? null : url;
+}
+
+/** The check the dialog runs on an address before it is stored. */
+export function checkNetworkUrl(value: string): string | null {
+  return /^https:\/\/\S+$/.test(value.trim()) ? null : t("texts.httpsExpected");
+}
 
 type MarkProps = { className?: string };
 

@@ -108,7 +108,7 @@ export function PhoneNav({
           <Link
             to="/"
             onClick={close}
-            aria-label="Les Canetons de Fribourg"
+            aria-label={t("site.name")}
             className="focus-ring-stage rounded"
           >
             <img

@@ -417,6 +417,19 @@ export const fr = {
    * than a label, since a module-level `label: t(...)` would be frozen in the
    * locale active at import (./index.ts).
    */
+  /**
+   * The band itself: its name and its accounts elsewhere, the same in both
+   * languages. Texts like any other, so the band changes them in place
+   * (#106), and another band could run this site under its own.
+   */
+  site: {
+    name: "Les Canetons de Fribourg",
+    legalName: "Guggenmusik les canetons de Fribourg",
+    instagramUrl: "https://www.instagram.com/guggen_lescanetons/",
+    facebookUrl: "https://www.facebook.com/p/Guggenmusik-Les-Canetons-de-Fribourg-100063571537707",
+    flickrUrl: "https://www.flickr.com/photos/201962767@N02/collections",
+  },
+
   nav: {
     primary: "Navigation principale",
     // The first thing a Tab reaches on every page, hidden until focused.
@@ -1760,6 +1773,7 @@ export const fr = {
     french: "Français",
     german: "Deutsch",
     single: "Texte",
+    httpsExpected: "Une adresse complète est attendue, commençant par https://.",
     multilineHint: "Une ligne par entrée.",
     save: "Enregistrer",
     reset: "Rétablir le texte d’origine",

@@ -26,20 +26,14 @@ import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
-import {
-  FACEBOOK_URL,
-  FacebookMark,
-  FlickrMark,
-  GALLERY_URL,
-  INSTAGRAM_URL,
-  InstagramMark,
-} from "./social";
+import { FacebookMark, FlickrMark, InstagramMark, networkUrl } from "./social";
 import { buttonVariants } from "./ui/button";
 import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 
 import { EditModeBar } from "../texts/EditMode";
+import { useTextsVersion } from "../texts/TextsProvider";
 
 /**
  * The public nav in order of importance, left to right. The desktop bar folds
@@ -88,6 +82,9 @@ const TOOLS: Array<{
 
 export function Layout() {
   const { config, user, can } = useSession();
+  // The band's name and links are texts it can change; read so a save shows
+  // in the header and the nav at once.
+  useTextsVersion();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   // The colour the page ends on, for the footer's scalloped edge. Null is the
@@ -109,33 +106,42 @@ export function Layout() {
     inboxSummary.data && inboxSummary.data.status === 200 ? inboxSummary.data.data.total : 0;
 
   // Built in one place so the desktop bar and the phone list cannot disagree
-  // about what exists.
+  // about what exists. A network the band has no address for is left out.
+  const gallery = networkUrl("flickr");
+  const instagram = networkUrl("instagram");
+  const facebook = networkUrl("facebook");
   const publicEntries: NavEntry[] = [
     ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
-    {
+  ];
+  if (gallery) {
+    publicEntries.push({
       key: "gallery",
-      href: GALLERY_URL,
+      href: gallery,
       label: t("nav.gallery"),
       ariaLabel: t("nav.galleryLabel"),
       icon: FlickrMark,
-    },
-    {
+    });
+  }
+  if (instagram) {
+    publicEntries.push({
       key: "instagram",
-      href: INSTAGRAM_URL,
+      href: instagram,
       label: "Instagram",
       ariaLabel: t("nav.instagramLabel"),
       icon: InstagramMark,
       iconOnly: true,
-    },
-    {
+    });
+  }
+  if (facebook) {
+    publicEntries.push({
       key: "facebook",
-      href: FACEBOOK_URL,
+      href: facebook,
       label: "Facebook",
       ariaLabel: t("nav.facebookLabel"),
       icon: FacebookMark,
       iconOnly: true,
-    },
-  ];
+    });
+  }
   // The planning comes first when logged in: everybody in the band reads it
   // every week, so it is the last thing to fold. Shown on `events.view`, the
   // permission its route asks for; the account link answers to

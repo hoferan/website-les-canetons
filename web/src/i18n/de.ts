@@ -334,6 +334,14 @@ export const de: typeof fr = {
       "Die Kinder-Guggenmusik aus Freiburg, gegründet 2002. Von 7 bis 18 Jahren, ohne Notenkenntnisse — Proben in der Regel am Samstagvormittag.",
   },
 
+  site: {
+    name: "Les Canetons de Fribourg",
+    legalName: "Guggenmusik les canetons de Fribourg",
+    instagramUrl: "https://www.instagram.com/guggen_lescanetons/",
+    facebookUrl: "https://www.facebook.com/p/Guggenmusik-Les-Canetons-de-Fribourg-100063571537707",
+    flickrUrl: "https://www.flickr.com/photos/201962767@N02/collections",
+  },
+
   nav: {
     primary: "Hauptnavigation",
     skipToContent: "Zum Inhalt springen",
@@ -1336,6 +1344,7 @@ export const de: typeof fr = {
     french: "Français",
     german: "Deutsch",
     single: "Text",
+    httpsExpected: "Erwartet wird eine vollständige Adresse, die mit https:// beginnt.",
     multilineHint: "Eine Zeile pro Eintrag.",
     save: "Speichern",
     reset: "Ursprünglichen Text wiederherstellen",

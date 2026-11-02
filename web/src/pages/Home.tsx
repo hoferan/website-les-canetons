@@ -14,6 +14,7 @@ import { Scallop } from "../carnival/Scallop";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { PublicAgenda } from "../events/PublicAgenda";
 import { type TranslationKey, t } from "../i18n";
+import { EditableText } from "../texts/EditableText";
 
 /**
  * The four pages a stranger most likely wants, in that order.
@@ -117,7 +118,9 @@ export function Home() {
               data-confetti-avoid
               className="font-display text-3xl leading-[1.18] sm:text-4xl md:text-5xl"
             >
-              <Highlighted text={t("home.hero")} mark={t("home.heroHighlight")} />
+              <EditableText k="home.hero" label={t("home.hero")}>
+                {(text) => <Highlighted text={text} mark={t("home.heroHighlight")} />}
+              </EditableText>
             </h1>
 
             {/* One sentence with the practical facts somebody deciding
@@ -125,9 +128,9 @@ export function Home() {
                 needed. White here is 5.3:1 at its worst (top right at 390px,
                 where the poster is pinkest); the gradient in styles.css runs
                 the way it does to keep that above 4.5:1. */}
-            <p data-confetti-avoid className="mt-related max-w-text text-lg">
-              {t("home.heroSub")}
-            </p>
+            <div data-confetti-avoid className="mt-related max-w-text text-lg">
+              <EditableText k="home.heroSub" as="p" />
+            </div>
 
             {/* The two things a visitor most often comes to do, as the nav
                 names them. */}

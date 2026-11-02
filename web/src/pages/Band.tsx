@@ -12,6 +12,7 @@ import { RAISED_CARD } from "../carnival/raised";
 import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { registerName, t } from "../i18n";
+import { EditableText } from "../texts/EditableText";
 
 /**
  * The anchor a jump link points at. Built from the register's ID, because a
@@ -84,7 +85,13 @@ export function Band() {
 
   return (
     <>
-      <PageHero title={t("band.heading")} mark={t("band.headingHighlight")} seed={7} width="text" />
+      <PageHero
+        title={t("band.heading")}
+        titleKey="band.heading"
+        mark={t("band.headingHighlight")}
+        seed={7}
+        width="text"
+      />
 
       <PageSection width="text">
         <SlotPhoto slot="band" label={t("photos.slot.band")} alt="Les Canetons de Fribourg" />
@@ -117,13 +124,13 @@ export function Band() {
             <hr className="mt-section border-line" />
 
             <Card className={cn(RAISED_CARD, "mt-block gap-0 p-5")}>
-              <h2 className="font-display text-2xl">{t("band.patronsHeading")}</h2>
+              <EditableText k="band.patronsHeading" as="h2" className="font-display text-2xl" />
               <SlotPhoto
                 slot="godparents"
                 label={t("photos.slot.godparents")}
                 alt={t("band.patronsAlt")}
               />
-              <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
+              <EditableText k="band.patrons" as="p" className="mt-tight text-ink-muted" neutral />
             </Card>
           </>
         )}

@@ -6,6 +6,7 @@ import type { PublicEventResource } from "../api/generated/model";
 import { PageHero } from "../carnival/PageHero";
 import { AgendaEntry, BADGE_TINTS } from "../events/PublicAgenda";
 import { t } from "../i18n";
+import { EditableText } from "../texts/EditableText";
 
 /**
  * Every upcoming public appearance, where a visitor can come and watch.
@@ -27,11 +28,12 @@ export function Agenda() {
     <>
       <PageHero
         title={t("agenda.heading")}
+        titleKey="agenda.heading"
         mark={t("agenda.headingHighlight")}
         seed={3}
         width="text"
       >
-        <p>{t("agenda.intro")}</p>
+        <EditableText k="agenda.intro" as="p" />
       </PageHero>
 
       <PageSection width="text">

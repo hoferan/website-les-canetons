@@ -3,9 +3,10 @@ import { expect, test } from "vitest";
 
 import { HttpResponse, delay, http } from "msw";
 
-import { setMemberVisibility, setSectionNameDe } from "../mocks/handlers";
+import { setMemberVisibility, setMockUser, setSectionNameDe } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
+import { EDIT_MODE_KEY } from "../texts/EditMode";
 import { Band } from "./Band";
 
 /**
@@ -215,5 +216,20 @@ test("shows the godparents card when the roster cannot be read", async () => {
 
   expect(
     await screen.findByRole("heading", { name: "Le parrain et la marraine" }),
+  ).toBeInTheDocument();
+});
+
+test("in edit mode the godparents' names and the heading carry a pencil", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  await renderWithSession(<Band />, { route: "/band" });
+
+  expect(
+    await screen.findByRole("button", {
+      name: "Modifier le texte : Richard Hertig et Annick Bürgisser",
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Modifier le texte : Nos Canetons" }),
   ).toBeInTheDocument();
 });
