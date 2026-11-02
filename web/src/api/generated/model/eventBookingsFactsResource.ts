@@ -336,4 +336,6 @@ export interface EventBookingsFactsResource {
   latestChangeId: number;
   /** Capped blocks with five places or fewer left; `remaining` 0 is full. */
   nearlyFull: EventBookingsFactsResourceNearlyFullItem[];
+  /** Bookings on the list flagged as spam and not yet cleared, whenever they came in. */
+  suspect: number;
 }

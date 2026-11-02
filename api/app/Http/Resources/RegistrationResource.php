@@ -48,6 +48,12 @@ class RegistrationResource extends JsonResource
             /** When the committee recorded the payment, or null while it is unpaid. */
             'paidAt' => $this->paid_at === null ? null : Iso8601::utc($this->paid_at),
             'createdAt' => Iso8601::utc($this->created_at),
+            /**
+             * The fields that carried a link or markup when the guest booked, empty when none did: `firstName`, `lastName`, `address`, `tableName`, or `answers` for the free-text answers. A flagged booking's table is left off the public form and its confirmation is held until `registrations.manage` clears the flag.
+             *
+             * @var list<string>
+             */
+            'suspectFields' => $this->suspect_fields ?? [],
         ];
     }
 

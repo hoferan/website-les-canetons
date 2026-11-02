@@ -74,7 +74,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // A public text tells "the page's default" (null) from "nothing here"
         // (an empty string): a band without a Flickr account stores an empty
-        // address to leave the network out (ADR 0037). Everywhere else a
+        // address to leave the network out (ADR 0038). Everywhere else a
         // blank field still arrives as null.
         $middleware->convertEmptyStringsToNull(except: [
             fn (Request $request): bool => $request->is('api/v1/texts/*'),

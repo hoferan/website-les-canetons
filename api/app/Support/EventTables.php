@@ -11,7 +11,8 @@ use App\Models\Registration;
  * A table is its name (see TableName), so the list is the distinct names of
  * the current bookings. Cancelling a booking deletes it, which takes a junk
  * table name off the form with it. Grouped here rather than in SQL, whose
- * collation would merge "Müller" and "müller".
+ * collation would merge "Müller" and "müller". A booking flagged as spam
+ * counts for nothing here until the flag is cleared.
  *
  * Empty unless a public form asks for a table: a members form asks none
  * (ADR 0034), and a form without the field must not disclose the names.
@@ -26,7 +27,9 @@ final class EventTables
         }
 
         $guests = [];
-        foreach ($event->registrations()->with('choices.option')->get() as $registration) {
+        // A flagged booking's table stays off until somebody clears the flag,
+        // so a junk name never reaches the public form (ADR 0037).
+        foreach ($event->registrations()->whereNull('suspect_fields')->with('choices.option')->get() as $registration) {
             /** @var Registration $registration */
             $name = TableName::key($registration->table_name);
             if ($name !== null) {

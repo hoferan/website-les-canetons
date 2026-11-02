@@ -7,7 +7,7 @@ import { t } from "../i18n";
  * person gets a wrong answer, whereas a parent who sees a gap asks. So facts
  * the band has not confirmed render as something no reader can mistake for
  * real content. The Direction fills each one in from the page, in edit mode
- * (ADR 0037); what is still missing is counted by rendering
+ * (ADR 0038); what is still missing is counted by rendering
  * the public pages: a grep over call sites miscounts, because some sit in a
  * loop and others render only for an empty roster.
  *

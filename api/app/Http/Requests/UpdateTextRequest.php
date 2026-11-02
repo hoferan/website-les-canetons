@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * One public text in both languages. Null in a language means the page shows
- * its default there; an empty string means it shows nothing (ADR 0037).
+ * its default there; an empty string means it shows nothing (ADR 0038).
  */
 class UpdateTextRequest extends FormRequest
 {

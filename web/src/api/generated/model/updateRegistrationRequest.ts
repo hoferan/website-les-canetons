@@ -324,7 +324,8 @@ import type { UpdateRegistrationRequestChoicesItem } from "./updateRegistrationR
  * required block left out fails against `answers.<optionId>` with `required`.
  * The quantities cannot be changed here: a quantity block fails with
  * `not_an_answer`. Cancel the booking and make a new one instead. No mail is
- * sent when a booking is corrected.
+ * sent when a booking is corrected; clearing a spam flag sends the
+ * confirmation the flag held back.
  */
 export interface UpdateRegistrationRequest {
   /** @maxLength 255 */
@@ -355,6 +356,8 @@ export interface UpdateRegistrationRequest {
   tableName?: string | null;
   /** `true` records the payment, `false` takes it back. Sending `true` for a booking already paid keeps the original time. */
   paid?: boolean;
+  /** `false` clears a spam flag and sends the confirmation that was held. Only `false` is accepted: nobody flags a booking by hand. */
+  suspect?: boolean;
   /**
    * The text, choice and yes/no answers, one entry per block answered, at most 20. Replaces every such answer; a block left out is no longer answered. Omit it to leave the answers alone. Quantities are not accepted.
    * @maxItems 20

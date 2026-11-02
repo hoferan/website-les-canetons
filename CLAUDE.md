@@ -347,7 +347,7 @@ ADR 0014 has the reasoning.
 | One's own answer to an event | `attendance.respond` |
 | Somebody else's answer | `attendance.record_for_others` |
 | Photos: the library on `/media`, and each photo slot on the page that shows it | `images.manage` |
-| The public pages' texts, the band's name, contacts and links, changed in place with "Modifier la page" | `content.manage` (ADR 0037) |
+| The public pages' texts, the band's name, contacts and links, changed in place with "Modifier la page" | `content.manage` (ADR 0038) |
 
 So no permission enters the enum before middleware checks it.
 

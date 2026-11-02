@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
 import { type Locale } from "../i18n/locale";
-import { problem, setMockUser } from "../mocks/handlers";
+import { flagMockSubmission, problem, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { ContactMessages } from "./ContactMessages";
@@ -202,6 +202,7 @@ test("filtering to a status with nothing in it explains itself, not as an error"
             receivedAt: "2026-09-08T09:15:00+00:00",
             handledAt: null,
             handledBy: null,
+            suspectFields: [],
           },
         ],
         meta: { total: 1, limit: 500, offset: 0 },
@@ -309,4 +310,62 @@ test("a write that never reaches the API says so in German", async () => {
   expect(await panel().findByRole("alert")).toHaveTextContent(
     "Die Aktion konnte nicht ausgeführt werden.",
   );
+});
+
+/**
+ * #332. Rossier's message (id 2) flagged for a link in its body. The card
+ * shows the flag; the panel holds the button, beside the other two writes.
+ */
+test("a flagged message says why on its card", async () => {
+  flagMockSubmission("contactMessage", 2, ["message"]);
+
+  await renderArchive();
+
+  const card = within(
+    cards()
+      .getAllByRole("listitem")
+      .find((item) => item.textContent?.includes("Rossier"))!,
+  );
+  expect(card.getByTestId("suspect-badge")).toHaveTextContent("Suspect");
+  expect(card.getByTestId("suspect-reasons")).toHaveTextContent("Lien ou balise dans : message.");
+  // No mail is held for a message: nothing is sent to the visitor anyway.
+  expect(card.getByTestId("suspect-reasons")).not.toHaveTextContent("Confirmation");
+});
+
+test("clearing a flag in the panel sends suspect false with the read's tag", async () => {
+  const sent: { body: unknown; ifMatch: string | null }[] = [];
+  const record = ({ request }: { request: Request }) => {
+    if (request.method === "PATCH") {
+      void request
+        .clone()
+        .json()
+        .then((body: unknown) => sent.push({ body, ifMatch: request.headers.get("If-Match") }));
+    }
+  };
+  server.events.on("request:start", record);
+  flagMockSubmission("contactMessage", 2, ["message"]);
+
+  try {
+    await renderArchive("/contact-messages?open=2");
+    await screen.findByTestId("message-panel");
+
+    await userEvent.click(panel().getByRole("button", { name: "Pas du spam" }));
+
+    await expect.poll(() => panel().queryByTestId("suspect-reasons")).toBeNull();
+    expect(sent).toEqual([{ body: { suspect: false }, ifMatch: expect.stringMatching(/^"/) }]);
+    // Clearing the flag leaves the message open.
+    expect(handledSwitch()).not.toBeChecked();
+  } finally {
+    server.events.removeListener("request:start", record);
+  }
+});
+
+test("reading the messages is not enough to clear a flag", async () => {
+  flagMockSubmission("contactMessage", 2, ["message"]);
+  setMockUser("demo.committee");
+  await renderWithSession(<ContactMessages />, { route: "/contact-messages?open=2" });
+  await screen.findByTestId("message-panel");
+
+  expect(panel().getByTestId("suspect-reasons")).toBeInTheDocument();
+  expect(panel().queryByRole("button", { name: "Pas du spam" })).not.toBeInTheDocument();
 });

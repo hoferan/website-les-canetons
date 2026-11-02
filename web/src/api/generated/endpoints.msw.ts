@@ -1134,6 +1134,9 @@ export const getRegistrationStoreResponseMock = (
   totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
   paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  suspectFields: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ),
   ...overrideResponse,
 });
 
@@ -1183,6 +1186,10 @@ export const getRegistrationIndexResponseMock = (
     totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
     paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
     createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    suspectFields: Array.from(
+      { length: faker.number.int({ min: 1, max: 10 }) },
+      (_, i) => i + 1,
+    ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
@@ -1392,6 +1399,9 @@ export const getRegistrationShowResponseMock = (
   totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
   paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  suspectFields: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ),
   ...overrideResponse,
 });
 
@@ -1437,6 +1447,9 @@ export const getRegistrationUpdateResponseMock = (
   totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
   paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  suspectFields: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ),
   ...overrideResponse,
 });
 
@@ -1614,9 +1627,11 @@ export const getInboxIndexResponseMock = (
           label: faker.string.alpha({ length: { min: 10, max: 20 } }),
           remaining: faker.number.int(),
         })),
+        suspect: faker.number.int(),
       },
       null,
     ]),
+    suspect: faker.datatype.boolean(),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
@@ -1645,6 +1660,10 @@ export const getContactMessageIndexResponseMock = (
         faker.string.alpha({ length: { min: 10, max: 20 } }),
         null,
       ]),
+      suspectFields: Array.from(
+        { length: faker.number.int({ min: 1, max: 10 }) },
+        (_, i) => i + 1,
+      ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
     },
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
@@ -1671,6 +1690,10 @@ export const getContactMessageShowResponseMock = (): ContactMessageShow200 => ({
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
     ]),
+    suspectFields: Array.from(
+      { length: faker.number.int({ min: 1, max: 10 }) },
+      (_, i) => i + 1,
+    ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
   },
 });
 
@@ -1694,6 +1717,10 @@ export const getContactMessageHandleResponseMock = (): ContactMessageHandle200 =
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
     ]),
+    suspectFields: Array.from(
+      { length: faker.number.int({ min: 1, max: 10 }) },
+      (_, i) => i + 1,
+    ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
   },
 });
 
@@ -2594,6 +2621,9 @@ export const getMyRegistrationShowResponseMock = (
   totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
   paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  suspectFields: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ),
   ...overrideResponse,
 });
 
@@ -2653,6 +2683,10 @@ export const getMyRegistrationPutResponseMock = (
         null,
       ]),
       createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+      suspectFields: Array.from(
+        { length: faker.number.int({ min: 1, max: 10 }) },
+        (_, i) => i + 1,
+      ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
       ...overrideResponse,
     },
     {
@@ -2707,6 +2741,10 @@ export const getMyRegistrationPutResponseMock = (
         null,
       ]),
       createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+      suspectFields: Array.from(
+        { length: faker.number.int({ min: 1, max: 10 }) },
+        (_, i) => i + 1,
+      ).map(() => faker.string.alpha({ length: { min: 10, max: 20 } })),
       ...overrideResponse,
     },
   ]);
