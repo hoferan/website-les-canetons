@@ -391,8 +391,58 @@ test("marks the four required fields, and refuses an empty form in French", asyn
 test("says what the Table field is for, on the field itself", async () => {
   await renderBooking();
   expect(screen.getByLabelText("Table")).toHaveAccessibleDescription(
-    "Avec qui vous aimeriez être placé.",
+    "Choisissez la table que vous rejoignez. Si elle n’existe pas encore, créez-en une : le même nom, c’est la même table.",
   );
+});
+
+/** Books the souper with one adult at the table chosen by `pick`, and returns the table name sent. */
+async function bookAtTable(pick: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
+  const user = userEvent.setup();
+  let sent: unknown = undefined;
+  server.use(
+    http.post("/api/v1/events/:id/registrations", async ({ request }) => {
+      sent = ((await request.json()) as { tableName?: unknown }).tableName;
+      return HttpResponse.json({ code: "spam_suspected" }, { status: 422 });
+    }),
+  );
+
+  await renderBooking();
+  await fillInContact(user);
+  await order(user, /Repas adulte/, 1);
+  await pick(user);
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  await expect.poll(() => sent).not.toBeUndefined();
+  return sent;
+}
+
+test("offers the tables already booked, with how full each one is", async () => {
+  await renderBooking();
+
+  // The seeded souper seats ten at a table, and the Pythons are six.
+  expect(screen.getByRole("option", { name: "Avec la famille Python (6/10)" })).toBeInTheDocument();
+});
+
+test("joining a table sends its name", async () => {
+  const sent = await bookAtTable((user) =>
+    user.selectOptions(screen.getByLabelText("Table"), "Avec la famille Python (6/10)"),
+  );
+  expect(sent).toBe("Avec la famille Python");
+});
+
+test("a new table sends the name typed", async () => {
+  const sent = await bookAtTable(async (user) => {
+    await user.selectOptions(screen.getByLabelText("Table"), "Nouvelle table…");
+    await user.type(screen.getByLabelText("Nom de la nouvelle table"), "Les Clerc");
+  });
+  expect(sent).toBe("Les Clerc");
+});
+
+test("a new table left without a name books no table", async () => {
+  const sent = await bookAtTable((user) =>
+    user.selectOptions(screen.getByLabelText("Table"), "Nouvelle table…"),
+  );
+  expect(sent).toBeNull();
 });
 
 test("a quantity out of range is refused against its own option", async () => {
@@ -670,6 +720,8 @@ function formWith(option: Record<string, unknown>, form: Record<string, unknown>
         open: true,
         asksAddress: true,
         asksTable: true,
+        tables: [],
+        tableSeats: null,
         ...form,
       }),
     ),
@@ -901,6 +953,8 @@ test("after a members form closes, a member reads their answers and cannot chang
         audience: "members",
         asksAddress: true,
         asksTable: true,
+        tables: [],
+        tableSeats: null,
         opensAt: null,
         closesAt: "2026-11-01T22:59:00Z",
         open: false,

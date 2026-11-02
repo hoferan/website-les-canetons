@@ -1034,8 +1034,18 @@ export const fr = {
     contactLegend: "Vos coordonnées",
     choiceLegend: "Votre choix",
     // Under the Table field. Which fields are optional is said by the star on
-    // the others; what "table" means here is not said anywhere else.
-    tableHint: "Avec qui vous aimeriez être placé.",
+    // the others; what "table" means here is not said anywhere else. A table
+    // is its name, so the hint says that the same name is the same table.
+    tableHint:
+      "Choisissez la table que vous rejoignez. Si elle n’existe pas encore, créez-en une : le même nom, c’est la même table.",
+    table: {
+      none: "Pas de table",
+      new: "Nouvelle table…",
+      newName: "Nom de la nouvelle table",
+      occupancy: "{{name}} ({{guests}}/{{seats}})",
+      // Information only: a full table can still be picked.
+      full: "{{name}} ({{guests}}/{{seats}}, complet)",
+    },
     nothingOffered: "Rien n’est encore proposé pour cette soirée. Revenez d’ici quelques jours.",
     // Only for an option with a capacity; the server counts, see `remaining`.
     placesLeft_one: "Plus qu’une place",

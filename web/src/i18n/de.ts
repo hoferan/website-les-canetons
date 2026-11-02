@@ -768,7 +768,15 @@ export const de: typeof fr = {
 
     contactLegend: "Ihre Kontaktangaben",
     choiceLegend: "Ihre Auswahl",
-    tableHint: "Neben wem Sie gerne sitzen möchten.",
+    tableHint:
+      "Wählen Sie den Tisch, an den Sie sich setzen. Gibt es ihn noch nicht, legen Sie einen neuen an: gleicher Name heisst gleicher Tisch.",
+    table: {
+      none: "Kein Tisch",
+      new: "Neuer Tisch…",
+      newName: "Name des neuen Tischs",
+      occupancy: "{{name}} ({{guests}}/{{seats}})",
+      full: "{{name}} ({{guests}}/{{seats}}, voll)",
+    },
     nothingOffered:
       "Für diesen Abend wird noch nichts angeboten. Schauen Sie in ein paar Tagen wieder vorbei.",
     placesLeft_one: "Noch {{count}} Platz frei",
