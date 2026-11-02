@@ -392,6 +392,7 @@ import type {
   ImageStore409,
   ImageStore507,
   ImageSummary200,
+  ImportWebsiteRequest,
   InboxIndex200,
   InboxIndexParams,
   InboxSummary200,
@@ -483,6 +484,7 @@ import type {
   UpdateRegistrationRequest,
   UpdateTextRequest,
   WebsiteExport200,
+  WebsiteImport200,
 } from "./model";
 
 import { customFetch } from "../http";
@@ -15033,6 +15035,180 @@ export function useWebsiteExport<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type websiteImportResponse200 = {
+  data: WebsiteImport200;
+  status: 200;
+};
+
+export type websiteImportResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type websiteImportResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type websiteImportResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type websiteImportResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type websiteImportResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type websiteImportResponseSuccess = websiteImportResponse200 & {
+  headers: Headers;
+};
+export type websiteImportResponseError = (
+  | websiteImportResponse400
+  | websiteImportResponse401
+  | websiteImportResponse403
+  | websiteImportResponse419
+  | websiteImportResponse503
+) & {
+  headers: Headers;
+};
+
+export type websiteImportResponse = websiteImportResponseSuccess | websiteImportResponseError;
+
+export const getWebsiteImportUrl = () => {
+  return `/website/import`;
+};
+
+/**
+ * Upload every photo to the library first (POST /images); a photo the
+ * library does not hold refuses the whole import. The texts, the photo
+ * slots and the history are replaced in one transaction, so a refused
+ * import changes nothing. No `If-Match`: replacing everything is the
+ * point, and the page asks for a typed confirmation before it sends this.
+ * @summary Replaces this server's website with the one sent. Requires
+`content.manage`, `images.manage` and `history.manage`
+ */
+export const websiteImport = async (
+  importWebsiteRequest: ImportWebsiteRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<websiteImportResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<websiteImportResponse>(getWebsiteImportUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(importWebsiteRequest),
+  });
+};
+
+export const getWebsiteImportMutationKey = () => ["websiteImport"] as const;
+
+export const getWebsiteImportMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof websiteImport>>,
+    TError,
+    WebsiteImportMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof websiteImport>>,
+  TError,
+  WebsiteImportMutationVariables,
+  TContext
+> => {
+  const mutationKey = getWebsiteImportMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof websiteImport>>,
+    WebsiteImportMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return websiteImport(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type WebsiteImportMutationResult = NonNullable<Awaited<ReturnType<typeof websiteImport>>>;
+export type WebsiteImportMutationBody = ImportWebsiteRequest;
+export type WebsiteImportMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem419Response
+  | Problem503Response;
+export type WebsiteImportMutationVariables = { data: ImportWebsiteRequest };
+
+/**
+ * @summary Replaces this server's website with the one sent. Requires
+`content.manage`, `images.manage` and `history.manage`
+ */
+export const useWebsiteImport = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof websiteImport>>,
+      TError,
+      WebsiteImportMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof websiteImport>>,
+  TError,
+  WebsiteImportMutationVariables,
+  TContext
+> => {
+  return useMutation(getWebsiteImportMutationOptions(options), queryClient);
+};
 
 export type configShowResponse200 = {
   data: ConfigShow200;

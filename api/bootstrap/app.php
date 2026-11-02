@@ -77,7 +77,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // address to leave the network out (ADR 0037). Everywhere else a
         // blank field still arrives as null.
         $middleware->convertEmptyStringsToNull(except: [
-            fn (Request $request): bool => $request->is('api/v1/texts/*'),
+            fn (Request $request): bool => $request->is('api/v1/texts/*', 'api/v1/website/import'),
         ]);
 
         // Self-healing schema: CI cannot reach POST /api/migrate through the

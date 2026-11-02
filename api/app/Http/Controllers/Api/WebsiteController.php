@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ImportWebsiteRequest;
 use App\Http\Resources\ImageResource;
 use App\Models\HistoryEntry;
 use App\Models\Image;
 use App\Models\PhotoSlot;
 use App\Models\Section;
 use App\Models\TextOverride;
+use App\Support\Audit;
 use App\Support\Iso8601;
+use App\Support\WebsiteImport;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
@@ -26,6 +29,35 @@ class WebsiteController extends Controller
 {
     /** The bundle's shape. A reader refuses any other. */
     public const FORMAT = 1;
+
+    /**
+     * Replaces this server's website with the one sent. Requires
+     * `content.manage`, `images.manage` and `history.manage`.
+     *
+     * Upload every photo to the library first (POST /images); a photo the
+     * library does not hold refuses the whole import. The texts, the photo
+     * slots and the history are replaced in one transaction, so a refused
+     * import changes nothing. No `If-Match`: replacing everything is the
+     * point, and the page asks for a typed confirmation before it sends this.
+     */
+    #[Endpoint(operationId: 'website.import')]
+    #[Response(200, 'What was imported, and each register photo that found no register of its name.')]
+    public function import(ImportWebsiteRequest $request): JsonResponse
+    {
+        /** @var array{texts: list<array{key: string, fr: ?string, de: ?string}>, slots: list<array{slot: string, sha256: string, label?: ?string, path?: ?string, registerName?: ?string}>, history: list<array<string, mixed>>} $bundle */
+        $bundle = $request->validated();
+        $result = WebsiteImport::apply($bundle);
+
+        Audit::record(
+            $request->user(),
+            'website.imported',
+            'website',
+            null,
+            "texts={$result['texts']} slots={$result['slots']} history={$result['history']}",
+        );
+
+        return response()->json($result);
+    }
 
     /**
      * The website as one document. Requires `content.manage`, `images.manage`

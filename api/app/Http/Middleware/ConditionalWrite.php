@@ -46,6 +46,10 @@ use Throwable;
  * text, both of its languages sent together from one dialog, and the last
  * save is what the page shows.
  *
+ * Importing a website, POST /website/import, replaces the texts, the photo
+ * slots and the history at once on purpose. There is no part of it a caller
+ * read first and could lose; the page asks for a typed confirmation instead.
+ *
  * There is no conditional GET: `If-None-Match` is not implemented and no 304 is
  * returned, since every route here also sends `Cache-Control: no-store`. The tag
  * is an optimistic-concurrency token. Read this before adding a conditional

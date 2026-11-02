@@ -8340,6 +8340,91 @@
                 }
             }
         },
+        "/website/import": {
+            "post": {
+                "operationId": "website.import",
+                "description": "Upload every photo to the library first (POST /images); a photo the\nlibrary does not hold refuses the whole import. The texts, the photo\nslots and the history are replaced in one transaction, so a refused\nimport changes nothing. No `If-Match`: replacing everything is the\npoint, and the page asks for a typed confirmation before it sends this.",
+                "summary": "Replaces this server's website with the one sent. Requires\n`content.manage`, `images.manage` and `history.manage`",
+                "tags": [
+                    "Website"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ImportWebsiteRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "What was imported, and each register photo that found no register of its name.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "texts": {
+                                            "type": "integer"
+                                        },
+                                        "slots": {
+                                            "type": "integer"
+                                        },
+                                        "history": {
+                                            "type": "integer"
+                                        },
+                                        "skipped": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "slot": {
+                                                        "type": "string"
+                                                    },
+                                                    "registerName": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "slot",
+                                                    "registerName"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "texts",
+                                        "slots",
+                                        "history",
+                                        "skipped"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
         "/config": {
             "get": {
                 "operationId": "config.show",
@@ -9850,6 +9935,188 @@
                     "usages"
                 ],
                 "title": "ImageResource"
+            },
+            "ImportWebsiteRequest": {
+                "type": "object",
+                "description": "A website as GET /website/export wrote it, less the photos: the browser\nuploads those to the library first, and everything here names them by the\nSHA-256 of their largest size. Every photo must already be in the library,\nor nothing is imported.",
+                "properties": {
+                    "format": {
+                        "type": "integer",
+                        "description": "The bundle's shape. Only `1` is read.",
+                        "enum": [
+                            "1"
+                        ]
+                    },
+                    "texts": {
+                        "type": "array",
+                        "description": "The changed texts, as GET /texts lists them. They replace every stored text.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][A-Za-z0-9]*(?:\\.[A-Za-z0-9]+){1,7}$",
+                                    "maxLength": 128
+                                },
+                                "fr": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 2000
+                                },
+                                "de": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 2000
+                                }
+                            },
+                            "required": [
+                                "key",
+                                "fr",
+                                "de"
+                            ]
+                        },
+                        "maxItems": 500
+                    },
+                    "slots": {
+                        "type": "array",
+                        "description": "The photo slots, an event's poster and a history entry's photo aside. They replace every other slot.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "slot": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                                },
+                                "sha256": {
+                                    "type": "string",
+                                    "minLength": 64,
+                                    "maxLength": 64
+                                },
+                                "label": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 120
+                                },
+                                "path": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 255
+                                },
+                                "registerName": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "For a register's photo, the register's name: the slot goes to the register of that name here.",
+                                    "maxLength": 255
+                                }
+                            },
+                            "required": [
+                                "slot",
+                                "sha256"
+                            ]
+                        },
+                        "maxItems": 200
+                    },
+                    "history": {
+                        "type": "array",
+                        "description": "The history, oldest first. It replaces every entry.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "occurredOn": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                "precision": {
+                                    "type": "string",
+                                    "enum": [
+                                        "year",
+                                        "month",
+                                        "day"
+                                    ]
+                                },
+                                "titleFr": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 120
+                                },
+                                "bodyFr": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 5000
+                                },
+                                "titleDe": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 120
+                                },
+                                "bodyDe": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 5000
+                                },
+                                "important": {
+                                    "type": "boolean"
+                                },
+                                "icon": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "enum": [
+                                        "flag",
+                                        "star",
+                                        "music",
+                                        "trophy",
+                                        "users",
+                                        "party-popper",
+                                        "map-pin",
+                                        "heart",
+                                        null
+                                    ]
+                                },
+                                "photoSha256": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "minLength": 64,
+                                    "maxLength": 64
+                                }
+                            },
+                            "required": [
+                                "occurredOn",
+                                "precision",
+                                "important"
+                            ]
+                        },
+                        "maxItems": 500
+                    }
+                },
+                "required": [
+                    "format",
+                    "texts",
+                    "slots",
+                    "history"
+                ],
+                "title": "ImportWebsiteRequest"
             },
             "InboxItemResource": {
                 "type": "object",

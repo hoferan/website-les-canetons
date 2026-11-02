@@ -237,6 +237,17 @@ export const fr = {
     // The two languages of a public text (PUT /texts/{key}).
     fr: "Texte en français",
     de: "Texte en allemand",
+    // A website bundle (POST /website/import). A refusal here means the file
+    // was made by something other than the export, or by another version.
+    format: "Version du fichier",
+    texts: "Textes du site",
+    key: "Nom du texte",
+    slots: "Emplacements de photo",
+    slot: "Emplacement de photo",
+    sha256: "Photo",
+    photoSha256: "Photo",
+    registerName: "Registre",
+    history: "Historique",
     date: "Date",
     title: "Titre",
     startsAt: "Début",

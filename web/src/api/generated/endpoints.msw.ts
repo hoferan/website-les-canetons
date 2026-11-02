@@ -380,6 +380,7 @@ import type {
   TextIndex200,
   TextUpdate200,
   WebsiteExport200,
+  WebsiteImport200,
 } from "./model";
 
 export const getAuthLoginResponseMock = (
@@ -2579,6 +2580,24 @@ export const getWebsiteExportResponseMock = (
   ...overrideResponse,
 });
 
+export const getWebsiteImportResponseMock = (
+  overrideResponse: Partial<Extract<WebsiteImport200, object>> = {},
+): WebsiteImport200 => ({
+  texts: faker.number.int(),
+  slots: faker.number.int(),
+  history: faker.number.int(),
+  skipped: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      slot: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      registerName: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+    }),
+  ),
+  ...overrideResponse,
+});
+
 export const getConfigShowResponseMock = (
   overrideResponse: Partial<Extract<ConfigShow200, object>> = {},
 ): ConfigShow200 => ({
@@ -4724,6 +4743,30 @@ export const getWebsiteExportMockHandler = (
   );
 };
 
+export const getWebsiteImportMockHandler = (
+  overrideResponse?:
+    | WebsiteImport200
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<WebsiteImport200> | WebsiteImport200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "/api/v1/website/import",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWebsiteImportResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getConfigShowMockHandler = (
   overrideResponse?:
     | ConfigShow200
@@ -4949,6 +4992,7 @@ export const getLesCanetonsAPIMock = () => [
   getTextIndexMockHandler(),
   getTextUpdateMockHandler(),
   getWebsiteExportMockHandler(),
+  getWebsiteImportMockHandler(),
   getConfigShowMockHandler(),
   getPhotoSlotIndexMockHandler(),
   getPhotoSlotUpdateMockHandler(),

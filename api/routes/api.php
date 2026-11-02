@@ -360,6 +360,7 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         'permission:history.manage',
     ])->group(function () {
         Route::get('/website/export', [WebsiteController::class, 'export']);
+        Route::post('/website/import', [WebsiteController::class, 'import']);
     });
 
     // The public pages' texts (#106), changed where they are shown. No
