@@ -237,6 +237,16 @@ test("a people cap that is not a whole number is refused before the save", async
   expect(sent).toHaveLength(0);
 });
 
+test("the contact block shows the table as the guest picks it", async () => {
+  await renderEditor();
+
+  expect(
+    within(screen.getByRole("listitem", { name: "Coordonnées" })).getByRole("combobox", {
+      name: "Table",
+    }),
+  ).toBeInTheDocument();
+});
+
 test("seats per table are asked only while the form asks for a table, and saved", async () => {
   const user = userEvent.setup();
   const sent = capturePuts();

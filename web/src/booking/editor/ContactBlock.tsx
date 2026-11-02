@@ -6,6 +6,7 @@ import { OUTLINED_CARD } from "../../carnival/raised";
 import { FormField } from "../../components/FormField";
 import { t } from "../../i18n";
 import { FIELDS } from "../contactFields";
+import { TablePicker } from "../TablePicker";
 import { Toggle } from "./EditableBlock";
 
 /**
@@ -37,8 +38,7 @@ export function ContactBlock({
   const fields = (
     <div className="flex flex-col gap-related">
       {FIELDS.filter(
-        (field) =>
-          (field.name !== "address" || asksAddress) && (field.name !== "tableName" || asksTable),
+        (field) => (field.name !== "address" || asksAddress) && field.name !== "tableName",
       ).map((field) => (
         <FormField
           key={field.name}
@@ -51,6 +51,10 @@ export function ContactBlock({
           onChange={() => {}}
         />
       ))}
+      {/* The guest's picker, empty: which tables exist depends on bookings. */}
+      {asksTable ? (
+        <TablePicker id="contact-tableName" tables={[]} seats={null} value="" onChange={() => {}} />
+      ) : null}
     </div>
   );
 
