@@ -311,11 +311,14 @@
  */
 
 /**
- * Marking a message handled, or putting it back.
+ * Marking a message handled, putting it back, or clearing its spam flag.
  *
- * `handled` is required and has no default, so an empty PATCH cannot silently
- * handle a message. This endpoint is also how one is reopened.
+ * `handled` is required unless `suspect` is sent, and has no default, so an
+ * empty PATCH cannot silently handle a message. This endpoint is also how one
+ * is reopened.
  */
 export interface HandleContactMessageRequest {
-  handled: boolean;
+  handled?: boolean;
+  /** `false` clears the spam flag. Only `false` is accepted: nobody flags a message by hand. */
+  suspect?: boolean;
 }

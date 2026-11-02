@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 
 import type { InboxItemResource } from "../api/generated/model";
 import { type Locale } from "../i18n/locale";
-import { setMockUser } from "../mocks/handlers";
+import { flagMockSubmission, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { AppRoutes } from "../routes";
 import { renderWithSession } from "../test/renderWithSession";
@@ -73,7 +73,9 @@ const SOUPER: InboxItemResource = {
       { label: "Viande", remaining: 4 },
       { label: "Enfant", remaining: 0 },
     ],
+    suspect: 0,
   },
+  suspect: false,
 };
 
 test("renders an event's bookings with its progress", async () => {
@@ -193,4 +195,31 @@ test("the empty inbox says so in German", async () => {
       "Nichts wartet auf eine Antwort. Der Posteingang ist auf dem neuesten Stand.",
     ),
   ).toBeInTheDocument();
+});
+
+/** #332: a flagged message's row says so, a clean one does not. */
+test("marks a message the spam check flagged", async () => {
+  flagMockSubmission("contactMessage", 2, ["message"]);
+
+  await renderInbox();
+
+  const [dupasquier, rossier] = screen.getAllByTestId("inbox-item");
+  expect(within(rossier!).getByTestId("suspect-badge")).toHaveTextContent("Suspect");
+  expect(within(dupasquier!).queryByTestId("suspect-badge")).toBeNull();
+});
+
+test("an event's row counts its flagged bookings, and only when there are some", async () => {
+  server.use(
+    http.get("/api/v1/inbox", () =>
+      HttpResponse.json({
+        data: [SOUPER, { ...SOUPER, id: 8, facts: { ...SOUPER.facts!, suspect: 2 } }],
+        meta: { total: 2, limit: 500, offset: 0 },
+      }),
+    ),
+  );
+  await renderInbox();
+
+  const [clean, flagged] = screen.getAllByTestId("inbox-item");
+  expect(within(clean!).queryByText(/suspecte/)).toBeNull();
+  expect(within(flagged!).getByText("2 inscriptions suspectes")).toBeInTheDocument();
 });

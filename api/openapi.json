@@ -2825,7 +2825,7 @@
             },
             "patch": {
                 "operationId": "registration.update",
-                "description": "Requires `registrations.manage`. Guests cannot amend their own\nbooking, so this is how a misspelled name, a wrong number, a seating\nchange or a forgotten allergy is fixed, after the form has closed too.\n\nSend only the fields that change. An explicit `null` clears an\noptional field; an omitted field is left alone.\n\n`choices` replaces the text, choice and yes/no answers, with the same\nrules as the public form. A member's booking takes these too.\n\n`{\"paid\": true}` records the payment and `paidAt` says when. Sending it\nagain keeps the first time. `{\"paid\": false}` clears it.\n\nThe quantities cannot be changed here. Cancel the booking and make a\nnew one instead.",
+                "description": "Requires `registrations.manage`. Guests cannot amend their own\nbooking, so this is how a misspelled name, a wrong number, a seating\nchange or a forgotten allergy is fixed, after the form has closed too.\n\nSend only the fields that change. An explicit `null` clears an\noptional field; an omitted field is left alone.\n\n`choices` replaces the text, choice and yes/no answers, with the same\nrules as the public form. A member's booking takes these too.\n\n`{\"paid\": true}` records the payment and `paidAt` says when. Sending it\nagain keeps the first time. `{\"paid\": false}` clears it.\n\n`{\"suspect\": false}` clears a spam flag (see `suspectFields`): the\ntable shows on the public form again, and the confirmation the flag\nheld back goes to the guest. Clearing a booking that is not flagged\nsends nothing.\n\nThe quantities cannot be changed here. Cancel the booking and make a\nnew one instead.",
                 "summary": "Correct a booking's details or answers, or record that it has been paid",
                 "tags": [
                     "Registration"
@@ -3940,7 +3940,7 @@
             },
             "patch": {
                 "operationId": "contactMessage.handle",
-                "description": "`{\"handled\": true}` stamps who did it and when; `{\"handled\": false}`\nclears both. Reopening is allowed, so a message marked handled by\nmistake can be corrected.\n\nRequires `If-Match` with the tag from reading this message. Without one\nthe request answers `428`; with a stale one, `412`.",
+                "description": "`{\"handled\": true}` stamps who did it and when; `{\"handled\": false}`\nclears both. Reopening is allowed, so a message marked handled by\nmistake can be corrected.\n\n`{\"suspect\": false}` clears the spam flag (see `suspectFields`) and\nleaves `handled` as it was unless that is sent too.\n\nRequires `If-Match` with the tag from reading this message. Without one\nthe request answers `428`; with a stale one, `412`.",
                 "summary": "Mark a message handled, or put it back",
                 "tags": [
                     "Committee inbox"
@@ -3966,7 +3966,6 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -8730,6 +8729,13 @@
                             "null"
                         ],
                         "description": "Who dealt with it. Null while open, and null again if that member has since left the band."
+                    },
+                    "suspectFields": {
+                        "type": "array",
+                        "description": "The fields that carried a link or markup when it arrived, empty when none did: `firstName`, `lastName`, `subject` or `message`. `messages.manage` clears the flag.",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 },
                 "required": [
@@ -8741,7 +8747,8 @@
                     "message",
                     "receivedAt",
                     "handledAt",
-                    "handledBy"
+                    "handledBy",
+                    "suspectFields"
                 ],
                 "title": "ContactMessageResource"
             },
@@ -8978,6 +8985,10 @@
                                 "remaining"
                             ]
                         }
+                    },
+                    "suspect": {
+                        "type": "integer",
+                        "description": "Bookings on the list flagged as spam and not yet cleared, whenever they came in."
                     }
                 },
                 "required": [
@@ -8989,7 +9000,8 @@
                     "changes",
                     "actors",
                     "latestChangeId",
-                    "nearlyFull"
+                    "nearlyFull",
+                    "suspect"
                 ],
                 "title": "EventBookingsFactsResource"
             },
@@ -9261,15 +9273,16 @@
             },
             "HandleContactMessageRequest": {
                 "type": "object",
-                "description": "Marking a message handled, or putting it back.\n\n`handled` is required and has no default, so an empty PATCH cannot silently\nhandle a message. This endpoint is also how one is reopened.",
+                "description": "Marking a message handled, putting it back, or clearing its spam flag.\n\n`handled` is required unless `suspect` is sent, and has no default, so an\nempty PATCH cannot silently handle a message. This endpoint is also how one\nis reopened.",
                 "properties": {
                     "handled": {
                         "type": "boolean"
+                    },
+                    "suspect": {
+                        "type": "boolean",
+                        "description": "`false` clears the spam flag. Only `false` is accepted: nobody flags a message by hand."
                     }
                 },
-                "required": [
-                    "handled"
-                ],
                 "title": "HandleContactMessageRequest"
             },
             "HistoryEntryResource": {
@@ -9483,6 +9496,10 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "suspect": {
+                        "type": "boolean",
+                        "description": "Whether a `contactMessage` carries a link or markup. Always false on an `eventBookings` item, whose `facts.suspect` counts its flagged bookings."
                     }
                 },
                 "required": [
@@ -9492,7 +9509,8 @@
                     "summary",
                     "arrivedAt",
                     "path",
-                    "facts"
+                    "facts",
+                    "suspect"
                 ],
                 "title": "InboxItemResource"
             },
@@ -10216,6 +10234,13 @@
                     "createdAt": {
                         "type": "string",
                         "format": "date-time"
+                    },
+                    "suspectFields": {
+                        "type": "array",
+                        "description": "The fields that carried a link or markup when the guest booked, empty when none did: `firstName`, `lastName`, `address`, `tableName`, or `answers` for the free-text answers. A flagged booking's table is left off the public form and its confirmation is held until `registrations.manage` clears the flag.",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 },
                 "required": [
@@ -10232,7 +10257,8 @@
                     "guestCount",
                     "totalCents",
                     "paidAt",
-                    "createdAt"
+                    "createdAt",
+                    "suspectFields"
                 ],
                 "title": "RegistrationResource"
             },
@@ -11369,7 +11395,7 @@
             },
             "UpdateRegistrationRequest": {
                 "type": "object",
-                "description": "Corrections to a booking's contact details and answers, and whether it has\nbeen paid.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears `address` or `tableName`.\n\n`choices` corrects the text, choice and yes/no answers: `{optionId, value}`\nper block answered, the same values as the public form. When it is sent it\nreplaces every such answer, so a block left out is no longer answered; a\nrequired block left out fails against `answers.<optionId>` with `required`.\nThe quantities cannot be changed here: a quantity block fails with\n`not_an_answer`. Cancel the booking and make a new one instead. No mail is\nsent when a booking is corrected.",
+                "description": "Corrections to a booking's contact details and answers, and whether it has\nbeen paid.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears `address` or `tableName`.\n\n`choices` corrects the text, choice and yes/no answers: `{optionId, value}`\nper block answered, the same values as the public form. When it is sent it\nreplaces every such answer, so a block left out is no longer answered; a\nrequired block left out fails against `answers.<optionId>` with `required`.\nThe quantities cannot be changed here: a quantity block fails with\n`not_an_answer`. Cancel the booking and make a new one instead. No mail is\nsent when a booking is corrected; clearing a spam flag sends the\nconfirmation the flag held back.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -11409,6 +11435,10 @@
                     "paid": {
                         "type": "boolean",
                         "description": "`true` records the payment, `false` takes it back. Sending `true` for a booking already paid keeps the original time."
+                    },
+                    "suspect": {
+                        "type": "boolean",
+                        "description": "`false` clears a spam flag and sends the confirmation that was held. Only `false` is accepted: nobody flags a booking by hand."
                     },
                     "choices": {
                         "type": "array",
