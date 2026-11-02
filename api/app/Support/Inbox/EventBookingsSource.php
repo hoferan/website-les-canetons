@@ -52,7 +52,7 @@ final class EventBookingsSource implements InboxSource
         return $this->open()->count();
     }
 
-    /** @return Collection<int, array{event: Event, delta: BookingDelta, suspect: int}> */
+    /** @return Collection<int, array{event: Event, delta: BookingDelta, suspect: int<0, max>}> */
     private function open(): Collection
     {
         return Event::query()
