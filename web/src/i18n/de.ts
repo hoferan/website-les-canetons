@@ -1328,6 +1328,13 @@ export const de: typeof fr = {
     body: "Hoppla! Die gesuchte Seite existiert nicht oder wurde verschoben.",
   },
 
+  editMode: {
+    start: "Seite bearbeiten",
+    region: "Bearbeitungsmodus",
+    hint: "Bearbeitungsmodus: Die Stifte ändern die Seite. Besucher sehen diesen Modus nicht.",
+    done: "Fertig",
+  },
+
   placeholders: {
     tbd: "••• noch zu ergänzen",
     tbdWhat: "••• noch zu ergänzen: {{what}}",

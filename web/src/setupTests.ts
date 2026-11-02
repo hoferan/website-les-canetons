@@ -42,6 +42,8 @@ afterEach(async () => {
 
   // The band's texts live in i18next's resources, which outlive a test.
   applyOverrides([]);
+  // Edit mode is remembered per tab, and jsdom keeps one tab for a file.
+  if (typeof sessionStorage !== "undefined") sessionStorage.removeItem("canetons.editMode");
 
   // A test that rendered in German would otherwise leak the locale into the
   // next one. Awaited, or it can settle after the next test's first render.

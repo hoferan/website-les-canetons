@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 import { ApiError } from "../api/http";
 import { setMockUser } from "../mocks/handlers";
@@ -9,6 +9,7 @@ import { server } from "../mocks/node";
 import { Band } from "../pages/Band";
 import { Home } from "../pages/Home";
 import { renderWithSession } from "../test/renderWithSession";
+import { EDIT_MODE_KEY } from "../texts/EditMode";
 import { SlotPhoto } from "./SlotPhoto";
 import type { ShrinkFn, UploadFn } from "./uploadQueue";
 
@@ -19,7 +20,12 @@ import type { ShrinkFn, UploadFn } from "./uploadQueue";
  * The mock places image 1 in `band` and image 2 in `register-5` (Trompettes)
  * and `history-4`; `register-4` (Cloches), `concert` and `godparents` are
  * empty.
+ *
+ * Every test here is an editor at work, so edit mode is on throughout; what
+ * an editor sees with it off is in texts/EditMode.test.tsx.
  */
+
+beforeEach(() => sessionStorage.setItem(EDIT_MODE_KEY, "1"));
 
 type Put = { path: string; ifMatch: string | null; body: unknown };
 

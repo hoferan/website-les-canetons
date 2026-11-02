@@ -7,6 +7,7 @@ import { applyDocumentMeta } from "./i18n/documentMeta";
 import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
 import { SessionProvider } from "./session/SessionProvider";
+import { EditModeProvider } from "./texts/EditMode";
 import { TextsProvider } from "./texts/TextsProvider";
 import "./styles.css";
 
@@ -70,7 +71,9 @@ if (redirecting) {
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
           <TextsProvider>
-            <App router={router} />
+            <EditModeProvider>
+              <App router={router} />
+            </EditModeProvider>
           </TextsProvider>
         </SessionProvider>
       </QueryClientProvider>

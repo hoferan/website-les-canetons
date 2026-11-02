@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 import { PhotoPending, PhotoReserved } from "@/components/PhotoPending";
 
 import { useSession } from "../session/SessionProvider";
+import { useEditMode } from "../texts/EditMode";
 import { Photo, PHOTO_SIZES } from "./Photo";
 import { usePhotoSlots } from "./photoSlots";
 import type { ShrinkFn, UploadFn } from "./uploadQueue";
@@ -30,8 +31,9 @@ type Props = {
 
 /**
  * One photo slot: put it on a page with a name and it shows whatever is
- * placed there, and lets whoever holds `images.manage` change it in place. It
- * reads the slots itself, so a page passes no photo.
+ * placed there, and lets whoever holds `images.manage` change it in place once
+ * they turn edit mode on (texts/EditMode.tsx). It reads the slots itself, so a
+ * page passes no photo.
  *
  * A visitor gets the photo or the one-line placeholder, with no
  * control, no drop handling and no wrapper. An editor gets `SlotPhotoControl`,
@@ -49,6 +51,7 @@ type Props = {
  */
 export function SlotPhoto({ slot, label, alt, upload, shrinker }: Props) {
   const { can } = useSession();
+  const editMode = useEditMode();
   const slots = usePhotoSlots();
 
   if (slots.isPending) {
@@ -56,7 +59,8 @@ export function SlotPhoto({ slot, label, alt, upload, shrinker }: Props) {
   }
   const photo = slots.photoOf(slot);
 
-  if (can("images.manage")) {
+  // With edit mode off, an editor sees the page as a visitor does.
+  if (editMode.on && can("images.manage")) {
     return (
       <Suspense
         fallback={

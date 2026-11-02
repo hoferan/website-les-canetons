@@ -1743,6 +1743,14 @@ export const fr = {
    * a translated string, never a fragment glued together outside the
    * catalogue.
    */
+  /** The switch that shows the pencils on a public page (#106). */
+  editMode: {
+    start: "Modifier la page",
+    region: "Mode édition",
+    hint: "Mode édition : les crayons modifient la page. Les visiteurs ne voient pas ce mode.",
+    done: "Terminer",
+  },
+
   placeholders: {
     tbd: "••• à compléter",
     // A whole string, punctuation included: French puts a space before a

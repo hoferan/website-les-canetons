@@ -7,6 +7,7 @@ import { LeaveGuardProvider } from "../components/LeaveGuard";
 import { setLocale } from "../i18n";
 import { type Locale } from "../i18n/locale";
 import { SessionProvider } from "../session/SessionProvider";
+import { EditModeProvider } from "../texts/EditMode";
 import { TextsProvider } from "../texts/TextsProvider";
 
 /**
@@ -46,9 +47,11 @@ export async function renderWithSession(
           <QueryClientProvider client={queryClient}>
             <SessionProvider>
               <TextsProvider>
-                <LeaveGuardProvider>
-                  <div data-testid="booted">{ui}</div>
-                </LeaveGuardProvider>
+                <EditModeProvider>
+                  <LeaveGuardProvider>
+                    <div data-testid="booted">{ui}</div>
+                  </LeaveGuardProvider>
+                </EditModeProvider>
               </TextsProvider>
             </SessionProvider>
           </QueryClientProvider>
