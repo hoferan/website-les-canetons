@@ -9,6 +9,7 @@ use App\Models\RegistrationChoice;
 use App\Models\RegistrationOption;
 use App\Support\OptionKind;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -113,6 +114,62 @@ class RegistrationFormEditorTest extends TestCase
         )->assertStatus(400);
 
         $this->assertSame(0, RegistrationOption::query()->count());
+    }
+
+    public function test_the_form_saves_seats_per_table(): void
+    {
+        $this->replace([], $this->form(['registrationTableSeats' => 10]))->assertOk();
+
+        $this->assertSame(10, $this->event->fresh()->registration_table_seats);
+    }
+
+    public function test_an_old_screen_without_seats_keeps_them(): void
+    {
+        // A screen loaded before the deploy sends the six settings it knows.
+        $this->event->update(['registration_table_seats' => 8]);
+
+        $this->replace([], $this->form())->assertOk();
+
+        $this->assertSame(8, $this->event->fresh()->registration_table_seats);
+    }
+
+    public function test_seats_are_one_to_fifty(): void
+    {
+        foreach ([0, 51] as $seats) {
+            $this->replace([], $this->form(['registrationTableSeats' => $seats]))
+                ->assertStatus(400)
+                ->assertJsonPath('errors.0.field', 'form.registrationTableSeats');
+        }
+    }
+
+    public function test_the_event_carries_its_seats(): void
+    {
+        $this->event->update(['registration_table_seats' => 10]);
+
+        $this->actingAsMember($this->organiser)
+            ->getJson("/api/v1/events/{$this->event->id}")
+            ->assertOk()
+            ->assertJsonPath('registrationTableSeats', 10);
+    }
+
+    public function test_the_tag_moves_with_the_seats(): void
+    {
+        $stale = $this->ifMatch('event.options', $this->event);
+        $this->event->update(['registration_table_seats' => 6]);
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($stale)
+            ->putJson("/api/v1/events/{$this->event->id}/registration-options", ['options' => []])
+            ->assertStatus(412);
+    }
+
+    public function test_the_table_seats_migration_is_idempotent(): void
+    {
+        $migration = require database_path('migrations/2026_10_30_000001_add_table_seats_to_events.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertTrue(Schema::hasColumn('events', 'registration_table_seats'));
     }
 
     public function test_the_tag_moves_with_the_settings(): void

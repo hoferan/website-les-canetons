@@ -169,6 +169,9 @@ class ReplaceRegistrationOptionsRequest extends FormRequest
             // or flip a members form back to public.
             /** Who may fill in the form: `public`, anybody, or `members`, logged-in members only. Omit to leave it as it is. */
             'form.registrationAudience' => ['sometimes', Rule::enum(FormAudience::class)],
+            // Optional for the same reason as the audience.
+            /** How many seats a table has, 1 to 50. Null shows no seats. Omit to leave it as it is. */
+            'form.registrationTableSeats' => ['sometimes', 'nullable', 'integer', 'gt:0', 'max:50'],
         ];
     }
 

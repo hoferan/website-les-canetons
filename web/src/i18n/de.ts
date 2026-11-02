@@ -242,6 +242,7 @@ export const de: typeof fr = {
     registrationEnabled: "Formular geöffnet",
     registrationAsksAddress: "Adresse erfragen",
     registrationAsksTable: "Tisch erfragen",
+    registrationTableSeats: "Plätze pro Tisch",
     registrationAudience: "Nur für Mitglieder",
     form: "Formulareinstellungen",
     sectionId: "Register",

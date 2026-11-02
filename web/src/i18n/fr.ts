@@ -273,6 +273,7 @@ export const fr = {
     registrationEnabled: "Formulaire ouvert",
     registrationAsksAddress: "Demander l’adresse",
     registrationAsksTable: "Demander la table",
+    registrationTableSeats: "Places par table",
     registrationAudience: "Réservé aux membres",
     // The settings above, together, on the form editor's save.
     form: "Réglages du formulaire",
