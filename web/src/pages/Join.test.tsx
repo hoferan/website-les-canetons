@@ -62,6 +62,8 @@ test("stored contacts replace the placeholders, one per line, with tel: links", 
   await renderWithSession(<Join />, { route: "/join" });
 
   expect(document.querySelectorAll("[data-tbd]")).toHaveLength(0);
+  // "Meanwhile, write to us" belongs to the placeholders, and goes with them.
+  expect(screen.queryByText(/En attendant/)).toBeNull();
   expect(screen.getByRole("link", { name: "079 123 45 67" })).toHaveAttribute(
     "href",
     "tel:+41791234567",

@@ -11,6 +11,7 @@ import { RAISED_CARD } from "../carnival/raised";
 import { type TranslationKey, t } from "../i18n";
 import { useEditMode } from "../texts/EditMode";
 import { EditableText } from "../texts/EditableText";
+import { useTextsVersion } from "../texts/TextsProvider";
 
 /**
  * The information blocks. Keys rather than strings, resolved at render time:
@@ -77,6 +78,7 @@ function mapLink(): string {
  */
 export function Join() {
   const editMode = useEditMode();
+  useTextsVersion();
 
   return (
     <>
@@ -150,13 +152,16 @@ export function Join() {
                 </span>
               ))}
             />
-            <p className="mt-related text-sm text-ink-muted">
-              {t("join.contactMeanwhile")}{" "}
-              <Link to="/contact" className="text-violet underline">
-                {t("join.contactPageLink")}
-              </Link>
-              .
-            </p>
+            {/* "Meanwhile" is about the placeholders, so it goes with them. */}
+            {t("join.contactsList").trim() === "" ? (
+              <p className="mt-related text-sm text-ink-muted">
+                {t("join.contactMeanwhile")}{" "}
+                <Link to="/contact" className="text-violet underline">
+                  {t("join.contactPageLink")}
+                </Link>
+                .
+              </p>
+            ) : null}
           </Card>
         </div>
       </PageSection>
