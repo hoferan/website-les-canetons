@@ -32,6 +32,7 @@ use Illuminate\Support\Collection;
  * @property Carbon|null $paid_at
  * @property string|null $phone_e164
  * @property int|null $member_id
+ * @property list<string>|null $suspect_fields
  * @property-read int $guest_count
  * @property-read int|null $total_cents
  */
@@ -50,14 +51,16 @@ class Registration extends Model
         'address',
         'table_name',
         'paid_at',
+        'suspect_fields',
     ];
 
     /**
      * Columns whose change the committee would not notice on the guest list:
-     * payment lives in its spreadsheet, and the dial string follows the
-     * number. A write touching only these is not a change (ADR 0035).
+     * payment lives in its spreadsheet, the dial string follows the number,
+     * and clearing a spam flag changes nothing the guest booked. A write
+     * touching only these is not a change (ADR 0035).
      */
-    private const UNJOURNALED = ['paid_at', 'phone_e164', 'updated_at'];
+    private const UNJOURNALED = ['paid_at', 'phone_e164', 'suspect_fields', 'updated_at'];
 
     /**
      * The dial string follows the number as typed, on every write. See
@@ -94,7 +97,7 @@ class Registration extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['paid_at' => 'datetime'];
+        return ['paid_at' => 'datetime', 'suspect_fields' => 'array'];
     }
 
     /** @return BelongsTo<Event, $this> */
