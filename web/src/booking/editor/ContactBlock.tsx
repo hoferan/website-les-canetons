@@ -19,15 +19,20 @@ import { Toggle } from "./EditableBlock";
 export function ContactBlock({
   asksAddress,
   asksTable,
+  tableSeats,
+  tableSeatsProblem,
   membersOnly,
   guest,
   onChange,
 }: {
   asksAddress: boolean;
   asksTable: boolean;
+  /** As typed; empty shows no seats. */
+  tableSeats: string;
+  tableSeatsProblem?: string;
   membersOnly: boolean;
   guest: boolean;
-  onChange: (patch: { asksAddress?: boolean; asksTable?: boolean }) => void;
+  onChange: (patch: { asksAddress?: boolean; asksTable?: boolean; tableSeats?: string }) => void;
 }) {
   const fields = (
     <div className="flex flex-col gap-related">
@@ -91,6 +96,19 @@ export function ContactBlock({
         checked={asksTable}
         onChange={(checked) => onChange({ asksTable: checked })}
       />
+      {/* Under the switch it belongs to, and only while there is a table to
+        seat people at. */}
+      {asksTable ? (
+        <FormField
+          id="asks-table-seats"
+          label={t("registrationOptions.tableSeats")}
+          inputMode="numeric"
+          value={tableSeats}
+          hint={t("registrationOptions.tableSeatsHint")}
+          onChange={(value) => onChange({ tableSeats: value })}
+          problem={tableSeatsProblem}
+        />
+      ) : null}
     </div>
   );
 }

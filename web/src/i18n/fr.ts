@@ -1246,6 +1246,10 @@ export const fr = {
     contactHint: "Nom, prénom, e-mail et téléphone : chaque inscription les donne.",
     asksAddress: "Demander l’adresse",
     asksTable: "Demander avec qui être à table",
+    tableSeats: "Places par table",
+    tableSeatsHint:
+      "Facultatif, de 1 à 50. Le formulaire montre alors combien de places sont prises à chaque table.",
+    tableSeatsInvalid: "Indiquez un nombre entier entre 1 et 50, ou laissez vide.",
     // The contact block of a members form, which asks for nothing.
     memberContactLocked: "Avec le compte",
     memberContactHint:

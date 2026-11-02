@@ -37,6 +37,7 @@ import {
 import { EditableBlock, nameOf, type BlockProblems } from "../booking/editor/EditableBlock";
 import {
   maxGuestsIsValid,
+  tableSeatsIsValid,
   settingsFrom,
   settingsPayload,
   type FormSettings,
@@ -101,6 +102,7 @@ export function EventFormEditor() {
   const [localProblems, setLocalProblems] = useState<Record<string, BlockProblems>>({});
   // The strip’s own check, which runs before anything is sent.
   const [capProblem, setCapProblem] = useState<string | undefined>(undefined);
+  const [seatsProblem, setSeatsProblem] = useState<string | undefined>(undefined);
   // Beside the button, not in a toast: a toast is gone by the time somebody
   // looks up from the form.
   const [saved, setSaved] = useState(false);
@@ -254,7 +256,14 @@ export function EventFormEditor() {
       ? undefined
       : t("registrationOptions.maxGuestsInvalid");
     setCapProblem(capFault);
-    if (capFault) {
+    // Only while the field is shown: a switched-off table keeps what was
+    // typed, and nobody could see or fix the fault.
+    const seatsFault =
+      !settings.asksTable || tableSeatsIsValid(settings.tableSeats)
+        ? undefined
+        : t("registrationOptions.tableSeatsInvalid");
+    setSeatsProblem(seatsFault);
+    if (capFault || seatsFault) {
       return;
     }
     const faulty = drafts.find((row) => problems[row.key]);
@@ -348,6 +357,8 @@ export function EventFormEditor() {
         <ContactBlock
           asksAddress={settings.asksAddress}
           asksTable={settings.asksTable}
+          tableSeats={settings.tableSeats}
+          tableSeatsProblem={seatsProblem ?? form.messageFor("form.registrationTableSeats")}
           membersOnly={settings.membersOnly}
           guest={guest}
           onChange={(patch) => {

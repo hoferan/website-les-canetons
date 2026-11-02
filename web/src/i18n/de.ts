@@ -934,6 +934,10 @@ export const de: typeof fr = {
     contactHint: "Name, Vorname, E-Mail und Telefon: Jede Anmeldung gibt sie an.",
     asksAddress: "Adresse erfragen",
     asksTable: "Erfragen, mit wem man am Tisch sitzt",
+    tableSeats: "Plätze pro Tisch",
+    tableSeatsHint:
+      "Optional, 1 bis 50. Das Formular zeigt dann, wie viele Plätze an jedem Tisch belegt sind.",
+    tableSeatsInvalid: "Geben Sie eine ganze Zahl von 1 bis 50 ein, oder lassen Sie das Feld leer.",
     memberContactLocked: "Mit dem Konto",
     memberContactHint:
       "Keine Kontaktangaben: Jedes Mitglied antwortet mit seinem Konto, unter seinem Namen.",

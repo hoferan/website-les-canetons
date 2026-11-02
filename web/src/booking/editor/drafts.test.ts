@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 
 import type { EditableRegistrationOptionResource, EventResource } from "../../api/generated/model";
 import { blankDraft, copiedDrafts, draftFrom, payloadOf } from "./drafts";
-import { settingsFrom, settingsPayload } from "./settings";
+import { settingsFrom, settingsPayload, tableSeatsIsValid } from "./settings";
 
 function block(
   patch: Partial<EditableRegistrationOptionResource> = {},
@@ -70,6 +70,7 @@ const SOUPER: Pick<
   | "registrationMaxGuests"
   | "registrationAsksAddress"
   | "registrationAsksTable"
+  | "registrationTableSeats"
   | "registrationAudience"
 > = {
   registrationEnabled: true,
@@ -79,6 +80,7 @@ const SOUPER: Pick<
   registrationMaxGuests: 6,
   registrationAsksAddress: true,
   registrationAsksTable: false,
+  registrationTableSeats: null,
   registrationAudience: "public",
 };
 
@@ -95,8 +97,26 @@ test("the settings read back as they were sent", () => {
     registrationMaxGuests: 6,
     registrationAsksAddress: true,
     registrationAsksTable: false,
+    registrationTableSeats: null,
     registrationAudience: "public",
   });
+});
+
+test("seats round-trip through the settings, and empty is none", () => {
+  const settings = settingsFrom({ ...SOUPER, registrationTableSeats: 10 });
+
+  expect(settings.tableSeats).toBe("10");
+  expect(settingsPayload(settings).registrationTableSeats).toBe(10);
+  expect(settingsPayload({ ...settings, tableSeats: " " }).registrationTableSeats).toBeNull();
+});
+
+test("seats must be a whole number from 1 to 50, or empty", () => {
+  for (const typed of ["", " ", "1", "50"]) {
+    expect(tableSeatsIsValid(typed), typed).toBe(true);
+  }
+  for (const typed of ["0", "51", "7.5", "dix"]) {
+    expect(tableSeatsIsValid(typed), typed).toBe(false);
+  }
 });
 
 test("a members form reads back as one and is sent as one", () => {
