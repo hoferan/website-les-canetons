@@ -1051,7 +1051,7 @@ export const fr = {
 
     bookedHeading: "Inscription enregistrée",
     bookedBody:
-      "Merci\u00a0! Un courriel de confirmation part à {{email}}. Le comité vous contactera au {{phone}} si nécessaire.",
+      "Merci\u00a0! Un courriel de confirmation vous sera envoyé à {{email}}. Le comité vous contactera au {{phone}} si nécessaire.",
 
     opensOn: "Les inscriptions ouvrent le {{date}}.",
     closed: "Les inscriptions sont closes.",

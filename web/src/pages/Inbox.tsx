@@ -157,9 +157,8 @@ function BookingsRow({
             <span className="font-normal text-ink-muted"> · {formatDay(facts.startsAt)}</span>
           ) : null}
         </p>
-        <p className="mt-tight text-sm">
-          {people} · {moved}
-        </p>
+        {/* `moved` is empty on an item a flagged booking alone keeps open. */}
+        <p className="mt-tight text-sm">{[people, moved].filter(Boolean).join(" · ")}</p>
         {/* Every flagged booking still on the list, not only the new ones:
             each waits for somebody to clear it (#332). */}
         {facts.suspect > 0 ? (

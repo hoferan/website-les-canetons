@@ -2398,16 +2398,18 @@ function openBookingItems(): InboxItemResource[] {
   return events.flatMap((event) => {
     const delta = bookingDelta(event.id);
     const last = new Date(event.endsAt ?? event.startsAt ?? 0);
+    const booked = registrations.filter((booking) => booking.eventId === event.id);
+    const flagged = booked.filter((booking) => booking.suspectFields.length > 0);
+    // A flagged booking keeps its event here, read or not (#332).
     if (
       event.publishedAt === null ||
       event.registrationClosesAt === null ||
       last < today ||
-      !delta.open
+      (!delta.open && flagged.length === 0)
     ) {
       return [];
     }
 
-    const booked = registrations.filter((booking) => booking.eventId === event.id);
     const nearlyFull = options
       .filter((option) => option.eventId === event.id && option.capacity !== null)
       .map((option) => ({ label: option.label ?? "", remaining: remainingOf(option) ?? 0 }))
@@ -2419,7 +2421,13 @@ function openBookingItems(): InboxItemResource[] {
         id: event.id,
         title: event.title,
         summary: "",
-        arrivedAt: delta.lastChangeAt ?? new Date().toISOString(),
+        arrivedAt:
+          delta.lastChangeAt ??
+          flagged
+            .map((booking) => booking.createdAt)
+            .sort()
+            .at(-1) ??
+          new Date().toISOString(),
         path: `/events/${event.id}/registrations`,
         facts: {
           startsAt: event.startsAt,
@@ -2435,7 +2443,7 @@ function openBookingItems(): InboxItemResource[] {
           actors: delta.actors,
           latestChangeId: delta.latestChangeId,
           nearlyFull,
-          suspect: booked.filter((booking) => booking.suspectFields.length > 0).length,
+          suspect: flagged.length,
         },
         suspect: false,
       },

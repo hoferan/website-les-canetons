@@ -73,6 +73,28 @@ class SuspectBookingTest extends TestCase
         ])->assertJsonPath('suspectFields', ['firstName', 'address', 'answers']);
     }
 
+    public function test_the_booking_is_flagged_by_the_insert_that_creates_it(): void
+    {
+        // Not by a second save after the commit: in between, the form would
+        // list the junk table, and a failed second save would leave the
+        // booking stored, clean and unmailed, behind a 500 that a retry
+        // turns into a second booking.
+        $atInsert = 'not seen';
+        Registration::created(function (Registration $registration) use (&$atInsert): void {
+            $atInsert = $registration->suspect_fields;
+        });
+
+        $this->book([
+            'tableName' => 'www.cheap-pills.example',
+            'choices' => [
+                ['optionId' => $this->meat->id, 'quantity' => 1],
+                ['optionId' => $this->allergies->id, 'value' => '<a href=x>'],
+            ],
+        ])->assertCreated();
+
+        $this->assertSame(['tableName', 'answers'], $atInsert);
+    }
+
     public function test_a_flagged_table_stays_off_the_public_form(): void
     {
         $this->book(['tableName' => 'www.cheap-pills.example']);

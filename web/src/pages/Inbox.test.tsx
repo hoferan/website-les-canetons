@@ -223,3 +223,29 @@ test("an event's row counts its flagged bookings, and only when there are some",
   expect(within(clean!).queryByText(/suspecte/)).toBeNull();
   expect(within(flagged!).getByText("2 inscriptions suspectes")).toBeInTheDocument();
 });
+
+test("an event kept open by a flag alone reads without a dangling separator", async () => {
+  server.use(
+    http.get("/api/v1/inbox", () =>
+      HttpResponse.json({
+        data: [
+          {
+            ...SOUPER,
+            facts: {
+              ...SOUPER.facts!,
+              changes: { new: 0, changed: 0, cancelled: 0 },
+              actors: [],
+              suspect: 1,
+            },
+          },
+        ],
+        meta: { total: 1, limit: 500, offset: 0 },
+      }),
+    ),
+  );
+  await renderInbox();
+
+  const row = within(screen.getByTestId("inbox-item"));
+  expect(row.getByText("84 personnes")).toBeInTheDocument();
+  expect(row.getByText("1 inscription suspecte")).toBeInTheDocument();
+});

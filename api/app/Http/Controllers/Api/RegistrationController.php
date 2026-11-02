@@ -11,7 +11,6 @@ use App\Http\Resources\RegistrationResource;
 use App\Mail\RegistrationConfirmation;
 use App\Models\Event;
 use App\Models\Registration;
-use App\Models\RegistrationChoice;
 use App\Models\RegistrationOption;
 use App\Support\Audit;
 use App\Support\BookingCapacity;
@@ -26,6 +25,7 @@ use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -151,7 +151,7 @@ class RegistrationController extends Controller
                 BookingCapacity::refuse($event, $data['choices']);
             }
 
-            $registration = Registration::create([
+            $columns = [
                 'event_id' => $event->id,
                 'first_name' => $data['firstName'],
                 'last_name' => $data['lastName'],
@@ -161,7 +161,14 @@ class RegistrationController extends Controller
                 // a hand-written body sends.
                 'address' => $event->registration_asks_address ? ($data['address'] ?? null) : null,
                 'table_name' => $event->registration_asks_table ? ($data['tableName'] ?? null) : null,
-            ]);
+            ];
+
+            // Checked on what is stored, so a field the form does not ask for
+            // cannot flag a booking, and by the same insert, so the form never
+            // lists a junk table for even a moment (ADR 0037).
+            $columns['suspect_fields'] = self::suspectFields($columns, $data['choices'], $kinds) ?: null;
+
+            $registration = Registration::create($columns);
 
             $registration->writeChoices($data['choices'], $kinds);
 
@@ -170,13 +177,8 @@ class RegistrationController extends Controller
 
         $registration->load('choices.option');
 
-        // Checked on what was stored, so a field the form does not ask for
-        // cannot flag a booking. The mail waits for a flag to be cleared: the
-        // band's mailbox must not carry a spammer's link to whatever address
-        // they typed (ADR 0037).
-        $registration->suspect_fields = self::suspectFields($registration) ?: null;
-        $registration->save();
-
+        // The mail waits for a flag to be cleared: the band's mailbox must not
+        // carry a spammer's link to whatever address they typed.
         if ($registration->suspect_fields === null) {
             self::confirm($registration, $event);
         }
@@ -342,20 +344,23 @@ class RegistrationController extends Controller
      * The booking's text fields that carry a link or markup. The free-text
      * answers count as one field, `answers`.
      *
+     * @param  array<string, mixed>  $columns  the row about to be inserted
+     * @param  list<array{optionId: int, quantity?: int|null, value?: string|null}>  $choices
+     * @param  Collection<int, OptionKind>  $kinds  each option's kind, by id
      * @return list<string>
      */
-    private static function suspectFields(Registration $registration): array
+    private static function suspectFields(array $columns, array $choices, Collection $kinds): array
     {
-        $answers = $registration->choices
-            ->filter(fn (RegistrationChoice $choice): bool => $choice->option?->kind === OptionKind::Text)
-            ->pluck('value')
+        $answers = collect($choices)
+            ->filter(fn (array $choice): bool => $kinds[$choice['optionId']] === OptionKind::Text)
+            ->map(fn (array $choice): string => (string) ($choice['value'] ?? ''))
             ->implode(' ');
 
         return SpamSignals::suspectFields([
-            'firstName' => $registration->first_name,
-            'lastName' => $registration->last_name,
-            'address' => $registration->address,
-            'tableName' => $registration->table_name,
+            'firstName' => $columns['first_name'],
+            'lastName' => $columns['last_name'],
+            'address' => $columns['address'],
+            'tableName' => $columns['table_name'],
             'answers' => $answers,
         ]);
     }

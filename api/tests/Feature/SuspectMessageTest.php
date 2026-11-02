@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\ContactMessageReceived;
+use App\Models\BookingChange;
 use App\Models\ContactMessage;
 use App\Models\Event;
 use App\Models\Member;
@@ -121,6 +122,40 @@ class SuspectMessageTest extends TestCase
             ->assertJsonPath('data.0.kind', 'eventBookings')
             ->assertJsonPath('data.0.suspect', false)
             ->assertJsonPath('data.0.facts.suspect', 1);
+    }
+
+    public function test_a_flagged_booking_keeps_its_event_in_the_inbox_once_the_list_is_read(): void
+    {
+        // The read mark is shared and needs only registrations.view, so a
+        // reader would otherwise close the item before anybody who can clear
+        // the flag, and send the held mail, has seen it.
+        $event = Event::factory()->takingRegistrations()->create();
+        Registration::factory()->create(['event_id' => $event->id, 'suspect_fields' => ['tableName']]);
+        $camille = $this->committeeMember();
+
+        $this->actingAsMember($camille)
+            ->putJson("/api/v1/events/{$event->id}/booking-read", ['upTo' => (int) BookingChange::max('id')])
+            ->assertSuccessful();
+
+        $this->actingAsMember($camille)
+            ->getJson('/api/v1/inbox')
+            ->assertOk()
+            ->assertJsonPath('data.0.kind', 'eventBookings')
+            ->assertJsonPath('data.0.facts.changes.new', 0)
+            ->assertJsonPath('data.0.facts.suspect', 1);
+    }
+
+    public function test_a_read_list_with_nothing_flagged_leaves_the_inbox(): void
+    {
+        $event = Event::factory()->takingRegistrations()->create();
+        Registration::factory()->create(['event_id' => $event->id]);
+        $camille = $this->committeeMember();
+
+        $this->actingAsMember($camille)
+            ->putJson("/api/v1/events/{$event->id}/booking-read", ['upTo' => (int) BookingChange::max('id')])
+            ->assertSuccessful();
+
+        $this->actingAsMember($camille)->getJson('/api/v1/inbox')->assertJsonPath('data', []);
     }
 
     private function clearOrHandle(ContactMessage $message, array $body, Member $as): TestResponse

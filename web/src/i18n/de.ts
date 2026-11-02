@@ -780,7 +780,7 @@ export const de: typeof fr = {
 
     bookedHeading: "Anmeldung gespeichert",
     bookedBody:
-      "Danke! Eine Bestätigung geht an {{email}}. Der Vorstand meldet sich bei Bedarf unter {{phone}}.",
+      "Danke! Eine Bestätigung wird an {{email}} geschickt. Der Vorstand meldet sich bei Bedarf unter {{phone}}.",
 
     opensOn: "Die Anmeldung öffnet am {{date}}.",
     closed: "Die Anmeldung ist geschlossen.",

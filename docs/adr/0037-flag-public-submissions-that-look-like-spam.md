@@ -41,7 +41,12 @@ never a lost booking.
   `registrations` and `contact_messages`, null when none did. The API returns them as
   `suspectFields`, an empty list for a clean row.
 - A flagged booking's table stays off the public form until the flag is cleared, and its
-  confirmation mail is held until then. Clearing it sends the mail.
+  confirmation mail is held until then. Clearing it sends the mail. The booking form's
+  closing screen says a confirmation "will be sent", for every booking, so it neither
+  misleads a flagged guest nor tells a bot it was caught.
+- A flagged booking keeps its event in the inbox, read or not, until somebody clears or
+  cancels it. The read mark is shared and needs only `registrations.view`, so otherwise
+  one reader could close the item before anybody able to clear the flag had seen it.
 - `registrations.manage` clears a booking's flag and `messages.manage` a message's, with
   `{"suspect": false}` on the PATCH each already has. No new permission
   ([ADR-0014](0014-authorize-by-permission-never-by-role.md)).
