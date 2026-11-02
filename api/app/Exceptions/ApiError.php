@@ -69,6 +69,8 @@ final class ApiError
      */
     private const REASONS = [
         'required' => 'required',
+        // `handled` on a contact message, required unless `suspect` is sent.
+        'required_without' => 'required',
         'max' => 'too_long',
         // The likeliest failure on the roster form, where the generic
         // fallback would be wrong for a taken username.

@@ -20,6 +20,11 @@ use Illuminate\Support\Collection;
  * An event is a candidate while it is published, has a booking form and its
  * day is not over. Past that day it never shows again, read or not: there is
  * nothing left to do about it.
+ *
+ * A booking flagged as spam keeps its event here, read or not, until somebody
+ * clears or cancels it (#332). The read mark is shared and needs only
+ * `registrations.view`, so otherwise one reader would close the item before
+ * anybody who can clear the flag, and send the held mail, had seen it.
  */
 final class EventBookingsSource implements InboxSource
 {
@@ -39,7 +44,7 @@ final class EventBookingsSource implements InboxSource
     /** @return Collection<int, InboxItem> */
     public function openItems(): Collection
     {
-        return $this->open()->map(fn (array $open) => $this->item($open['event'], $open['delta']));
+        return $this->open()->map(fn (array $open) => $this->item($open['event'], $open['delta'], $open['suspect']));
     }
 
     public function openCount(): int
@@ -47,7 +52,7 @@ final class EventBookingsSource implements InboxSource
         return $this->open()->count();
     }
 
-    /** @return Collection<int, array{event: Event, delta: BookingDelta}> */
+    /** @return Collection<int, array{event: Event, delta: BookingDelta, suspect: int<0, max>}> */
     private function open(): Collection
     {
         return Event::query()
@@ -55,12 +60,16 @@ final class EventBookingsSource implements InboxSource
             ->whereNotNull('registration_closes_at')
             ->whereRaw('COALESCE(ends_at, starts_at) >= ?', [BandTime::startOfToday()])
             ->get()
-            ->map(fn (Event $event) => ['event' => $event, 'delta' => BookingDelta::for($event)])
-            ->filter(fn (array $open) => $open['delta']->isOpen())
+            ->map(fn (Event $event) => [
+                'event' => $event,
+                'delta' => BookingDelta::for($event),
+                'suspect' => $event->registrations()->whereNotNull('suspect_fields')->count(),
+            ])
+            ->filter(fn (array $open) => $open['delta']->isOpen() || $open['suspect'] > 0)
             ->values();
     }
 
-    private function item(Event $event, BookingDelta $delta): InboxItem
+    private function item(Event $event, BookingDelta $delta, int $suspect): InboxItem
     {
         $event->loadCount('registrations')->loadSum(Event::guestCount(), 'quantity');
 
@@ -71,8 +80,9 @@ final class EventBookingsSource implements InboxSource
             // The progress is computed language, so it travels as `facts` and
             // is worded in the SPA (API JSON stays English).
             summary: '',
-            // Never null for an open item, which has a change behind it.
-            arrivedAt: $delta->lastChangeAt ?? CarbonImmutable::now(),
+            // Null only for an item kept open by a flag alone, which then
+            // dates from the newest flagged booking.
+            arrivedAt: $delta->lastChangeAt ?? $this->newestFlagged($event),
             path: "/events/{$event->id}/registrations",
             facts: new EventBookingsFacts(
                 startsAt: $event->starts_at,
@@ -88,8 +98,18 @@ final class EventBookingsSource implements InboxSource
                 actors: $delta->actors,
                 latestChangeId: $delta->latestChangeId,
                 nearlyFull: $this->nearlyFull($event),
+                // Every flagged booking still on the list, not only the ones
+                // since the last read: each waits for somebody to clear it.
+                suspect: $suspect,
             ),
         );
+    }
+
+    private function newestFlagged(Event $event): CarbonImmutable
+    {
+        $at = $event->registrations()->whereNotNull('suspect_fields')->max('created_at');
+
+        return $at === null ? CarbonImmutable::now() : CarbonImmutable::parse($at);
     }
 
     /** @return list<array{label: string, remaining: int}> */

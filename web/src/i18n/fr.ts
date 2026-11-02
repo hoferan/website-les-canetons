@@ -293,6 +293,7 @@ export const fr = {
     message: "Message",
     handled: "Traité",
     paid: "Payé",
+    suspect: "Suspect",
     first_name: "Prénom",
     last_name: "Nom",
     address: "Adresse",
@@ -504,6 +505,33 @@ export const fr = {
     readError: "Ce message n’a pas pu être chargé. Rechargez la page.",
     // When a handle or delete fails without an API answer, e.g. a dropped connection.
     actionFailed: "L’action n’a pas pu être effectuée.",
+  },
+
+  /**
+   * A public booking or contact message the spam check flagged (#332): the
+   * badge, why, and the button that clears it. `fields` names the API's
+   * `suspectFields` tokens.
+   */
+  suspect: {
+    // Feminine for "une inscription", masculine for "un message".
+    booking: "Suspecte",
+    message: "Suspect",
+    reasons: "Lien ou balise dans : {{fields}}.",
+    mailHeld: "Confirmation pas encore envoyée.",
+    clear: "Pas du spam",
+    clearAria: "{{name}} : pas du spam",
+    clearFailed: "Le signalement n’a pas pu être levé. Réessayez.",
+    inbox_one: "{{count}} inscription suspecte",
+    inbox_other: "{{count}} inscriptions suspectes",
+    fields: {
+      firstName: "prénom",
+      lastName: "nom",
+      address: "adresse",
+      tableName: "table",
+      answers: "réponses",
+      subject: "sujet",
+      message: "message",
+    },
   },
 
   /**
@@ -1023,7 +1051,7 @@ export const fr = {
 
     bookedHeading: "Inscription enregistrée",
     bookedBody:
-      "Merci\u00a0! Un courriel de confirmation part à {{email}}. Le comité vous contactera au {{phone}} si nécessaire.",
+      "Merci\u00a0! Un courriel de confirmation vous sera envoyé à {{email}}. Le comité vous contactera au {{phone}} si nécessaire.",
 
     opensOn: "Les inscriptions ouvrent le {{date}}.",
     closed: "Les inscriptions sont closes.",

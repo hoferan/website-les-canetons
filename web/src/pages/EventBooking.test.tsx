@@ -997,3 +997,26 @@ test("after a members form closes, a member reads their answers and cannot chang
   expect(screen.queryByRole("button", { name: "Modifier mes réponses" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Retirer mes réponses" })).not.toBeInTheDocument();
 });
+
+/**
+ * #332: a booking the spam check flags gets its confirmation only once
+ * somebody clears the flag, so the screen must not say it has gone out. The
+ * same words serve a clean booking, so the screen tells a bot nothing.
+ */
+test("the confirmation does not promise a mail that a flag may hold back", async () => {
+  const user = userEvent.setup();
+  await renderBooking();
+
+  await user.type(screen.getByLabelText("Nom", { exact: true }), "Spammy");
+  await user.type(screen.getByLabelText("Prénom"), "<b>Bob</b>");
+  await user.type(screen.getByLabelText("E-mail"), "bob@example.test");
+  await user.type(screen.getByLabelText("Téléphone"), "079 000 00 00");
+  await order(user, /Repas adulte/, 1);
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  await screen.findByRole("heading", { name: "Inscription enregistrée" });
+  expect(
+    screen.getByText(/Un courriel de confirmation vous sera envoyé à bob@example\.test/),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/part à/)).not.toBeInTheDocument();
+});
