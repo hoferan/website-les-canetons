@@ -183,13 +183,72 @@ test("corrects a booking, quoting the tag the form opened with", async () => {
     within(cards()).getByRole("button", { name: "Corriger l’inscription de Jeanne Aebischer" }),
   );
 
-  const tableField = await screen.findByLabelText("Table");
-  await user.clear(tableField);
-  await user.type(tableField, "Table du comité");
+  await user.selectOptions(await screen.findByLabelText("Table"), "Nouvelle table…");
+  await user.type(screen.getByLabelText("Nom de la nouvelle table"), "Table du comité");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
   await expect.poll(() => ifMatch).not.toBe("not seen");
   expect(ifMatch).toMatch(/^"[0-9a-f]+"$/);
+});
+
+/**
+ * Clerc alone at a table, Rossier at another. The correction form reads the
+ * booking again by id, so that read must answer with the same booking.
+ */
+function twoTables() {
+  const clerc = {
+    ...booking(1, "Clerc", [{ optionId: 1, label: "Repas adulte", quantity: 2 }]),
+    tableName: "Clerc",
+  };
+  const rossier = {
+    ...booking(2, "Rossier", [{ optionId: 1, label: "Repas adulte", quantity: 4 }]),
+    tableName: "Fanfare",
+  };
+  return [
+    http.get("*/api/v1/events/:id/registrations", () =>
+      HttpResponse.json({ data: [clerc, rossier], meta: { total: 2, limit: 500, offset: 0 } }),
+    ),
+    http.get("/api/v1/registrations/:id", () =>
+      HttpResponse.json(clerc, { headers: { ETag: '"c1e7c0"' } }),
+    ),
+  ];
+}
+
+test("the correction form opens on the booking's own table, even one nobody else sits at", async () => {
+  const user = userEvent.setup();
+  server.use(...twoTables());
+  await renderGuestList();
+
+  await user.click(
+    within(cards()).getByRole("button", { name: "Corriger l’inscription de Test Clerc" }),
+  );
+
+  // The souper seats ten at a table; the counts are the guest list's.
+  expect(await screen.findByLabelText("Table")).toHaveDisplayValue("Clerc (2/10)");
+  expect(screen.getByRole("option", { name: "Fanfare (4/10)" })).toBeInTheDocument();
+  expect(screen.queryByLabelText("Nom de la nouvelle table")).not.toBeInTheDocument();
+});
+
+test("moving a booking to another table saves that name", async () => {
+  const user = userEvent.setup();
+  let sent: unknown = undefined;
+  server.use(
+    ...twoTables(),
+    http.patch("/api/v1/registrations/:id", async ({ request }) => {
+      sent = ((await request.json()) as { tableName?: unknown }).tableName;
+      return problem(409, "conflict", "Conflict");
+    }),
+  );
+  await renderGuestList();
+
+  await user.click(
+    within(cards()).getByRole("button", { name: "Corriger l’inscription de Test Clerc" }),
+  );
+  await user.selectOptions(await screen.findByLabelText("Table"), "Fanfare (4/10)");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => sent).not.toBeUndefined();
+  expect(sent).toBe("Fanfare");
 });
 
 test("a correction lands on the list", async () => {
