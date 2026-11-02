@@ -3,6 +3,7 @@ import { HttpResponse, http } from "msw";
 import type { ApiErrorField } from "../api/http";
 import { StoreRoleRequestPermissionsItem } from "../api/generated/model";
 import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
+import { tablesOf } from "../booking/tables";
 import { REFUSED } from "../images/photoName";
 import { plannedSizes } from "../images/shrink";
 import type {
@@ -1411,6 +1412,7 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationTableSeats: null,
       registrationAudience: "public",
       myRegistration: null,
       takesRegistrations: false,
@@ -1435,6 +1437,7 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationTableSeats: null,
       registrationAudience: "public",
       myRegistration: null,
       takesRegistrations: false,
@@ -1459,6 +1462,7 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationTableSeats: null,
       registrationAudience: "public",
       myRegistration: null,
       takesRegistrations: false,
@@ -1487,6 +1491,7 @@ function initialEvents(): EventResource[] {
       registrationEnabled: true,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationTableSeats: null,
       registrationAudience: "members",
       myRegistration: null,
       takesRegistrations: true,
@@ -1516,6 +1521,7 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationTableSeats: null,
       registrationAudience: "public",
       myRegistration: null,
       takesRegistrations: false,
@@ -1541,6 +1547,7 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationTableSeats: null,
       registrationAudience: "public",
       myRegistration: null,
       takesRegistrations: false,
@@ -1573,6 +1580,7 @@ function initialEvents(): EventResource[] {
       registrationEnabled: true,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationTableSeats: 10,
       registrationAudience: "public",
       myRegistration: null,
       takesRegistrations: true,
@@ -1604,6 +1612,7 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationTableSeats: null,
       registrationAudience: "public",
       myRegistration: null,
       takesRegistrations: false,
@@ -1629,6 +1638,7 @@ function initialEvents(): EventResource[] {
       registrationEnabled: false,
       registrationAsksAddress: true,
       registrationAsksTable: true,
+      registrationTableSeats: null,
       registrationAudience: "public",
       myRegistration: null,
       takesRegistrations: false,
@@ -2138,7 +2148,7 @@ function initialRegistrations(): MockRegistration[] {
       phone: "026 322 10 10",
       phoneE164: "+41263221010",
       address: null,
-      tableName: null,
+      tableName: "Avec la famille Python",
       choices: [line(3, "Sans repas", 1, null)],
       guestCount: 1,
       // Null, not zero: this booking owes an unknown amount rather than
@@ -2459,6 +2469,7 @@ function formSettingsOf(event: EventResource): ReplaceRegistrationOptionsRequest
     registrationMaxGuests: event.registrationMaxGuests,
     registrationAsksAddress: event.registrationAsksAddress,
     registrationAsksTable: event.registrationAsksTable,
+    registrationTableSeats: event.registrationTableSeats,
     registrationAudience: event.registrationAudience,
   };
 }
@@ -4053,6 +4064,7 @@ const overrides = [
         registrationEnabled: false,
         registrationAsksAddress: true,
         registrationAsksTable: true,
+        registrationTableSeats: null,
         registrationAudience: "public",
         myRegistration: null,
         takesRegistrations: false,
@@ -4114,6 +4126,7 @@ const overrides = [
       registrationEnabled: body.registrationEnabled ?? false,
       registrationAsksAddress: body.registrationAsksAddress ?? true,
       registrationAsksTable: body.registrationAsksTable ?? true,
+      registrationTableSeats: null,
       registrationAudience: "public",
       myRegistration: null,
       takesRegistrations: false,
@@ -4874,6 +4887,12 @@ const overrides = [
       audience: event.registrationAudience,
       asksAddress: event.registrationAsksAddress,
       asksTable: event.registrationAsksTable,
+      // Only a public form that asks for a table lists them, as EventTables::of().
+      tables:
+        event.registrationAsksTable && event.registrationAudience === "public"
+          ? tablesOf(registrations.filter((booking) => booking.eventId === event.id))
+          : [],
+      tableSeats: event.registrationTableSeats,
       opensAt: event.registrationOpensAt,
       closesAt: event.registrationClosesAt,
       open: registrationIsOpen(event),

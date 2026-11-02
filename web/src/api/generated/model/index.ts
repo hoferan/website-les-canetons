@@ -544,6 +544,7 @@ export * from "./registrationExport503";
 export * from "./registrationExport503Code";
 export * from "./registrationExport503ErrorsItem";
 export * from "./registrationFormResource";
+export * from "./registrationFormResourceTablesItem";
 export * from "./registrationIndex200";
 export * from "./registrationIndex200Meta";
 export * from "./registrationIndexParams";

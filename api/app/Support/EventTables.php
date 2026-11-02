@@ -37,7 +37,7 @@ final class EventTables
         $tables = [];
         foreach ($guests as $name => $count) {
             // A name made of digits comes back from the array key as an int.
-            $tables[] = ['name' => (string) $name, 'guests' => $count];
+            $tables[] = ['name' => (string) $name, 'guests' => (int) $count];
         }
         usort($tables, fn (array $a, array $b): int => NameOrder::compare($a['name'], $b['name']));
 

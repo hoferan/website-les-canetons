@@ -340,4 +340,11 @@ export type ReplaceRegistrationOptionsRequestForm = {
   registrationAsksTable?: boolean;
   /** Who may fill in the form: `public`, anybody, or `members`, logged-in members only. Omit to leave it as it is. */
   registrationAudience?: FormAudience;
+  /**
+   * How many seats a table has, 1 to 50. Null shows no seats. Omit to leave it as it is.
+   * @minimum 1
+   * @maximum 50
+   * @nullable
+   */
+  registrationTableSeats?: number | null;
 };

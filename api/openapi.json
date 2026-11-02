@@ -2413,7 +2413,7 @@
         "/events/{event}/registration": {
             "get": {
                 "operationId": "registration.form",
-                "description": "Anonymous. Returns what a public form needs: the event's title, dates\nand location, the options that can be booked, the maximum number of\npeople one booking may cover, and whether the form is open right now.\n\n`open` is computed by the server. Do not derive it from `opensAt` and\n`closesAt` on the client, whose clock may be wrong.\n\nAn event that takes no registrations, or whose form the committee has\nnot opened, answers `404`, whether or not it exists. An open form\noutside its window answers `200` with `open: false`, so the form can say\nwhen bookings start or that they have closed.\n\n`asksAddress` and `asksTable` say whether to show those two fields.\n\nA form for members only (`audience: members`) answers `404` to a caller\nwithout a session, the same as no form. A member reads it, and books\nthrough `/api/v1/events/{event}/my-registration`, not here. Its\n`remaining` leaves out the places the caller's own booking holds,\nwhich they may keep when they change it.",
+                "description": "Anonymous. Returns what a public form needs: the event's title, dates\nand location, the options that can be booked, the maximum number of\npeople one booking may cover, and whether the form is open right now.\n\n`open` is computed by the server. Do not derive it from `opensAt` and\n`closesAt` on the client, whose clock may be wrong.\n\nAn event that takes no registrations, or whose form the committee has\nnot opened, answers `404`, whether or not it exists. An open form\noutside its window answers `200` with `open: false`, so the form can say\nwhen bookings start or that they have closed.\n\n`asksAddress` and `asksTable` say whether to show those two fields.\nWhen the form asks for a table, `tables` lists the ones already booked\nwith how many people each holds, and `tableSeats` how many fit at one.\n\nA form for members only (`audience: members`) answers `404` to a caller\nwithout a session, the same as no form. A member reads it, and books\nthrough `/api/v1/events/{event}/my-registration`, not here. Its\n`remaining` leaves out the places the caller's own booking holds,\nwhich they may keep when they change it.",
                 "summary": "Read a booking form",
                 "tags": [
                     "Registration"
@@ -9138,6 +9138,13 @@
                         "type": "boolean",
                         "description": "Whether the form asks who the guest would like to sit with."
                     },
+                    "registrationTableSeats": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "How many seats a table has, 1 to 50. The form then shows how full each table is. Null shows no seats."
+                    },
                     "registrationAudience": {
                         "description": "Who may fill in the form: `public`, anybody, or `members`, logged-in members only.",
                         "$ref": "#/components/schemas/FormAudience"
@@ -9198,6 +9205,7 @@
                     "registrationEnabled",
                     "registrationAsksAddress",
                     "registrationAsksTable",
+                    "registrationTableSeats",
                     "registrationAudience",
                     "takesRegistrations",
                     "myAttendance",
@@ -9927,6 +9935,32 @@
                         "type": "boolean",
                         "description": "Whether to ask who the guest would like to sit with. A booking sent with it anyway stores none."
                     },
+                    "tables": {
+                        "type": "array",
+                        "description": "The tables already booked for this event and how many people each holds, to pick from. Empty unless a public form asks for a table. Public: anybody who opens the form sees them (ADR 0036).",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "guests": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "guests"
+                            ]
+                        }
+                    },
+                    "tableSeats": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "How many seats a table has, to show how full each one is. Null shows no seats. A full table can still be booked."
+                    },
                     "opensAt": {
                         "type": [
                             "string",
@@ -9952,6 +9986,8 @@
                     "audience",
                     "asksAddress",
                     "asksTable",
+                    "tables",
+                    "tableSeats",
                     "opensAt",
                     "closesAt",
                     "open"
@@ -10437,6 +10473,15 @@
                             "registrationAudience": {
                                 "description": "Who may fill in the form: `public`, anybody, or `members`, logged-in members only. Omit to leave it as it is.",
                                 "$ref": "#/components/schemas/FormAudience"
+                            },
+                            "registrationTableSeats": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "description": "How many seats a table has, 1 to 50. Null shows no seats. Omit to leave it as it is.",
+                                "minimum": 1,
+                                "maximum": 50
                             }
                         }
                     }

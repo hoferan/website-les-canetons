@@ -497,6 +497,7 @@ export const getEventIndexResponseMock = (
     registrationEnabled: faker.datatype.boolean(),
     registrationAsksAddress: faker.datatype.boolean(),
     registrationAsksTable: faker.datatype.boolean(),
+    registrationTableSeats: faker.helpers.arrayElement([faker.number.int(), null]),
     registrationAudience: faker.helpers.arrayElement(Object.values(FormAudience)),
     takesRegistrations: faker.datatype.boolean(),
     myAttendance: faker.helpers.arrayElement([
@@ -579,6 +580,7 @@ export const getEventStoreResponseMock = (
   registrationEnabled: faker.datatype.boolean(),
   registrationAsksAddress: faker.datatype.boolean(),
   registrationAsksTable: faker.datatype.boolean(),
+  registrationTableSeats: faker.helpers.arrayElement([faker.number.int(), null]),
   registrationAudience: faker.helpers.arrayElement(Object.values(FormAudience)),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
@@ -659,6 +661,7 @@ export const getEventShowResponseMock = (
   registrationEnabled: faker.datatype.boolean(),
   registrationAsksAddress: faker.datatype.boolean(),
   registrationAsksTable: faker.datatype.boolean(),
+  registrationTableSeats: faker.helpers.arrayElement([faker.number.int(), null]),
   registrationAudience: faker.helpers.arrayElement(Object.values(FormAudience)),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
@@ -739,6 +742,7 @@ export const getEventUpdateResponseMock = (
   registrationEnabled: faker.datatype.boolean(),
   registrationAsksAddress: faker.datatype.boolean(),
   registrationAsksTable: faker.datatype.boolean(),
+  registrationTableSeats: faker.helpers.arrayElement([faker.number.int(), null]),
   registrationAudience: faker.helpers.arrayElement(Object.values(FormAudience)),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
@@ -837,6 +841,7 @@ export const getEventSeriesResponseMock = (
     registrationEnabled: faker.datatype.boolean(),
     registrationAsksAddress: faker.datatype.boolean(),
     registrationAsksTable: faker.datatype.boolean(),
+    registrationTableSeats: faker.helpers.arrayElement([faker.number.int(), null]),
     registrationAudience: faker.helpers.arrayElement(Object.values(FormAudience)),
     takesRegistrations: faker.datatype.boolean(),
     myAttendance: faker.helpers.arrayElement([
@@ -919,6 +924,7 @@ export const getEventPublishResponseMock = (
   registrationEnabled: faker.datatype.boolean(),
   registrationAsksAddress: faker.datatype.boolean(),
   registrationAsksTable: faker.datatype.boolean(),
+  registrationTableSeats: faker.helpers.arrayElement([faker.number.int(), null]),
   registrationAudience: faker.helpers.arrayElement(Object.values(FormAudience)),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
@@ -999,6 +1005,7 @@ export const getEventUnpublishResponseMock = (
   registrationEnabled: faker.datatype.boolean(),
   registrationAsksAddress: faker.datatype.boolean(),
   registrationAsksTable: faker.datatype.boolean(),
+  registrationTableSeats: faker.helpers.arrayElement([faker.number.int(), null]),
   registrationAudience: faker.helpers.arrayElement(Object.values(FormAudience)),
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
@@ -1245,6 +1252,13 @@ export const getRegistrationFormResponseMock = (
   audience: faker.helpers.arrayElement(Object.values(FormAudience)),
   asksAddress: faker.datatype.boolean(),
   asksTable: faker.datatype.boolean(),
+  tables: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      guests: faker.number.int(),
+    }),
+  ),
+  tableSeats: faker.helpers.arrayElement([faker.number.int(), null]),
   opensAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   closesAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   open: faker.datatype.boolean(),
