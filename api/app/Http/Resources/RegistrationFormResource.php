@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Event;
+use App\Support\EventTables;
 use App\Support\Iso8601;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -35,6 +36,10 @@ class RegistrationFormResource extends JsonResource
             'asksAddress' => $this->registration_asks_address,
             /** Whether to ask who the guest would like to sit with. A booking sent with it anyway stores none. */
             'asksTable' => $this->registration_asks_table,
+            /** The tables already booked for this event and how many people each holds, to pick from. Empty unless a public form asks for a table. Public: anybody who opens the form sees them (ADR 0036). */
+            'tables' => EventTables::of($this->resource),
+            /** How many seats a table has, to show how full each one is. Null shows no seats. A full table can still be booked. */
+            'tableSeats' => $this->registration_table_seats,
             'opensAt' => $this->registration_opens_at === null
                 ? null
                 : Iso8601::utc($this->registration_opens_at),
