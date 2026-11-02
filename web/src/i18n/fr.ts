@@ -1689,10 +1689,8 @@ export const fr = {
     facts: {
       instruments: {
         heading: "Instruments recherchés",
-        trumpet: "Trompette",
-        trombone: "Trombone",
-        sousaphone: "Sousaphone",
-        euphonium: "Euphonium",
+        // One instrument per line; the band edits the list on the page.
+        list: "Trompette\nTrombone\nSousaphone\nEuphonium",
       },
       schedule: {
         heading: "Horaires",
@@ -1705,8 +1703,17 @@ export const fr = {
       },
     },
     location: "Lieu",
+    // The place and its street address, the same in both languages. The map
+    // link searches for the two together.
+    locationPlace: "Werkhof",
+    locationAddress: "Planche-Inférieure 14, 1700 Fribourg",
+    locationAddressLabel: "Adresse pour le lien vers la carte",
     locationArea: "Basse-Ville de Fribourg",
     contacts: "Contacts",
+    // Who to ring about joining, one per line, name and number. Empty until
+    // the band stores them from the page (#106): a wrong number dials a
+    // stranger, so the page shows placeholders until then.
+    contactsList: "",
     contactMeanwhile: "En attendant, écrivez-nous depuis la",
     contactPageLink: "page de contact",
   },

@@ -1,7 +1,9 @@
 import { screen } from "@testing-library/react";
+import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
 import { setMemberSeat, setMemberVisibility } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Committee } from "./Committee";
 
@@ -91,4 +93,38 @@ test("writes the gap out in German when nobody has been given a seat", async () 
   await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
 
   expect(await screen.findByText(/die Ämter und Namen des Vorstands/)).toBeInTheDocument();
+});
+
+test("the booking number is a placeholder until the band stores one", async () => {
+  await renderWithSession(<Committee />, { route: "/committee" });
+
+  expect(document.querySelector("[data-tbd='booking-number']")).not.toBeNull();
+});
+
+test("a stored booking number replaces the placeholder in both languages, as a tel: link", async () => {
+  server.use(
+    http.get("/api/v1/texts", () =>
+      HttpResponse.json({
+        data: [
+          {
+            key: "committee.bookingNumber",
+            fr: "026 123 45 67",
+            de: "026 123 45 67",
+            updatedAt: "2026-11-02T10:00:00+00:00",
+          },
+        ],
+        meta: { total: 1, limit: 500, offset: 0 },
+      }),
+    ),
+  );
+  const { unmount } = await renderWithSession(<Committee />, { route: "/committee" });
+  expect(screen.getByRole("link", { name: "026 123 45 67" })).toHaveAttribute(
+    "href",
+    "tel:+41261234567",
+  );
+  expect(document.querySelector("[data-tbd='booking-number']")).toBeNull();
+  unmount();
+
+  await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
+  expect(screen.getByRole("link", { name: "026 123 45 67" })).toBeInTheDocument();
 });

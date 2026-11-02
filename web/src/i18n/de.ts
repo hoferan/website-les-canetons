@@ -1282,10 +1282,7 @@ export const de: typeof fr = {
     facts: {
       instruments: {
         heading: "Gesuchte Instrumente",
-        trumpet: "Trompete",
-        trombone: "Posaune",
-        sousaphone: "Sousaphon",
-        euphonium: "Euphonium",
+        list: "Trompete\nPosaune\nSousaphon\nEuphonium",
       },
       schedule: {
         heading: "Zeiten",
@@ -1298,8 +1295,12 @@ export const de: typeof fr = {
       },
     },
     location: "Ort",
+    locationPlace: "Werkhof",
+    locationAddress: "Planche-Inférieure 14, 1700 Fribourg",
+    locationAddressLabel: "Adresse für den Kartenlink",
     locationArea: "Freiburger Unterstadt",
     contacts: "Kontakte",
+    contactsList: "",
     contactMeanwhile: "In der Zwischenzeit schreiben Sie uns über die",
     contactPageLink: "Kontaktseite",
   },

@@ -9,11 +9,15 @@ import { cn } from "@/lib/utils";
 import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
 import { type TranslationKey, t } from "../i18n";
+import { useEditMode } from "../texts/EditMode";
+import { EditableText } from "../texts/EditableText";
 
 /**
  * The information blocks. Keys rather than strings, resolved at render time:
  * a module-level array is evaluated once at import, so translated strings in
- * it would be frozen in one language.
+ * it would be frozen in one language. Each is a text the band can change on
+ * the page; the instruments are one list, a line per instrument, so the band
+ * can add or drop one.
  */
 const FACTS: {
   headingKey: TranslationKey;
@@ -25,12 +29,7 @@ const FACTS: {
     headingKey: "join.facts.instruments.heading",
     icon: Music,
     tint: "bg-pink",
-    lineKeys: [
-      "join.facts.instruments.trumpet",
-      "join.facts.instruments.trombone",
-      "join.facts.instruments.sousaphone",
-      "join.facts.instruments.euphonium",
-    ],
+    lineKeys: ["join.facts.instruments.list"],
   },
   {
     headingKey: "join.facts.schedule.heading",
@@ -47,24 +46,27 @@ const FACTS: {
 ];
 
 /**
- * The joining contacts are placeholders until the band supplies current names
- * and numbers (#106); they then land here as prose.
+ * How many placeholders stand in for the joining contacts until the band
+ * stores them from the page (#106), one per person the old page listed.
  *
- * No tel: link on a placeholder: a wrong number dials a stranger, while a
- * parent who sees a gap writes to the committee, the fallback offered below.
- *
- * Not generated from the roster: a member row carries no phone number, and
- * "who to ring about joining" is not a committee title.
+ * No guessed number: a wrong one dials a stranger, while a parent who sees a
+ * gap writes to the committee, the fallback offered below. Not generated from
+ * the roster either: a member row carries no phone number, and "who to ring
+ * about joining" is not a committee title.
  */
 const JOINING_CONTACTS = 2;
 
 /**
  * A place link, not a directions link: a place query lets Google route from
- * the visitor's own location if they ask for directions.
+ * the visitor's own location if they ask for directions. Built from the two
+ * texts the band can change, so a move updates the map too.
  */
-const WERKHOF_MAP =
-  "https://www.google.com/maps/search/?api=1&query=" +
-  encodeURIComponent("Association Werkhof, Planche-Inférieure 14, 1700 Fribourg");
+function mapLink(): string {
+  return (
+    "https://www.google.com/maps/search/?api=1&query=" +
+    encodeURIComponent(`${t("join.locationPlace")}, ${t("join.locationAddress")}`)
+  );
+}
 
 /**
  * How to join: the page a parent or a curious child lands on.
@@ -74,10 +76,17 @@ const WERKHOF_MAP =
  * it is read by both.
  */
 export function Join() {
+  const editMode = useEditMode();
+
   return (
     <>
-      <PageHero title={t("join.heading")} mark={t("join.headingHighlight")} seed={5}>
-        <p>{t("join.intro")}</p>
+      <PageHero
+        title={t("join.heading")}
+        titleKey="join.heading"
+        mark={t("join.headingHighlight")}
+        seed={5}
+      >
+        <EditableText k="join.intro" as="p" />
       </PageHero>
 
       <PageSection>
@@ -85,42 +94,62 @@ export function Join() {
           {FACTS.map((fact) => (
             <Card key={fact.headingKey} className={cn(RAISED_CARD, "gap-0 p-5")}>
               <FactHeading icon={fact.icon} tint={fact.tint}>
-                {t(fact.headingKey)}
+                <EditableText k={fact.headingKey} />
               </FactHeading>
               {fact.lineKeys.map((lineKey) => (
-                <p key={lineKey} className="mt-tight">
-                  {t(lineKey)}
-                </p>
+                <EditableText key={lineKey} k={lineKey} as="p" className="mt-tight" multiline />
               ))}
             </Card>
           ))}
 
           <Card className={cn(RAISED_CARD, "gap-0 p-5")}>
             <FactHeading icon={MapPin} tint="bg-yellow">
-              {t("join.location")}
+              <EditableText k="join.location" />
             </FactHeading>
-            <p className="mt-tight">
-              <a
-                href={WERKHOF_MAP}
-                target="_blank"
-                rel="noreferrer"
-                className="text-violet hover:underline"
-              >
-                Werkhof
-              </a>
-            </p>
-            <p>{t("join.locationArea")}</p>
+            <EditableText k="join.locationPlace" as="p" className="mt-tight" neutral>
+              {(place) => (
+                <a
+                  href={mapLink()}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-violet hover:underline"
+                >
+                  {place}
+                </a>
+              )}
+            </EditableText>
+            {/* Visitors get the map link; the street address it searches for
+                shows only to an editor, who may need to change it. */}
+            {editMode.on ? (
+              <EditableText
+                k="join.locationAddress"
+                as="p"
+                className="text-sm text-ink-muted"
+                neutral
+                label={t("join.locationAddressLabel")}
+              />
+            ) : null}
+            <EditableText k="join.locationArea" as="p" />
           </Card>
 
           <Card className={cn(RAISED_CARD, "gap-0 p-5")}>
             <FactHeading icon={Phone} tint="bg-lilac">
-              {t("join.contacts")}
+              <EditableText k="join.contacts" />
             </FactHeading>
-            {Array.from({ length: JOINING_CONTACTS }, (_, index) => (
-              <p key={index} className="mt-tight">
-                <Tbd what={t("placeholders.joinContact")} token="join-contact" />
-              </p>
-            ))}
+            <EditableText
+              k="join.contactsList"
+              as="p"
+              className="mt-tight"
+              multiline
+              neutral
+              phones
+              label={t("join.contacts")}
+              empty={Array.from({ length: JOINING_CONTACTS }, (_, index) => (
+                <span key={index} className="block">
+                  <Tbd what={t("placeholders.joinContact")} token="join-contact" />
+                </span>
+              ))}
+            />
             <p className="mt-related text-sm text-ink-muted">
               {t("join.contactMeanwhile")}{" "}
               <Link to="/contact" className="text-violet underline">

@@ -2,6 +2,9 @@ import type { Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
+import type { TranslationKey } from "../i18n";
+import { EditableText } from "../texts/EditableText";
+
 import { Confetti } from "./Confetti";
 import { Highlighted } from "./Highlighted";
 import { Scallop } from "./Scallop";
@@ -30,6 +33,7 @@ export const POSTER_CONFETTI = [
  */
 export function PageHero({
   title,
+  titleKey,
   mark = "",
   seed,
   width = "shell",
@@ -37,6 +41,12 @@ export function PageHero({
   children,
 }: {
   title: string;
+  /**
+   * The catalogue key of `title`, which makes the heading a text the band can
+   * change in place. The highlight then stays only while the new wording
+   * still contains `mark`.
+   */
+  titleKey?: TranslationKey;
   /** The words of `title` to set on the yellow highlight, if any. */
   mark?: string;
   seed: number;
@@ -70,7 +80,13 @@ export function PageHero({
           data-confetti-avoid
           className="w-fit font-display text-3xl leading-[1.18] outline-none sm:text-4xl md:text-5xl"
         >
-          <Highlighted text={title} mark={mark} />
+          {titleKey ? (
+            <EditableText k={titleKey} label={title}>
+              {(text) => <Highlighted text={text} mark={mark} />}
+            </EditableText>
+          ) : (
+            <Highlighted text={title} mark={mark} />
+          )}
         </h1>
         {children ? (
           <div data-confetti-avoid className="mt-related w-fit max-w-text text-lg">

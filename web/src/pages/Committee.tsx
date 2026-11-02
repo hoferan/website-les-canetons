@@ -11,6 +11,7 @@ import type { CommitteeMemberResource } from "../api/generated/model";
 import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
 import { t } from "../i18n";
+import { EditableText } from "../texts/EditableText";
 
 /**
  * The committee: who to write to, and who holds which seat.
@@ -23,8 +24,9 @@ import { t } from "../i18n";
  * the two cannot disagree.
  *
  * No email address is published: the contact form stores the message for the
- * committee and cannot be harvested. The booking number stays a placeholder,
- * because a wrong number sends a caller to a stranger.
+ * committee and cannot be harvested. The booking number is a text the band
+ * stores from this page (#106); until then it is a placeholder, because a
+ * guessed number sends a caller to a stranger.
  */
 export function Committee() {
   const committee = useCommitteeIndex();
@@ -32,22 +34,33 @@ export function Committee() {
 
   return (
     <>
-      <PageHero title={t("committee.heading")} mark={t("committee.headingHighlight")} seed={19} />
+      <PageHero
+        title={t("committee.heading")}
+        titleKey="committee.heading"
+        mark={t("committee.headingHighlight")}
+        seed={19}
+      />
 
       <PageSection>
         {/* On yellow, because it is what most visitors came for: how to reach
             the committee. On it the violet link is 5.5:1 and the muted
             placeholder 4.9:1. */}
         <Card className={cn(RAISED_CARD, "gap-0 bg-yellow p-5")}>
-          <h2 className="font-display text-xl">{t("committee.contactHeading")}</h2>
+          <EditableText k="committee.contactHeading" as="h2" className="font-display text-xl" />
           <p className="mt-tight">
             <Link to="/contact" className="text-violet underline">
               {t("committee.writeToCommittee")}
             </Link>
           </p>
           <p className="mt-tight">
-            {t("committee.booking")}{" "}
-            <Tbd what={t("placeholders.bookingNumber")} token="booking-number" />
+            <EditableText k="committee.booking" />{" "}
+            <EditableText
+              k="committee.bookingNumber"
+              neutral
+              phones
+              label={t("placeholders.bookingNumber")}
+              empty={<Tbd what={t("placeholders.bookingNumber")} token="booking-number" />}
+            />
           </p>
         </Card>
 
