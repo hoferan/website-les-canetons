@@ -482,6 +482,7 @@ import type {
   UpdateMemberRequest,
   UpdateRegistrationRequest,
   UpdateTextRequest,
+  WebsiteExport200,
 } from "./model";
 
 import { customFetch } from "../http";
@@ -14880,6 +14881,158 @@ export const useTextUpdate = <
 > => {
   return useMutation(getTextUpdateMutationOptions(options), queryClient);
 };
+
+export type websiteExportResponse200 = {
+  data: WebsiteExport200;
+  status: 200;
+};
+
+export type websiteExportResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type websiteExportResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type websiteExportResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type websiteExportResponseSuccess = websiteExportResponse200 & {
+  headers: Headers;
+};
+export type websiteExportResponseError = (
+  websiteExportResponse401 | websiteExportResponse403 | websiteExportResponse503
+) & {
+  headers: Headers;
+};
+
+export type websiteExportResponse = websiteExportResponseSuccess | websiteExportResponseError;
+
+export const getWebsiteExportUrl = () => {
+  return `/website/export`;
+};
+
+/**
+ * A photo travels as the URLs of its stored sizes, which the browser
+ * fetches one by one, so no single answer carries the whole library. A
+ * slot and a history entry name their photo by its SHA-256. An event's
+ * poster is not part of the website, and a history entry's photo comes
+ * with the entry. A register's photo carries the register's name, since
+ * ids differ from one server to the next.
+ * @summary The website as one document. Requires `content.manage`, `images.manage`
+and `history.manage`
+ */
+export const websiteExport = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<websiteExportResponse> => {
+  return customFetch<websiteExportResponse>(getWebsiteExportUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getWebsiteExportQueryKey = () => {
+  return [`/website/export`] as const;
+};
+
+export const getWebsiteExportQueryOptions = <
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getWebsiteExportQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof websiteExport>>> = ({ signal }) =>
+    websiteExport({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof websiteExport>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type WebsiteExportQueryResult = NonNullable<Awaited<ReturnType<typeof websiteExport>>>;
+export type WebsiteExportQueryError = Problem401Response | Problem403Response | Problem503Response;
+
+export function useWebsiteExport<
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof websiteExport>>,
+          TError,
+          Awaited<ReturnType<typeof websiteExport>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useWebsiteExport<
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof websiteExport>>,
+          TError,
+          Awaited<ReturnType<typeof websiteExport>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useWebsiteExport<
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary The website as one document. Requires `content.manage`, `images.manage`
+and `history.manage`
+ */
+
+export function useWebsiteExport<
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getWebsiteExportQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type configShowResponse200 = {
   data: ConfigShow200;

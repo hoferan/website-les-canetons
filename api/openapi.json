@@ -61,6 +61,10 @@
             "description": "The public pages' texts the band has changed, by catalogue key. Reading them is public; changing one needs `content.manage`."
         },
         {
+            "name": "Website",
+            "description": "The public website as a whole, carried from one server to another. Every route here needs `content.manage`, `images.manage` and `history.manage`."
+        },
+        {
             "name": "Service",
             "description": "What a client needs before it renders anything."
         }
@@ -8104,6 +8108,231 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/website/export": {
+            "get": {
+                "operationId": "website.export",
+                "description": "A photo travels as the URLs of its stored sizes, which the browser\nfetches one by one, so no single answer carries the whole library. A\nslot and a history entry name their photo by its SHA-256. An event's\nposter is not part of the website, and a history entry's photo comes\nwith the entry. A register's photo carries the register's name, since\nids differ from one server to the next.",
+                "summary": "The website as one document. Requires `content.manage`, `images.manage`\nand `history.manage`",
+                "tags": [
+                    "Website"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The website: texts, photo library, photo slots and history.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "format": {
+                                            "type": "integer",
+                                            "const": 1
+                                        },
+                                        "exportedAt": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "texts": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "key": {
+                                                        "type": "string"
+                                                    },
+                                                    "fr": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "de": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "key",
+                                                    "fr",
+                                                    "de"
+                                                ]
+                                            }
+                                        },
+                                        "images": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "sha256": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "sizes": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "width": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "height": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "sha256": {
+                                                                    "type": "string"
+                                                                },
+                                                                "url": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "width",
+                                                                "height",
+                                                                "sha256",
+                                                                "url"
+                                                            ]
+                                                        }
+                                                    }
+                                                },
+                                                "required": [
+                                                    "sha256",
+                                                    "name",
+                                                    "sizes"
+                                                ]
+                                            }
+                                        },
+                                        "slots": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "slot": {
+                                                        "type": "string"
+                                                    },
+                                                    "sha256": {
+                                                        "type": "string"
+                                                    },
+                                                    "label": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "path": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "registerName": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "slot",
+                                                    "sha256",
+                                                    "label",
+                                                    "path",
+                                                    "registerName"
+                                                ]
+                                            }
+                                        },
+                                        "history": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "occurredOn": {
+                                                        "type": "string"
+                                                    },
+                                                    "precision": {
+                                                        "type": "string"
+                                                    },
+                                                    "titleFr": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "bodyFr": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "titleDe": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "bodyDe": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "important": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "icon": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "photoSha256": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "occurredOn",
+                                                    "precision",
+                                                    "titleFr",
+                                                    "bodyFr",
+                                                    "titleDe",
+                                                    "bodyDe",
+                                                    "important",
+                                                    "icon",
+                                                    "photoSha256"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "format",
+                                        "exportedAt",
+                                        "texts",
+                                        "images",
+                                        "slots",
+                                        "history"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     },
                     "503": {
                         "$ref": "#/components/responses/Problem503"

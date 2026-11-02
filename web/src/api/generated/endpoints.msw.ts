@@ -379,6 +379,7 @@ import type {
   SectionResource,
   TextIndex200,
   TextUpdate200,
+  WebsiteExport200,
 } from "./model";
 
 export const getAuthLoginResponseMock = (
@@ -2510,6 +2511,74 @@ export const getTextUpdateResponseMock = (
   ...overrideResponse,
 });
 
+export const getWebsiteExportResponseMock = (
+  overrideResponse: Partial<Extract<WebsiteExport200, object>> = {},
+): WebsiteExport200 => ({
+  format: 1,
+  exportedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  texts: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    fr: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    de: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  })),
+  images: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      sha256: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      sizes: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({
+          width: faker.number.int(),
+          height: faker.number.int(),
+          sha256: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        }),
+      ),
+    }),
+  ),
+  slots: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    slot: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    sha256: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    label: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    path: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    registerName: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+  })),
+  history: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      occurredOn: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      precision: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      titleFr: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      bodyFr: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      titleDe: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      bodyDe: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      important: faker.datatype.boolean(),
+      icon: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      photoSha256: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+    }),
+  ),
+  ...overrideResponse,
+});
+
 export const getConfigShowResponseMock = (
   overrideResponse: Partial<Extract<ConfigShow200, object>> = {},
 ): ConfigShow200 => ({
@@ -4631,6 +4700,30 @@ export const getTextUpdateMockHandler = (
   );
 };
 
+export const getWebsiteExportMockHandler = (
+  overrideResponse?:
+    | WebsiteExport200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<WebsiteExport200> | WebsiteExport200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "/api/v1/website/export",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWebsiteExportResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getConfigShowMockHandler = (
   overrideResponse?:
     | ConfigShow200
@@ -4855,6 +4948,7 @@ export const getLesCanetonsAPIMock = () => [
   getImageReplaceMockHandler(),
   getTextIndexMockHandler(),
   getTextUpdateMockHandler(),
+  getWebsiteExportMockHandler(),
   getConfigShowMockHandler(),
   getPhotoSlotIndexMockHandler(),
   getPhotoSlotUpdateMockHandler(),

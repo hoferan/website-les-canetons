@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\SectionController;
 use App\Http\Controllers\Api\TextOverrideController;
+use App\Http\Controllers\Api\WebsiteController;
 use App\Http\Middleware\RunPendingMigrations;
 use App\Models\PhotoSlot;
 use App\Models\TextOverride;
@@ -348,6 +349,17 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // there is nothing to lose half of (see ConditionalWrite).
         Route::put('/photo-slots/{slot}', [PhotoSlotController::class, 'update'])
             ->where('slot', PhotoSlot::KEY);
+    });
+
+    // The whole public website, from one server to another (#336). All three
+    // permissions, since an import replaces the texts, the photo slots and the
+    // history at once.
+    Route::middleware([
+        'permission:content.manage',
+        'permission:images.manage',
+        'permission:history.manage',
+    ])->group(function () {
+        Route::get('/website/export', [WebsiteController::class, 'export']);
     });
 
     // The public pages' texts (#106), changed where they are shown. No
