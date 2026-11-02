@@ -276,6 +276,7 @@ export const de: typeof fr = {
     message: "Nachricht",
     handled: "Erledigt",
     paid: "Bezahlt",
+    suspect: "Verdächtig",
     first_name: "Vorname",
     last_name: "Nachname",
     address: "Adresse",
@@ -418,6 +419,27 @@ export const de: typeof fr = {
     loadError: "Die Nachrichtenliste konnte nicht geladen werden.",
     readError: "Diese Nachricht konnte nicht geladen werden. Laden Sie die Seite neu.",
     actionFailed: "Die Aktion konnte nicht ausgeführt werden.",
+  },
+
+  suspect: {
+    booking: "Verdächtig",
+    message: "Verdächtig",
+    reasons: "Link oder Markup in: {{fields}}.",
+    mailHeld: "Bestätigung noch nicht verschickt.",
+    clear: "Kein Spam",
+    clearAria: "{{name}}: kein Spam",
+    clearFailed: "Die Markierung konnte nicht aufgehoben werden. Versuchen Sie es erneut.",
+    inbox_one: "{{count}} verdächtige Anmeldung",
+    inbox_other: "{{count}} verdächtige Anmeldungen",
+    fields: {
+      firstName: "Vorname",
+      lastName: "Nachname",
+      address: "Adresse",
+      tableName: "Tisch",
+      answers: "Antworten",
+      subject: "Betreff",
+      message: "Nachricht",
+    },
   },
 
   inbox: {
@@ -782,7 +804,7 @@ export const de: typeof fr = {
 
     bookedHeading: "Anmeldung gespeichert",
     bookedBody:
-      "Danke! Eine Bestätigung geht an {{email}}. Der Vorstand meldet sich bei Bedarf unter {{phone}}.",
+      "Danke! Eine Bestätigung wird an {{email}} geschickt. Der Vorstand meldet sich bei Bedarf unter {{phone}}.",
 
     opensOn: "Die Anmeldung öffnet am {{date}}.",
     closed: "Die Anmeldung ist geschlossen.",

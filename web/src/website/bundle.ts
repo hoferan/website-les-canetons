@@ -13,7 +13,7 @@ export type Bundle = { site: WebsiteExport200; files: Map<string, Uint8Array> };
 export type BundleError = { reason: "not_a_bundle" | "unknown_format" | "missing_image" };
 
 /**
- * One file holding a website (#336, ADR 0038): `site.json`, the export as the
+ * One file holding a website (#336, ADR 0039): `site.json`, the export as the
  * server wrote it, and `images/<sha256>.jpg` for every stored size of every
  * photo, named by the digest of its bytes.
  *

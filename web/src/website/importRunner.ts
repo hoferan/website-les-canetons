@@ -33,7 +33,7 @@ export type ImportDeps = {
 };
 
 /**
- * Sets this server's website up from a bundle (#336, ADR 0038), photos first.
+ * Sets this server's website up from a bundle (#336, ADR 0039), photos first.
  *
  * Each photo the library lacks goes up through the same upload as /media, one
  * request per photo, so none comes near the host's upload limit; the library

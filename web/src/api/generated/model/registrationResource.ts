@@ -354,4 +354,6 @@ export interface RegistrationResource {
    */
   paidAt: string | null;
   createdAt: string;
+  /** The fields that carried a link or markup when the guest booked, empty when none did: `firstName`, `lastName`, `address`, `tableName`, or `answers` for the free-text answers. A flagged booking's table is left off the public form and its confirmation is held until `registrations.manage` clears the flag. */
+  suspectFields: string[];
 }

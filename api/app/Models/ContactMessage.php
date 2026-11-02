@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property Carbon|null $handled_at
  * @property int|null $handled_by_member_id
+ * @property list<string>|null $suspect_fields
  */
 class ContactMessage extends Model
 {
@@ -42,12 +43,13 @@ class ContactMessage extends Model
         'message',
         'handled_at',
         'handled_by_member_id',
+        'suspect_fields',
     ];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['handled_at' => 'datetime'];
+        return ['handled_at' => 'datetime', 'suspect_fields' => 'array'];
     }
 
     /**

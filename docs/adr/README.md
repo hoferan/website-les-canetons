@@ -60,5 +60,6 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0034](0034-members-book-on-the-same-form.md) | Let members book a form with their account, in the same table as guests |
 | [0035](0035-shared-read-marks-and-a-booking-change-journal.md) | Track booking changes in a journal, and mark a guest list read once for the whole committee |
 | [0036](0036-a-booking-form-shows-its-tables.md) | Let guests pick a table from the ones already booked, on the public form |
-| [0037](0037-public-texts-are-catalogue-defaults-the-band-overrides.md) | Store the band's wording of a public text over the catalogue default, edited in place |
-| [0038](0038-move-the-website-between-servers.md) | Move the public website between servers as one file, imported all at once |
+| [0037](0037-flag-public-submissions-that-look-like-spam.md) | Flag public bookings and messages that carry a link or markup |
+| [0038](0038-public-texts-are-catalogue-defaults-the-band-overrides.md) | Store the band's wording of a public text over the catalogue default, edited in place |
+| [0039](0039-move-the-website-between-servers.md) | Move the public website between servers as one file, imported all at once |

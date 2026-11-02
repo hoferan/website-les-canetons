@@ -1224,6 +1224,27 @@ function collection<T>(
  * deterministic hash models both. FNV-1a because jsdom has no synchronous
  * crypto digest.
  */
+/**
+ * Flags a seeded booking or message as the spam check would have (#332).
+ * The fixtures are all clean, because every count on the guest list and the
+ * inbox is pinned against them.
+ */
+export function flagMockSubmission(
+  kind: "registration" | "contactMessage",
+  id: number,
+  fields: string[],
+): void {
+  if (kind === "registration") {
+    registrations = registrations.map((booking) =>
+      booking.id === id ? { ...booking, suspectFields: fields } : booking,
+    );
+  } else {
+    contactMessages = contactMessages.map((message) =>
+      message.id === id ? { ...message, suspectFields: fields } : message,
+    );
+  }
+}
+
 export function mockEntityTag(state: unknown): string {
   const json = JSON.stringify(state);
   let hash = 0x811c9dc5;
@@ -2148,6 +2169,7 @@ function initialRegistrations(): MockRegistration[] {
       totalCents: 15000,
       paidAt: null,
       createdAt: "2026-09-01T18:24:00.000Z",
+      suspectFields: [],
     },
     {
       eventId: 7,
@@ -2167,6 +2189,7 @@ function initialRegistrations(): MockRegistration[] {
       totalCents: null,
       paidAt: null,
       createdAt: "2026-09-02T09:05:00.000Z",
+      suspectFields: [],
     },
     {
       // demo.both's answers to the weekend's members form (ADR 0034): no
@@ -2191,8 +2214,30 @@ function initialRegistrations(): MockRegistration[] {
       totalCents: null,
       paidAt: null,
       createdAt: "2026-10-20T19:12:00.000Z",
+      suspectFields: [],
     },
   ];
+}
+
+/** SpamSignals mirrored: the keys whose value carries a link or markup (#332). */
+function linkOrMarkupIn(fields: Record<string, string | null>): string[] {
+  return Object.entries(fields)
+    .filter(([, value]) => value !== null && /https?:\/\/|www\.|<|\[url/i.test(value))
+    .map(([field]) => field);
+}
+
+/** The fields RegistrationController::store checks, the text answers as one. */
+function suspectFieldsOf(booking: MockRegistration): string[] {
+  return linkOrMarkupIn({
+    firstName: booking.firstName,
+    lastName: booking.lastName,
+    address: booking.address,
+    tableName: booking.tableName,
+    answers: booking.choices
+      .filter((choice) => choice.kind === "text")
+      .map((choice) => choice.value ?? "")
+      .join(" "),
+  });
 }
 
 /** A quantity line of a booking, as RegistrationResource carries it. */
@@ -2364,16 +2409,18 @@ function openBookingItems(): InboxItemResource[] {
   return events.flatMap((event) => {
     const delta = bookingDelta(event.id);
     const last = new Date(event.endsAt ?? event.startsAt ?? 0);
+    const booked = registrations.filter((booking) => booking.eventId === event.id);
+    const flagged = booked.filter((booking) => booking.suspectFields.length > 0);
+    // A flagged booking keeps its event here, read or not (#332).
     if (
       event.publishedAt === null ||
       event.registrationClosesAt === null ||
       last < today ||
-      !delta.open
+      (!delta.open && flagged.length === 0)
     ) {
       return [];
     }
 
-    const booked = registrations.filter((booking) => booking.eventId === event.id);
     const nearlyFull = options
       .filter((option) => option.eventId === event.id && option.capacity !== null)
       .map((option) => ({ label: option.label ?? "", remaining: remainingOf(option) ?? 0 }))
@@ -2385,7 +2432,13 @@ function openBookingItems(): InboxItemResource[] {
         id: event.id,
         title: event.title,
         summary: "",
-        arrivedAt: delta.lastChangeAt ?? new Date().toISOString(),
+        arrivedAt:
+          delta.lastChangeAt ??
+          flagged
+            .map((booking) => booking.createdAt)
+            .sort()
+            .at(-1) ??
+          new Date().toISOString(),
         path: `/events/${event.id}/registrations`,
         facts: {
           startsAt: event.startsAt,
@@ -2401,7 +2454,9 @@ function openBookingItems(): InboxItemResource[] {
           actors: delta.actors,
           latestChangeId: delta.latestChangeId,
           nearlyFull,
+          suspect: flagged.length,
         },
+        suspect: false,
       },
     ];
   });
@@ -2872,6 +2927,7 @@ function initialContactMessages(): ContactMessageResource[] {
       receivedAt: "2026-09-15T10:05:00+00:00",
       handledAt: null,
       handledBy: null,
+      suspectFields: [],
     },
     {
       id: 2,
@@ -2884,6 +2940,7 @@ function initialContactMessages(): ContactMessageResource[] {
       receivedAt: "2026-09-12T14:20:00+00:00",
       handledAt: null,
       handledBy: null,
+      suspectFields: [],
     },
     {
       id: 1,
@@ -2896,14 +2953,17 @@ function initialContactMessages(): ContactMessageResource[] {
       receivedAt: "2026-09-08T09:15:00+00:00",
       handledAt: "2026-09-09T07:40:00+00:00",
       handledBy: "Dominique Direction",
+      suspectFields: [],
     },
   ];
 }
 
 let contactMessages: ContactMessageResource[] = initialContactMessages();
+let nextContactMessageId = 4;
 
 function resetContactMessages(): void {
   contactMessages = initialContactMessages();
+  nextContactMessageId = 4;
 }
 
 /**
@@ -2940,6 +3000,7 @@ function toInboxItem(message: ContactMessageResource): InboxItemResource {
     arrivedAt: message.receivedAt,
     path: `/contact-messages?open=${message.id}`,
     facts: null,
+    suspect: message.suspectFields.length > 0,
   };
 }
 
@@ -3552,6 +3613,27 @@ const overrides = [
         missing.map((field) => ({ field, reason: "required" })),
       );
     }
+
+    // Stored and flagged as ContactController does, newest first like the
+    // archive, so the inbox and the archive read it back.
+    const fields = {
+      lastName: (body.lastName ?? "").trim(),
+      firstName: (body.firstName ?? "").trim(),
+      subject: (body.subject ?? "").trim(),
+      message: (body.message ?? "").trim(),
+    };
+    contactMessages = [
+      {
+        id: nextContactMessageId++,
+        ...fields,
+        email: (body.email ?? "").trim(),
+        receivedAt: isoNowUtc(),
+        handledAt: null,
+        handledBy: null,
+        suspectFields: linkOrMarkupIn(fields),
+      },
+      ...contactMessages,
+    ];
     return HttpResponse.json({ ok: true });
   }),
 
@@ -5099,7 +5181,11 @@ const overrides = [
       // Only a public form that asks for a table lists them, as EventTables::of().
       tables:
         event.registrationAsksTable && event.registrationAudience === "public"
-          ? tablesOf(registrations.filter((booking) => booking.eventId === event.id))
+          ? tablesOf(
+              registrations.filter(
+                (booking) => booking.eventId === event.id && booking.suspectFields.length === 0,
+              ),
+            )
           : [],
       tableSeats: event.registrationTableSeats,
       opensAt: event.registrationOpensAt,
@@ -5187,7 +5273,9 @@ const overrides = [
       ...totalsOf(event.id, choices),
       paidAt: null,
       createdAt: new Date().toISOString(),
+      suspectFields: [],
     };
+    booking.suspectFields = suspectFieldsOf(booking);
 
     registrations = [...registrations, booking];
     journal(booking, "new");
@@ -5244,6 +5332,8 @@ const overrides = [
       ...totalsOf(event.id, outcome),
       paidAt: existing?.paidAt ?? null,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
+      // A member's own booking is never checked for spam.
+      suspectFields: [],
     };
 
     registrations = existing
@@ -5445,14 +5535,19 @@ const overrides = [
           : patch.paid
             ? (existing.paidAt ?? new Date().toISOString())
             : null,
+      // Only `false` gets past the server's validation.
+      suspectFields: patch.suspect === false ? [] : existing.suspectFields,
     };
 
     registrations = registrations.map((candidate) =>
       candidate.id === updated.id ? updated : candidate,
     );
-    // Ticking "paid" is not a change the inbox reports (ADR 0035).
+    // Ticking "paid" or clearing a spam flag is not a change the inbox
+    // reports (ADR 0035).
+    const unjournaled = { paidAt: null, suspectFields: [] };
     if (
-      JSON.stringify({ ...existing, paidAt: null }) !== JSON.stringify({ ...updated, paidAt: null })
+      JSON.stringify({ ...existing, ...unjournaled }) !==
+      JSON.stringify({ ...updated, ...unjournaled })
     ) {
       journal(updated, "changed");
     }
@@ -5792,10 +5887,13 @@ const overrides = [
       return stale;
     }
     const body = (await request.json()) as Partial<HandleContactMessageRequest>;
+    // Either field may come alone, as HandleContactMessageRequest allows.
+    const handled = body.handled === undefined ? null : body.handled;
     const updated: ContactMessageResource = {
       ...existing,
-      handledAt: body.handled ? isoNowUtc() : null,
-      handledBy: body.handled ? actorDisplayName() : null,
+      handledAt: handled === null ? existing.handledAt : handled ? isoNowUtc() : null,
+      handledBy: handled === null ? existing.handledBy : handled ? actorDisplayName() : null,
+      suspectFields: body.suspect === false ? [] : existing.suspectFields,
     };
     contactMessages[index] = updated;
     return HttpResponse.json(updated, { headers: { ETag: mockEntityTag(updated) } });

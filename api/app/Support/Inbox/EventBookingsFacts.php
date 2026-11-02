@@ -26,5 +26,6 @@ final readonly class EventBookingsFacts
         public array $actors,
         public int $latestChangeId,
         public array $nearlyFull,
+        public int $suspect,
     ) {}
 }

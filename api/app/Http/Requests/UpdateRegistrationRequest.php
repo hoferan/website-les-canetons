@@ -20,7 +20,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * required block left out fails against `answers.<optionId>` with `required`.
  * The quantities cannot be changed here: a quantity block fails with
  * `not_an_answer`. Cancel the booking and make a new one instead. No mail is
- * sent when a booking is corrected.
+ * sent when a booking is corrected; clearing a spam flag sends the
+ * confirmation the flag held back.
  */
 class UpdateRegistrationRequest extends FormRequest
 {
@@ -53,6 +54,8 @@ class UpdateRegistrationRequest extends FormRequest
             'tableName' => ['sometimes', 'nullable', 'string', 'max:255'],
             /** `true` records the payment, `false` takes it back. Sending `true` for a booking already paid keeps the original time. */
             'paid' => ['sometimes', 'boolean'],
+            /** `false` clears a spam flag and sends the confirmation that was held. Only `false` is accepted: nobody flags a booking by hand. */
+            'suspect' => ['sometimes', 'boolean', 'declined'],
 
             ...$choices,
 

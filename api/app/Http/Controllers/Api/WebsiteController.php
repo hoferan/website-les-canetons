@@ -20,7 +20,7 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * The public website as one document, to set another server up the same
- * (#336, ADR 0038): the texts, the photo library and where its photos are
+ * (#336, ADR 0039): the texts, the photo library and where its photos are
  * shown, and the history. Members, events, roles, registers, committee seats
  * and event tags stay on the server they were entered on.
  */

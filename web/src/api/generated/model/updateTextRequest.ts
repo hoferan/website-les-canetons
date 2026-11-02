@@ -312,7 +312,7 @@
 
 /**
  * One public text in both languages. Null in a language means the page shows
- * its default there; an empty string means it shows nothing (ADR 0037).
+ * its default there; an empty string means it shows nothing (ADR 0038).
  */
 export interface UpdateTextRequest {
   /**

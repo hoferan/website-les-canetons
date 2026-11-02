@@ -6,7 +6,7 @@ import { beforeEach, expect, onTestFinished, test, vi } from "vitest";
 
 import { myRegistrationPut } from "../api/generated/endpoints";
 import { type Locale } from "../i18n/locale";
-import { problem, setMockUser } from "../mocks/handlers";
+import { flagMockSubmission, problem, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { EventRegistrations } from "./EventRegistrations";
@@ -70,6 +70,7 @@ function booking(
     totalCents: 4500 * choices.reduce((sum, choice) => sum + choice.quantity, 0),
     paidAt: null,
     createdAt: "2026-09-01T18:24:00.000Z",
+    suspectFields: [],
   };
 }
 
@@ -174,6 +175,7 @@ test("corrects a booking, quoting the tag the form opened with", async () => {
         guestCount: 0,
         totalCents: null,
         createdAt: "2026-09-01T18:24:00.000Z",
+        suspectFields: [],
       });
     }),
   );
@@ -676,6 +678,7 @@ test("a phone nobody can dial stays plain text", async () => {
             guestCount: 1,
             totalCents: null,
             createdAt: "2026-09-01T18:24:00.000Z",
+            suspectFields: [],
           },
         ],
         meta: { total: 1, limit: 500, offset: 0 },
@@ -998,4 +1001,72 @@ test("a cancellation here shows up in what changed since the read", async () => 
   await user.click(within(dialog).getByRole("button", { name: "Annuler l’inscription" }));
 
   await expect.poll(() => screen.getByTestId("booking-read").textContent).toContain("1 annulée");
+});
+
+/**
+ * #332. Marc Python's booking is flagged for its table name: the card says
+ * so in words, and that his confirmation has not gone out yet.
+ */
+test("a flagged booking says why, and that its confirmation is held", async () => {
+  flagMockSubmission("registration", 2, ["tableName"]);
+
+  await renderGuestList("demo.committee");
+
+  const card = cardFor("Python Marc");
+  expect(within(card).getByTestId("suspect-badge")).toHaveTextContent("Suspecte");
+  expect(within(card).getByTestId("suspect-reasons")).toHaveTextContent(
+    "Lien ou balise dans : table. Confirmation pas encore envoyée.",
+  );
+  // Reading the guest list is not enough to clear it.
+  expect(within(card).queryByRole("button", { name: /pas du spam/ })).not.toBeInTheDocument();
+  // A clean booking carries neither.
+  expect(within(cardFor("Aebischer Jeanne")).queryByTestId("suspect-badge")).toBeNull();
+});
+
+/**
+ * Mutation test: drop `ifMatch(etag)` from the clearing PATCH and the mocked
+ * backend's 428 fails this.
+ */
+test("clearing a flag sends suspect false with a tag, and the card loses its flag", async () => {
+  const user = userEvent.setup();
+  const sent: { body: unknown; ifMatch: string | null }[] = [];
+  const record = ({ request }: { request: Request }) => {
+    if (request.method === "PATCH") {
+      void request
+        .clone()
+        .json()
+        .then((body: unknown) => sent.push({ body, ifMatch: request.headers.get("If-Match") }));
+    }
+  };
+  server.events.on("request:start", record);
+  onTestFinished(() => server.events.removeListener("request:start", record));
+  flagMockSubmission("registration", 2, ["tableName"]);
+
+  await renderGuestList();
+  await user.click(
+    within(cardFor("Python Marc")).getByRole("button", { name: /^Marc Python.: pas du spam$/ }),
+  );
+
+  await expect.poll(() => within(cardFor("Python Marc")).queryByTestId("suspect-badge")).toBeNull();
+  expect(sent).toEqual([{ body: { suspect: false }, ifMatch: expect.stringMatching(/^"/) }]);
+});
+
+test("a refused clearing keeps the flag and says why on the card", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.patch("/api/v1/registrations/:id", () =>
+      problem(412, "if_match_failed", "The If-Match header does not match"),
+    ),
+  );
+  flagMockSubmission("registration", 2, ["tableName"]);
+
+  await renderGuestList();
+  await user.click(
+    within(cardFor("Python Marc")).getByRole("button", { name: /^Marc Python.: pas du spam$/ }),
+  );
+
+  expect(await within(cardFor("Python Marc")).findByRole("alert")).toHaveTextContent(
+    /modifié cet élément entre-temps/,
+  );
+  expect(within(cardFor("Python Marc")).getByTestId("suspect-badge")).toBeInTheDocument();
 });

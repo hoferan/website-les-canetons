@@ -9,7 +9,7 @@ decision-makers: André Hofer
 ## Context and Problem Statement
 
 QA is to be cut over first. The Team Direction then sets up and approves the public
-website there: texts ([ADR-0037](0037-public-texts-are-catalogue-defaults-the-band-overrides.md)),
+website there: texts ([ADR-0038](0038-public-texts-are-catalogue-defaults-the-band-overrides.md)),
 photos and where they are shown ([ADR-0028](0028-photos-live-in-the-database-in-sizes-made-by-the-browser.md)),
 and the history. PROD should then go live with the same website.
 

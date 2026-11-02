@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ContactRequest;
 use App\Mail\ContactMessageReceived;
 use App\Models\ContactMessage;
+use App\Support\SpamSignals;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
@@ -43,12 +44,22 @@ class ContactController extends Controller
         // (honeypot and signed stamp) and the `public-write` throttle. The
         // throttle is the half that matters, because the stamp is not bound to
         // a caller and stays replayable for two hours (routes/api.php).
-        $message = ContactMessage::create([
-            'last_name' => trim($request->input('lastName')),
-            'first_name' => trim($request->input('firstName')),
-            'email' => trim($request->input('email')),
+        $fields = [
+            'lastName' => trim($request->input('lastName')),
+            'firstName' => trim($request->input('firstName')),
             'subject' => trim($request->input('subject')),
             'message' => trim($request->input('message')),
+        ];
+
+        $message = ContactMessage::create([
+            'last_name' => $fields['lastName'],
+            'first_name' => $fields['firstName'],
+            'email' => trim($request->input('email')),
+            'subject' => $fields['subject'],
+            'message' => $fields['message'],
+            // Flagged and stored all the same (ADR 0037). The committee is
+            // still mailed: nothing goes to the address the visitor typed.
+            'suspect_fields' => SpamSignals::suspectFields($fields) ?: null,
         ]);
 
         self::notify($message);

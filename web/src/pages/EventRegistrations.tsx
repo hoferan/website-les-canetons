@@ -37,6 +37,7 @@ import { ContactLink } from "../components/ContactLink";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { RowActions, type RowAction } from "../components/RowActions";
+import { SuspectBadge, SuspectReasons } from "../components/SuspectFlag";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { translateApiError } from "../i18n";
 import { t, type TranslationKey } from "../i18n";
@@ -286,6 +287,17 @@ export function EventRegistrations() {
     await refresh();
   }
 
+  /** Clears a spam flag (#332); the server then sends the held confirmation. */
+  async function clearSuspect(row: RegistrationResource) {
+    const loaded = await registrationShow(row.id);
+    const etag = loaded.status === 200 ? entityTagOf(loaded) : null;
+    if (etag === null) {
+      throw new Error("The booking was read without an ETag.");
+    }
+    await registrationUpdate(row.id, { suspect: false }, ifMatch(etag));
+    await refresh();
+  }
+
   async function download(format: ExportFormat) {
     setDownloading(format);
     setDownloadError(null);
@@ -498,6 +510,7 @@ export function EventRegistrations() {
                       {t("registrations.memberBadge")}
                     </span>
                   ) : null}
+                  <SuspectBadge kind="booking" flagged={booking.suspectFields.length > 0} />
                   {since?.newIds.includes(booking.id) || since?.changedIds.includes(booking.id) ? (
                     <span
                       data-testid="read-tag"
@@ -516,6 +529,11 @@ export function EventRegistrations() {
                 {/* Three siblings, not a `<br>` run, so a screen reader gets
                     three stops. `items-start` stops the column flex stretching
                     each link's tap target across the card. */}
+                <SuspectLine
+                  booking={booking}
+                  mayManage={mayManage}
+                  onClear={() => clearSuspect(booking)}
+                />
                 <div data-testid="guest-contact" className="flex flex-col items-start gap-tight">
                   <ContactLink kind="email" value={booking.email ?? ""} />
                   <ContactLink kind="phone" value={booking.phone ?? ""} e164={booking.phoneE164} />
@@ -826,6 +844,67 @@ function PaymentLine({
       {saving.error !== null ? (
         <p role="alert" className="text-danger">
           {saving.error.message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Why a booking was flagged as spam, and for `registrations.manage` the
+ * button that clears it (#332). A member's booking is never flagged, so the
+ * held mail is always a guest's.
+ */
+function SuspectLine({
+  booking,
+  mayManage,
+  onClear,
+}: {
+  booking: RegistrationResource;
+  mayManage: boolean;
+  onClear: () => Promise<void>;
+}) {
+  const clearing = useApiFormError(t("suspect.clearFailed"));
+  const [busy, setBusy] = useState(false);
+
+  if (booking.suspectFields.length === 0) {
+    return null;
+  }
+
+  const clear = async () => {
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    clearing.clear();
+    try {
+      await onClear();
+    } catch (thrown) {
+      clearing.setFromThrown(thrown);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mb-tight">
+      <SuspectReasons fields={booking.suspectFields} mailHeld />
+      {mayManage ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="raised-light"
+          className="mt-tight"
+          aria-disabled={busy}
+          aria-label={t("suspect.clearAria", { name: `${booking.firstName} ${booking.lastName}` })}
+          onClick={() => void clear()}
+        >
+          {t("suspect.clear")}
+        </Button>
+      ) : null}
+      {clearing.error !== null ? (
+        <p role="alert" className="text-danger">
+          {clearing.error.message}
         </p>
       ) : null}
     </div>

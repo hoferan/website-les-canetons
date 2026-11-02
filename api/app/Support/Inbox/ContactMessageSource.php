@@ -41,6 +41,7 @@ final class ContactMessageSource implements InboxSource
                 // the inbox is a way through to the work rather than a
                 // second place to do it.
                 path: "/contact-messages?open={$message->id}",
+                suspect: $message->suspect_fields !== null,
             ));
     }
 

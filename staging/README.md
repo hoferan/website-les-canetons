@@ -339,7 +339,7 @@ for a bare curl, because Sanctum only starts a session for an `Origin` in
 ## Moving the website from QA to PROD
 
 The public website is set up and approved on QA, then carried to PROD as one
-file (ADR 0038). There is no shell on the host, so this is the only way content
+file (ADR 0039). There is no shell on the host, so this is the only way content
 moves between servers. Members, events, bookings, roles, registers, committee
 seats and event tags do not travel: the roster is entered on PROD, where the
 members will log in.

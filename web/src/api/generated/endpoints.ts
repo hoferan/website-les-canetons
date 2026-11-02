@@ -5106,6 +5106,11 @@ export const getRegistrationUpdateUrl = (registration: number) => {
  * `{"paid": true}` records the payment and `paidAt` says when. Sending it
  * again keeps the first time. `{"paid": false}` clears it.
  *
+ * `{"suspect": false}` clears a spam flag (see `suspectFields`): the
+ * table shows on the public form again, and the confirmation the flag
+ * held back goes to the guest. Clearing a booking that is not flagged
+ * sends nothing.
+ *
  * The quantities cannot be changed here. Cancel the booking and make a
  * new one instead.
  * @summary Correct a booking's details or answers, or record that it has been paid
@@ -7457,13 +7462,16 @@ export const getContactMessageHandleUrl = (contactMessage: number) => {
  * clears both. Reopening is allowed, so a message marked handled by
  * mistake can be corrected.
  *
+ * `{"suspect": false}` clears the spam flag (see `suspectFields`) and
+ * leaves `handled` as it was unless that is sent too.
+ *
  * Requires `If-Match` with the tag from reading this message. Without one
  * the request answers `428`; with a stale one, `412`.
  * @summary Mark a message handled, or put it back
  */
 export const contactMessageHandle = async (
   contactMessage: number,
-  handleContactMessageRequest: HandleContactMessageRequest,
+  handleContactMessageRequest?: HandleContactMessageRequest,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<contactMessageHandleResponse> => {
   const getHeaders = (
@@ -7542,7 +7550,7 @@ export const getContactMessageHandleMutationOptions = <
 export type ContactMessageHandleMutationResult = NonNullable<
   Awaited<ReturnType<typeof contactMessageHandle>>
 >;
-export type ContactMessageHandleMutationBody = HandleContactMessageRequest;
+export type ContactMessageHandleMutationBody = HandleContactMessageRequest | undefined;
 export type ContactMessageHandleMutationError =
   | Problem400Response
   | Problem401Response
@@ -7554,7 +7562,7 @@ export type ContactMessageHandleMutationError =
   | Problem503Response;
 export type ContactMessageHandleMutationVariables = {
   contactMessage: number;
-  data: HandleContactMessageRequest;
+  data?: HandleContactMessageRequest;
 };
 
 /**

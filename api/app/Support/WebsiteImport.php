@@ -11,7 +11,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Replaces a server's website with another's (#336, ADR 0038).
+ * Replaces a server's website with another's (#336, ADR 0039).
  *
  * One transaction: the texts, the photo slots and the history are replaced
  * together, or the server keeps what it had. An event's poster belongs to

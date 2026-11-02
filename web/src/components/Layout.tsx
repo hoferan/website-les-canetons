@@ -80,7 +80,7 @@ const TOOLS: Array<{
   { to: "/registers", labelKey: "nav.registers", permission: "members.manage", icon: Drum },
   { to: "/roles", labelKey: "nav.roles", permission: "roles.manage", icon: ShieldCheck },
   // The server also asks for images.manage and history.manage; every role
-  // that holds content.manage holds both today (ADR 0038).
+  // that holds content.manage holds both today (ADR 0039).
   { to: "/website", labelKey: "nav.website", permission: "content.manage", icon: Globe },
 ];
 

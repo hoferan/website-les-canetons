@@ -139,3 +139,38 @@ test("a new booking reaches the committee's inbox, and reading the guest list cl
     0,
   );
 });
+
+test("a booking with a link in its table is flagged, and direction clears it", async ({ page }) => {
+  // #332, ADR 0037: stored, but marked, until somebody with
+  // registrations.manage says it is fine.
+  await page.goto("/events/7/book");
+  await page.getByLabel("Nom", { exact: true }).fill("Spammy");
+  await page.getByLabel("Prénom", { exact: true }).fill("Bob");
+  await page.getByLabel("E-mail", { exact: true }).fill("bob@example.test");
+  await page.getByLabel("Téléphone", { exact: true }).fill("079 555 00 00");
+  await page.getByLabel("Table", { exact: true }).selectOption({ label: "Nouvelle table…" });
+  await page.getByLabel("Nom de la nouvelle table").fill("www.cheap-pills.example");
+  await page.getByLabel("Repas adulte").fill("2");
+  await page.getByRole("button", { name: "M’inscrire" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Inscription enregistrée");
+
+  await logInInPlace(page, "demo.direction");
+  await navLink(page, "Événements").click();
+  // Direction holds more actions than the committee, so the guest list sits
+  // in the event's menu.
+  await page.getByRole("button", { name: "Autres actions pour Souper de soutien" }).click();
+  await page.getByRole("menuitem", { name: "Inscriptions" }).click();
+
+  const flagged = page
+    .getByTestId("guest-cards")
+    .locator(":scope > li")
+    .filter({ hasText: "Spammy Bob" });
+  await expect(flagged.getByTestId("suspect-badge")).toHaveText("Suspecte");
+  await expect(flagged.getByTestId("suspect-reasons")).toHaveText(
+    "Lien ou balise dans\u00a0: table. Confirmation pas encore envoyée.",
+  );
+
+  await flagged.getByRole("button", { name: "Bob Spammy\u00a0: pas du spam" }).click();
+  await expect(flagged.getByTestId("suspect-badge")).toHaveCount(0);
+  await expect(flagged.getByTestId("suspect-reasons")).toHaveCount(0);
+});

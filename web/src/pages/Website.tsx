@@ -25,7 +25,7 @@ const BUNDLE_ERRORS: Record<"not_a_bundle" | "unknown_format" | "missing_image",
 
 /**
  * The whole public website, carried from one server to another (#336, ADR
- * 0038): the Direction sets the site up on QA, downloads it here, and loads
+ * 0039): the Direction sets the site up on QA, downloads it here, and loads
  * the file on PROD's page of the same name.
  *
  * Both directions run in the browser, one request per photo, so nothing comes

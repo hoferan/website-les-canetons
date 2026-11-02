@@ -16,13 +16,16 @@ use App\Support\Audit;
 use App\Support\BookingCapacity;
 use App\Support\EffectivePermissions;
 use App\Support\Emits;
+use App\Support\OptionKind;
 use App\Support\Permission;
+use App\Support\SpamSignals;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\IgnoreResponse;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -148,7 +151,7 @@ class RegistrationController extends Controller
                 BookingCapacity::refuse($event, $data['choices']);
             }
 
-            $registration = Registration::create([
+            $columns = [
                 'event_id' => $event->id,
                 'first_name' => $data['firstName'],
                 'last_name' => $data['lastName'],
@@ -158,7 +161,14 @@ class RegistrationController extends Controller
                 // a hand-written body sends.
                 'address' => $event->registration_asks_address ? ($data['address'] ?? null) : null,
                 'table_name' => $event->registration_asks_table ? ($data['tableName'] ?? null) : null,
-            ]);
+            ];
+
+            // Checked on what is stored, so a field the form does not ask for
+            // cannot flag a booking, and by the same insert, so the form never
+            // lists a junk table for even a moment (ADR 0037).
+            $columns['suspect_fields'] = self::suspectFields($columns, $data['choices'], $kinds) ?: null;
+
+            $registration = Registration::create($columns);
 
             $registration->writeChoices($data['choices'], $kinds);
 
@@ -167,7 +177,11 @@ class RegistrationController extends Controller
 
         $registration->load('choices.option');
 
-        self::confirm($registration, $event);
+        // The mail waits for a flag to be cleared: the band's mailbox must not
+        // carry a spammer's link to whatever address they typed.
+        if ($registration->suspect_fields === null) {
+            self::confirm($registration, $event);
+        }
 
         return response()->json(new RegistrationResource($registration), 201);
     }
@@ -223,6 +237,11 @@ class RegistrationController extends Controller
      * `{"paid": true}` records the payment and `paidAt` says when. Sending it
      * again keeps the first time. `{"paid": false}` clears it.
      *
+     * `{"suspect": false}` clears a spam flag (see `suspectFields`): the
+     * table shows on the public form again, and the confirmation the flag
+     * held back goes to the guest. Clearing a booking that is not flagged
+     * sends nothing.
+     *
      * The quantities cannot be changed here. Cancel the booking and make a
      * new one instead.
      */
@@ -256,6 +275,13 @@ class RegistrationController extends Controller
                 : null;
         }
 
+        // Only `false` passes validation. The held confirmation goes once,
+        // to a booking that was flagged: clearing a clean one sends nothing.
+        $cleared = array_key_exists('suspect', $data) && $registration->suspect_fields !== null;
+        if ($cleared) {
+            $registration->suspect_fields = null;
+        }
+
         $registration->save();
 
         // Inside ConditionalWrite's transaction, which holds this booking's
@@ -275,7 +301,15 @@ class RegistrationController extends Controller
             $registration->fullName(),
         );
 
-        return new RegistrationResource($registration->load('choices.option'));
+        $registration->load('choices.option');
+
+        // After the corrections above, so the guest reads the booking as the
+        // committee left it.
+        if ($cleared) {
+            self::confirm($registration, $registration->event);
+        }
+
+        return new RegistrationResource($registration);
     }
 
     /**
@@ -304,6 +338,31 @@ class RegistrationController extends Controller
         Audit::record($request->user(), 'registration.deleted', 'registration', $id, $label);
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * The booking's text fields that carry a link or markup. The free-text
+     * answers count as one field, `answers`.
+     *
+     * @param  array<string, mixed>  $columns  the row about to be inserted
+     * @param  list<array{optionId: int, quantity?: int|null, value?: string|null}>  $choices
+     * @param  Collection<int, OptionKind>  $kinds  each option's kind, by id
+     * @return list<string>
+     */
+    private static function suspectFields(array $columns, array $choices, Collection $kinds): array
+    {
+        $answers = collect($choices)
+            ->filter(fn (array $choice): bool => $kinds[$choice['optionId']] === OptionKind::Text)
+            ->map(fn (array $choice): string => (string) ($choice['value'] ?? ''))
+            ->implode(' ');
+
+        return SpamSignals::suspectFields([
+            'firstName' => $columns['first_name'],
+            'lastName' => $columns['last_name'],
+            'address' => $columns['address'],
+            'tableName' => $columns['table_name'],
+            'answers' => $answers,
+        ]);
     }
 
     /**

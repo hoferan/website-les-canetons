@@ -322,4 +322,6 @@ export interface InboxItemResource {
   /** Where to go to deal with it, relative to the site root. */
   path: string;
   facts: EventBookingsFactsResource | null;
+  /** Whether a `contactMessage` carries a link or markup. Always false on an `eventBookings` item, whose `facts.suspect` counts its flagged bookings. */
+  suspect: boolean;
 }

@@ -33,6 +33,8 @@ class InboxItemResource extends JsonResource
             'path' => $this->path,
             /** The progress of an `eventBookings` item; null for every other kind. */
             'facts' => $this->facts === null ? null : new EventBookingsFactsResource($this->facts),
+            /** Whether a `contactMessage` carries a link or markup. Always false on an `eventBookings` item, whose `facts.suspect` counts its flagged bookings. */
+            'suspect' => $this->suspect,
         ];
     }
 }
