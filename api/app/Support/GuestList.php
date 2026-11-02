@@ -222,7 +222,11 @@ final class GuestList
      * and no contact details: this sheet is pinned up, not used to take money.
      * Tables come in name order; the bookings without one come last.
      *
-     * @return array{headers: list<string>, blocks: list<array{table: ?string, summary: list<string|int|null>, rows: list<list<string|int|null>>}>}
+     * When the event says how many seats a table has, a table's people read
+     * "11 / 10", and `overfull` marks one with more people than seats so the
+     * sheet can show it. Nobody is turned away for it: the seats are a guide.
+     *
+     * @return array{headers: list<string>, blocks: list<array{table: ?string, summary: list<string|int|null>, overfull: bool, rows: list<list<string|int|null>>}>}
      */
     public function tablePlan(): array
     {
@@ -254,15 +258,19 @@ final class GuestList
         $blocks = array_map(function (array $group) use ($quantities, $questions): array {
             [$table, $bookings] = $group;
             $taken = fn (Registration $r, RegistrationOption $o): int => (int) ($r->choices->firstWhere('option_id', $o->id)->quantity ?? 0);
+            $people = $this->seated($bookings);
+            // Not on "Sans table", which is no table and has no seats.
+            $seats = $table === null || $people === null ? null : $this->event->registration_table_seats;
 
             return [
                 'table' => $table,
                 'summary' => array_merge(
                     [$table ?? 'Sans table'],
                     $quantities->map(fn (RegistrationOption $o): int => array_sum(array_map(fn (Registration $r): int => $taken($r, $o), $bookings)))->all(),
-                    [$this->seated($bookings)],
+                    [$seats === null ? $people : $people.' / '.$seats],
                     $questions->map(fn (): string => '')->all(),
                 ),
+                'overfull' => $seats !== null && $people > $seats,
                 'rows' => array_map(fn (Registration $r): array => array_merge(
                     [$r->last_name.' '.$r->first_name],
                     $quantities->map(fn (RegistrationOption $o): int => $taken($r, $o))->all(),
