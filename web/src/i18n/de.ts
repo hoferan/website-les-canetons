@@ -207,6 +207,8 @@ export const de: typeof fr = {
   },
 
   fields: {
+    fr: "Text auf Französisch",
+    de: "Text auf Deutsch",
     date: "Datum",
     title: "Titel",
     startsAt: "Beginn",

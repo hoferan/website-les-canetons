@@ -474,10 +474,14 @@ import type {
   StoreRegistrationRequest,
   StoreRoleRequest,
   StoreSectionRequest,
+  TextIndex200,
+  TextIndexParams,
+  TextUpdate200,
   UpdateEventRequest,
   UpdateImageRequest,
   UpdateMemberRequest,
   UpdateRegistrationRequest,
+  UpdateTextRequest,
 } from "./model";
 
 import { customFetch } from "../http";
@@ -14541,6 +14545,339 @@ export const useImageReplace = <
   TContext
 > => {
   return useMutation(getImageReplaceMutationOptions(options), queryClient);
+};
+
+export type textIndexResponse200 = {
+  data: TextIndex200;
+  status: 200;
+};
+
+export type textIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type textIndexResponseSuccess = textIndexResponse200 & {
+  headers: Headers;
+};
+export type textIndexResponseError = textIndexResponse503 & {
+  headers: Headers;
+};
+
+export type textIndexResponse = textIndexResponseSuccess | textIndexResponseError;
+
+export const getTextIndexUrl = (params?: TextIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/texts?${stringifiedParams}` : `/texts`;
+};
+
+/**
+ * A key that is absent shows the page's default wording.
+ * @summary Every changed text, by key. Public
+ */
+export const textIndex = async (
+  params?: TextIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<textIndexResponse> => {
+  return customFetch<textIndexResponse>(getTextIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getTextIndexQueryKey = (params?: TextIndexParams) => {
+  return [`/texts`, ...(params ? [params] : [])] as const;
+};
+
+export const getTextIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof textIndex>>,
+  TError = Problem503Response,
+>(
+  params?: TextIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getTextIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof textIndex>>> = ({ signal }) =>
+    textIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof textIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type TextIndexQueryResult = NonNullable<Awaited<ReturnType<typeof textIndex>>>;
+export type TextIndexQueryError = Problem503Response;
+
+export function useTextIndex<
+  TData = Awaited<ReturnType<typeof textIndex>>,
+  TError = Problem503Response,
+>(
+  params: undefined | TextIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof textIndex>>,
+          TError,
+          Awaited<ReturnType<typeof textIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useTextIndex<
+  TData = Awaited<ReturnType<typeof textIndex>>,
+  TError = Problem503Response,
+>(
+  params?: TextIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof textIndex>>,
+          TError,
+          Awaited<ReturnType<typeof textIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useTextIndex<
+  TData = Awaited<ReturnType<typeof textIndex>>,
+  TError = Problem503Response,
+>(
+  params?: TextIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Every changed text, by key. Public
+ */
+
+export function useTextIndex<
+  TData = Awaited<ReturnType<typeof textIndex>>,
+  TError = Problem503Response,
+>(
+  params?: TextIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getTextIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type textUpdateResponse200 = {
+  data: TextUpdate200;
+  status: 200;
+};
+
+export type textUpdateResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type textUpdateResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type textUpdateResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type textUpdateResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type textUpdateResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type textUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type textUpdateResponseSuccess = textUpdateResponse200 & {
+  headers: Headers;
+};
+export type textUpdateResponseError = (
+  | textUpdateResponse400
+  | textUpdateResponse401
+  | textUpdateResponse403
+  | textUpdateResponse404
+  | textUpdateResponse419
+  | textUpdateResponse503
+) & {
+  headers: Headers;
+};
+
+export type textUpdateResponse = textUpdateResponseSuccess | textUpdateResponseError;
+
+export const getTextUpdateUrl = (key: string) => {
+  return `/texts/${key}`;
+};
+
+/**
+ * `{key}` is the text's path in the SPA's catalogue: two to eight
+ * dot-separated segments of letters and digits, at most 128 characters.
+ * Send both languages; null or blank in both puts the default back. No
+ * `If-Match`: the write sets one text, and the last save is what the page
+ * shows, with both in the audit log.
+ * @summary Changes one text, or puts it back. Requires `content.manage`
+ */
+export const textUpdate = async (
+  key: string,
+  updateTextRequest: UpdateTextRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<textUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<textUpdateResponse>(getTextUpdateUrl(key), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateTextRequest),
+  });
+};
+
+export const getTextUpdateMutationKey = () => ["textUpdate"] as const;
+
+export const getTextUpdateMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof textUpdate>>,
+    TError,
+    TextUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof textUpdate>>,
+  TError,
+  TextUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getTextUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof textUpdate>>,
+    TextUpdateMutationVariables
+  > = (props) => {
+    const { key, data } = props ?? {};
+
+    return textUpdate(key, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TextUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof textUpdate>>>;
+export type TextUpdateMutationBody = UpdateTextRequest;
+export type TextUpdateMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem419Response
+  | Problem503Response;
+export type TextUpdateMutationVariables = { key: string; data: UpdateTextRequest };
+
+/**
+ * @summary Changes one text, or puts it back. Requires `content.manage`
+ */
+export const useTextUpdate = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof textUpdate>>,
+      TError,
+      TextUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof textUpdate>>,
+  TError,
+  TextUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getTextUpdateMutationOptions(options), queryClient);
 };
 
 export type configShowResponse200 = {

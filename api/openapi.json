@@ -57,6 +57,10 @@
             "description": "The shared photo library. Every route here needs `images.manage`, except the file itself, which is public."
         },
         {
+            "name": "Texts",
+            "description": "The public pages' texts the band has changed, by catalogue key. Reading them is public; changing one needs `content.manage`."
+        },
+        {
             "name": "Service",
             "description": "What a client needs before it renders anything."
         }
@@ -7937,6 +7941,176 @@
                 }
             }
         },
+        "/texts": {
+            "get": {
+                "operationId": "text.index",
+                "description": "A key that is absent shows the page's default wording.",
+                "summary": "Every changed text, by key. Public",
+                "tags": [
+                    "Texts"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `TextOverrideResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/TextOverrideResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/texts/{key}": {
+            "put": {
+                "operationId": "text.update",
+                "description": "`{key}` is the text's path in the SPA's catalogue: two to eight\ndot-separated segments of letters and digits, at most 128 characters.\nSend both languages; null or blank in both puts the default back. No\n`If-Match`: the write sets one text, and the last save is what the page\nshows, with both in the audit log.",
+                "summary": "Changes one text, or puts it back. Requires `content.manage`",
+                "tags": [
+                    "Texts"
+                ],
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z][A-Za-z0-9]*(?:\\.[A-Za-z0-9]+){1,7}"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTextRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The text as stored, or null when the page is back to its default.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "text": {
+                                            "anyOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/TextOverrideResource"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
         "/config": {
             "get": {
                 "operationId": "config.show",
@@ -11208,6 +11382,37 @@
                 ],
                 "title": "TagColour"
             },
+            "TextOverrideResource": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string"
+                    },
+                    "fr": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "de": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "key",
+                    "fr",
+                    "de",
+                    "updatedAt"
+                ],
+                "title": "TextOverrideResource"
+            },
             "UpdateEventRequest": {
                 "type": "object",
                 "description": "Changes to one entry on the planning.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears one of the optional fields.\n\nThe two date comparisons still hold when only one half is sent. A request\ncarrying `endsAt` but not `startsAt` is compared against the start already\nstored, so an end cannot be moved before a beginning it did not send; the\nsame goes for `registrationClosesAt` against a stored\n`registrationOpensAt`.\n\nClearing `registrationClosesAt` with an explicit `null` is how public\nregistration is switched off again; the bookings already taken are kept.",
@@ -11451,6 +11656,33 @@
                     }
                 },
                 "title": "UpdateRegistrationRequest"
+            },
+            "UpdateTextRequest": {
+                "type": "object",
+                "description": "One public text in both languages. Null or blank in a language means the\npage shows its default there.",
+                "properties": {
+                    "fr": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The French wording, or null for the page's default.",
+                        "maxLength": 2000
+                    },
+                    "de": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The German wording, or null: the German page then shows the French value, or its default.",
+                        "maxLength": 2000
+                    }
+                },
+                "required": [
+                    "fr",
+                    "de"
+                ],
+                "title": "UpdateTextRequest"
             }
         },
         "responses": {

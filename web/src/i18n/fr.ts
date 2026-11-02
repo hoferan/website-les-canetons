@@ -234,6 +234,9 @@ export const fr = {
     image_set_aspect_mismatch: "mélange des tailles qui n'ont pas les mêmes proportions",
   },
   fields: {
+    // The two languages of a public text (PUT /texts/{key}).
+    fr: "Texte en français",
+    de: "Texte en allemand",
     date: "Date",
     title: "Titre",
     startsAt: "Début",
