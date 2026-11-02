@@ -158,6 +158,22 @@ class RegistrationPublicTest extends TestCase
         );
     }
 
+    public function test_the_mail_says_payment_is_at_the_entrance_and_not_by_card(): void
+    {
+        $registration = Registration::factory()
+            ->withChoice($this->meat)
+            ->create(['event_id' => $this->event->id]);
+
+        $text = html_entity_decode(strip_tags(
+            (new RegistrationConfirmation($registration->fresh(), $this->event))->render(),
+        ), ENT_QUOTES | ENT_HTML5);
+
+        $this->assertStringContainsString('Le paiement se fait à l’entrée, au nom de cette inscription.', $text);
+        $this->assertStringContainsString('Les cartes ne sont pas acceptées.', $text);
+        // Not promised: the band does not always have it.
+        $this->assertStringNotContainsString('TWINT', $text);
+    }
+
     public function test_the_confirmation_puts_each_detail_on_its_own_line(): void
     {
         // Rendered for real, because Mail::fake() never renders the view.
