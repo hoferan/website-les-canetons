@@ -24,6 +24,15 @@ use Illuminate\Support\Collection;
  */
 final class GuestList
 {
+    /** The flagged fields of a booking, as the `Suspecte` column names them. */
+    private const SUSPECT_FIELDS = [
+        'firstName' => 'Prénom',
+        'lastName' => 'Nom',
+        'address' => 'Adresse',
+        'tableName' => 'Table',
+        'answers' => 'Réponses',
+    ];
+
     /** Whether any block counts people; without one, the people column stays blank. */
     private readonly bool $countsGuests;
 
@@ -74,7 +83,7 @@ final class GuestList
         return array_merge(
             ['Nom', 'Prénom', 'E-mail', 'Téléphone', 'Adresse', 'Table'],
             $this->options->map(fn (RegistrationOption $o): string => $o->label)->all(),
-            ['Personnes', 'Total CHF', 'Payé le', 'Inscrit le'],
+            ['Personnes', 'Total CHF', 'Payé le', 'Inscrit le', 'Suspecte'],
         );
     }
 
@@ -112,6 +121,7 @@ final class GuestList
                     // money arrives.
                     $registration->paid_at?->setTimezone(BandTime::ZONE)->format('d.m.Y H:i'),
                     $registration->created_at->setTimezone(BandTime::ZONE)->format('d.m.Y H:i'),
+                    self::suspicion($registration),
                 ],
             );
         })->all();
@@ -146,8 +156,22 @@ final class GuestList
                 $totalCents->isEmpty() ? null : self::francs((int) $totalCents->sum()),
                 '',
                 '',
+                '',
             ],
         );
+    }
+
+    /** What flagged a booking as spam, in the file's French; null when nothing did (#332). */
+    private static function suspicion(Registration $registration): ?string
+    {
+        if ($registration->suspect_fields === null) {
+            return null;
+        }
+
+        return implode(', ', array_map(
+            fn (string $field): string => self::SUSPECT_FIELDS[$field] ?? $field,
+            $registration->suspect_fields,
+        ));
     }
 
     /**

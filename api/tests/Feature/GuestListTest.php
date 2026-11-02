@@ -566,6 +566,26 @@ class GuestListTest extends TestCase
         $this->assertSame('10.01.2027 18:00', $json['rows'][0][$at]);
     }
 
+    public function test_the_export_names_what_flagged_a_booking(): void
+    {
+        // #332: the list a committee member prints shows the flag too, in the
+        // file's French, with nothing for a clean booking.
+        $this->book('Maillard');
+        $this->book('Spam')->forceFill(['suspect_fields' => ['firstName', 'tableName', 'answers']])->save();
+
+        $json = $this->actingAsMember($this->organiser)
+            ->getJson("/api/v1/events/{$this->event->id}/registrations.json")
+            ->assertOk()
+            ->json();
+
+        $at = (int) array_search('Suspecte', $json['headers'], true);
+
+        $this->assertSame('Suspecte', $json['headers'][$at]);
+        $this->assertNull($json['rows'][0][$at]);
+        $this->assertSame('Prénom, Table, Réponses', $json['rows'][1][$at]);
+        $this->assertSame('', $json['totals'][$at]);
+    }
+
     public function test_the_totals_row_is_what_the_caterer_is_told(): void
     {
         $this->book('Maillard', 3, 1);
@@ -609,7 +629,10 @@ class GuestListTest extends TestCase
             ->getContent();
 
         $csvRow = str_getcsv(explode("\n", trim($csv))[1], ';');
-        $mdRow = array_map('trim', explode('|', trim(explode("\n", trim($md))[2], "| \r")));
+        // One pipe off each end, not trim()'s character set, which would also
+        // eat a blank last cell.
+        $mdLine = trim(explode("\n", trim($md))[2]);
+        $mdRow = array_map('trim', explode('|', substr($mdLine, 1, -1)));
 
         foreach ($json['rows'][0] as $index => $value) {
             $expected = $value === null ? '' : (string) $value;
