@@ -122,3 +122,17 @@ test("a name that is one of the tables opens on that table", () => {
   expect(screen.getByLabelText("Table")).toHaveValue("t:Müller");
   expect(screen.queryByLabelText("Nom de la nouvelle table")).not.toBeInTheDocument();
 });
+
+test("a table that drops off the list after it was picked stays what the screen shows", async () => {
+  // The form is read again after a refused submit, and the last booking at
+  // the guest's table may have been cancelled meanwhile.
+  const user = userEvent.setup();
+  const sent: string[] = [];
+  const { rerender } = render(<Harness sent={sent} />);
+  await user.selectOptions(screen.getByLabelText("Table"), "Jakob");
+
+  rerender(<Harness sent={sent} tables={[{ name: "Müller", guests: 10 }]} />);
+
+  expect(screen.getByLabelText("Table")).toHaveDisplayValue("Jakob");
+  expect(sent).toEqual(["Jakob"]);
+});

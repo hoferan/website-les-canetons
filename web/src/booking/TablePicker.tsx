@@ -54,6 +54,13 @@ export function TablePicker({
   }, [focusName]);
 
   const selected = adding ? NEW : typed === "" ? "" : EXISTING + typed;
+  // The form is read again after a refused submit, and the last booking at
+  // the chosen table may have been cancelled meanwhile. The choice stays
+  // listed, or the select would show "no table" while the booking keeps it.
+  const listed =
+    adding || typed === "" || tables.some((table) => table.name === typed)
+      ? tables
+      : [...tables, { name: typed, guests: 0 }];
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
   const selectProblem = adding ? undefined : problem;
@@ -81,7 +88,7 @@ export function TablePicker({
           }}
         >
           <option value="">{t("booking.table.none")}</option>
-          {tables.map((table) => (
+          {listed.map((table) => (
             <option key={table.name} value={EXISTING + table.name}>
               {seats === null
                 ? table.name
