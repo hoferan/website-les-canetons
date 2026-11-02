@@ -9943,9 +9943,8 @@
                     "format": {
                         "type": "integer",
                         "description": "The bundle's shape. Only `1` is read.",
-                        "enum": [
-                            "1"
-                        ]
+                        "minimum": 1,
+                        "maximum": 1
                     },
                     "texts": {
                         "type": "array",

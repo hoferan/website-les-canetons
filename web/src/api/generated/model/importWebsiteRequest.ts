@@ -309,7 +309,6 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { ImportWebsiteRequestFormat } from "./importWebsiteRequestFormat";
 import type { ImportWebsiteRequestHistoryItem } from "./importWebsiteRequestHistoryItem";
 import type { ImportWebsiteRequestSlotsItem } from "./importWebsiteRequestSlotsItem";
 import type { ImportWebsiteRequestTextsItem } from "./importWebsiteRequestTextsItem";
@@ -321,8 +320,12 @@ import type { ImportWebsiteRequestTextsItem } from "./importWebsiteRequestTextsI
  * or nothing is imported.
  */
 export interface ImportWebsiteRequest {
-  /** The bundle's shape. Only `1` is read. */
-  format: ImportWebsiteRequestFormat;
+  /**
+   * The bundle's shape. Only `1` is read.
+   * @minimum 1
+   * @maximum 1
+   */
+  format: number;
   /**
    * The changed texts, as GET /texts lists them. They replace every stored text.
    * @maxItems 500

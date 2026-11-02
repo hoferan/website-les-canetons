@@ -23,8 +23,9 @@ class ImportWebsiteRequest extends FormRequest
         $sha256 = ['string', 'size:64', 'exists:images,sha256'];
 
         return [
+            // min/max rather than `in`, which the document would show as a string.
             /** The bundle's shape. Only `1` is read. */
-            'format' => ['required', 'integer', 'in:'.WebsiteController::FORMAT],
+            'format' => ['required', 'integer', 'min:'.WebsiteController::FORMAT, 'max:'.WebsiteController::FORMAT],
             /** The changed texts, as GET /texts lists them. They replace every stored text. */
             'texts' => ['present', 'array', 'max:500'],
             'texts.*.key' => ['required', 'string', 'max:'.TextOverride::MAX_KEY_LENGTH, 'regex:/^'.TextOverride::KEY.'$/'],
