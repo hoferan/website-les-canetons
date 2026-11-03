@@ -61,6 +61,10 @@
             "description": "The public pages' texts the band has changed, by catalogue key. Reading them is public; changing one needs `content.manage`."
         },
         {
+            "name": "Content",
+            "description": "The public pages' content blocks the band has changed, by block key. Reading them is public; changing one needs `content.manage`."
+        },
+        {
             "name": "Service",
             "description": "What a client needs before it renders anything."
         }
@@ -303,7 +307,13 @@
                                                             "image_set_too_many",
                                                             "image_set_too_heavy",
                                                             "image_set_widths_repeated",
-                                                            "image_set_aspect_mismatch"
+                                                            "image_set_aspect_mismatch",
+                                                            "block_not_an_object",
+                                                            "block_too_deep",
+                                                            "block_too_long",
+                                                            "block_too_many",
+                                                            "block_bad_key",
+                                                            "block_too_large"
                                                         ]
                                                     },
                                                     "params": {
@@ -2205,7 +2215,13 @@
                                                             "image_set_too_many",
                                                             "image_set_too_heavy",
                                                             "image_set_widths_repeated",
-                                                            "image_set_aspect_mismatch"
+                                                            "image_set_aspect_mismatch",
+                                                            "block_not_an_object",
+                                                            "block_too_deep",
+                                                            "block_too_long",
+                                                            "block_too_many",
+                                                            "block_bad_key",
+                                                            "block_too_large"
                                                         ]
                                                     },
                                                     "params": {
@@ -6957,7 +6973,13 @@
                                                             "image_set_too_many",
                                                             "image_set_too_heavy",
                                                             "image_set_widths_repeated",
-                                                            "image_set_aspect_mismatch"
+                                                            "image_set_aspect_mismatch",
+                                                            "block_not_an_object",
+                                                            "block_too_deep",
+                                                            "block_too_long",
+                                                            "block_too_many",
+                                                            "block_bad_key",
+                                                            "block_too_large"
                                                         ]
                                                     },
                                                     "params": {
@@ -7936,6 +7958,176 @@
                                 }
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/blocks": {
+            "get": {
+                "operationId": "block.index",
+                "description": "A key that is absent shows the page's default content.",
+                "summary": "Every changed block, by key. Public",
+                "tags": [
+                    "Content"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ContentBlockResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ContentBlockResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/blocks/{key}": {
+            "put": {
+                "operationId": "block.update",
+                "description": "`{key}` is the block's name: a lower-case word, then up to three more\ndot-separated segments of lower-case letters, digits and hyphens, at\nmost 64 characters. `data` is an object of at most six levels, with\nlists of at most 24 items, strings of at most 2000 characters, keys of\na letter then letters and digits (32 at most), and 64 KB once encoded;\nnull puts the default back. A string may be empty: it means \"nothing\n     * here\". No `If-Match`: the write sets one block, and the last save is\nwhat the page shows, with both in the audit log.",
+                "summary": "Changes one block, or puts it back. Requires `content.manage`",
+                "tags": [
+                    "Content"
+                ],
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+){0,3}"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateBlockRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The block as stored, or null when the page is back to its default.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "block": {
+                                            "anyOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/ContentBlockResource"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "block"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -8967,6 +9159,29 @@
                     "website"
                 ],
                 "title": "ContactRequest"
+            },
+            "ContentBlockResource": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "The block's content, an object even when empty.",
+                        "additionalProperties": {}
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "key",
+                    "data",
+                    "updatedAt"
+                ],
+                "title": "ContentBlockResource"
             },
             "EditableRegistrationOptionResource": {
                 "type": "object",
@@ -11439,6 +11654,26 @@
                 ],
                 "title": "TextOverrideResource"
             },
+            "UpdateBlockRequest": {
+                "type": "object",
+                "description": "One content block's data. Null puts the page's default back.",
+                "properties": {
+                    "data": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "description": "The block's content as an object, or null for the page's default.",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "data"
+                ],
+                "title": "UpdateBlockRequest"
+            },
             "UpdateEventRequest": {
                 "type": "object",
                 "description": "Changes to one entry on the planning.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears one of the optional fields.\n\nThe two date comparisons still hold when only one half is sent. A request\ncarrying `endsAt` but not `startsAt` is compared against the start already\nstored, so an end cannot be moved before a beginning it did not send; the\nsame goes for `registrationClosesAt` against a stored\n`registrationOpensAt`.\n\nClearing `registrationClosesAt` with an explicit `null` is how public\nregistration is switched off again; the bookings already taken are kept.",
@@ -11889,7 +12124,13 @@
                                                     "image_set_too_many",
                                                     "image_set_too_heavy",
                                                     "image_set_widths_repeated",
-                                                    "image_set_aspect_mismatch"
+                                                    "image_set_aspect_mismatch",
+                                                    "block_not_an_object",
+                                                    "block_too_deep",
+                                                    "block_too_long",
+                                                    "block_too_many",
+                                                    "block_bad_key",
+                                                    "block_too_large"
                                                 ]
                                             },
                                             "params": {

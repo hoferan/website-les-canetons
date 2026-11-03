@@ -204,9 +204,16 @@ export const de: typeof fr = {
     image_set_too_heavy: "ist insgesamt zu gross",
     image_set_widths_repeated: "enthält dieselbe Grösse zweimal",
     image_set_aspect_mismatch: "mischt Grössen mit unterschiedlichen Seitenverhältnissen",
+    block_not_an_object: "muss eine Gruppe von Feldern sein, keine Liste",
+    block_too_deep: "ist auf zu vielen Ebenen verschachtelt",
+    block_too_long: "enthält einen zu langen Text (höchstens 2000 Zeichen)",
+    block_too_many: "enthält eine zu lange Liste (höchstens 24 Einträge)",
+    block_bad_key: "enthält einen ungültigen Feldnamen",
+    block_too_large: "ist zu umfangreich",
   },
 
   fields: {
+    data: "Inhalt",
     fr: "Text auf Französisch",
     de: "Text auf Deutsch",
     date: "Datum",

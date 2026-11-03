@@ -232,8 +232,16 @@ export const fr = {
     image_set_too_heavy: "est trop lourd dans son ensemble",
     image_set_widths_repeated: "contient deux fois la même taille",
     image_set_aspect_mismatch: "mélange des tailles qui n'ont pas les mêmes proportions",
+    // BlockShape: the limits on a content block's data.
+    block_not_an_object: "doit être un ensemble de champs, pas une liste",
+    block_too_deep: "est imbriqué sur trop de niveaux",
+    block_too_long: "contient un texte trop long (maximum 2000 caractères)",
+    block_too_many: "contient une liste trop longue (maximum 24 éléments)",
+    block_bad_key: "contient un nom de champ qui n'est pas valable",
+    block_too_large: "est trop volumineux",
   },
   fields: {
+    data: "Contenu",
     // The two languages of a public text (PUT /texts/{key}).
     fr: "Texte en français",
     de: "Texte en allemand",
