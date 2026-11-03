@@ -102,3 +102,27 @@ test("a format 2 file from before the server was named is still read", () => {
   expect(bundle.site.exportedFrom).toBeUndefined();
   expect(bundle.site.blocks).toEqual(SITE.blocks);
 });
+
+// A hand-edited site.json the page would otherwise read while it renders the
+// summary: formatDay throws on a missing date, `.length` on a missing list.
+test.each<[string, (site: Record<string, unknown>) => unknown]>([
+  ["no exportedAt", ({ exportedAt: _, ...site }) => site],
+  ["an exportedAt that is no date", (site) => ({ ...site, exportedAt: "hier" })],
+  ["no blocks", ({ blocks: _, ...site }) => site],
+  ["blocks that are no list", (site) => ({ ...site, blocks: {} })],
+  ["no slots", ({ slots: _, ...site }) => site],
+  ["no history", ({ history: _, ...site }) => site],
+  ["no images", ({ images: _, ...site }) => site],
+  ["a photo without sizes", (site) => ({ ...site, images: [{ sha256: "a", name: "x" }] })],
+  ["an exportedFrom that is no text", (site) => ({ ...site, exportedFrom: 7 })],
+  ["a document that is no object", () => null],
+])("a site.json with %s is not a bundle", (_label, edit) => {
+  const zip = zipSync({
+    "site.json": strToU8(JSON.stringify(edit({ ...SITE }))),
+    ...Object.fromEntries(
+      SITE.images[0]!.sizes.map((size) => [`images/${size.sha256}.jpg`, bytesOf(size.url)]),
+    ),
+  });
+
+  expect(readBundle(zip)).toEqual({ reason: "not_a_bundle" });
+});

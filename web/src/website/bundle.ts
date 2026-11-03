@@ -48,20 +48,24 @@ export async function buildBundle(
  */
 export function readBundle(zip: Uint8Array): Bundle | BundleError {
   let entries: Record<string, Uint8Array>;
-  let site: BundledSite;
+  let parsed: unknown;
   try {
     entries = unzipSync(zip);
     const raw = entries[SITE_FILE];
     if (!raw) return { reason: "not_a_bundle" };
-    site = JSON.parse(strFromU8(raw)) as BundledSite;
+    parsed = JSON.parse(strFromU8(raw));
   } catch {
     return { reason: "not_a_bundle" };
   }
 
-  if (site.format !== BUNDLE_FORMAT) return { reason: "unknown_format" };
+  if (!isRecord(parsed)) return { reason: "not_a_bundle" };
+  // Before the shape: a format 1 file has no `blocks` and says why it is refused.
+  if (parsed.format !== BUNDLE_FORMAT) return { reason: "unknown_format" };
+  if (!hasSiteShape(parsed)) return { reason: "not_a_bundle" };
+  const site = parsed;
 
   const files = new Map<string, Uint8Array>();
-  for (const image of site.images ?? []) {
+  for (const image of site.images) {
     for (const size of image.sizes) {
       const bytes = entries[imagePath(size.sha256)];
       if (!bytes) return { reason: "missing_image" };
@@ -69,4 +73,40 @@ export function readBundle(zip: Uint8Array): Bundle | BundleError {
     }
   }
   return { site, files };
+}
+
+/**
+ * Whether `site.json` has what the page reads before the import: the date and
+ * the host it shows, the lists it counts, and each photo's sizes. A
+ * hand-edited file missing one would otherwise throw while the page renders.
+ * Each row is the server's to check on import.
+ */
+function hasSiteShape(
+  site: Record<string, unknown>,
+): site is BundledSite & Record<string, unknown> {
+  const { exportedAt, exportedFrom, blocks, images, slots, history } = site;
+  return (
+    typeof exportedAt === "string" &&
+    !Number.isNaN(Date.parse(exportedAt)) &&
+    (exportedFrom === undefined || typeof exportedFrom === "string") &&
+    Array.isArray(blocks) &&
+    Array.isArray(slots) &&
+    Array.isArray(history) &&
+    Array.isArray(images) &&
+    images.every(
+      (image) =>
+        isRecord(image) &&
+        typeof image.sha256 === "string" &&
+        typeof image.name === "string" &&
+        Array.isArray(image.sizes) &&
+        image.sizes.every(
+          (size) =>
+            isRecord(size) && typeof size.sha256 === "string" && typeof size.width === "number",
+        ),
+    )
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
