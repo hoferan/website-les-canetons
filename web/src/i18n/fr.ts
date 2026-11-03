@@ -242,9 +242,6 @@ export const fr = {
   },
   fields: {
     data: "Contenu",
-    // The two languages of a public text (PUT /texts/{key}).
-    fr: "Texte en français",
-    de: "Texte en allemand",
     date: "Date",
     title: "Titre",
     startsAt: "Début",
@@ -1724,9 +1721,6 @@ export const fr = {
     contactHeading: "Contact des Canetons",
     writeToCommittee: "Écrire au comité",
     booking: "Pour réserver les Canetons :",
-    // Empty until the band stores one from the page (#106); the page then
-    // shows a placeholder, never a guessed number.
-    bookingNumber: "",
   },
 
   /** /join: how to join, for a parent or a curious child. */
@@ -1756,13 +1750,8 @@ export const fr = {
     // link searches for the two together.
     locationPlace: "Werkhof",
     locationAddress: "Planche-Inférieure 14, 1700 Fribourg",
-    locationAddressLabel: "Adresse pour le lien vers la carte",
     locationArea: "Basse-Ville de Fribourg",
     contacts: "Contacts",
-    // Who to ring about joining, one per line, name and number. Empty until
-    // the band stores them from the page (#106): a wrong number dials a
-    // stranger, so the page shows placeholders until then.
-    contactsList: "",
     contactMeanwhile: "En attendant, écrivez-nous depuis la",
     contactPageLink: "page de contact",
   },
@@ -1792,28 +1781,6 @@ export const fr = {
   notFound: {
     heading: "Page introuvable",
     body: "Oups ! La page que vous recherchez n’existe pas ou a été déplacée.",
-  },
-
-  /**
-   * The two shared placeholder components, PhotoPending and Tbd.
-   *
-   * PhotoPending shows one sentence for every photo slot, so no French
-   * grammar is glued onto a register's name. A caller passes Tbd's `what` as
-   * a translated string, never a fragment glued together outside the
-   * catalogue.
-   */
-  /** A text of a public page, changed where it is shown (#106). */
-  texts: {
-    edit: "Modifier le texte : {{label}}",
-    title: "Modifier le texte",
-    french: "Français",
-    german: "Deutsch",
-    single: "Texte",
-    httpsExpected: "Une adresse complète est attendue, commençant par https://.",
-    multilineHint: "Une ligne par entrée.",
-    save: "Enregistrer",
-    reset: "Rétablir le texte d’origine",
-    saveFailed: "Le texte n’a pas pu être enregistré. Réessayez.",
   },
 
   /**
@@ -1929,11 +1896,21 @@ export const fr = {
     separator: " : ",
   },
 
+  /**
+   * The two shared placeholder components, PhotoPending and Tbd.
+   *
+   * PhotoPending shows one sentence for every photo slot, so no French
+   * grammar is glued onto a register's name. A caller passes Tbd's `what` as
+   * a translated string, never a fragment glued together outside the
+   * catalogue.
+   */
   placeholders: {
     tbd: "••• à compléter",
     // A whole string, punctuation included: French puts a space before a
     // colon and German does not.
     tbdWhat: "••• à compléter : {{what}}",
+    // For what is filled in on the members page rather than in place.
+    tbdOnMembersPage: "••• à compléter sur la page Membres : {{what}}",
     photoPending: "Photo à venir",
     registerFirstNames: "prénoms du registre",
     bookingNumber: "numéro pour les prestations",

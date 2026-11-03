@@ -21,8 +21,19 @@ import { t } from "../i18n";
  *
  * `token` is a stable English identifier for what is missing, carried on
  * `data-tbd` so it does not change per locale.
+ *
+ * `onMembersPage` says the gap is filled on the members page, for what comes
+ * from the roster and has no edit chip of its own.
  */
-export function Tbd({ what, token }: { what?: string; token?: string }) {
+export function Tbd({
+  what,
+  token,
+  onMembersPage = false,
+}: {
+  what?: string;
+  token?: string;
+  onMembersPage?: boolean;
+}) {
   return (
     <span
       // Italic and muted so it reads as unfinished rather than broken, with a
@@ -33,7 +44,9 @@ export function Tbd({ what, token }: { what?: string; token?: string }) {
       // blank for everyone, not that their software failed to read a name.
       data-tbd={token ?? ""}
     >
-      {what ? t("placeholders.tbdWhat", { what }) : t("placeholders.tbd")}
+      {what
+        ? t(onMembersPage ? "placeholders.tbdOnMembersPage" : "placeholders.tbdWhat", { what })
+        : t("placeholders.tbd")}
     </span>
   );
 }

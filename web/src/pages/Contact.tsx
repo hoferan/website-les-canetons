@@ -13,10 +13,10 @@ import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
+import { HeroBlock } from "../content/blocks/HeroBlock";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { Notice } from "../components/Notice";
 import { type TranslationKey, t } from "../i18n";
-import { EditableText } from "../texts/EditableText";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -140,9 +140,7 @@ export function Contact() {
 
   return (
     <>
-      <PageHero title={t("contact.heading")} seed={23} width="text">
-        <EditableText k="contact.intro" as="p" />
-      </PageHero>
+      <HeroBlock blockKey="contact.hero" seed={23} width="text" />
 
       <PageSection width="text">
         {/* A member is told, not stopped. Most can reach the committee faster

@@ -9,7 +9,6 @@ import { setLocale } from "../i18n";
 import { type Locale } from "../i18n/locale";
 import { SessionProvider } from "../session/SessionProvider";
 import { EditModeProvider } from "../content/EditMode";
-import { TextsProvider } from "../texts/TextsProvider";
 
 /**
  * Renders a node behind the real providers and waits for the boot gate.
@@ -46,17 +45,15 @@ export async function renderWithSession(
         path: "*",
         element: (
           <QueryClientProvider client={queryClient}>
-            <TextsProvider>
-              <BlocksProvider>
-                <SessionProvider>
-                  <EditModeProvider>
-                    <LeaveGuardProvider>
-                      <div data-testid="booted">{ui}</div>
-                    </LeaveGuardProvider>
-                  </EditModeProvider>
-                </SessionProvider>
-              </BlocksProvider>
-            </TextsProvider>
+            <BlocksProvider>
+              <SessionProvider>
+                <EditModeProvider>
+                  <LeaveGuardProvider>
+                    <div data-testid="booted">{ui}</div>
+                  </LeaveGuardProvider>
+                </EditModeProvider>
+              </SessionProvider>
+            </BlocksProvider>
           </QueryClientProvider>
         ),
       },

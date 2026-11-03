@@ -1,34 +1,32 @@
-import { t } from "../i18n";
+import type { BlockData } from "../content/registry";
+import { isHttpsUrl, type Network } from "../content/types";
+
+export type { Network };
 
 /**
  * The band's accounts elsewhere, in one place so the nav and the footer cannot
  * drift apart (#224).
  *
- * The addresses are texts the band changes in place (#106), so they are read
- * at render time. An empty one (stored by emptying the field) means the band
- * has no such account, and the network is left out.
+ * The addresses come from the site block (#106), which the band edits from
+ * the footer. A network the band removed from the list is left out.
  *
  * The marks are Simple Icons paths (CC0), inlined because lucide-react ships
  * no brand icons.
  */
 
-export type Network = "instagram" | "facebook" | "flickr";
-
-export const NETWORK_KEYS = {
-  instagram: "site.instagramUrl",
-  facebook: "site.facebookUrl",
-  flickr: "site.flickrUrl",
-} as const;
-
-/** The network's address, or null when the band has none. */
-export function networkUrl(network: Network): string | null {
-  const url = t(NETWORK_KEYS[network]).trim();
-  return url === "" ? null : url;
-}
-
-/** The check the dialog runs on an address before it is stored. */
-export function checkNetworkUrl(value: string): string | null {
-  return /^https:\/\/\S+$/.test(value.trim()) ? null : t("texts.httpsExpected");
+/**
+ * The network's address, or null when the band lists none. A read accepts
+ * any string, so an address that is not https never becomes a link.
+ */
+export function networkUrl(
+  networks: BlockData<"site">["networks"],
+  network: Network,
+): string | null {
+  const url = networks
+    .filter((entry) => entry.network === network)
+    .map((entry) => entry.url.trim())
+    .find(isHttpsUrl);
+  return url ?? null;
 }
 
 type MarkProps = { className?: string };

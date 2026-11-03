@@ -1,9 +1,10 @@
 import { screen } from "@testing-library/react";
-import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
-import { setMemberSeat, setMemberVisibility } from "../mocks/handlers";
-import { server } from "../mocks/node";
+import { EDIT_MODE_KEY } from "../content/EditMode";
+import { BLOCKS } from "../content/registry";
+import { setMemberSeat, setMemberVisibility, setMockUser } from "../mocks/handlers";
+import { storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
 import { Committee } from "./Committee";
 
@@ -102,21 +103,17 @@ test("the booking number is a placeholder until the band stores one", async () =
 });
 
 test("a stored booking number replaces the placeholder in both languages, as a tel: link", async () => {
-  server.use(
-    http.get("/api/v1/texts", () =>
-      HttpResponse.json({
-        data: [
-          {
-            key: "committee.bookingNumber",
-            fr: "026 123 45 67",
-            de: "026 123 45 67",
-            updatedAt: "2026-11-02T10:00:00+00:00",
-          },
-        ],
-        meta: { total: 1, limit: 500, offset: 0 },
-      }),
-    ),
-  );
+  const [card] = BLOCKS["committee.contact"].defaults().cards;
+  storeBlock("committee.contact", {
+    cards: [
+      {
+        ...card!,
+        rows: card!.rows.map((row) =>
+          row.type === "phone" ? { ...row, number: "026 123 45 67" } : row,
+        ),
+      },
+    ],
+  });
   const { unmount } = await renderWithSession(<Committee />, { route: "/committee" });
   expect(screen.getByRole("link", { name: "026 123 45 67" })).toHaveAttribute(
     "href",
@@ -127,4 +124,27 @@ test("a stored booking number replaces the placeholder in both languages, as a t
 
   await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
   expect(screen.getByRole("link", { name: "026 123 45 67" })).toBeInTheDocument();
+});
+
+test("the write link sits between the card's heading and the booking line", async () => {
+  await renderWithSession(<Committee />, { route: "/committee" });
+
+  const heading = screen.getByRole("heading", { name: "Contact des Canetons" });
+  const write = screen.getByRole("link", { name: "Écrire au comité" });
+  const booking = document.querySelector("[data-tbd='booking-number']")!;
+  expect(heading.compareDocumentPosition(write) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(write.compareDocumentPosition(booking) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("in edit mode the hero and the contact card carry a chip", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  await renderWithSession(<Committee />, { route: "/committee" });
+
+  expect(
+    await screen.findByRole("button", { name: "Modifier : Comité · en-tête" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Modifier : Contact des Canetons" }),
+  ).toBeInTheDocument();
 });

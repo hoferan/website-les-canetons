@@ -42,9 +42,8 @@ use Throwable;
  * one value. Two editors either work on different slots, or the second pick on
  * the same slot is what the page shows, with both in the audit log.
  *
- * So is changing a content block, PUT /blocks/{key} (and the older
- * PUT /texts/{key}), on the same grounds: one block sent whole from one
- * dialog, and the last save is what the page shows.
+ * So is changing a content block, PUT /blocks/{key}, on the same grounds: one
+ * block sent whole from one dialog, and the last save is what the page shows.
  *
  * There is no conditional GET: `If-None-Match` is not implemented and no 304 is
  * returned, since every route here also sends `Cache-Control: no-store`. The tag

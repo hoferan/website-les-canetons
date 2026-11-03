@@ -3030,7 +3030,6 @@ export function resetMockState(): void {
   resetAnswers();
   resetRegistrations();
   resetContactMessages();
-  texts = {};
   blocks = {};
 }
 
@@ -3072,12 +3071,6 @@ function blockProblem(data: unknown): string | null {
   }
   return walk(data, 1) ?? (JSON.stringify(data).length > 65536 ? "block_too_large" : null);
 }
-
-/**
- * The public texts the band has changed, by catalogue key, as text_overrides
- * holds them. Empty: every page shows its catalogue wording.
- */
-let texts: Record<string, { fr: string | null; de: string | null; updatedAt: string }> = {};
 
 /** Typed by the model, so a field rename in ContactRequest is a compile error here. */
 const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "subject", "message"];
@@ -3377,54 +3370,6 @@ const overrides = [
       request,
     ),
   ),
-
-  // Public: every changed text, by key, as TextOverrideController lists them.
-  http.get("/api/v1/texts", ({ request }) =>
-    collection(
-      Object.keys(texts)
-        .sort()
-        .map((key) => ({ key, ...texts[key]! })),
-      request,
-    ),
-  ),
-
-  // One text per write with no If-Match, as TextOverrideController does it.
-  // Null in both languages puts the default back and deletes the row; an
-  // empty string stores "nothing here".
-  http.put("/api/v1/texts/:key", async ({ request, params }) => {
-    const refusal = refuseWithout("content.manage");
-    if (refusal) {
-      return refusal;
-    }
-    const key = String(params.key);
-    if (key.length > 128 || !/^[a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+){1,7}$/.test(key)) {
-      return notFound();
-    }
-    const body = (await request.json()) as { fr?: unknown; de?: unknown };
-    for (const field of ["fr", "de"] as const) {
-      const value = body[field];
-      if (value === undefined) {
-        return problem(400, "validation_failed", "Invalid form submission", [
-          { field, reason: "required" },
-        ]);
-      }
-      if (value !== null && (typeof value !== "string" || value.length > 2000)) {
-        return problem(400, "validation_failed", "Invalid form submission", [
-          { field, reason: typeof value === "string" ? "too_long" : "invalid_type" },
-        ]);
-      }
-    }
-    const blank = (value: unknown) =>
-      typeof value === "string" ? (value.trim() === "" ? "" : value) : null;
-    const fr = blank(body.fr);
-    const de = blank(body.de);
-    if (fr === null && de === null) {
-      texts = Object.fromEntries(Object.entries(texts).filter(([name]) => name !== key));
-      return HttpResponse.json({ text: null });
-    }
-    texts = { ...texts, [key]: { fr, de, updatedAt: new Date().toISOString() } };
-    return HttpResponse.json({ text: { key, ...texts[key]! } });
-  }),
 
   // Public: every changed block, by key, as ContentBlockController lists them.
   http.get("/api/v1/blocks", ({ request }) =>

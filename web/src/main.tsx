@@ -9,7 +9,6 @@ import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
 import { SessionProvider } from "./session/SessionProvider";
 import { EditModeProvider } from "./content/EditMode";
-import { TextsProvider } from "./texts/TextsProvider";
 import "./styles.css";
 
 // The mocked backend, opted into with `npm run dev:mock`. Guarded on
@@ -70,15 +69,13 @@ if (redirecting) {
   createRoot(root).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <TextsProvider>
-          <BlocksProvider>
-            <SessionProvider>
-              <EditModeProvider>
-                <App router={router} />
-              </EditModeProvider>
-            </SessionProvider>
-          </BlocksProvider>
-        </TextsProvider>
+        <BlocksProvider>
+          <SessionProvider>
+            <EditModeProvider>
+              <App router={router} />
+            </EditModeProvider>
+          </SessionProvider>
+        </BlocksProvider>
       </QueryClientProvider>
     </StrictMode>,
   );

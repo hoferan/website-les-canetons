@@ -5,6 +5,7 @@ import { HttpResponse, delay, http } from "msw";
 
 import { setMemberVisibility, setMockUser, setSectionNameDe } from "../mocks/handlers";
 import { server } from "../mocks/node";
+import { storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
 import { EDIT_MODE_KEY } from "../content/EditMode";
 import { Band } from "./Band";
@@ -102,7 +103,7 @@ test("renders the heading, the register index and a placeholder gap in German", 
 
   // Lyre is the empty one in the seeded roster (see the French test above).
   const lyre = await screen.findByRole("article", { name: "Lyre" });
-  expect(within(lyre).getByText(/noch zu ergänzen/)).toBeInTheDocument();
+  expect(within(lyre).getByText(/zu ergänzen/)).toBeInTheDocument();
 });
 
 test("names a register in German where it has a German name, and in French where not", async () => {
@@ -219,14 +220,43 @@ test("shows the godparents card when the roster cannot be read", async () => {
   ).toBeInTheDocument();
 });
 
-test("in edit mode the godparents' names carry a pencil", async () => {
+test("in edit mode the hero and the godparents' card carry a chip", async () => {
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUser("demo.direction");
   await renderWithSession(<Band />, { route: "/band" });
 
   expect(
-    await screen.findByRole("button", {
-      name: "Modifier le texte : Richard Hertig et Annick Bürgisser",
-    }),
+    await screen.findByRole("button", { name: "Modifier : Les canetons · parrain et marraine" }),
   ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Modifier : Les canetons · en-tête" }),
+  ).toBeInTheDocument();
+});
+
+test("the godparents' card shows the stored heading and names", async () => {
+  storeBlock("band.godparents", {
+    heading: { fr: "Nos parrains" },
+    names: { fr: "Jean Dupont et Marie Rossier" },
+  });
+  await renderWithSession(<Band />, { route: "/band" });
+
+  expect(await screen.findByRole("heading", { name: "Nos parrains" })).toBeInTheDocument();
+  expect(screen.getByText("Jean Dupont et Marie Rossier")).toBeInTheDocument();
+});
+
+/** The first names come from the roster, so the gap says where to fill it. */
+test("an empty register's gap points at the members page, in both languages", async () => {
+  const { unmount } = await renderWithSession(<Band />, { route: "/band" });
+
+  const lyre = await screen.findByRole("article", { name: "Lyre" });
+  expect(lyre.querySelector("[data-tbd='register-first-names']")?.textContent).toBe(
+    "••• à compléter sur la page Membres : prénoms du registre",
+  );
+  unmount();
+
+  await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
+  const leier = await screen.findByRole("article", { name: "Lyre" });
+  expect(leier.querySelector("[data-tbd='register-first-names']")?.textContent).toBe(
+    "••• auf der Seite Mitglieder zu ergänzen: Vornamen des Registers",
+  );
 });

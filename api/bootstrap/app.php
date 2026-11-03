@@ -72,12 +72,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // whatever the Accept header says.
         $middleware->redirectGuestsTo(fn () => null);
 
-        // A public text or block tells "the page's default" (null) from
-        // "nothing here" (an empty string): a band without a Flickr account
-        // stores an empty address to leave the network out (ADR 0038).
+        // A content block keeps its empty strings: a phone row with no number
+        // yet is "", and the SPA shows its placeholder for it (ADR 0038).
         // Everywhere else a blank field still arrives as null.
         $middleware->convertEmptyStringsToNull(except: [
-            fn (Request $request): bool => $request->is('api/v1/texts/*', 'api/v1/blocks/*'),
+            fn (Request $request): bool => $request->is('api/v1/blocks/*'),
         ]);
 
         // Self-healing schema: CI cannot reach POST /api/migrate through the

@@ -214,8 +214,6 @@ export const de: typeof fr = {
 
   fields: {
     data: "Inhalt",
-    fr: "Text auf Französisch",
-    de: "Text auf Deutsch",
     date: "Datum",
     title: "Titel",
     startsAt: "Beginn",
@@ -1304,7 +1302,6 @@ export const de: typeof fr = {
     contactHeading: "Kontakt der Canetons",
     writeToCommittee: "Dem Vorstand schreiben",
     booking: "Um die Canetons zu buchen:",
-    bookingNumber: "",
   },
 
   join: {
@@ -1334,10 +1331,8 @@ export const de: typeof fr = {
     location: "Ort",
     locationPlace: "Werkhof",
     locationAddress: "Planche-Inférieure 14, 1700 Fribourg",
-    locationAddressLabel: "Adresse für den Kartenlink",
     locationArea: "Freiburger Unterstadt",
     contacts: "Kontakte",
-    contactsList: "",
     contactMeanwhile: "In der Zwischenzeit schreiben Sie uns über die",
     contactPageLink: "Kontaktseite",
   },
@@ -1365,19 +1360,6 @@ export const de: typeof fr = {
   notFound: {
     heading: "Seite nicht gefunden",
     body: "Hoppla! Die gesuchte Seite existiert nicht oder wurde verschoben.",
-  },
-
-  texts: {
-    edit: "Text bearbeiten: {{label}}",
-    title: "Text bearbeiten",
-    french: "Français",
-    german: "Deutsch",
-    single: "Text",
-    httpsExpected: "Erwartet wird eine vollständige Adresse, die mit https:// beginnt.",
-    multilineHint: "Eine Zeile pro Eintrag.",
-    save: "Speichern",
-    reset: "Ursprünglichen Text wiederherstellen",
-    saveFailed: "Der Text konnte nicht gespeichert werden. Bitte erneut versuchen.",
   },
 
   blocks: {
@@ -1485,6 +1467,7 @@ export const de: typeof fr = {
   placeholders: {
     tbd: "••• noch zu ergänzen",
     tbdWhat: "••• noch zu ergänzen: {{what}}",
+    tbdOnMembersPage: "••• auf der Seite Mitglieder zu ergänzen: {{what}}",
     photoPending: "Foto folgt",
     registerFirstNames: "Vornamen des Registers",
     bookingNumber: "Nummer für Auftritte",

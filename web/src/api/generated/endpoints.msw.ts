@@ -379,8 +379,6 @@ import type {
   SectionIndex200,
   SectionReorder200,
   SectionResource,
-  TextIndex200,
-  TextUpdate200,
 } from "./model";
 
 export const getAuthLoginResponseMock = (
@@ -2541,34 +2539,6 @@ export const getBlockUpdateResponseMock = (
   ...overrideResponse,
 });
 
-export const getTextIndexResponseMock = (
-  overrideResponse: Partial<Extract<TextIndex200, object>> = {},
-): TextIndex200 => ({
-  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
-    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    fr: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
-    de: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
-    updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-  })),
-  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
-  ...overrideResponse,
-});
-
-export const getTextUpdateResponseMock = (
-  overrideResponse: Partial<Extract<TextUpdate200, object>> = {},
-): TextUpdate200 => ({
-  text: faker.helpers.arrayElement([
-    {
-      key: faker.string.alpha({ length: { min: 10, max: 20 } }),
-      fr: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
-      de: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
-      updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-    },
-    null,
-  ]),
-  ...overrideResponse,
-});
-
 export const getConfigShowResponseMock = (
   overrideResponse: Partial<Extract<ConfigShow200, object>> = {},
 ): ConfigShow200 => ({
@@ -4701,54 +4671,6 @@ export const getBlockUpdateMockHandler = (
   );
 };
 
-export const getTextIndexMockHandler = (
-  overrideResponse?:
-    | TextIndex200
-    | ((
-        info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<TextIndex200> | TextIndex200),
-  options?: RequestHandlerOptions,
-) => {
-  return http.get(
-    "/api/v1/texts",
-    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
-      return HttpResponse.json(
-        overrideResponse !== undefined
-          ? typeof overrideResponse === "function"
-            ? await overrideResponse(info)
-            : overrideResponse
-          : getTextIndexResponseMock(),
-        { status: 200 },
-      );
-    },
-    options,
-  );
-};
-
-export const getTextUpdateMockHandler = (
-  overrideResponse?:
-    | TextUpdate200
-    | ((
-        info: Parameters<Parameters<typeof http.put>[1]>[0],
-      ) => Promise<TextUpdate200> | TextUpdate200),
-  options?: RequestHandlerOptions,
-) => {
-  return http.put(
-    "/api/v1/texts/:key",
-    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
-      return HttpResponse.json(
-        overrideResponse !== undefined
-          ? typeof overrideResponse === "function"
-            ? await overrideResponse(info)
-            : overrideResponse
-          : getTextUpdateResponseMock(),
-        { status: 200 },
-      );
-    },
-    options,
-  );
-};
-
 export const getConfigShowMockHandler = (
   overrideResponse?:
     | ConfigShow200
@@ -4973,8 +4895,6 @@ export const getLesCanetonsAPIMock = () => [
   getImageReplaceMockHandler(),
   getBlockIndexMockHandler(),
   getBlockUpdateMockHandler(),
-  getTextIndexMockHandler(),
-  getTextUpdateMockHandler(),
   getConfigShowMockHandler(),
   getPhotoSlotIndexMockHandler(),
   getPhotoSlotUpdateMockHandler(),

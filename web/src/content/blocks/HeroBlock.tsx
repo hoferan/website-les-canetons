@@ -59,21 +59,34 @@ export function HeroBlock({
         ) : null}
       </PageHero>
       {editing ? (
-        <BlockEditor blockKey={blockKey} open={open} onClose={() => setOpen(false)}>
-          {() => (
-            <>
-              <TranslatedField name="title" label={t("blockEditor.field.title")} required />
-              <TranslatedField name="mark" label={t("blockEditor.field.mark")} optional />
-              <TranslatedField
-                name="intro"
-                label={t("blockEditor.field.intro")}
-                multiline
-                optional
-              />
-            </>
-          )}
-        </BlockEditor>
+        <HeroEditor blockKey={blockKey} open={open} onClose={() => setOpen(false)} />
       ) : null}
     </>
+  );
+}
+
+/**
+ * A hero's editor: heading, highlighted words and paragraph. For a page that
+ * lays its hero out itself, as the home page does.
+ */
+export function HeroEditor({
+  blockKey,
+  open,
+  onClose,
+}: {
+  blockKey: HeroKey;
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <BlockEditor blockKey={blockKey} open={open} onClose={onClose}>
+      {() => (
+        <>
+          <TranslatedField name="title" label={t("blockEditor.field.title")} required />
+          <TranslatedField name="mark" label={t("blockEditor.field.mark")} optional />
+          <TranslatedField name="intro" label={t("blockEditor.field.intro")} multiline optional />
+        </>
+      )}
+    </BlockEditor>
   );
 }

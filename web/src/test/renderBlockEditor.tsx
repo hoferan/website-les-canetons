@@ -14,7 +14,7 @@ export type BlockPut = { key: string; body: unknown };
 
 /**
  * Every block write the page sends, in order. The caller removes the listener
- * in its own afterEach, as EditableText.test.tsx does.
+ * in its own afterEach.
  */
 export function recordBlockPuts(): BlockPut[] {
   const puts: BlockPut[] = [];
