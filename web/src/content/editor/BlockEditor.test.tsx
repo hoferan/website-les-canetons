@@ -102,9 +102,7 @@ test("a refused save keeps the dialog open with the message", async () => {
   const user = userEvent.setup();
   server.use(
     http.put("/api/v1/blocks/:key", () =>
-      problem(400, "validation_failed", "Invalid form submission", [
-        { field: "data", reason: "required" },
-      ]),
+      problem(400, "validation_failed", "Invalid form submission", []),
     ),
   );
   const dialog = await renderBlockEditor("home.hero", heroFields);
@@ -120,6 +118,27 @@ test("a refused save keeps the dialog open with the message", async () => {
     "aria-disabled",
     "true",
   );
+});
+
+test("a block the server finds too large says so in French", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.put("/api/v1/blocks/:key", () =>
+      problem(400, "validation_failed", "Invalid form submission", [
+        { field: "data", reason: "block_too_large" },
+      ]),
+    ),
+  );
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+
+  await user.type(within(dialog).getByRole("textbox", { name: "Titre FR" }), " !");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  // The dialog has no input called `data`, so its reason is the error line.
+  const alert = await within(dialog).findByText(
+    `${t("fields.data")} ${t("validation.block_too_large")}`,
+  );
+  expect(alert.textContent).toBe("Contenu est trop volumineux");
 });
 
 test("Annuler closes without saving", async () => {

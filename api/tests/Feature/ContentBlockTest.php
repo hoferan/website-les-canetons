@@ -102,22 +102,26 @@ class ContentBlockTest extends TestCase
             $tooBig['k'.$i] = array_fill(0, 24, str_repeat('a', 1999));
         }
 
+        // The reasons are the literal wire tokens the SPA translates, so a
+        // rule that loses them (a closure rule reports `invalid_format`)
+        // fails here.
         $bad = [
-            'seven levels' => $nest(7),
-            'a 25-item list' => ['items' => array_fill(0, 25, 'x')],
-            'a 2001-char string' => ['title' => str_repeat('a', 2001)],
-            'a bad key' => ['1x' => 'x'],
-            'a bad key deep down' => ['cards' => [['bad key' => 'x']]],
-            'a list instead of an object' => ['a', 'b'],
-            'over 64 KB' => $tooBig,
+            'seven levels' => [$nest(7), 'block_too_deep'],
+            'a 25-item list' => [['items' => array_fill(0, 25, 'x')], 'block_too_many'],
+            'a 2001-char string' => [['title' => str_repeat('a', 2001)], 'block_too_long'],
+            'a bad key' => [['1x' => 'x'], 'block_bad_key'],
+            'a bad key deep down' => [['cards' => [['bad key' => 'x']]], 'block_bad_key'],
+            'a list instead of an object' => [['a', 'b'], 'block_not_an_object'],
+            'over 64 KB' => [$tooBig, 'block_too_large'],
         ];
 
-        foreach ($bad as $label => $data) {
+        foreach ($bad as $label => [$data, $reason]) {
             $this->actingAsMember($this->manager)
                 ->putJson('/api/v1/blocks/join.hero', ['data' => $data])
                 ->assertStatus(400)
                 ->assertJsonPath('code', 'validation_failed')
-                ->assertJsonPath('errors.0.field', 'data');
+                ->assertJsonPath('errors.0.field', 'data')
+                ->assertJsonPath('errors.0.reason', $reason);
         }
 
         $this->assertSame(['join.deep'], ContentBlock::query()->pluck('key')->all());

@@ -21,7 +21,7 @@ import { BLOCKS, type BlockData, type BlockKey } from "../registry";
  */
 export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
   const queryClient = useQueryClient();
-  const { error, setFromThrown, clear } = useApiFormError(t("blockEditor.saveFailed"));
+  const { error, setFromThrown, clear, messageFor } = useApiFormError(t("blockEditor.saveFailed"));
 
   const update = useBlockUpdate({
     mutation: {
@@ -44,7 +44,12 @@ export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
     });
   };
 
-  return { save, pending: update.isPending, error };
+  // The dialog has no input called `data`, so the server's reason for it (a
+  // block too large, a list too long) becomes the error line itself.
+  const dataProblem = messageFor("data");
+  const shown = error && dataProblem ? { ...error, message: dataProblem } : error;
+
+  return { save, pending: update.isPending, error: shown };
 }
 
 /**
