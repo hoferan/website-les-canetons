@@ -198,6 +198,31 @@ class WebsiteImportTest extends TestCase
         ])->assertStatus(400)->assertJsonPath('errors.0.field', 'slots.0.slot');
     }
 
+    public function test_a_register_slot_must_name_its_register_and_no_other_slot_may(): void
+    {
+        // Without the name, register-5 would land on whatever register has
+        // id 5 here, which may be another instrument.
+        $image = $this->image('l');
+
+        $this->import(['blocks' => [], 'slots' => [$this->slot('register-5', $image)], 'history' => []])
+            ->assertStatus(400)->assertJsonPath('errors.0.field', 'slots.0.registerName');
+
+        $this->import(['blocks' => [], 'slots' => [$this->slot('band', $image, null, null, 'Cloches')], 'history' => []])
+            ->assertStatus(400)->assertJsonPath('errors.0.field', 'slots.0.registerName');
+
+        $this->assertSame(0, PhotoSlot::query()->count());
+    }
+
+    public function test_event_and_history_slots_cannot_be_imported_as_slots(): void
+    {
+        $image = $this->image('g');
+
+        foreach (['event-3', 'history-4'] as $slot) {
+            $this->import(['blocks' => [], 'slots' => [$this->slot($slot, $image)], 'history' => []])
+                ->assertStatus(400)->assertJsonPath('errors.0.field', 'slots.0.slot');
+        }
+    }
+
     public function test_a_block_key_the_page_route_refuses_is_refused(): void
     {
         foreach (['Join.Facts', 'join..facts', str_repeat('a', ContentBlock::MAX_KEY_LENGTH + 1)] as $key) {
