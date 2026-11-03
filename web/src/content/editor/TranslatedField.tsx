@@ -1,17 +1,11 @@
 import { useEffect, useId, useRef, useState } from "react";
-import {
-  Controller,
-  useFormContext,
-  useWatch,
-  type FieldValues,
-  type Path,
-  type PathValue,
-} from "react-hook-form";
+import { useController, useFormContext, type FieldValues, type Path } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 
 import { FormField } from "../../components/FormField";
 import { t } from "../../i18n";
+import type { Translated } from "../translated";
 
 type Props<T extends FieldValues> = {
   /** Where the `{ fr, de? }` pair sits in the block. */
@@ -19,6 +13,8 @@ type Props<T extends FieldValues> = {
   label: string;
   multiline?: boolean;
   required?: boolean;
+  /** The block may leave this text out: both languages blank store nothing. */
+  optional?: boolean;
 };
 
 /**
@@ -38,14 +34,31 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
   label,
   multiline = false,
   required = false,
+  optional = false,
 }: Props<T>) {
-  const { control, setValue } = useFormContext<T>();
+  const { control } = useFormContext<T>();
+  // One controller on the whole pair, so an optional text left blank in both
+  // languages is stored as absent.
+  const { field, fieldState } = useController({ control, name });
+  const value = field.value as Translated | undefined;
   const id = useId();
-  const frName = `${name}.fr` as Path<T>;
-  const deName = `${name}.de` as Path<T>;
-  const german = useWatch({ control, name: deName }) as string | undefined;
   const [revealed, setRevealed] = useState(false);
-  const open = revealed || german !== undefined;
+  const open = revealed || value?.de !== undefined;
+
+  const write = (fr: string, de: string | undefined) => {
+    const german = de === undefined || de.trim() === "" ? undefined : de;
+    field.onChange(
+      optional && fr === "" && german === undefined
+        ? undefined
+        : { fr, ...(german === undefined ? {} : { de: german }) },
+    );
+  };
+
+  // A refusal on the pair itself or on its French goes on the French field.
+  const error = fieldState.error as { fr?: unknown; de?: unknown } | undefined;
+  const problem = `${label} ${t("validation.invalid_format")}`;
+  const frProblem = error && (error.fr || !error.de) ? problem : undefined;
+  const deProblem = error?.de ? problem : undefined;
 
   // Focus follows the button that was pressed, which leaves the tree: to the
   // German field it revealed, or back to "+ Deutsch".
@@ -62,57 +75,42 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
 
   return (
     <div className="flex flex-col gap-2">
-      <Controller
-        control={control}
-        name={frName}
-        render={({ field, fieldState }) => (
-          <FormField
-            id={`${id}-fr`}
-            label={label}
-            badge={<LanguageBadge>{t("blockEditor.french")}</LanguageBadge>}
-            lang="fr"
-            value={(field.value as string | undefined) ?? ""}
-            onChange={field.onChange}
-            as={as}
-            grow={multiline}
-            maxLength={2000}
-            required={required}
-            problem={fieldState.error ? `${label} ${t("validation.invalid_format")}` : undefined}
-            controlRef={field.ref}
-          />
-        )}
+      <FormField
+        id={`${id}-fr`}
+        label={label}
+        badge={<LanguageBadge>{t("blockEditor.french")}</LanguageBadge>}
+        lang="fr"
+        value={value?.fr ?? ""}
+        onChange={(fr) => write(fr, value?.de)}
+        as={as}
+        grow={multiline}
+        maxLength={2000}
+        required={required}
+        problem={frProblem}
+        controlRef={field.ref}
       />
 
       {open ? (
         <>
-          <Controller
-            control={control}
-            name={deName}
-            render={({ field, fieldState }) => (
-              <FormField
-                id={`${id}-de`}
-                label={label}
-                badge={<LanguageBadge>{t("blockEditor.german")}</LanguageBadge>}
-                lang="de"
-                value={(field.value as string | undefined) ?? ""}
-                onChange={(value) => {
-                  // Kept open while emptied: the field stays where it is
-                  // being typed in, it only stores nothing.
-                  setRevealed(true);
-                  field.onChange(value.trim() === "" ? undefined : value);
-                }}
-                as={as}
-                grow={multiline}
-                maxLength={2000}
-                problem={
-                  fieldState.error ? `${label} ${t("validation.invalid_format")}` : undefined
-                }
-                controlRef={(element) => {
-                  germanRef.current = element;
-                  field.ref(element);
-                }}
-              />
-            )}
+          <FormField
+            id={`${id}-de`}
+            label={label}
+            badge={<LanguageBadge>{t("blockEditor.german")}</LanguageBadge>}
+            lang="de"
+            value={value?.de ?? ""}
+            onChange={(de) => {
+              // Kept open while emptied: the field stays where it is being
+              // typed in, it only stores nothing.
+              setRevealed(true);
+              write(value?.fr ?? "", de);
+            }}
+            as={as}
+            grow={multiline}
+            maxLength={2000}
+            problem={deProblem}
+            controlRef={(element) => {
+              germanRef.current = element;
+            }}
           />
           <Button
             type="button"
@@ -122,7 +120,7 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
             onClick={() => {
               focusNext.current = "add";
               setRevealed(false);
-              setValue(deName, undefined as PathValue<T, Path<T>>, { shouldDirty: true });
+              write(value?.fr ?? "", undefined);
             }}
           >
             {t("blockEditor.removeGerman")}

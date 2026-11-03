@@ -64,7 +64,9 @@ function EditorForm<K extends BlockKey>({ blockKey, onClose, children }: Omit<Pr
   const definition = BLOCKS[blockKey];
   const current = useBlock(blockKey);
   const form = useForm<BlockData<K>>({
-    resolver: zodResolver(definition.schema) as unknown as Resolver<BlockData<K>>,
+    resolver: zodResolver(definition.editSchema ?? definition.schema) as unknown as Resolver<
+      BlockData<K>
+    >,
     defaultValues: current as DefaultValues<BlockData<K>>,
   });
   const { save, pending, error } = useSaveBlock(blockKey, onClose);

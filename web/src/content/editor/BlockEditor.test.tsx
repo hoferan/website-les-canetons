@@ -177,3 +177,57 @@ test("a phone number that is not one is refused", async () => {
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
   await expect.poll(() => puts.length).toBe(1);
 });
+
+test("a stored number the editor's check refuses opens as stored and is not saved", async () => {
+  // Written by an import or straight through the API: the page shows it,
+  // and only an editor saving it is told to correct it.
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  const twoNumbers = "079 123 45 67 / 026 123 45 67";
+  storeBlock("committee.contact", {
+    cards: [
+      {
+        id: "contact",
+        icon: "phone",
+        tint: "yellow",
+        title: { fr: "Contact" },
+        rows: [{ type: "phone", label: { fr: "Réservations" }, number: twoNumbers }],
+      },
+    ],
+  });
+  const dialog = await renderBlockEditor("committee.contact", () => (
+    <RowFields name="cards.0.rows" />
+  ));
+
+  expect(within(dialog).getByRole("textbox", { name: "Numéro" })).toHaveValue(twoNumbers);
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  expect(await within(dialog).findByText(t("blockEditor.phoneInvalid"))).toBeInTheDocument();
+  expect(puts).toEqual([]);
+});
+
+test.each([
+  ["left untouched", false],
+  ["typed, then emptied again", true],
+])("an address row saves without a place name %s", async (_how, typed) => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  const dialog = await renderBlockEditor("committee.contact", () => (
+    <RowFields name="cards.0.rows" />
+  ));
+
+  await user.click(within(dialog).getByRole("button", { name: "Ajouter une ligne" }));
+  await user.click(await screen.findByRole("menuitem", { name: "Adresse" }));
+
+  if (typed) {
+    const place = within(dialog).getByRole("textbox", { name: "Lieu FR" });
+    await user.type(place, "Werkhof");
+    await user.clear(place);
+  }
+  await user.type(within(dialog).getByRole("textbox", { name: "Adresse" }), "Route de Marly 1");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts.length).toBe(1);
+  const data = (puts[0]?.body as { data: { cards: { rows: unknown[] }[] } }).data;
+  expect(data.cards[0]?.rows[1]).toEqual({ type: "address", address: "Route de Marly 1" });
+});

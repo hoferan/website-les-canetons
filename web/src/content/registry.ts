@@ -3,7 +3,7 @@ import type { z } from "zod";
 import type { TranslationKey } from "../i18n";
 import { catalogueString } from "../i18n/catalogueText";
 import { fromCatalogue } from "./translated";
-import { cardsBlock, fieldsBlock, heroBlock, siteBlock } from "./types";
+import { cardsBlock, fieldsBlock, forEditor, heroBlock, siteBlock } from "./types";
 
 /**
  * Every content block a page shows, by the key it is stored under.
@@ -14,9 +14,13 @@ import { cardsBlock, fieldsBlock, heroBlock, siteBlock } from "./types";
  * gets its own copy to edit.
  *
  * `label` names the block's place on the site, for the editor's title.
+ *
+ * `editSchema` is what the editor saves against, where it checks more than a
+ * read does (see types.ts); without one the editor uses `schema`.
  */
 type BlockDefinition<S extends z.ZodType> = {
   schema: S;
+  editSchema?: z.ZodType<z.output<S>, z.input<S>>;
   defaults: () => z.output<S>;
   label: TranslationKey;
 };
@@ -48,6 +52,7 @@ function hero(
 export const BLOCKS = {
   site: block({
     schema: siteBlock,
+    editSchema: forEditor.siteBlock,
     defaults: () => ({
       name: catalogueString("site.name"),
       pitch: fromCatalogue("nav.footerPitch"),
@@ -73,6 +78,7 @@ export const BLOCKS = {
 
   "join.facts": block({
     schema: cardsBlock,
+    editSchema: forEditor.cardsBlock,
     defaults: () => ({
       cards: [
         {
@@ -140,6 +146,7 @@ export const BLOCKS = {
   // form, and the band has nothing to change there.
   "committee.contact": block({
     schema: cardsBlock,
+    editSchema: forEditor.cardsBlock,
     defaults: () => ({
       cards: [
         {

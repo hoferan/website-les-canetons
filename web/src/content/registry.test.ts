@@ -14,6 +14,15 @@ test("every default parses under its own schema", () => {
   }
 });
 
+test("every default passes its editor's checks", () => {
+  // Otherwise "Rétablir l'original" fills in content the editor refuses.
+  for (const key of Object.keys(BLOCKS) as BlockKey[]) {
+    const block = BLOCKS[key];
+    const parsed = (block.editSchema ?? block.schema).safeParse(block.defaults());
+    expect(parsed.error, key).toBeUndefined();
+  }
+});
+
 test("the registry holds every block a page shows", () => {
   expect(Object.keys(BLOCKS).sort()).toEqual(
     [

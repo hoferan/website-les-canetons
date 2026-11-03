@@ -70,6 +70,48 @@ test("a stored block of the wrong shape falls back to the default and warns", as
   expect(String(warn.mock.calls[0]?.[0])).toContain("join.hero");
 });
 
+test("a stored block the editor's checks would refuse is still read as stored", async () => {
+  // The server checks no numbers and no links, so an import or a direct
+  // write can store what the editor would not let through. The page shows
+  // it rather than the shipped content.
+  const contact = {
+    cards: [
+      {
+        id: "contact",
+        icon: "phone",
+        tint: "yellow",
+        title: { fr: "Contact" },
+        rows: [
+          { type: "phone", label: { fr: "Réservations" }, number: "079 123 45 67 / 026 123 45 67" },
+          { type: "link", label: { fr: "Site" }, url: "http://lescanetons.ch" },
+        ],
+      },
+    ],
+  };
+  server.use(
+    http.get("/api/v1/blocks", () =>
+      HttpResponse.json({
+        data: [{ key: "committee.contact", data: contact, updatedAt: "2026-11-03T10:00:00+00:00" }],
+        meta: { total: 1, limit: 100, offset: 0 },
+      }),
+    ),
+  );
+  function ContactProbe() {
+    return <pre data-testid="contact">{JSON.stringify(useBlock("committee.contact"))}</pre>;
+  }
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <BlocksProvider>
+        <ContactProbe />
+      </BlocksProvider>
+    </QueryClientProvider>,
+  );
+
+  const read = JSON.parse((await screen.findByTestId("contact")).textContent ?? "") as unknown;
+  expect(read).toEqual(contact);
+});
+
 test("tr shows French when German is blank", async () => {
   // A name typed once is the same on the German page; a blank German field
   // must not empty it.

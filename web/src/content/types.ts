@@ -10,6 +10,12 @@ import { translated } from "./translated";
  * Each text field is a {@link translated} pair. Numbers, e-mail addresses,
  * street addresses and URLs are plain strings, because they are never
  * translated.
+ *
+ * A read checks the shape only. Whether a number can be dialled or a link is
+ * https is checked by the editor (`forEditor`), because a read that refuses
+ * a block shows the shipped content in its place: one odd number from an
+ * import would hide the whole block, and an editor opened on the shipped
+ * content would then delete the stored one.
  */
 
 /** The pictures a card can carry, each a lucide-react icon by its own name. */
@@ -32,16 +38,9 @@ export const TINTS = ["pink", "cyan", "lime", "yellow", "lilac"] as const;
 export type Icon = (typeof ICONS)[number];
 export type Tint = (typeof TINTS)[number];
 
-/** Only https: an http link would be a mixed-content warning or a downgrade. */
-const httpsUrl = z.string().regex(/^https:\/\//);
+export const NETWORKS = ["instagram", "facebook", "flickr"] as const;
 
-const textRow = z.object({ type: z.literal("text"), text: translated });
-
-const labelValueRow = z.object({
-  type: z.literal("labelValue"),
-  label: translated,
-  value: translated,
-});
+export type Network = (typeof NETWORKS)[number];
 
 /**
  * Whether a typed phone number can be dialled: a Swiss number written the way
@@ -56,50 +55,92 @@ export function isPhoneNumber(value: string): boolean {
 }
 
 /**
- * A phone number in its own row, so nothing has to guess a number inside
- * prose. `tbd` is the placeholder's token: a row that ships with no number
- * shows the placeholder until the band types one.
+ * Only https: an http link would be a mixed-content warning or a downgrade.
+ * A read lets any URL through, so whatever renders one as a link checks it
+ * with this first: an imported `javascript:` URL must never become an href.
  */
-const phoneRow = z.object({
-  type: z.literal("phone"),
-  label: translated,
-  number: z.string().refine(isPhoneNumber),
-  tbd: z.string().optional(),
+export function isHttpsUrl(value: string): boolean {
+  return /^https:\/\//.test(value);
+}
+
+/** The strings an editor checks further than a read does. */
+type Checks = { phone: z.ZodType<string, string>; url: z.ZodType<string, string> };
+
+function schemas(checks: Checks) {
+  const textRow = z.object({ type: z.literal("text"), text: translated });
+
+  const labelValueRow = z.object({
+    type: z.literal("labelValue"),
+    label: translated,
+    value: translated,
+  });
+
+  // A phone number in its own row, so nothing has to guess a number inside
+  // prose. `tbd` is the placeholder's token: a row that ships with no number
+  // shows the placeholder until the band types one.
+  const phoneRow = z.object({
+    type: z.literal("phone"),
+    label: translated,
+    number: checks.phone,
+    tbd: z.string().optional(),
+  });
+
+  const emailRow = z.object({ type: z.literal("email"), label: translated, address: z.string() });
+
+  // A street address, shown under its label (the place's name) as a map link.
+  const addressRow = z.object({
+    type: z.literal("address"),
+    label: translated.optional(),
+    address: z.string(),
+  });
+
+  const linkRow = z.object({ type: z.literal("link"), label: translated, url: checks.url });
+
+  const row = z.discriminatedUnion("type", [
+    textRow,
+    labelValueRow,
+    phoneRow,
+    emailRow,
+    addressRow,
+    linkRow,
+  ]);
+
+  // One card of a grid. `id` is stable, so a stored card and the default it
+  // replaced can be told apart from a card the band added.
+  const card = z.object({
+    id: z.string(),
+    icon: z.enum(ICONS),
+    tint: z.enum(TINTS),
+    title: translated,
+    rows: z.array(row),
+  });
+
+  const cardsBlock = z.object({ cards: z.array(card) });
+
+  // What the header and the footer of every page show. The band's name and
+  // legal name are typed once and never translated.
+  const siteBlock = z.object({
+    name: z.string(),
+    pitch: translated,
+    legalName: z.string(),
+    networks: z.array(z.object({ network: z.enum(NETWORKS), url: checks.url })),
+  });
+
+  return { row, card, cardsBlock, siteBlock };
+}
+
+export const { row, card, cardsBlock, siteBlock } = schemas({
+  phone: z.string(),
+  url: z.string(),
 });
 
-const emailRow = z.object({ type: z.literal("email"), label: translated, address: z.string() });
-
-/** A street address, shown under its label (the place's name) as a map link. */
-const addressRow = z.object({
-  type: z.literal("address"),
-  label: translated.optional(),
-  address: z.string(),
+/** The same blocks as an editor saves them: a number dials, a link is https. */
+export const forEditor = schemas({
+  phone: z.string().refine(isPhoneNumber),
+  url: z.string().refine(isHttpsUrl),
 });
-
-const linkRow = z.object({ type: z.literal("link"), label: translated, url: httpsUrl });
-
-export const row = z.discriminatedUnion("type", [
-  textRow,
-  labelValueRow,
-  phoneRow,
-  emailRow,
-  addressRow,
-  linkRow,
-]);
 
 export type Row = z.infer<typeof row>;
-
-/**
- * One card of a grid. `id` is stable, so a stored card and the default it
- * replaced can be told apart from a card the band added.
- */
-export const card = z.object({
-  id: z.string(),
-  icon: z.enum(ICONS),
-  tint: z.enum(TINTS),
-  title: translated,
-  rows: z.array(row),
-});
 
 export type Card = z.infer<typeof card>;
 
@@ -114,25 +155,8 @@ export const heroBlock = z.object({
   intro: translated.optional(),
 });
 
-export const cardsBlock = z.object({ cards: z.array(card) });
-
 /** A fixed set of named texts, declared by the component that shows them. */
 export function fieldsBlock<const N extends string>(names: readonly N[]) {
   const shape = Object.fromEntries(names.map((name) => [name, translated]));
   return z.object(shape as Record<N, typeof translated>);
 }
-
-export const NETWORKS = ["instagram", "facebook", "flickr"] as const;
-
-export type Network = (typeof NETWORKS)[number];
-
-/**
- * What the header and the footer of every page show. The band's name and
- * legal name are typed once and never translated.
- */
-export const siteBlock = z.object({
-  name: z.string(),
-  pitch: translated,
-  legalName: z.string(),
-  networks: z.array(z.object({ network: z.enum(NETWORKS), url: httpsUrl })),
-});
