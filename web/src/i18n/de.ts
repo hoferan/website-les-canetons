@@ -1380,6 +1380,17 @@ export const de: typeof fr = {
     saveFailed: "Der Text konnte nicht gespeichert werden. Bitte erneut versuchen.",
   },
 
+  blocks: {
+    site: "Infos zur Website",
+    home: { hero: "Startseite · Kopfbereich" },
+    join: { hero: "Mitmachen · Kopfbereich", facts: "Mitmachen · Karten" },
+    committee: { hero: "Vorstand · Kopfbereich", contact: "Vorstand · Kontakt" },
+    band: { hero: "Die Canetons · Kopfbereich", godparents: "Die Canetons · Götti und Gotte" },
+    history: { hero: "Geschichte · Kopfbereich" },
+    contact: { hero: "Kontakt · Kopfbereich" },
+    agenda: { hero: "Wo Sie uns sehen · Kopfbereich" },
+  },
+
   editMode: {
     start: "Seite bearbeiten",
     region: "Bearbeitungsmodus",

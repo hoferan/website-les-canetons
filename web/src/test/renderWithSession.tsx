@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 
 import { LeaveGuardProvider } from "../components/LeaveGuard";
+import { BlocksProvider } from "../content/BlocksProvider";
 import { setLocale } from "../i18n";
 import { type Locale } from "../i18n/locale";
 import { SessionProvider } from "../session/SessionProvider";
@@ -46,13 +47,15 @@ export async function renderWithSession(
         element: (
           <QueryClientProvider client={queryClient}>
             <TextsProvider>
-              <SessionProvider>
-                <EditModeProvider>
-                  <LeaveGuardProvider>
-                    <div data-testid="booted">{ui}</div>
-                  </LeaveGuardProvider>
-                </EditModeProvider>
-              </SessionProvider>
+              <BlocksProvider>
+                <SessionProvider>
+                  <EditModeProvider>
+                    <LeaveGuardProvider>
+                      <div data-testid="booted">{ui}</div>
+                    </LeaveGuardProvider>
+                  </EditModeProvider>
+                </SessionProvider>
+              </BlocksProvider>
             </TextsProvider>
           </QueryClientProvider>
         ),

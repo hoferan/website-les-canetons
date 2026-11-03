@@ -1816,6 +1816,21 @@ export const fr = {
     saveFailed: "Le texte n’a pas pu être enregistré. Réessayez.",
   },
 
+  /**
+   * A content block's place on the site, the title of its editor. Nested as
+   * the block keys are, so `blocks.join.facts` names `join.facts`.
+   */
+  blocks: {
+    site: "Infos du site",
+    home: { hero: "Accueil · en-tête" },
+    join: { hero: "Nous rejoindre · en-tête", facts: "Nous rejoindre · cartes" },
+    committee: { hero: "Comité · en-tête", contact: "Comité · contact" },
+    band: { hero: "Les canetons · en-tête", godparents: "Les canetons · parrain et marraine" },
+    history: { hero: "Histoire · en-tête" },
+    contact: { hero: "Contact · en-tête" },
+    agenda: { hero: "Où nous voir · en-tête" },
+  },
+
   /** The switch that shows the pencils on a public page (#106). */
   editMode: {
     start: "Modifier la page",

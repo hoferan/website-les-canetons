@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App, { createAppRouter } from "./App";
+import { BlocksProvider } from "./content/BlocksProvider";
 import { applyDocumentMeta } from "./i18n/documentMeta";
 import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
@@ -70,11 +71,13 @@ if (redirecting) {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <TextsProvider>
-          <SessionProvider>
-            <EditModeProvider>
-              <App router={router} />
-            </EditModeProvider>
-          </SessionProvider>
+          <BlocksProvider>
+            <SessionProvider>
+              <EditModeProvider>
+                <App router={router} />
+              </EditModeProvider>
+            </SessionProvider>
+          </BlocksProvider>
         </TextsProvider>
       </QueryClientProvider>
     </StrictMode>,
