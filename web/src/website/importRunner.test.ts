@@ -20,6 +20,7 @@ function bundleOf(photos: string[]): Bundle {
   const site: WebsiteExport200 = {
     format: 2,
     exportedAt: "2026-11-02T10:00:00+00:00",
+    exportedFrom: "test.lescanetons.ch",
     blocks: [{ key: "join.facts", data: { title: { fr: "Bonjour", de: "" } } }],
     images: photos.map((c) => ({
       sha256: sha(c),
@@ -88,6 +89,8 @@ test("uploads only the photos the library lacks, then imports", async () => {
     history: [],
   });
   expect(result.slots).toBe(2);
+  // The photos that went up, for the page's result; the other was there.
+  expect(result.photos).toBe(1);
 });
 
 test("each upload sends every size, largest first", async () => {

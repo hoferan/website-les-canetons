@@ -76,6 +76,15 @@ class WebsiteExportTest extends TestCase
         ]], $body['history']);
     }
 
+    public function test_export_names_the_server_it_came_from(): void
+    {
+        // The importing page shows it, so a file from the wrong server is
+        // noticed before it replaces anything.
+        $this->actingAsMember($this->admin)->getJson('http://test.lescanetons.ch/api/v1/website/export')
+            ->assertOk()
+            ->assertJsonPath('exportedFrom', 'test.lescanetons.ch');
+    }
+
     public function test_an_empty_block_is_exported_as_an_object(): void
     {
         // The import, and the SPA's type, want an object; PHP's empty array

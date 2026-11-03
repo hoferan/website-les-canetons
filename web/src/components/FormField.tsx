@@ -168,6 +168,7 @@ export function FormField({
   type = "text",
   required = false,
   autoComplete,
+  autoCapitalize,
   describedBy: outside,
   invalid = false,
   maxLength,
@@ -187,6 +188,7 @@ export function FormField({
   type?: string;
   required?: boolean;
   autoComplete?: string;
+  autoCapitalize?: string;
   describedBy?: string;
   invalid?: boolean;
   maxLength?: number;
@@ -221,6 +223,7 @@ export function FormField({
     id,
     required,
     autoComplete,
+    autoCapitalize,
     value,
     maxLength,
     inputMode,

@@ -8140,7 +8140,7 @@
         "/website/export": {
             "get": {
                 "operationId": "website.export",
-                "description": "A photo travels as the URLs of its stored sizes, which the browser\nfetches one by one, so no single answer carries the whole library. A\nslot and a history entry name their photo by its SHA-256. An event's\nposter is not part of the website, and a history entry's photo comes\nwith the entry. A register's photo carries the register's name, since\nids differ from one server to the next.",
+                "description": "A photo travels as the URLs of its stored sizes, which the browser\nfetches one by one, so no single answer carries the whole library. A\nslot and a history entry name their photo by its SHA-256. An event's\nposter is not part of the website, and a history entry's photo comes\nwith the entry. A register's photo carries the register's name, since\nids differ from one server to the next.\n\n`exportedFrom` is the host the export was asked of, so the importing\npage can say which server a file comes from. A format 2 file written\nbefore it existed has none.",
                 "summary": "The website as one document. Requires `content.manage`, `images.manage`\nand `history.manage`",
                 "tags": [
                     "Website"
@@ -8160,6 +8160,9 @@
                                         "exportedAt": {
                                             "type": "string",
                                             "format": "date-time"
+                                        },
+                                        "exportedFrom": {
+                                            "type": "string"
                                         },
                                         "blocks": {
                                             "type": "array",
@@ -8333,6 +8336,7 @@
                                     "required": [
                                         "format",
                                         "exportedAt",
+                                        "exportedFrom",
                                         "blocks",
                                         "images",
                                         "slots",

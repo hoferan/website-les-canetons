@@ -14936,6 +14936,10 @@ export const getWebsiteExportUrl = () => {
  * poster is not part of the website, and a history entry's photo comes
  * with the entry. A register's photo carries the register's name, since
  * ids differ from one server to the next.
+ *
+ * `exportedFrom` is the host the export was asked of, so the importing
+ * page can say which server a file comes from. A format 2 file written
+ * before it existed has none.
  * @summary The website as one document. Requires `content.manage`, `images.manage`
 and `history.manage`
  */

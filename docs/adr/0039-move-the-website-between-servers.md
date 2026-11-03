@@ -47,13 +47,19 @@ approves.
   room. It uploads each missing photo through the same `POST /images` as `/media`, which
   finds a photo it already holds by its SHA-256 and keeps its name, waiting out a 429.
   Only then does it send the rest.
+- `site.json` also says where and when it was made: `exportedFrom` is the host the export
+  was asked of, beside `exportedAt`. Before an import the page shows both, then what the
+  file holds, and offers to download the current site first as the way back. The
+  confirmation names this server by its host. A format 2 file written before
+  `exportedFrom` existed still imports, and the page shows only its date.
 - The server applies the import in one transaction. Every content block, every photo slot except
   the event posters, and every history entry are replaced; a photo the library lacks
   refuses the whole import. A register's photo goes to the register with the same
   French name; one without a match is skipped and reported. Library photos are never
   deleted.
 - No `If-Match`: replacing everything is the point. The page asks the admin to type
-  `REMPLACER` instead.
+  `REMPLACER` instead, in any case, so a phone keyboard that starts in lower case does
+  not get in the way.
 
 ### Consequences
 

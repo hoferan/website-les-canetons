@@ -1,21 +1,26 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Download, Upload } from "lucide-react";
-import { useId, useState, type ChangeEvent } from "react";
+import { CircleCheck, Download, FileArchive, Upload } from "lucide-react";
+import { useId, useRef, useState, type ChangeEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import { imageSummary, websiteExport, websiteImport } from "../api/generated/endpoints";
-import type { WebsiteExport200, WebsiteImport200 } from "../api/generated/model";
 import { ApiError } from "../api/http";
+import { RAISED_CARD } from "../carnival/raised";
+import { ButtonLink } from "../components/ButtonLink";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
+import { useLeaveGuard } from "../components/LeaveGuard";
+import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
 import { t, translateApiError, type TranslationKey } from "../i18n";
 import type { UploadFn } from "../images/uploadQueue";
 import { uploadViaApi } from "../images/useUploadQueue";
-import { buildBundle, readBundle, type Bundle } from "../website/bundle";
-import { ImportRefused, runImport } from "../website/importRunner";
+import { formatDay } from "../lib/date";
+import { buildBundle, readBundle, type Bundle, type BundledSite } from "../website/bundle";
+import { ImportRefused, runImport, type ImportOutcome } from "../website/importRunner";
 
-const OUTLINED_CARD = "rounded-xl border-3 border-ink bg-panel p-5";
+const CARD = cn(RAISED_CARD, "mt-block p-5");
 
 const BUNDLE_ERRORS: Record<"not_a_bundle" | "unknown_format" | "missing_image", TranslationKey> = {
   not_a_bundle: "website.notABundle",
@@ -51,6 +56,25 @@ export function Website({
 }
 
 function ExportCard() {
+  return (
+    <section aria-labelledby="export-heading" className={CARD}>
+      <h2 id="export-heading" className="font-display text-xl">
+        {t("website.exportHeading")}
+      </h2>
+      <p className="mt-tight">{t("website.exportBody")}</p>
+      <DownloadButton label={t("website.exportButton")} className="mt-related" />
+    </section>
+  );
+}
+
+/**
+ * Downloads this server's website as a file, and says how far it got.
+ *
+ * Used twice: the export card's own button, and the tip beside an import,
+ * which offers the same file as a way back. Each keeps its own progress, so
+ * the line appears under the button that was pressed.
+ */
+function DownloadButton({ label, className }: { label: string; className?: string }) {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -85,26 +109,22 @@ function ExportCard() {
   };
 
   return (
-    <section aria-labelledby="export-heading" className={`mt-block ${OUTLINED_CARD}`}>
-      <h2 id="export-heading" className="font-display text-xl">
-        {t("website.exportHeading")}
-      </h2>
-      <p className="mt-tight">{t("website.exportBody")}</p>
+    <>
       <Button
         type="button"
         variant="raised"
-        className="mt-related"
+        className={className}
         aria-disabled={progress !== null}
         onClick={() => void download()}
       >
         <Download aria-hidden="true" />
-        {t("website.exportButton")}
+        {label}
       </Button>
       <p role="status" className="mt-tight text-sm text-ink-muted">
         {progress ? t("website.exporting", progress) : null}
       </p>
       {failed ? <p className="mt-tight text-danger">{t("website.exportFailed")}</p> : null}
-    </section>
+    </>
   );
 }
 
@@ -125,7 +145,7 @@ type Stage =
   | { kind: "idle" }
   | { kind: "read"; bundle: Bundle }
   | { kind: "running"; done: number; total: number }
-  | { kind: "done"; result: WebsiteImport200 }
+  | { kind: "done"; result: ImportOutcome }
   | { kind: "failed"; message: string };
 
 function ImportCard({
@@ -136,15 +156,23 @@ function ImportCard({
   readFile: (file: File) => Promise<Uint8Array>;
 }) {
   const queryClient = useQueryClient();
-  const inputId = useId();
+  const fileNameId = useId();
+  const input = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>({ kind: "idle" });
+  const [fileName, setFileName] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [bundleError, setBundleError] = useState<string | null>(null);
+
+  const running = stage.kind === "running";
+  // A closed tab or a link away would stop the photos half way, before the
+  // site is replaced; the photos already sent would stay in the library.
+  useLeaveGuard(running, t("website.leaveWarning"));
 
   const onFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     setStage({ kind: "idle" });
     setBundleError(null);
+    setFileName(file?.name ?? null);
     if (!file) return;
     const read = readBundle(await readFile(file));
     if ("reason" in read) {
@@ -189,23 +217,43 @@ function ImportCard({
   const site = stage.kind === "read" ? stage.bundle.site : null;
 
   return (
-    <section aria-labelledby="import-heading" className={`mt-block ${OUTLINED_CARD}`}>
+    <section aria-labelledby="import-heading" className={CARD}>
       <h2 id="import-heading" className="font-display text-xl">
         {t("website.importHeading")}
       </h2>
       <p className="mt-tight">{t("website.importBody")}</p>
 
-      <label htmlFor={inputId} className="mt-related block font-semibold">
-        {t("website.fileLabel")}
-      </label>
+      {/* The browser's own file control names nothing in French or German
+          and looks like no other button here, so it stays out of sight and
+          this button opens it. Out of the tab order too, or the keyboard
+          would reach the same picker twice. */}
       <input
-        id={inputId}
+        ref={input}
         type="file"
         accept=".zip,application/zip"
-        className="mt-tight block w-full text-sm"
-        disabled={stage.kind === "running"}
+        aria-label={t("website.fileLabel")}
+        tabIndex={-1}
+        className="sr-only"
+        disabled={running}
         onChange={(event) => void onFile(event)}
       />
+      <div className="mt-related flex flex-wrap items-center gap-x-related gap-y-tight">
+        <Button
+          type="button"
+          variant="raised"
+          aria-describedby={fileNameId}
+          aria-disabled={running}
+          onClick={() => {
+            if (!running) input.current?.click();
+          }}
+        >
+          <FileArchive aria-hidden="true" />
+          {t("website.chooseFile")}
+        </Button>
+        <span id={fileNameId} className="text-sm break-all text-ink-muted">
+          {fileName ?? t("website.noFile")}
+        </span>
+      </div>
       {bundleError ? <p className="mt-tight text-danger">{bundleError}</p> : null}
 
       {site ? <Summary site={site} onReplace={() => setConfirming(true)} /> : null}
@@ -223,7 +271,9 @@ function ImportCard({
       {stage.kind === "read" ? (
         <ConfirmByTypingName
           open={confirming}
-          title={t("website.confirmTitle")}
+          // This server, by the name in the address bar, so a file loaded
+          // into the wrong tab is caught before it replaces anything.
+          title={t("website.confirmTitle", { host: window.location.hostname })}
           description={t("website.confirmBody")}
           confirmLabel={t("website.replace")}
           confirmPhrase={t("website.confirmPhrase")}
@@ -237,15 +287,25 @@ function ImportCard({
   );
 }
 
-function Summary({ site, onReplace }: { site: WebsiteExport200; onReplace: () => void }) {
+function Summary({ site, onReplace }: { site: BundledSite; onReplace: () => void }) {
+  const date = formatDay(site.exportedAt);
   return (
     <section aria-label={t("website.summaryRegion")} className="mt-related">
-      <ul className="list-inside list-disc text-sm">
+      <p className="font-semibold">
+        {site.exportedFrom
+          ? t("website.exportedFromOn", { host: site.exportedFrom, date })
+          : t("website.exportedOn", { date })}
+      </p>
+      <ul className="mt-tight list-inside list-disc text-sm">
         <li>{t("website.countBlocks", { count: site.blocks.length })}</li>
         <li>{t("website.countPhotos", { count: site.images.length })}</li>
         <li>{t("website.countSlots", { count: site.slots.length })}</li>
         <li>{t("website.countHistory", { count: site.history.length })}</li>
       </ul>
+      <Notice className="mt-related">
+        <p>{t("website.backupTip")}</p>
+        <DownloadButton label={t("website.backupButton")} className="mt-tight" />
+      </Notice>
       <Button type="button" variant="raised-danger" className="mt-related" onClick={onReplace}>
         <Upload aria-hidden="true" />
         {t("website.replace")}
@@ -254,16 +314,32 @@ function Summary({ site, onReplace }: { site: WebsiteExport200; onReplace: () =>
   );
 }
 
-function Result({ result }: { result: WebsiteImport200 }) {
+/**
+ * What the import did, on lime with the tick the password rules use for a
+ * rule met. The palette has no green.
+ */
+function Result({ result }: { result: ImportOutcome }) {
   return (
-    <>
-      <p>{t("website.done", result)}</p>
+    <div className="rounded-[18px] border-2 border-ink bg-lime p-4">
+      <p className="flex items-center gap-2 font-semibold">
+        <CircleCheck aria-hidden="true" className="size-5 shrink-0" />
+        {t("website.done")}
+      </p>
+      <ul className="mt-tight list-inside list-disc text-sm">
+        <li>{t("website.doneBlocks", { count: result.blocks })}</li>
+        <li>{t("website.donePhotos", { count: result.photos })}</li>
+        <li>{t("website.doneSlots", { count: result.slots })}</li>
+        <li>{t("website.doneHistory", { count: result.history })}</li>
+      </ul>
       {result.skipped.map((skipped) => (
-        <p key={skipped.slot} className="text-sm text-ink-muted">
+        <p key={skipped.slot} className="mt-tight text-sm">
           {t("website.skipped", { name: skipped.registerName })}
         </p>
       ))}
-    </>
+      <ButtonLink to="/" variant="raised" className="mt-related">
+        {t("website.viewSite")}
+      </ButtonLink>
+    </div>
   );
 }
 

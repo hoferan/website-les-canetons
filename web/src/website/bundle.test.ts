@@ -10,6 +10,7 @@ import { buildBundle, readBundle } from "./bundle";
 const SITE: WebsiteExport200 = {
   format: 2,
   exportedAt: "2026-11-02T10:00:00+00:00",
+  exportedFrom: "test.lescanetons.ch",
   blocks: [{ key: "committee.contact", data: { phone: "026 000 00 03", email: "" } }],
   images: [
     {
@@ -83,4 +84,21 @@ test("a size listed but missing from images/ is refused", () => {
   const zip = zipSync({ "site.json": strToU8(JSON.stringify(SITE)) });
 
   expect(readBundle(zip)).toEqual({ reason: "missing_image" });
+});
+
+test("a format 2 file from before the server was named is still read", () => {
+  const older: Partial<WebsiteExport200> = { ...SITE };
+  delete older.exportedFrom;
+  const zip = zipSync({
+    "site.json": strToU8(JSON.stringify(older)),
+    ...Object.fromEntries(
+      SITE.images[0]!.sizes.map((size) => [`images/${size.sha256}.jpg`, bytesOf(size.url)]),
+    ),
+  });
+
+  const bundle = readBundle(zip);
+  if ("reason" in bundle) throw new Error(bundle.reason);
+
+  expect(bundle.site.exportedFrom).toBeUndefined();
+  expect(bundle.site.blocks).toEqual(SITE.blocks);
 });

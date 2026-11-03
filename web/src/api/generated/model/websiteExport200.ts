@@ -317,6 +317,7 @@ import type { WebsiteExport200SlotsItem } from "./websiteExport200SlotsItem";
 export type WebsiteExport200 = {
   format: 2;
   exportedAt: string;
+  exportedFrom: string;
   blocks: WebsiteExport200BlocksItem[];
   images: WebsiteExport200ImagesItem[];
   slots: WebsiteExport200SlotsItem[];

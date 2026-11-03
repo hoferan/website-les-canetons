@@ -348,8 +348,11 @@ members will log in.
    `history.manage` (the `direction` role), open **Site web** under the avatar
    and press **Télécharger le site**. The `.zip` holds the content blocks, every photo of
    the library, where each is shown, and the history.
-2. On PROD, with the same permissions, open **Site web**, choose the file, check
-   the counts it shows, press **Remplacer le site** and type `REMPLACER`.
+2. On PROD, with the same permissions, open **Site web** and pick the file with
+   **Choisir le fichier .zip…**. Check that it says it was exported from QA's
+   host on the day you expect, and check the counts. If PROD's current site is
+   worth keeping, press **Télécharger le site actuel** first: that file is the
+   way back. Then press **Remplacer le site** and type `REMPLACER`.
 3. Read the result. A register photo whose register does not exist on PROD
    under the same French name is listed there and not placed; create the
    register on `/registers` and import again.

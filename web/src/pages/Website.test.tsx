@@ -24,6 +24,7 @@ const SHA = createHash("sha256").update(PHOTO_BYTES).digest("hex");
 const SITE: WebsiteExport200 = {
   format: 2,
   exportedAt: "2026-11-02T10:00:00+00:00",
+  exportedFrom: "test.lescanetons.ch",
   blocks: [{ key: "committee.contact", data: { phone: "026 000 00 03" } }],
   images: [
     {
@@ -209,4 +210,193 @@ test("a file that is not a site is refused in French, and nothing is sent", asyn
 
   expect(await screen.findByText(/n’est pas un fichier de site/)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Remplacer le site" })).toBeNull();
+});
+
+test("the file button shows the chosen file name", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  const opened = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
+  await renderWithSession(<Website upload={fakeUpload} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  const button = screen.getByRole("button", { name: "Choisir le fichier .zip…" });
+  expect(button).toHaveAccessibleDescription("Aucun fichier choisi");
+  await user.click(button);
+  expect(opened).toHaveBeenCalledTimes(1);
+
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile());
+
+  await waitFor(() => expect(button).toHaveAccessibleDescription("site.zip"));
+});
+
+test("the summary says where and when the file was exported", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<Website upload={fakeUpload} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile());
+
+  const summary = await screen.findByRole("region", { name: "Contenu du fichier" });
+  expect(summary).toHaveTextContent("Fichier exporté de test.lescanetons.ch le 2 novembre 2026");
+  expect(summary).toHaveTextContent(
+    "Conseil : téléchargez d’abord le site actuel pour pouvoir revenir en arrière.",
+  );
+  expect(
+    within(summary).getByRole("button", { name: "Télécharger le site actuel" }),
+  ).toBeInTheDocument();
+});
+
+test("a file exported before the server was named says only when", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<Website upload={fakeUpload} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  // A format 2 file from before exportedFrom existed.
+  const older: Partial<WebsiteExport200> = { ...SITE };
+  delete older.exportedFrom;
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile(older));
+
+  const summary = await screen.findByRole("region", { name: "Contenu du fichier" });
+  expect(summary).toHaveTextContent("Fichier exporté le 2 novembre 2026");
+  expect(summary).not.toHaveTextContent("exporté de");
+});
+
+test("typing remplacer in lower case confirms", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  const bodies: unknown[] = [];
+  server.use(
+    http.post("/api/v1/website/import", async ({ request }) => {
+      bodies.push(await request.json());
+      return HttpResponse.json({ blocks: 1, slots: 1, history: 0, skipped: [] });
+    }),
+  );
+  await renderWithSession(<Website upload={fakeUpload} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile());
+  await user.click(await screen.findByRole("button", { name: "Remplacer le site" }));
+  // This server's own name, so the admin sees which site is about to go.
+  const dialog = await screen.findByRole("alertdialog", {
+    name: `Remplacer le site ${window.location.hostname} ?`,
+  });
+  const phrase = within(dialog).getByRole("textbox");
+  expect(phrase).toHaveAttribute("autocapitalize", "characters");
+  await user.type(phrase, "remplacer");
+  await user.click(within(dialog).getByRole("button", { name: "Remplacer le site" }));
+
+  await waitFor(() => expect(bodies).toHaveLength(1));
+});
+
+test("the result counts one block in the singular and links to the site", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  server.use(
+    // The target library holds no photo yet, so the bundle's one goes up.
+    http.get("/api/v1/website/export", () =>
+      HttpResponse.json({ ...SITE, blocks: [], images: [], slots: [] }),
+    ),
+    http.post("/api/v1/website/import", () =>
+      HttpResponse.json({ blocks: 1, slots: 2, history: 0, skipped: [] }),
+    ),
+  );
+  await renderWithSession(<Website upload={fakeUpload} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile());
+  await user.click(await screen.findByRole("button", { name: "Remplacer le site" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await user.type(within(dialog).getByRole("textbox"), "REMPLACER");
+  await user.click(within(dialog).getByRole("button", { name: "Remplacer le site" }));
+
+  const importCard = screen.getByRole("region", { name: "Importer un site" });
+  const result = within(importCard).getByRole("status");
+  await waitFor(() => expect(result).toHaveTextContent("Site importé"));
+  const lines = within(result)
+    .getAllByRole("listitem")
+    .map((item) => item.textContent);
+  expect(lines).toEqual([
+    "1 bloc de contenu repris",
+    "1 photo ajoutée à la bibliothèque",
+    "2 emplacements de photo repris",
+    "0 entrée d’historique reprise",
+  ]);
+  expect(within(result).getByRole("link", { name: "Voir le site" })).toHaveAttribute("href", "/");
+});
+
+test("leaving while photos upload asks first", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  server.use(
+    http.get("/api/v1/website/export", () =>
+      HttpResponse.json({ ...SITE, blocks: [], images: [], slots: [] }),
+    ),
+    http.post("/api/v1/website/import", () =>
+      HttpResponse.json({ blocks: 1, slots: 1, history: 0, skipped: [] }),
+    ),
+  );
+  let finish: () => void = () => {};
+  const slowUpload: UploadFn = () =>
+    new Promise((resolve) => {
+      finish = () => resolve({ status: 201, id: 1 });
+    });
+  const leave = () => {
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  await renderWithSession(<Website upload={slowUpload} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile());
+  expect(leave()).toBe(false);
+  await user.click(await screen.findByRole("button", { name: "Remplacer le site" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await user.type(within(dialog).getByRole("textbox"), "REMPLACER");
+  await user.click(within(dialog).getByRole("button", { name: "Remplacer le site" }));
+
+  await screen.findByText("Photos envoyées : 0 / 1");
+  expect(leave()).toBe(true);
+
+  finish();
+  await screen.findByText("Site importé");
+  expect(leave()).toBe(false);
+});
+
+test("a failed import stops asking before leaving", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  server.use(
+    http.get("/api/v1/website/export", () =>
+      HttpResponse.json({ ...SITE, blocks: [], images: [], slots: [] }),
+    ),
+  );
+  const failing: UploadFn = async () => {
+    throw new Error("network");
+  };
+  const leave = () => {
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  await renderWithSession(<Website upload={failing} readFile={readFile} />, {
+    route: "/website",
+  });
+
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile());
+  await user.click(await screen.findByRole("button", { name: "Remplacer le site" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await user.type(within(dialog).getByRole("textbox"), "REMPLACER");
+  await user.click(within(dialog).getByRole("button", { name: "Remplacer le site" }));
+
+  expect(await screen.findByText("L’import a échoué. Le site n’a pas changé.")).toBeInTheDocument();
+  expect(leave()).toBe(false);
 });

@@ -8,8 +8,14 @@ export const BUNDLE_FORMAT = 2;
 const SITE_FILE = "site.json";
 const imagePath = (sha256: string) => `images/${sha256}.jpg`;
 
+/**
+ * The export's document as a file holds it. A format 2 file written before
+ * the export named its server has no `exportedFrom`; it reads the same.
+ */
+export type BundledSite = Omit<WebsiteExport200, "exportedFrom"> & { exportedFrom?: string };
+
 /** A website read from a bundle: the export's document and every size's bytes, by SHA-256. */
-export type Bundle = { site: WebsiteExport200; files: Map<string, Uint8Array> };
+export type Bundle = { site: BundledSite; files: Map<string, Uint8Array> };
 export type BundleError = { reason: "not_a_bundle" | "unknown_format" | "missing_image" };
 
 /**
@@ -42,12 +48,12 @@ export async function buildBundle(
  */
 export function readBundle(zip: Uint8Array): Bundle | BundleError {
   let entries: Record<string, Uint8Array>;
-  let site: WebsiteExport200;
+  let site: BundledSite;
   try {
     entries = unzipSync(zip);
     const raw = entries[SITE_FILE];
     if (!raw) return { reason: "not_a_bundle" };
-    site = JSON.parse(strFromU8(raw)) as WebsiteExport200;
+    site = JSON.parse(strFromU8(raw)) as BundledSite;
   } catch {
     return { reason: "not_a_bundle" };
   }

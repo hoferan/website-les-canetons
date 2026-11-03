@@ -17,6 +17,7 @@ use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * The public website as one document, to set another server up the same
@@ -69,10 +70,14 @@ class WebsiteController extends Controller
      * poster is not part of the website, and a history entry's photo comes
      * with the entry. A register's photo carries the register's name, since
      * ids differ from one server to the next.
+     *
+     * `exportedFrom` is the host the export was asked of, so the importing
+     * page can say which server a file comes from. A format 2 file written
+     * before it existed has none.
      */
     #[Endpoint(operationId: 'website.export')]
     #[Response(200, 'The website: content blocks, photo library, photo slots and history.')]
-    public function export(): JsonResponse
+    public function export(Request $request): JsonResponse
     {
         $images = Image::query()->with('sizes')->orderBy('id')->get();
         $shaById = $images->pluck('sha256', 'id');
@@ -97,6 +102,7 @@ class WebsiteController extends Controller
         return response()->json([
             'format' => self::FORMAT,
             'exportedAt' => Iso8601::utc(now()),
+            'exportedFrom' => $request->getHost(),
             'blocks' => ContentBlock::query()->orderBy('key')->get()
                 ->map(fn (ContentBlock $block): array => [
                     'key' => $block->key,

@@ -2547,6 +2547,7 @@ export const getWebsiteExportResponseMock = (
 ): WebsiteExport200 => ({
   format: 2,
   exportedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  exportedFrom: faker.string.alpha({ length: { min: 10, max: 20 } }),
   blocks: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       key: faker.string.alpha({ length: { min: 10, max: 20 } }),

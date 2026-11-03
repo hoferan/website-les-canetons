@@ -3380,7 +3380,7 @@ const overrides = [
   ),
 
   // The website as one document, as WebsiteController::export writes it.
-  http.get("/api/v1/website/export", async () => {
+  http.get("/api/v1/website/export", async ({ request }) => {
     const refusal = refuseWithoutWebsite();
     if (refusal) {
       return refusal;
@@ -3404,6 +3404,7 @@ const overrides = [
     return HttpResponse.json({
       format: 2,
       exportedAt: new Date().toISOString(),
+      exportedFrom: new URL(request.url).hostname,
       blocks: Object.keys(blocks)
         .sort()
         .map((key) => ({ key, data: blocks[key]!.data })),

@@ -16,6 +16,9 @@ export class ImportRefused extends Error {
   }
 }
 
+/** What the server imported, and how many photos went up to the library first. */
+export type ImportOutcome = WebsiteImport200 & { photos: number };
+
 export type ImportDeps = {
   /** How full the target library is (GET /images/summary). */
   summary: () => Promise<{
@@ -46,7 +49,7 @@ export type ImportDeps = {
  * The room in the library, in photos and in bytes, is checked first, so a
  * bundle that cannot fit is refused before any upload.
  */
-export async function runImport(bundle: Bundle, deps: ImportDeps): Promise<WebsiteImport200> {
+export async function runImport(bundle: Bundle, deps: ImportDeps): Promise<ImportOutcome> {
   const { site, files } = bundle;
   // Every size is the file its name says, or nothing is sent: a size that is
   // not would be refused by the upload, after the photos before it.
@@ -89,7 +92,7 @@ export async function runImport(bundle: Bundle, deps: ImportDeps): Promise<Websi
 
   // The export documents a history row's precision and icon as plain
   // strings, the import as its closed sets; the server checks them either way.
-  return deps.importSite({
+  const result = await deps.importSite({
     format: site.format,
     blocks: site.blocks,
     // Only a register's photo names its register; the import refuses the
@@ -99,6 +102,7 @@ export async function runImport(bundle: Bundle, deps: ImportDeps): Promise<Websi
     ),
     history: site.history as ImportWebsiteRequest["history"],
   });
+  return { ...result, photos: missing.length };
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {

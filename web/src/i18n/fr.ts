@@ -1911,19 +1911,24 @@ export const fr = {
   /** /website: the public site carried from one server to another (#336). */
   website: {
     heading: "Site web",
-    intro:
-      "Le site public dans un fichier : les textes, les photos et l’historique. Pour préparer le site sur un serveur et le reprendre tel quel sur un autre.",
+    intro: "Préparez le site sur le serveur de test, puis reprenez-le tel quel sur le vrai site.",
     exportHeading: "Exporter le site",
     exportBody:
-      "Un fichier .zip avec les textes, toutes les photos de la bibliothèque, leurs emplacements et l’historique. Ni membres, ni événements, ni inscriptions.",
+      "Un fichier .zip avec le contenu des pages, toutes les photos de la bibliothèque, leurs emplacements et l’historique. Ni membres, ni événements, ni inscriptions.",
     exportButton: "Télécharger le site",
     exporting: "Préparation du fichier : {{done}} / {{total}} photos",
     exportFailed: "Le site n’a pas pu être exporté. Réessayez.",
     importHeading: "Importer un site",
     importBody:
-      "Remplace les textes, les emplacements de photo et l’historique de ce site par ceux du fichier. Les photos s’ajoutent à la bibliothèque, où rien n’est supprimé.",
+      "Remplace le contenu des pages, les emplacements de photo et l’historique de ce site par ceux du fichier. Les photos s’ajoutent à la bibliothèque, où rien n’est supprimé.",
+    // The file input's own name; the button beside it opens it.
     fileLabel: "Fichier du site",
+    chooseFile: "Choisir le fichier .zip…",
+    noFile: "Aucun fichier choisi",
     summaryRegion: "Contenu du fichier",
+    exportedFromOn: "Fichier exporté de {{host}} le {{date}}",
+    // A file written before the export named its server.
+    exportedOn: "Fichier exporté le {{date}}",
     countBlocks_one: "{{count}} bloc de contenu",
     countBlocks_other: "{{count}} blocs de contenu",
     countPhotos_one: "{{count}} photo",
@@ -1932,13 +1937,26 @@ export const fr = {
     countSlots_other: "{{count}} emplacements de photo",
     countHistory_one: "{{count}} entrée d’historique",
     countHistory_other: "{{count}} entrées d’historique",
+    backupTip: "Conseil : téléchargez d’abord le site actuel pour pouvoir revenir en arrière.",
+    backupButton: "Télécharger le site actuel",
     replace: "Remplacer le site",
-    confirmTitle: "Remplacer le site de ce serveur ?",
+    confirmTitle: "Remplacer le site {{host}} ?",
     confirmBody:
-      "Les textes, les emplacements de photo et l’historique d’ici seront remplacés par ceux du fichier. Les événements, les membres et les inscriptions ne changent pas.",
+      "Le contenu des pages, les emplacements de photo et l’historique d’ici seront remplacés par ceux du fichier. Les événements, les membres et les inscriptions ne changent pas.",
     confirmPhrase: "REMPLACER",
     uploading: "Photos envoyées : {{done}} / {{total}}",
-    done: "Site importé : {{blocks}} blocs de contenu, {{slots}} emplacements de photo, {{history}} entrées d’historique.",
+    leaveWarning:
+      "L’import est en cours. Si vous quittez la page maintenant, le site risque de ne pas être remplacé.",
+    done: "Site importé",
+    doneBlocks_one: "{{count}} bloc de contenu repris",
+    doneBlocks_other: "{{count}} blocs de contenu repris",
+    donePhotos_one: "{{count}} photo ajoutée à la bibliothèque",
+    donePhotos_other: "{{count}} photos ajoutées à la bibliothèque",
+    doneSlots_one: "{{count}} emplacement de photo repris",
+    doneSlots_other: "{{count}} emplacements de photo repris",
+    doneHistory_one: "{{count}} entrée d’historique reprise",
+    doneHistory_other: "{{count}} entrées d’historique reprises",
+    viewSite: "Voir le site",
     skipped: "Une photo n’a pas été placée : il n’y a pas de registre « {{name}} » ici.",
     notABundle: "Ce fichier n’est pas un fichier de site exporté depuis cette page.",
     unknownFormat: "Ce fichier vient d’une autre version du site et ne peut pas être lu ici.",
