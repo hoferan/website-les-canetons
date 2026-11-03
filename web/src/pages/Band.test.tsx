@@ -6,7 +6,7 @@ import { HttpResponse, delay, http } from "msw";
 import { setMemberVisibility, setMockUser, setSectionNameDe } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
-import { EDIT_MODE_KEY } from "../texts/EditMode";
+import { EDIT_MODE_KEY } from "../content/EditMode";
 import { Band } from "./Band";
 
 /**

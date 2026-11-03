@@ -9,7 +9,7 @@ import { server } from "../mocks/node";
 import { Band } from "../pages/Band";
 import { Home } from "../pages/Home";
 import { renderWithSession } from "../test/renderWithSession";
-import { EDIT_MODE_KEY } from "../texts/EditMode";
+import { EDIT_MODE_KEY } from "../content/EditMode";
 import { SlotPhoto } from "./SlotPhoto";
 import type { ShrinkFn, UploadFn } from "./uploadQueue";
 
@@ -22,7 +22,7 @@ import type { ShrinkFn, UploadFn } from "./uploadQueue";
  * empty.
  *
  * Every test here is an editor at work, so edit mode is on throughout; what
- * an editor sees with it off is in texts/EditMode.test.tsx.
+ * an editor sees with it off is in content/EditMode.test.tsx.
  */
 
 beforeEach(() => sessionStorage.setItem(EDIT_MODE_KEY, "1"));

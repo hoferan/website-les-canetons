@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
 import { type TranslationKey, t } from "../i18n";
-import { useEditMode } from "../texts/EditMode";
+import { useEditMode } from "../content/EditMode";
 import { EditableText } from "../texts/EditableText";
 import { useTextsVersion } from "../texts/TextsProvider";
 

@@ -7,7 +7,7 @@ import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { AppRoutes } from "../routes";
 import { renderWithSession } from "../test/renderWithSession";
-import { EDIT_MODE_KEY } from "../texts/EditMode";
+import { EDIT_MODE_KEY } from "../content/EditMode";
 
 /** Serves the band's stored texts, as GET /texts would. */
 function storedTexts(rows: Array<{ key: string; fr: string | null; de: string | null }>) {

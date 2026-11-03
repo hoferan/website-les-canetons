@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 import { t, type TranslationKey } from "../i18n";
 import { useSession } from "../session/SessionProvider";
-import { useEditMode } from "./EditMode";
+import { useEditMode } from "../content/EditMode";
 import { useTextsVersion } from "./TextsProvider";
 
 // Only an editor ever opens it, so no visitor downloads the dialog.

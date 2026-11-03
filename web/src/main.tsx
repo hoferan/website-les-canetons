@@ -8,7 +8,7 @@ import { applyDocumentMeta } from "./i18n/documentMeta";
 import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
 import { SessionProvider } from "./session/SessionProvider";
-import { EditModeProvider } from "./texts/EditMode";
+import { EditModeProvider } from "./content/EditMode";
 import { TextsProvider } from "./texts/TextsProvider";
 import "./styles.css";
 

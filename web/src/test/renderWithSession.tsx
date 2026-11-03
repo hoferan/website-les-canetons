@@ -8,7 +8,7 @@ import { BlocksProvider } from "../content/BlocksProvider";
 import { setLocale } from "../i18n";
 import { type Locale } from "../i18n/locale";
 import { SessionProvider } from "../session/SessionProvider";
-import { EditModeProvider } from "../texts/EditMode";
+import { EditModeProvider } from "../content/EditMode";
 import { TextsProvider } from "../texts/TextsProvider";
 
 /**

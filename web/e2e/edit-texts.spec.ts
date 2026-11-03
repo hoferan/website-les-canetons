@@ -16,7 +16,7 @@ async function logIn(page: Page, username: string) {
   await expect(page.getByRole("button", { name: `Compte de ${username}` })).toBeVisible();
 }
 
-test("the booking number is stored from /committee, and edit mode ends with Terminer", async ({
+test("the booking number is stored from /committee, and edit mode ends with the pill", async ({
   page,
 }) => {
   await logIn(page, "demo.direction");
@@ -24,7 +24,7 @@ test("the booking number is stored from /committee, and edit mode ends with Term
   await expect(page.locator("[data-tbd='booking-number']")).toBeVisible();
 
   await page.getByRole("button", { name: "Modifier la page" }).click();
-  await expect(page.getByRole("region", { name: "Mode édition" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Terminer la modification" })).toBeVisible();
   await page
     .getByRole("button", { name: "Modifier le texte : numéro pour les prestations" })
     .click();
@@ -37,7 +37,7 @@ test("the booking number is stored from /committee, and edit mode ends with Term
   await expect(number).toHaveAttribute("href", "tel:+41261234567");
   await expect(page.locator("[data-tbd='booking-number']")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Terminer" }).click();
+  await page.getByRole("button", { name: "Terminer la modification" }).click();
   await expect(page.getByRole("button", { name: /^Modifier le texte/ })).toHaveCount(0);
   await expect(number).toBeVisible();
 });

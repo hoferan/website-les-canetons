@@ -1393,9 +1393,10 @@ export const de: typeof fr = {
 
   editMode: {
     start: "Seite bearbeiten",
-    region: "Bearbeitungsmodus",
-    hint: "Bearbeitungsmodus: Die Stifte ändern die Seite. Besucher sehen diesen Modus nicht.",
-    done: "Fertig",
+    done: "Bearbeitung beenden",
+    announceOn:
+      "Bearbeitungsmodus aktiv: Jeder Block hat eine Schaltfläche Bearbeiten. Besucher sehen sie nicht.",
+    announceOff: "Bearbeitungsmodus beendet.",
   },
 
   placeholders: {

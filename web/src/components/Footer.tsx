@@ -4,7 +4,7 @@ import { Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
 import { cn } from "@/lib/utils";
 import { EditableText } from "../texts/EditableText";
-import { useEditMode } from "../texts/EditMode";
+import { useEditMode, useEditPillShown } from "../content/EditMode";
 import { buttonVariants } from "./ui/button";
 import {
   checkNetworkUrl,
@@ -45,6 +45,8 @@ const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
  */
 export function Footer({ above }: { above: string | null }) {
   const editMode = useEditMode();
+  // The floating pill sits over the last 4rem of the page; keep it off the footer's own buttons.
+  const pillShown = useEditPillShown();
   const follow: { network: Network; name: string; label: string; Mark: typeof InstagramMark }[] = [
     {
       network: "instagram",
@@ -57,7 +59,13 @@ export function Footer({ above }: { above: string | null }) {
   ];
 
   return (
-    <footer className={cn("relative bg-stage text-white", above === null && "mt-16")}>
+    <footer
+      className={cn(
+        "relative bg-stage text-white",
+        above === null && "mt-16",
+        pillShown && "pb-20",
+      )}
+    >
       <Scallop from={above ?? "var(--color-ground)"} />
       <div className="mx-auto max-w-shell px-4 pt-14">
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-start">

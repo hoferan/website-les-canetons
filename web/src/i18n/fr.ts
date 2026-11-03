@@ -1831,12 +1831,13 @@ export const fr = {
     agenda: { hero: "Où nous voir · en-tête" },
   },
 
-  /** The switch that shows the pencils on a public page (#106). */
+  /** The floating pill that turns edit mode on and off on a public page (#106). */
   editMode: {
     start: "Modifier la page",
-    region: "Mode édition",
-    hint: "Mode édition : les crayons modifient la page. Les visiteurs ne voient pas ce mode.",
-    done: "Terminer",
+    done: "Terminer la modification",
+    announceOn:
+      "Mode édition activé : chaque bloc a un bouton Modifier. Les visiteurs ne le voient pas.",
+    announceOff: "Mode édition désactivé.",
   },
 
   placeholders: {

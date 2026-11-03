@@ -7,7 +7,7 @@ import { t } from "../i18n";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
-import { EDIT_MODE_KEY } from "./EditMode";
+import { EDIT_MODE_KEY } from "../content/EditMode";
 import { EditableText } from "./EditableText";
 
 type Put = { path: string; body: unknown };

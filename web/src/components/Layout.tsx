@@ -32,7 +32,7 @@ import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 
-import { EditModeBar } from "../texts/EditMode";
+import { EditModePill } from "../content/EditMode";
 import { useTextsVersion } from "../texts/TextsProvider";
 
 /**
@@ -291,7 +291,7 @@ export function Layout() {
           pushed down when a page's data arrives (a layout shift, #236). The
           cost is a footer one scroll away on a page shorter than the screen. */}
       <main id="main" tabIndex={-1} className="min-h-dvh outline-none">
-        <EditModeBar />
+        <EditModePill />
         <FooterEdgeContext.Provider value={setFooterEdge}>
           <Outlet />
         </FooterEdgeContext.Provider>
