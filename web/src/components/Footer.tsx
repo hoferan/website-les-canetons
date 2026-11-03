@@ -1,4 +1,3 @@
-import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -9,8 +8,9 @@ import { useEditPillShown } from "../content/EditMode";
 import { useSite } from "../content/blocks/SiteBlock";
 import { SiteEditor } from "../content/blocks/SiteEditor";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
+import { EditChip } from "../content/editor/EditChip";
 import { tr } from "../content/translated";
-import { Button, buttonVariants } from "./ui/button";
+import { buttonVariants } from "./ui/button";
 import { FacebookMark, FlickrMark, InstagramMark, type Network, networkUrl } from "./social";
 
 /** Raised, as everything a visitor can press is, with the stage's pink shadow. */
@@ -33,7 +33,7 @@ const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
  * is left out.
  *
  * The band's name, the line under it, the legal name and the networks are the
- * site block (#106). In edit mode one button above them opens its editor.
+ * site block (#106). In edit mode one chip on the footer's top right opens its editor.
  *
  * The top edge is scalloped in the colour of whatever sits above (ADR 0029),
  * which only the page knows: `above` comes from carnival/footerEdge.ts, and
@@ -66,24 +66,17 @@ export function Footer({ above }: { above: string | null }) {
       )}
     >
       <Scallop from={above ?? "var(--color-ground)"} />
+      {editing ? (
+        <>
+          <EditChip
+            label={t("blocks.site")}
+            text={t("blockEditor.site.edit")}
+            onClick={() => setEditingSite(true)}
+          />
+          <SiteEditor open={editingSite} onClose={() => setEditingSite(false)} />
+        </>
+      ) : null}
       <div className="mx-auto max-w-shell px-4 pt-14">
-        {/* In the flow rather than over a corner: on a phone the band's name
-            takes the whole line. */}
-        {editing ? (
-          <>
-            <Button
-              type="button"
-              variant="raised"
-              size="sm"
-              className="mb-5 px-3"
-              onClick={() => setEditingSite(true)}
-            >
-              <Pencil aria-hidden="true" />
-              {t("blockEditor.site.edit")}
-            </Button>
-            <SiteEditor open={editingSite} onClose={() => setEditingSite(false)} />
-          </>
-        ) : null}
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-start">
           <div>
             <p className="font-display text-lg">{site.name}</p>

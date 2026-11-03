@@ -11,20 +11,31 @@ import { t } from "../../i18n";
  * room in the block's own layout and moves no line of text: the block must be
  * `relative`. The visible word is the same on every block; the accessible name
  * says which one it opens, so a list of a page's buttons can be told apart.
+ *
+ * `text`, when given, replaces both: it is the visible words and the
+ * accessible name, for a block whose chip says what it edits in full.
  */
-export function EditChip({ label, onClick }: { label: string; onClick: () => void }) {
+export function EditChip({
+  label,
+  text,
+  onClick,
+}: {
+  label: string;
+  text?: string;
+  onClick: () => void;
+}) {
   return (
     <Button
       type="button"
       variant="raised"
       size="sm"
-      aria-label={t("blockEditor.edit", { label })}
+      aria-label={text ?? t("blockEditor.edit", { label })}
       onClick={onClick}
       // min-h-touch from the base keeps the 44px target over size sm's h-8.
       className="absolute -top-3 right-3 z-10 px-3"
     >
       <Pencil aria-hidden="true" />
-      {t("common.edit")}
+      {text ?? t("common.edit")}
     </Button>
   );
 }

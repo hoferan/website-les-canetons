@@ -130,3 +130,17 @@ test("edit mode stays off outside the public pages", async () => {
   await screen.findByRole("contentinfo");
   expect(screen.queryByRole("button", { name: "Modifier les infos du site" })).toBeNull();
 });
+
+test("the footer's chip is the shared corner chip, over the footer and out of its flow", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+
+  const footer = screen.getByRole("contentinfo");
+  const chip = within(footer).getByRole("button", { name: "Modifier les infos du site" });
+  expect(chip).toHaveClass("absolute");
+  expect(chip).toHaveTextContent("Modifier les infos du site");
+  // The footer is the chip's positioning parent.
+  expect(footer).toHaveClass("relative");
+  expect(chip.parentElement).toBe(footer);
+});
