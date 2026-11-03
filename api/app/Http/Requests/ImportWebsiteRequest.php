@@ -8,10 +8,10 @@ use App\Models\PhotoSlot;
 use App\Support\BlockShape;
 use App\Support\HistoryIcon;
 use App\Support\HistoryPrecision;
-use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\NestedRules;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * A website as GET /website/export wrote it, less the photos: the browser
@@ -39,12 +39,7 @@ class ImportWebsiteRequest extends FormRequest
              *
              * @var array<string, mixed>
              */
-            'blocks.*.data' => ['present', 'array', function (string $attribute, mixed $value, Closure $fail): void {
-                $problem = BlockShape::check($value);
-                if ($problem !== null) {
-                    $fail($problem);
-                }
-            }],
+            'blocks.*.data' => ['present', 'array'],
             /** The photo slots, an event's poster and a history entry's photo aside. They replace every other slot. */
             'slots' => ['present', 'array', 'max:200'],
             'slots.*.slot' => ['required', 'distinct', 'string', 'regex:/^'.PhotoSlot::KEY.'$/', 'not_regex:/^(event|history)-\d+$/'],
@@ -69,6 +64,31 @@ class ImportWebsiteRequest extends FormRequest
             'history.*.important' => ['required', 'boolean'],
             'history.*.icon' => ['nullable', HistoryIcon::rule()],
             'history.*.photoSha256' => ['nullable', ...$sha256],
+        ];
+    }
+
+    /**
+     * Each block's limits, as in UpdateBlockRequest: added as a bare token
+     * on `blocks.N.data`, so the client reads it as the reason. A closure
+     * rule would report `invalid_format`.
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                foreach ((array) $this->input('blocks') as $index => $block) {
+                    $problem = BlockShape::check(is_array($block) ? ($block['data'] ?? null) : null);
+                    if ($problem !== null) {
+                        $validator->errors()->add("blocks.{$index}.data", $problem);
+
+                        return;
+                    }
+                }
+            },
         ];
     }
 }

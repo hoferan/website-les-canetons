@@ -240,16 +240,32 @@ class WebsiteImportTest extends TestCase
     {
         $this->block('join.facts', ['title' => 'Ancien']);
 
-        // The limits of PUT /blocks/{key}: a list, an over-long string, a bad
-        // key, and a value that is no object at all.
-        foreach ([['a', 'b'], ['title' => str_repeat('x', 2001)], ['1x' => 'x'], 'a string'] as $data) {
+        $tooBig = [];
+        for ($i = 0; $i < 24; $i++) {
+            $tooBig['k'.$i] = array_fill(0, 24, str_repeat('a', 1999));
+        }
+
+        // The limits of PUT /blocks/{key}, each with its own reason, as the
+        // literal token the page translates. A value that is no object at all
+        // fails the `array` rule first.
+        $bad = [
+            [['a', 'b'], 'block_not_an_object'],
+            [['title' => str_repeat('x', 2001)], 'block_too_long'],
+            [['1x' => 'x'], 'block_bad_key'],
+            [['items' => array_fill(0, 25, 'x')], 'block_too_many'],
+            [$tooBig, 'block_too_large'],
+            ['a string', 'invalid_type'],
+        ];
+        foreach ($bad as [$data, $reason]) {
+            // Second in the list, so the field names the block that failed.
             $this->import([
-                'blocks' => [['key' => 'join.facts', 'data' => $data]],
+                'blocks' => [['key' => 'join.hero', 'data' => ['title' => 'Bon']], ['key' => 'join.facts', 'data' => $data]],
                 'slots' => [],
                 'history' => [],
             ])->assertStatus(400)
                 ->assertJsonPath('code', 'validation_failed')
-                ->assertJsonPath('errors.0.field', 'blocks.0.data');
+                ->assertJsonPath('errors.0.field', 'blocks.1.data')
+                ->assertJsonPath('errors.0.reason', $reason);
         }
 
         $this->assertSame(['title' => 'Ancien'], ContentBlock::query()->findOrFail('join.facts')->data);
