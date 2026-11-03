@@ -39,6 +39,27 @@ test("a catalogue text the same in both languages is stored without German", () 
   expect(fromCatalogue("join.location")).toEqual({ fr: "Lieu", de: "Ort" });
 });
 
+test("the join hero default carries its highlight", () => {
+  // The highlighted words are part of the hero as shipped, so the default
+  // must carry them, or the page loses its yellow mark once it reads blocks.
+  expect(BLOCKS["join.hero"].defaults().mark).toEqual({ fr: "la guggen", de: "Gugge" });
+});
+
+test("every hero with a highlight on its page ships it, and contact has none", () => {
+  const marked: BlockKey[] = [
+    "home.hero",
+    "join.hero",
+    "committee.hero",
+    "band.hero",
+    "history.hero",
+    "agenda.hero",
+  ];
+  for (const key of marked) {
+    expect((BLOCKS[key].defaults() as { mark?: unknown }).mark, key).toBeDefined();
+  }
+  expect(BLOCKS["contact.hero"].defaults().mark).toBeUndefined();
+});
+
 test("the joining contacts ship as two empty phone rows", () => {
   const contacts = BLOCKS["join.facts"].defaults().cards.find((card) => card.id === "contacts");
 

@@ -26,16 +26,21 @@ function block<S extends z.ZodType>(definition: BlockDefinition<S>): BlockDefini
   return definition;
 }
 
-/** A hero with no paragraph under its heading. */
-function heroOf(title: TranslationKey, label: TranslationKey) {
-  return block({ schema: heroBlock, defaults: () => ({ title: fromCatalogue(title) }), label });
-}
-
-/** A hero with its heading and the paragraph under it. */
-function heroWithIntro(title: TranslationKey, intro: TranslationKey, label: TranslationKey) {
+/**
+ * A hero from its catalogue keys. `mark` and `intro` are left out where the
+ * page has no highlight or no paragraph under its heading.
+ */
+function hero(
+  keys: { title: TranslationKey; mark?: TranslationKey; intro?: TranslationKey },
+  label: TranslationKey,
+) {
   return block({
     schema: heroBlock,
-    defaults: () => ({ title: fromCatalogue(title), intro: fromCatalogue(intro) }),
+    defaults: () => ({
+      title: fromCatalogue(keys.title),
+      ...(keys.mark ? { mark: fromCatalogue(keys.mark) } : {}),
+      ...(keys.intro ? { intro: fromCatalogue(keys.intro) } : {}),
+    }),
     label,
   });
 }
@@ -56,9 +61,15 @@ export const BLOCKS = {
     label: "blocks.site",
   }),
 
-  "home.hero": heroWithIntro("home.hero", "home.heroSub", "blocks.home.hero"),
+  "home.hero": hero(
+    { title: "home.hero", mark: "home.heroHighlight", intro: "home.heroSub" },
+    "blocks.home.hero",
+  ),
 
-  "join.hero": heroWithIntro("join.heading", "join.intro", "blocks.join.hero"),
+  "join.hero": hero(
+    { title: "join.heading", mark: "join.headingHighlight", intro: "join.intro" },
+    "blocks.join.hero",
+  ),
 
   "join.facts": block({
     schema: cardsBlock,
@@ -120,7 +131,10 @@ export const BLOCKS = {
     label: "blocks.join.facts",
   }),
 
-  "committee.hero": heroOf("committee.heading", "blocks.committee.hero"),
+  "committee.hero": hero(
+    { title: "committee.heading", mark: "committee.headingHighlight" },
+    "blocks.committee.hero",
+  ),
 
   // "Écrire au comité" stays in the page's code: it links to the contact
   // form, and the band has nothing to change there.
@@ -147,7 +161,7 @@ export const BLOCKS = {
     label: "blocks.committee.contact",
   }),
 
-  "band.hero": heroOf("band.heading", "blocks.band.hero"),
+  "band.hero": hero({ title: "band.heading", mark: "band.headingHighlight" }, "blocks.band.hero"),
 
   "band.godparents": block({
     schema: fieldsBlock(["heading", "names"]),
@@ -158,11 +172,18 @@ export const BLOCKS = {
     label: "blocks.band.godparents",
   }),
 
-  "history.hero": heroOf("history.heading", "blocks.history.hero"),
+  "history.hero": hero(
+    { title: "history.heading", mark: "history.headingHighlight" },
+    "blocks.history.hero",
+  ),
 
-  "contact.hero": heroWithIntro("contact.heading", "contact.intro", "blocks.contact.hero"),
+  // The contact page's heading has no highlight.
+  "contact.hero": hero({ title: "contact.heading", intro: "contact.intro" }, "blocks.contact.hero"),
 
-  "agenda.hero": heroWithIntro("agenda.heading", "agenda.intro", "blocks.agenda.hero"),
+  "agenda.hero": hero(
+    { title: "agenda.heading", mark: "agenda.headingHighlight", intro: "agenda.intro" },
+    "blocks.agenda.hero",
+  ),
 };
 
 function joiningContact() {

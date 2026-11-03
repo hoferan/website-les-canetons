@@ -91,8 +91,16 @@ export const card = z.object({
 
 export type Card = z.infer<typeof card>;
 
-/** A public page's hero: its heading, and the paragraph under it on some pages. */
-export const heroBlock = z.object({ title: translated, intro: translated.optional() });
+/**
+ * A public page's hero: its heading, the words of it set on the yellow
+ * highlight, and the paragraph under it on some pages. The highlight shows
+ * only while the heading still contains those words.
+ */
+export const heroBlock = z.object({
+  title: translated,
+  mark: translated.optional(),
+  intro: translated.optional(),
+});
 
 export const cardsBlock = z.object({ cards: z.array(card) });
 
