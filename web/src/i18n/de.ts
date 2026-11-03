@@ -1406,6 +1406,9 @@ export const de: typeof fr = {
     reset: "Original wiederherstellen",
     saved: "Gespeichert",
     saveFailed: "Der Block konnte nicht gespeichert werden. Bitte erneut versuchen.",
+    invalid: "Ein Wert wird nicht angenommen. Bitte vor dem Speichern korrigieren.",
+    otherCardInvalid:
+      "Die Karte {{title}} enthält eine abgelehnte Nummer oder einen abgelehnten Link. Bitte die Karte öffnen, den Wert korrigieren und erneut versuchen.",
     french: "FR",
     german: "DE",
     addGerman: "+ Deutsch",

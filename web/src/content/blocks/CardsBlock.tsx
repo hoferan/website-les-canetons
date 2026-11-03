@@ -1,6 +1,11 @@
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import {
+  useFieldArray,
+  useFormContext,
+  type FieldErrors,
+  type UseFormReturn,
+} from "react-hook-form";
 
 import {
   AlertDialog,
@@ -39,22 +44,69 @@ export type CardsKey = {
   [K in BlockKey]: (typeof BLOCKS)[K]["schema"] extends typeof cardsBlock ? K : never;
 }[BlockKey];
 
-/** Which card the editor opens on: one of the grid's, or a new one at its end. */
-type Opening = number | "new";
+type CardsData = BlockData<CardsKey>;
+
+/** Page code shown inside the card with that id, which the band does not edit. */
+export type CardSlot = { beforeRows?: ReactNode; afterRows?: ReactNode };
+
+/** The card the editor shows, by id so it stays the same card when it moves. */
+type Opened = { id: string; adding: boolean };
+
+const LAYOUTS = {
+  grid: "grid gap-5 sm:grid-cols-2 lg:grid-cols-3",
+  // One card per line at every width, as wide as the page section.
+  wide: "grid gap-5",
+};
 
 /**
  * A grid of raised cards, each a picture on a carnival colour, a heading and
  * its rows. In edit mode every card carries its own chip, and "Ajouter une
  * carte" sits above the grid, so a list saved empty can still be refilled.
  *
- * The editor shows one card, but saves the whole list: moving a card or
- * deleting it changes its neighbours' places too.
+ * The editor shows one card but saves the whole list, since moving or
+ * deleting a card changes its neighbours' places. "Rétablir l'original"
+ * restores only the card on screen, and only a card the site ships with.
+ *
+ * `slots` puts page code into a card by its id, before or after its rows: a
+ * link to a page, or a line that depends on what the rows hold. A slot for a
+ * card the band deleted shows nowhere.
  */
-export function CardsBlock({ blockKey }: { blockKey: CardsKey }) {
+export function CardsBlock({
+  blockKey,
+  layout = "grid",
+  slots = {},
+}: {
+  blockKey: CardsKey;
+  layout?: keyof typeof LAYOUTS;
+  slots?: Record<string, CardSlot>;
+}) {
   const { cards } = useBlock(blockKey);
   const editing = useBlockEditing();
-  const [opening, setOpening] = useState<Opening | null>(null);
+  const [opened, setOpened] = useState<Opened | null>(null);
+  // Remounts the card's fields after a reset, so every field reads it.
+  const [resets, setResets] = useState(0);
   const blockLabel = t(BLOCKS[blockKey].label);
+  const shipped = opened
+    ? BLOCKS[blockKey].defaults().cards.find((card) => card.id === opened.id)
+    : undefined;
+
+  const restore = (form: UseFormReturn<CardsData>) => {
+    const index = form.getValues("cards").findIndex((card) => card.id === shipped?.id);
+    if (!shipped || index === -1) return;
+    form.setValue(`cards.${index}`, shipped, { shouldDirty: true });
+    setResets((count) => count + 1);
+  };
+
+  // A card editor shows one card, so a refused value in another one would
+  // otherwise block the save with nothing on screen to say why.
+  const elsewhere = (errors: FieldErrors<CardsData>, values: CardsData) => {
+    const wrong = values.cards.find(
+      (card, index) => card.id !== opened?.id && errors.cards?.[index] !== undefined,
+    );
+    return wrong
+      ? t("blockEditor.otherCardInvalid", { title: tr(wrong.title).trim() || blockLabel })
+      : undefined;
+  };
 
   return (
     <>
@@ -64,7 +116,7 @@ export function CardsBlock({ blockKey }: { blockKey: CardsKey }) {
           variant="raised"
           size="sm"
           className="mb-related px-3"
-          onClick={() => setOpening("new")}
+          onClick={() => setOpened({ id: crypto.randomUUID(), adding: true })}
         >
           <Plus aria-hidden="true" />
           {t("blockEditor.addCard")}
@@ -72,13 +124,13 @@ export function CardsBlock({ blockKey }: { blockKey: CardsKey }) {
       ) : null}
 
       {cards.length > 0 ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map((card, index) => (
-            <CardView key={card.id} card={card}>
+        <div className={LAYOUTS[layout]}>
+          {cards.map((card) => (
+            <CardView key={card.id} card={card} slot={slots[card.id]}>
               {editing ? (
                 <EditChip
                   label={tr(card.title).trim() || blockLabel}
-                  onClick={() => setOpening(index)}
+                  onClick={() => setOpened({ id: card.id, adding: false })}
                 />
               ) : null}
             </CardView>
@@ -87,8 +139,14 @@ export function CardsBlock({ blockKey }: { blockKey: CardsKey }) {
       ) : null}
 
       {editing ? (
-        <BlockEditor blockKey={blockKey} open={opening !== null} onClose={() => setOpening(null)}>
-          {() => <CardEditor opening={opening ?? "new"} />}
+        <BlockEditor
+          blockKey={blockKey}
+          open={opened !== null}
+          onClose={() => setOpened(null)}
+          onReset={shipped ? restore : false}
+          invalidMessage={elsewhere}
+        >
+          {() => (opened ? <CardEditor key={resets} {...opened} /> : null)}
         </BlockEditor>
       ) : null}
     </>
@@ -99,7 +157,15 @@ export function CardsBlock({ blockKey }: { blockKey: CardsKey }) {
  * One card. The icon is decoration: the heading already says what the card is
  * about.
  */
-function CardView({ card, children }: { card: CardData; children: ReactNode }) {
+function CardView({
+  card,
+  slot,
+  children,
+}: {
+  card: CardData;
+  slot: CardSlot | undefined;
+  children: ReactNode;
+}) {
   const Glyph = ICON_GLYPHS[card.icon];
 
   return (
@@ -116,38 +182,45 @@ function CardView({ card, children }: { card: CardData; children: ReactNode }) {
         </span>
         <h2 className="font-display text-xl">{tr(card.title)}</h2>
       </div>
+      {slot?.beforeRows}
       {card.rows.map((row, index) => (
         <RowView key={index} row={row} />
       ))}
+      {slot?.afterRows}
     </Card>
   );
 }
 
-function newCard(): CardData {
-  return { id: crypto.randomUUID(), icon: "star", tint: "yellow", title: { fr: "" }, rows: [] };
+function newCard(id: string): CardData {
+  return { id, icon: "star", tint: "yellow", title: { fr: "" }, rows: [] };
 }
 
 /**
- * The fields of the card being edited, inside the block's editor. It follows
- * its card when the card moves. Deleting the card saves the list at once,
- * through the editor's own submit, so its checks and its error line apply.
+ * The fields of the card being edited, inside the block's editor. It finds
+ * its card by id, so it follows the card when it moves. Deleting the card
+ * saves the list at once, through the editor's own submit, so its checks and
+ * its error line apply.
  */
-function CardEditor({ opening }: { opening: Opening }) {
-  const { control } = useFormContext<BlockData<CardsKey>>();
-  const { fields, append, move, remove } = useFieldArray({ control, name: "cards" });
-  const [index, setIndex] = useState(() => (opening === "new" ? fields.length : opening));
+function CardEditor({ id, adding }: Opened) {
+  const { control, getValues } = useFormContext<CardsData>();
+  const { append, move, remove } = useFieldArray({ control, name: "cards" });
+  // Read from the form, which a move changes before the re-render it causes.
+  // useWatch would lag one render behind, and the fields left at the old
+  // path would write stale defaults into the card that moved there.
+  const cards = getValues("cards");
+  const index = cards.findIndex((card) => card.id === id);
   const [confirming, setConfirming] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const root = useRef<HTMLDivElement>(null);
-  // Refs, so StrictMode's second run of an effect neither adds nor saves twice.
-  const added = useRef(false);
+  // A ref, so StrictMode's second run of the effect does not save twice.
   const submitted = useRef(false);
 
   useEffect(() => {
-    if (opening !== "new" || added.current) return;
-    added.current = true;
-    append(newCard(), { shouldFocus: false });
-  }, [opening, append]);
+    // Checked against the form, so StrictMode's second run adds nothing.
+    if (adding && !getValues("cards").some((card) => card.id === id)) {
+      append(newCard(id), { shouldFocus: false });
+    }
+  }, [adding, id, append, getValues]);
 
   // After the card's fields have left the form, so the browser's checks see
   // only the cards that stay.
@@ -158,12 +231,11 @@ function CardEditor({ opening }: { opening: Opening }) {
   }, [deleted]);
 
   const shift = (to: number) => {
-    if (to < 0 || to >= fields.length) return;
+    if (to < 0 || to >= cards.length) return;
     move(index, to);
-    setIndex(to);
   };
 
-  const shown = !deleted && index < fields.length;
+  const shown = !deleted && index !== -1;
 
   return (
     <div ref={root} className="space-y-4">
@@ -196,7 +268,7 @@ function CardEditor({ opening }: { opening: Opening }) {
               type="button"
               variant="raised-light"
               size="sm"
-              aria-disabled={index === fields.length - 1 || undefined}
+              aria-disabled={index === cards.length - 1 || undefined}
               onClick={() => shift(index + 1)}
             >
               <ArrowRight aria-hidden="true" />

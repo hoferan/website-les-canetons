@@ -231,3 +231,27 @@ test.each([
   const data = (puts[0]?.body as { data: { cards: { rows: unknown[] }[] } }).data;
   expect(data.cards[0]?.rows[1]).toEqual({ type: "address", address: "Route de Marly 1" });
 });
+
+test("a value refused outside the fields shown says so in the error line", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  storeBlock("committee.contact", {
+    cards: [
+      {
+        id: "contact",
+        icon: "phone",
+        tint: "yellow",
+        title: { fr: "Contact" },
+        rows: [{ type: "phone", label: { fr: "Réservations" }, number: "abc" }],
+      },
+    ],
+  });
+  const dialog = await renderBlockEditor("committee.contact", () => (
+    <TranslatedField name="cards.0.title" label="Titre" />
+  ));
+
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  expect(await within(dialog).findByText(t("blockEditor.invalid"))).toBeInTheDocument();
+  expect(puts).toEqual([]);
+});

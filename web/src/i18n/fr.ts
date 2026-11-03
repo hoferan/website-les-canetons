@@ -1849,6 +1849,10 @@ export const fr = {
     reset: "Rétablir l’original",
     saved: "Modifié",
     saveFailed: "Le bloc n’a pas pu être enregistré. Réessayez.",
+    invalid: "Une valeur n’est pas acceptée. Corrigez-la avant d’enregistrer.",
+    // A card editor shows one card; the refused value sits in another one.
+    otherCardInvalid:
+      "La carte {{title}} contient un numéro ou un lien refusé. Ouvrez-la pour le corriger, puis réessayez.",
     // The language badges beside a field's label, the same on both pages.
     french: "FR",
     german: "DE",

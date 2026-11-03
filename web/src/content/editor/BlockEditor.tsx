@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RotateCcw } from "lucide-react";
-import type { FormEvent, ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import {
   FormProvider,
   useForm,
   type DefaultValues,
+  type FieldErrors,
   type Resolver,
   type UseFormReturn,
 } from "react-hook-form";
@@ -24,6 +25,18 @@ type Props<K extends BlockKey> = {
   onClose: () => void;
   /** The block's fields, built from the parts in this folder. */
   children: (form: UseFormReturn<BlockData<K>>) => ReactNode;
+  /**
+   * What "Rétablir l'original" does, for an editor that shows only part of
+   * its block; false leaves the button out. By default it fills every field
+   * with the shipped block.
+   */
+  onReset?: ((form: UseFormReturn<BlockData<K>>) => void) | false;
+  /**
+   * The error line when the block's type refuses a value, for an editor that
+   * can say where a refused value it does not show sits. Undefined falls back
+   * to the general sentence.
+   */
+  invalidMessage?: (errors: FieldErrors<BlockData<K>>, values: BlockData<K>) => string | undefined;
 };
 
 /**
@@ -48,19 +61,23 @@ const SHEET = [
  * The form is mounted with the dialog's content, so every opening starts from
  * the page's current content rather than from an earlier, abandoned edit.
  */
-export function BlockEditor<K extends BlockKey>({ blockKey, open, onClose, children }: Props<K>) {
+export function BlockEditor<K extends BlockKey>({ open, ...props }: Props<K>) {
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? null : onClose())}>
+    <Dialog open={open} onOpenChange={(next) => (next ? null : props.onClose())}>
       <DialogContent aria-describedby={undefined} className={SHEET}>
-        <EditorForm blockKey={blockKey} onClose={onClose}>
-          {children}
-        </EditorForm>
+        <EditorForm {...props} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function EditorForm<K extends BlockKey>({ blockKey, onClose, children }: Omit<Props<K>, "open">) {
+function EditorForm<K extends BlockKey>({
+  blockKey,
+  onClose,
+  children,
+  onReset,
+  invalidMessage,
+}: Omit<Props<K>, "open">) {
   const definition = BLOCKS[blockKey];
   const current = useBlock(blockKey);
   const form = useForm<BlockData<K>>({
@@ -70,6 +87,9 @@ function EditorForm<K extends BlockKey>({ blockKey, onClose, children }: Omit<Pr
     defaultValues: current as DefaultValues<BlockData<K>>,
   });
   const { save, pending, error } = useSaveBlock(blockKey, onClose);
+  // A refusal by the block's type. The field that holds the value says so
+  // too, when it is on screen; this line covers the one that is not.
+  const [invalid, setInvalid] = useState<string | null>(null);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -77,10 +97,17 @@ function EditorForm<K extends BlockKey>({ blockKey, onClose, children }: Omit<Pr
     // The browser's own checks first (a required text, an e-mail address),
     // in the catalogue's words; then the block's type.
     if (!formIsValid(event.currentTarget)) return;
-    void form.handleSubmit(save)();
+    setInvalid(null);
+    void form.handleSubmit(save, (errors) =>
+      setInvalid(invalidMessage?.(errors, form.getValues()) ?? t("blockEditor.invalid")),
+    )();
   };
 
-  const reset = () => form.reset(definition.defaults() as BlockData<K>);
+  const reset = () => {
+    setInvalid(null);
+    if (onReset) onReset(form);
+    else form.reset(definition.defaults() as BlockData<K>);
+  };
 
   return (
     <FormProvider {...form}>
@@ -91,7 +118,7 @@ function EditorForm<K extends BlockKey>({ blockKey, onClose, children }: Omit<Pr
 
         <div className="space-y-4">{children(form)}</div>
 
-        <FormError error={error} />
+        <FormError error={error ?? (invalid ? { message: invalid, fields: [] } : null)} />
 
         {/* In the order a phone stacks them, the save first. From sm up they
             line up from the right, and Rétablir moves to the far left. */}
@@ -102,10 +129,12 @@ function EditorForm<K extends BlockKey>({ blockKey, onClose, children }: Omit<Pr
           <Button type="button" variant="raised-light" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button type="button" variant="ghost" onClick={reset} className="sm:mr-auto">
-            <RotateCcw aria-hidden="true" />
-            {t("blockEditor.reset")}
-          </Button>
+          {onReset === false ? null : (
+            <Button type="button" variant="ghost" onClick={reset} className="sm:mr-auto">
+              <RotateCcw aria-hidden="true" />
+              {t("blockEditor.reset")}
+            </Button>
+          )}
         </div>
       </form>
     </FormProvider>
