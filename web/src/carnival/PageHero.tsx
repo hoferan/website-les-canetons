@@ -2,6 +2,8 @@ import type { ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { CHIP_ROOM } from "../content/editor/EditChip";
+
 import { Confetti } from "./Confetti";
 import { Highlighted } from "./Highlighted";
 import { Scallop } from "./Scallop";
@@ -68,8 +70,9 @@ export function PageHero({
           width === "form" && "max-w-md",
         )}
       >
-        {/* `relative` for the edit chip only: a block box adds no layout. */}
-        <div className="relative">
+        {/* `relative` for the edit chip, and room above the heading while it
+            shows: a block box adds no layout otherwise. */}
+        <div className={cn("relative", edit ? CHIP_ROOM : undefined)}>
           {edit}
           {/* leading-[1.18] as on the home page, so a highlight that wraps gets a
               bar per line: see Highlighted.tsx. */}

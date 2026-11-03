@@ -1,5 +1,5 @@
 export { BlockEditor } from "./BlockEditor";
-export { EditChip } from "./EditChip";
+export { CHIP_ROOM, EditChip } from "./EditChip";
 export { ICON_GLYPHS, IconPicker } from "./IconPicker";
 export { ListField, MAX_ITEMS } from "./ListField";
 export { PlainField } from "./PlainField";

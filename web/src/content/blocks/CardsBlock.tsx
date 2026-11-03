@@ -25,6 +25,7 @@ import { t } from "../../i18n";
 import { useBlock } from "../BlocksProvider";
 import {
   BlockEditor,
+  CHIP_ROOM,
   EditChip,
   ICON_GLYPHS,
   IconPicker,
@@ -126,7 +127,7 @@ export function CardsBlock({
       {cards.length > 0 ? (
         <div className={LAYOUTS[layout]}>
           {cards.map((card) => (
-            <CardView key={card.id} card={card} slot={slots[card.id]}>
+            <CardView key={card.id} card={card} slot={slots[card.id]} editing={editing}>
               {editing ? (
                 <EditChip
                   label={tr(card.title).trim() || blockLabel}
@@ -160,16 +161,19 @@ export function CardsBlock({
 function CardView({
   card,
   slot,
+  editing,
   children,
 }: {
   card: CardData;
   slot: CardSlot | undefined;
+  /** Whether the card wears its chip, and so needs room for it. */
+  editing: boolean;
   children: ReactNode;
 }) {
   const Glyph = ICON_GLYPHS[card.icon];
 
   return (
-    <Card className={cn(RAISED_CARD, "relative gap-0 p-5")}>
+    <Card className={cn(RAISED_CARD, "relative gap-0 p-5", editing && CHIP_ROOM)}>
       {children}
       <div className="flex items-center gap-3">
         <span

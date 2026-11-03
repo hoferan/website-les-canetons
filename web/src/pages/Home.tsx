@@ -5,6 +5,7 @@ import { ButtonLink } from "@/components/ButtonLink";
 import { DestinationCards } from "@/components/DestinationCards";
 import { BrandLogo } from "@/components/Logo";
 import { PageSection } from "@/components/PageSection";
+import { cn } from "@/lib/utils";
 
 import { useAgendaIndex } from "../api/generated/endpoints";
 import { Confetti } from "../carnival/Confetti";
@@ -18,7 +19,7 @@ import { type TranslationKey, t } from "../i18n";
 import { useBlock } from "../content/BlocksProvider";
 import { HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
-import { EditChip } from "../content/editor";
+import { CHIP_ROOM, EditChip } from "../content/editor";
 import { BLOCKS } from "../content/registry";
 import { tr } from "../content/translated";
 
@@ -117,8 +118,9 @@ export function Home() {
             <BrandLogo className="w-48 rotate-[4deg] border-4 border-white shadow-raised sm:w-64 md:w-72" />
           </div>
 
-          {/* `relative` for the edit chip only. */}
-          <div className="relative">
+          {/* `relative` for the edit chip, and room above the heading while
+              it shows. */}
+          <div className={cn("relative", editing && CHIP_ROOM)}>
             {editing ? (
               <EditChip label={t(BLOCKS["home.hero"].label)} onClick={() => setEditingHero(true)} />
             ) : null}
