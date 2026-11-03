@@ -44,6 +44,18 @@ const labelValueRow = z.object({
 });
 
 /**
+ * Whether a typed phone number can be dialled: a Swiss number written the way
+ * people write it ("026 123 45 67", "+41 26 123 45 67", "0041 26 ...") or any
+ * international one, so 9 to 15 digits once spaces, dots, slashes, dashes and
+ * brackets are set aside. Empty is accepted: the row then shows its
+ * placeholder.
+ */
+export function isPhoneNumber(value: string): boolean {
+  const compact = value.replace(/[\s./()-]/g, "");
+  return compact === "" || /^(?:\+|00)?\d{9,15}$/.test(compact);
+}
+
+/**
  * A phone number in its own row, so nothing has to guess a number inside
  * prose. `tbd` is the placeholder's token: a row that ships with no number
  * shows the placeholder until the band types one.
@@ -51,7 +63,7 @@ const labelValueRow = z.object({
 const phoneRow = z.object({
   type: z.literal("phone"),
   label: translated,
-  number: z.string(),
+  number: z.string().refine(isPhoneNumber),
   tbd: z.string().optional(),
 });
 

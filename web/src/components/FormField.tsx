@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState, type FormEvent, type HTMLAttributes, type ReactNode } from "react";
+import { useState, type FormEvent, type HTMLAttributes, type ReactNode, type Ref } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,6 +149,13 @@ export function RequiredLegend() {
  * a rule or an error about a group of fields, and `invalid` marks the field
  * as part of such an error when it has no problem of its own. The history
  * form's "at least one of four" is the case both exist for.
+ *
+ * `badge` sits inside the label after its text, so it is part of the
+ * accessible name: the content editors mark a field's language that way, and
+ * `lang` tells the browser which language to spell-check. `grow` makes a
+ * textarea follow its content from three rows up, where `rows` alone would fix
+ * it at six. `controlRef` reaches the control itself, for a form library that
+ * focuses the first field it refused.
  */
 export function FormField({
   id,
@@ -165,12 +172,16 @@ export function FormField({
   invalid = false,
   maxLength,
   inputMode,
+  badge,
+  lang,
+  grow = false,
+  controlRef,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  problem?: string;
+  problem?: string | undefined;
   hint?: ReactNode;
   as?: "input" | "textarea";
   type?: string;
@@ -180,6 +191,10 @@ export function FormField({
   invalid?: boolean;
   maxLength?: number;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
+  badge?: ReactNode;
+  lang?: string;
+  grow?: boolean;
+  controlRef?: Ref<HTMLInputElement & HTMLTextAreaElement>;
 }) {
   const browser = useBrowserProblem(label);
   const shown = problem ?? browser.problem;
@@ -209,6 +224,8 @@ export function FormField({
     value,
     maxLength,
     inputMode,
+    lang,
+    ref: controlRef,
     onInvalid: browser.onInvalid,
     "aria-invalid": shown || invalid ? true : undefined,
     "aria-describedby": describedBy || undefined,
@@ -222,7 +239,10 @@ export function FormField({
   return (
     <div className="flex flex-col gap-1">
       <div>
-        <label htmlFor={id}>{label}</label>
+        <label htmlFor={id}>
+          {label}
+          {badge ? <> {badge}</> : null}
+        </label>
         {required ? (
           <>
             {" "}
@@ -233,11 +253,15 @@ export function FormField({
       {as === "textarea" ? (
         <textarea
           {...shared}
-          rows={6}
+          // Growing: a row per line typed, where the browser cannot size the
+          // box to its content itself; where it can, field-sizing also
+          // follows the lines a long paragraph wraps onto.
+          rows={grow ? Math.max(3, value.split("\n").length) : 6}
           onChange={(event) => change(event.target.value)}
           className={cn(
             "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
             shown || invalid ? "border-danger" : "border-line",
+            grow && "field-sizing-content min-h-[calc(3lh+1rem+2px)]",
           )}
         />
       ) : type === "password" ? (

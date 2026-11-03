@@ -1840,6 +1840,67 @@ export const fr = {
     announceOff: "Mode édition désactivé.",
   },
 
+  /** The dialog that changes one content block, and the fields inside it (#106). */
+  blockEditor: {
+    // The chip's accessible name; its visible word is common.edit.
+    edit: "Modifier : {{label}}",
+    save: "Enregistrer",
+    saving: "Enregistrement…",
+    reset: "Rétablir l’original",
+    saved: "Modifié",
+    saveFailed: "Le bloc n’a pas pu être enregistré. Réessayez.",
+    // The language badges beside a field's label, the same on both pages.
+    french: "FR",
+    german: "DE",
+    addGerman: "+ Deutsch",
+    removeGerman: "Retirer l’allemand",
+    up: "Monter",
+    down: "Descendre",
+    remove: "Supprimer",
+    addRow: "Ajouter une ligne",
+    rowType: {
+      text: "Texte",
+      labelValue: "Libellé + valeur",
+      phone: "Téléphone",
+      email: "E-mail",
+      address: "Adresse",
+      link: "Lien",
+    },
+    field: {
+      text: "Texte",
+      label: "Libellé",
+      value: "Valeur",
+      number: "Numéro",
+      email: "Adresse e-mail",
+      place: "Lieu",
+      address: "Adresse",
+      url: "Adresse du lien",
+    },
+    httpsExpected: "Une adresse complète est attendue, commençant par https://.",
+    phoneInvalid: "Un numéro de téléphone est attendu, par exemple 026 123 45 67.",
+    icon: "Icône",
+    tint: "Couleur",
+    icons: {
+      music: "Musique",
+      clock: "Horloge",
+      cake: "Gâteau",
+      "map-pin": "Lieu",
+      phone: "Téléphone",
+      users: "Groupe",
+      calendar: "Calendrier",
+      star: "Étoile",
+      info: "Information",
+      mail: "Courrier",
+    },
+    tints: {
+      pink: "Rose",
+      cyan: "Turquoise",
+      lime: "Vert",
+      yellow: "Jaune",
+      lilac: "Lilas",
+    },
+  },
+
   placeholders: {
     tbd: "••• à compléter",
     // A whole string, punctuation included: French puts a space before a
