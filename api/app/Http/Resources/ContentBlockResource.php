@@ -19,6 +19,11 @@ class ContentBlockResource extends JsonResource
     {
         return [
             'key' => $this->key,
+            // Not quite on GET /blocks: PaginatesCollections decodes the body
+            // to arrays and encodes it again, so an empty stored block goes
+            // out as `[]` there. The SPA parses `[]` against the block's
+            // schema, fails, and shows the default, which is what an empty
+            // block means anyway.
             /**
              * The block's content, an object even when empty.
              *

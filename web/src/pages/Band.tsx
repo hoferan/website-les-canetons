@@ -110,10 +110,9 @@ export function Band() {
         {/* Set apart from the registers: a parrain and a marraine do not
             play, and listing them among the registers implies they do.
 
-            Authored copy (`band.godparents`), the one thing on this page
-            that is. `members` is
-            the roster, and every row in it has an account and answers
-            events, so there is no row for them.
+            Their names are a content block (`band.godparents`), typed by
+            the band. `members` is the roster, and every row in it has an
+            account and answers events, so there is no row for them.
 
             Held until the roster has answered, whatever the answer: the
             registers are far taller than a screen, and a card rendered while
