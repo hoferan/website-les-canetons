@@ -6,8 +6,10 @@ import { t } from "../i18n";
  * A stale name is worse than an obvious gap: a parent who rings the wrong
  * person gets a wrong answer, whereas a parent who sees a gap asks. So facts
  * the band has not confirmed render as something no reader can mistake for
- * real content. The Direction fills each one in from the page, in edit mode
- * (ADR 0038); what is still missing is counted by rendering
+ * real content. Some come from a content block's default: a phone row that
+ * ships with an empty number renders this until the Direction types one into
+ * the block's editor, in edit mode (ADR 0038). The others stand in for what
+ * the roster does not hold yet. What is still missing is counted by rendering
  * the public pages: a grep over call sites miscounts, because some sit in a
  * loop and others render only for an empty roster.
  *
