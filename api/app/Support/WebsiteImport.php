@@ -2,18 +2,18 @@
 
 namespace App\Support;
 
+use App\Models\ContentBlock;
 use App\Models\HistoryEntry;
 use App\Models\Image;
 use App\Models\PhotoSlot;
 use App\Models\Section;
-use App\Models\TextOverride;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Replaces a server's website with another's (#336, ADR 0039).
  *
- * One transaction: the texts, the photo slots and the history are replaced
+ * One transaction: the content blocks, the photo slots and the history are replaced
  * together, or the server keeps what it had. An event's poster belongs to
  * its event and is left alone. No library photo is deleted: an event's
  * poster may use one, and a spare photo costs nothing.
@@ -26,8 +26,8 @@ use Illuminate\Support\Facades\DB;
 final class WebsiteImport
 {
     /**
-     * @param  array{texts: list<array{key: string, fr: ?string, de: ?string}>, slots: list<array{slot: string, sha256: string, label?: ?string, path?: ?string, registerName?: ?string}>, history: list<array<string, mixed>>}  $bundle
-     * @return array{texts: int, slots: int, history: int, skipped: list<array{slot: string, registerName: string}>}
+     * @param  array{blocks: list<array{key: string, data: array<string, mixed>}>, slots: list<array{slot: string, sha256: string, label?: ?string, path?: ?string, registerName?: ?string}>, history: list<array<string, mixed>>}  $bundle
+     * @return array{blocks: int, slots: int, history: int, skipped: list<array{slot: string, registerName: string}>}
      */
     public static function apply(array $bundle): array
     {
@@ -59,9 +59,9 @@ final class WebsiteImport
         }
 
         DB::transaction(function () use ($bundle, $slots, $images): void {
-            TextOverride::query()->delete();
-            foreach ($bundle['texts'] as $text) {
-                TextOverride::query()->create(['key' => $text['key'], 'fr' => $text['fr'], 'de' => $text['de']]);
+            ContentBlock::query()->delete();
+            foreach ($bundle['blocks'] as $block) {
+                ContentBlock::query()->create(['key' => $block['key'], 'data' => $block['data']]);
             }
 
             // History slots go with their entries; event posters stay.
@@ -96,7 +96,7 @@ final class WebsiteImport
         });
 
         return [
-            'texts' => count($bundle['texts']),
+            'blocks' => count($bundle['blocks']),
             'slots' => count($slots),
             'history' => count($bundle['history']),
             'skipped' => $skipped,

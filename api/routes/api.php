@@ -351,8 +351,8 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     });
 
     // The whole public website, from one server to another (#336). All three
-    // permissions, since an import replaces the texts, the photo slots and the
-    // history at once.
+    // permissions, since an import replaces the content blocks, the photo
+    // slots and the history at once.
     Route::middleware([
         'permission:content.manage',
         'permission:images.manage',

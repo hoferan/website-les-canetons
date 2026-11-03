@@ -2545,9 +2545,16 @@ export const getBlockUpdateResponseMock = (
 export const getWebsiteExportResponseMock = (
   overrideResponse: Partial<Extract<WebsiteExport200, object>> = {},
 ): WebsiteExport200 => ({
-  format: 1,
+  format: 2,
   exportedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-  texts: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  blocks: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      data: {
+        [faker.string.alphanumeric(5)]: {},
+      },
+    }),
+  ),
   images: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       sha256: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -2609,7 +2616,7 @@ export const getWebsiteExportResponseMock = (
 export const getWebsiteImportResponseMock = (
   overrideResponse: Partial<Extract<WebsiteImport200, object>> = {},
 ): WebsiteImport200 => ({
-  texts: faker.number.int(),
+  blocks: faker.number.int(),
   slots: faker.number.int(),
   history: faker.number.int(),
   skipped: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(

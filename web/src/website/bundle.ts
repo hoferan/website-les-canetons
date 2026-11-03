@@ -2,8 +2,8 @@ import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from "fflate";
 
 import type { WebsiteExport200 } from "../api/generated/model";
 
-/** The bundle's shape; see WebsiteController::FORMAT. */
-export const BUNDLE_FORMAT = 1;
+/** The bundle's shape; see WebsiteController::FORMAT. Format 1 carried single texts. */
+export const BUNDLE_FORMAT = 2;
 
 const SITE_FILE = "site.json";
 const imagePath = (sha256: string) => `images/${sha256}.jpg`;

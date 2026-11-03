@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\ContentBlock;
 use App\Models\HistoryEntry;
 use App\Models\Image;
 use App\Models\Member;
 use App\Models\PhotoSlot;
 use App\Models\Role;
 use App\Models\Section;
-use App\Models\TextOverride;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\LibraryImage;
@@ -37,9 +37,10 @@ class WebsiteExportTest extends TestCase
             ->create();
     }
 
-    public function test_export_carries_texts_images_slots_and_history(): void
+    public function test_export_carries_blocks_images_slots_and_history(): void
     {
-        TextOverride::query()->create(['key' => 'committee.bookingNumber', 'fr' => '026 000 00 03', 'de' => '026 000 00 03']);
+        $contact = ['phone' => '026 000 00 03', 'email' => '', 'rows' => [['label' => ['fr' => 'Lieu', 'de' => 'Ort']]]];
+        ContentBlock::query()->create(['key' => 'committee.contact', 'data' => $contact]);
         $band = $this->image('a', 'Le groupe');
         $this->place('band', $band, 'Le groupe', '/band');
         // A migration seeds the band's history; this test wants one entry it knows.
@@ -52,10 +53,11 @@ class WebsiteExportTest extends TestCase
 
         $body = $this->actingAsMember($this->admin)->getJson('/api/v1/website/export')
             ->assertStatus(200)
-            ->assertJsonPath('format', 1)
+            ->assertJsonPath('format', 2)
             ->json();
 
-        $this->assertSame([['key' => 'committee.bookingNumber', 'fr' => '026 000 00 03', 'de' => '026 000 00 03']], $body['texts']);
+        $this->assertArrayNotHasKey('texts', $body);
+        $this->assertSame([['key' => 'committee.contact', 'data' => $contact]], $body['blocks']);
         $this->assertSame([[
             'sha256' => $band->sha256,
             'name' => 'Le groupe',
@@ -72,6 +74,17 @@ class WebsiteExportTest extends TestCase
             'titleDe' => 'Gründung', 'bodyDe' => null, 'important' => true, 'icon' => null,
             'photoSha256' => $band->sha256,
         ]], $body['history']);
+    }
+
+    public function test_an_empty_block_is_exported_as_an_object(): void
+    {
+        // The import, and the SPA's type, want an object; PHP's empty array
+        // would encode as a list.
+        ContentBlock::query()->create(['key' => 'home.hero', 'data' => []]);
+
+        $json = $this->actingAsMember($this->admin)->getJson('/api/v1/website/export')->assertOk()->getContent();
+
+        $this->assertStringContainsString('"blocks":[{"key":"home.hero","data":{}}]', (string) $json);
     }
 
     public function test_event_posters_and_history_slots_are_not_slots_in_the_bundle(): void

@@ -38,8 +38,8 @@ export type ImportDeps = {
  * Each photo the library lacks goes up through the same upload as /media, one
  * request per photo, so none comes near the host's upload limit; the library
  * keeps its name and finds a photo it already holds by its SHA-256. Only then
- * is the rest sent, and the server replaces the texts, the slots and the
- * history in one go. A photo that fails stops the import before that step,
+ * is the rest sent, and the server replaces the content blocks, the slots
+ * and the history in one go. A photo that fails stops the import before that step,
  * so the site is never left half replaced; the photos already uploaded stay
  * in the library, where a second run finds them.
  *
@@ -91,7 +91,7 @@ export async function runImport(bundle: Bundle, deps: ImportDeps): Promise<Websi
   // strings, the import as its closed sets; the server checks them either way.
   return deps.importSite({
     format: site.format,
-    texts: site.texts,
+    blocks: site.blocks,
     // Only a register's photo names its register; the import refuses the
     // field anywhere else.
     slots: site.slots.map(({ registerName, ...slot }) =>

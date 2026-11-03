@@ -73,8 +73,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn () => null);
 
         // A content block keeps its empty strings: a phone row with no number
-        // yet is "", and the SPA shows its placeholder for it (ADR 0038).
-        // Everywhere else a blank field still arrives as null.
+        // yet is "", and the SPA shows its placeholder for it (ADR 0038). A
+        // website import carries blocks, so it keeps them too. Everywhere else
+        // a blank field still arrives as null.
         $middleware->convertEmptyStringsToNull(except: [
             fn (Request $request): bool => $request->is('api/v1/blocks/*', 'api/v1/website/import'),
         ]);

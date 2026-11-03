@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ImportWebsiteRequest;
 use App\Http\Resources\ImageResource;
+use App\Models\ContentBlock;
 use App\Models\HistoryEntry;
 use App\Models\Image;
 use App\Models\PhotoSlot;
 use App\Models\Section;
-use App\Models\TextOverride;
 use App\Support\Audit;
 use App\Support\Iso8601;
 use App\Support\WebsiteImport;
@@ -20,23 +20,23 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * The public website as one document, to set another server up the same
- * (#336, ADR 0039): the texts, the photo library and where its photos are
+ * (#336, ADR 0039): the content blocks, the photo library and where its photos are
  * shown, and the history. Members, events, roles, registers, committee seats
  * and event tags stay on the server they were entered on.
  */
 #[Group('Website', 'The public website as a whole, carried from one server to another. Every route here needs `content.manage`, `images.manage` and `history.manage`.', weight: 67)]
 class WebsiteController extends Controller
 {
-    /** The bundle's shape. A reader refuses any other. */
-    public const FORMAT = 1;
+    /** The bundle's shape. A reader refuses any other; 1 carried single texts. */
+    public const FORMAT = 2;
 
     /**
      * Replaces this server's website with the one sent. Requires
      * `content.manage`, `images.manage` and `history.manage`.
      *
      * Upload every photo to the library first (POST /images); a photo the
-     * library does not hold refuses the whole import. The texts, the photo
-     * slots and the history are replaced in one transaction, so a refused
+     * library does not hold refuses the whole import. The content blocks,
+     * the photo slots and the history are replaced in one transaction, so a refused
      * import changes nothing. No `If-Match`: replacing everything is the
      * point, and the page asks for a typed confirmation before it sends this.
      */
@@ -44,7 +44,7 @@ class WebsiteController extends Controller
     #[Response(200, 'What was imported, and each register photo that found no register of its name.')]
     public function import(ImportWebsiteRequest $request): JsonResponse
     {
-        /** @var array{texts: list<array{key: string, fr: ?string, de: ?string}>, slots: list<array{slot: string, sha256: string, label?: ?string, path?: ?string, registerName?: ?string}>, history: list<array<string, mixed>>} $bundle */
+        /** @var array{blocks: list<array{key: string, data: array<string, mixed>}>, slots: list<array{slot: string, sha256: string, label?: ?string, path?: ?string, registerName?: ?string}>, history: list<array<string, mixed>>} $bundle */
         $bundle = $request->validated();
         $result = WebsiteImport::apply($bundle);
 
@@ -53,7 +53,7 @@ class WebsiteController extends Controller
             'website.imported',
             'website',
             null,
-            "texts={$result['texts']} slots={$result['slots']} history={$result['history']}",
+            "blocks={$result['blocks']} slots={$result['slots']} history={$result['history']}",
         );
 
         return response()->json($result);
@@ -71,7 +71,7 @@ class WebsiteController extends Controller
      * ids differ from one server to the next.
      */
     #[Endpoint(operationId: 'website.export')]
-    #[Response(200, 'The website: texts, photo library, photo slots and history.')]
+    #[Response(200, 'The website: content blocks, photo library, photo slots and history.')]
     public function export(): JsonResponse
     {
         $images = Image::query()->with('sizes')->orderBy('id')->get();
@@ -97,8 +97,16 @@ class WebsiteController extends Controller
         return response()->json([
             'format' => self::FORMAT,
             'exportedAt' => Iso8601::utc(now()),
-            'texts' => TextOverride::query()->orderBy('key')->get()
-                ->map(fn (TextOverride $text): array => ['key' => $text->key, 'fr' => $text->fr, 'de' => $text->de])
+            'blocks' => ContentBlock::query()->orderBy('key')->get()
+                ->map(fn (ContentBlock $block): array => [
+                    'key' => $block->key,
+                    /**
+                     * The block's content, an object even when empty.
+                     *
+                     * @var array<string, mixed>
+                     */
+                    'data' => (object) $block->data,
+                ])
                 ->values(),
             'images' => $images->map(fn (Image $image): array => [
                 'sha256' => $image->sha256,

@@ -15097,8 +15097,8 @@ export const getWebsiteImportUrl = () => {
 
 /**
  * Upload every photo to the library first (POST /images); a photo the
- * library does not hold refuses the whole import. The texts, the photo
- * slots and the history are replaced in one transaction, so a refused
+ * library does not hold refuses the whole import. The content blocks,
+ * the photo slots and the history are replaced in one transaction, so a refused
  * import changes nothing. No `If-Match`: replacing everything is the
  * point, and the page asks for a typed confirmation before it sends this.
  * @summary Replaces this server's website with the one sent. Requires

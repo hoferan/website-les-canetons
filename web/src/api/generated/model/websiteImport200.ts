@@ -312,7 +312,7 @@
 import type { WebsiteImport200SkippedItem } from "./websiteImport200SkippedItem";
 
 export type WebsiteImport200 = {
-  texts: number;
+  blocks: number;
   slots: number;
   history: number;
   skipped: WebsiteImport200SkippedItem[];

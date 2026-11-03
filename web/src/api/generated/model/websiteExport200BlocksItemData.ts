@@ -310,20 +310,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type ImportWebsiteRequestTextsItem = {
-  /**
-   * @maxLength 0
-   * @pattern ^$
-   */
-  key: string;
-  /**
-   * @maxLength 0
-   * @nullable
-   */
-  fr: string | null;
-  /**
-   * @maxLength 0
-   * @nullable
-   */
-  de: string | null;
-};
+/**
+ * The block's content, an object even when empty.
+ */
+export type WebsiteExport200BlocksItemData = { [key: string]: unknown };

@@ -23,11 +23,11 @@ test("a site exported, then imported into an empty one, shows the same booking n
   await logIn(page, "demo.direction");
   await page.locator('a[href="/committee"]:visible').first().click();
   await page.getByRole("button", { name: "Modifier la page" }).click();
-  await page
-    .getByRole("button", { name: "Modifier le texte : numéro pour les prestations" })
-    .click();
-  await page.getByRole("dialog").getByLabel("Texte").fill("026 123 45 67");
-  await page.getByRole("dialog").getByRole("button", { name: "Enregistrer" }).click();
+  await page.getByRole("button", { name: "Modifier : Contact des Canetons" }).click();
+  const editor = page.getByRole("dialog", { name: "Comité · contact" });
+  await editor.getByLabel("Numéro").fill("026 123 45 67");
+  await editor.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(editor).toBeHidden();
   await expect(page.getByRole("link", { name: "026 123 45 67" })).toBeVisible();
 
   await page.getByRole("button", { name: "Compte de demo.direction" }).click();
@@ -47,7 +47,9 @@ test("a site exported, then imported into an empty one, shows the same booking n
   await page.getByRole("button", { name: "Compte de demo.direction" }).click();
   await page.getByRole("menuitem", { name: "Site web" }).click();
   await page.getByLabel("Fichier du site").setInputFiles(file);
-  await expect(page.getByRole("region", { name: "Contenu du fichier" })).toContainText("1 texte");
+  await expect(page.getByRole("region", { name: "Contenu du fichier" })).toContainText(
+    "1 bloc de contenu",
+  );
   await page.getByRole("button", { name: "Remplacer le site" }).click();
   const dialog = page.getByRole("alertdialog");
   await dialog.getByRole("textbox").fill("REMPLACER");

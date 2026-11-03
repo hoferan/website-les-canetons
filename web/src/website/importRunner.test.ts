@@ -18,9 +18,9 @@ const sha = (c: string) => digest(bytesFor(c, 800));
 
 function bundleOf(photos: string[]): Bundle {
   const site: WebsiteExport200 = {
-    format: 1,
+    format: 2,
     exportedAt: "2026-11-02T10:00:00+00:00",
-    texts: [{ key: "join.intro", fr: "Bonjour", de: null }],
+    blocks: [{ key: "join.facts", data: { title: { fr: "Bonjour", de: "" } } }],
     images: photos.map((c) => ({
       sha256: sha(c),
       name: `Photo ${c}`,
@@ -62,7 +62,7 @@ function deps(
     importSite: async (body) => {
       imported.push(body);
       return {
-        texts: body.texts.length,
+        blocks: body.blocks.length,
         slots: body.slots.length,
         history: body.history.length,
         skipped: [],
@@ -82,8 +82,8 @@ test("uploads only the photos the library lacks, then imports", async () => {
   expect(d.uploads).toEqual(["Photo b"]);
   expect(d.imported).toHaveLength(1);
   expect(d.imported[0]).toEqual({
-    format: 1,
-    texts: [{ key: "join.intro", fr: "Bonjour", de: null }],
+    format: 2,
+    blocks: [{ key: "join.facts", data: { title: { fr: "Bonjour", de: "" } } }],
     slots: bundleOf(["a", "b"]).site.slots.map(({ registerName: _none, ...slot }) => slot),
     history: [],
   });

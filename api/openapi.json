@@ -8147,7 +8147,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "The website: texts, photo library, photo slots and history.",
+                        "description": "The website: content blocks, photo library, photo slots and history.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8155,14 +8155,31 @@
                                     "properties": {
                                         "format": {
                                             "type": "integer",
-                                            "const": 1
+                                            "const": 2
                                         },
                                         "exportedAt": {
                                             "type": "string",
                                             "format": "date-time"
                                         },
-                                        "texts": {
-                                            "type": "string"
+                                        "blocks": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "key": {
+                                                        "type": "string"
+                                                    },
+                                                    "data": {
+                                                        "type": "object",
+                                                        "description": "The block's content, an object even when empty.",
+                                                        "additionalProperties": {}
+                                                    }
+                                                },
+                                                "required": [
+                                                    "key",
+                                                    "data"
+                                                ]
+                                            }
                                         },
                                         "images": {
                                             "type": "array",
@@ -8316,7 +8333,7 @@
                                     "required": [
                                         "format",
                                         "exportedAt",
-                                        "texts",
+                                        "blocks",
                                         "images",
                                         "slots",
                                         "history"
@@ -8340,7 +8357,7 @@
         "/website/import": {
             "post": {
                 "operationId": "website.import",
-                "description": "Upload every photo to the library first (POST /images); a photo the\nlibrary does not hold refuses the whole import. The texts, the photo\nslots and the history are replaced in one transaction, so a refused\nimport changes nothing. No `If-Match`: replacing everything is the\npoint, and the page asks for a typed confirmation before it sends this.",
+                "description": "Upload every photo to the library first (POST /images); a photo the\nlibrary does not hold refuses the whole import. The content blocks,\nthe photo slots and the history are replaced in one transaction, so a refused\nimport changes nothing. No `If-Match`: replacing everything is the\npoint, and the page asks for a typed confirmation before it sends this.",
                 "summary": "Replaces this server's website with the one sent. Requires\n`content.manage`, `images.manage` and `history.manage`",
                 "tags": [
                     "Website"
@@ -8363,7 +8380,7 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "texts": {
+                                        "blocks": {
                                             "type": "integer"
                                         },
                                         "slots": {
@@ -8395,7 +8412,7 @@
                                         }
                                     },
                                     "required": [
-                                        "texts",
+                                        "blocks",
                                         "slots",
                                         "history",
                                         "skipped"
@@ -9976,43 +9993,33 @@
                 "properties": {
                     "format": {
                         "type": "integer",
-                        "description": "The bundle's shape. Only `1` is read.",
-                        "minimum": 1,
-                        "maximum": 1
+                        "description": "The bundle's shape. Only `2` is read.",
+                        "minimum": 2,
+                        "maximum": 2
                     },
-                    "texts": {
+                    "blocks": {
                         "type": "array",
-                        "description": "The changed texts, as GET /texts lists them. They replace every stored text.",
+                        "description": "The changed content blocks, as GET /blocks lists them. They replace every stored block.",
                         "items": {
                             "type": "object",
                             "properties": {
                                 "key": {
                                     "type": "string",
-                                    "pattern": "^$",
-                                    "maxLength": 0
+                                    "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+){0,3}$",
+                                    "maxLength": 64
                                 },
-                                "fr": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ],
-                                    "maxLength": 0
-                                },
-                                "de": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ],
-                                    "maxLength": 0
+                                "data": {
+                                    "type": "object",
+                                    "description": "The block's content, under the same limits as PUT /blocks/{key}.",
+                                    "additionalProperties": {}
                                 }
                             },
                             "required": [
                                 "key",
-                                "fr",
-                                "de"
+                                "data"
                             ]
                         },
-                        "maxItems": 500
+                        "maxItems": 200
                     },
                     "slots": {
                         "type": "array",
@@ -10141,7 +10148,7 @@
                 },
                 "required": [
                     "format",
-                    "texts",
+                    "blocks",
                     "slots",
                     "history"
                 ],

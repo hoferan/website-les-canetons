@@ -3,10 +3,12 @@
 namespace App\Http\Requests;
 
 use App\Http\Controllers\Api\WebsiteController;
+use App\Models\ContentBlock;
 use App\Models\PhotoSlot;
-use App\Models\TextOverride;
+use App\Support\BlockShape;
 use App\Support\HistoryIcon;
 use App\Support\HistoryPrecision;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\NestedRules;
 use Illuminate\Validation\Rule;
@@ -26,13 +28,23 @@ class ImportWebsiteRequest extends FormRequest
 
         return [
             // min/max rather than `in`, which the document would show as a string.
-            /** The bundle's shape. Only `1` is read. */
+            /** The bundle's shape. Only `2` is read. */
             'format' => ['required', 'integer', 'min:'.WebsiteController::FORMAT, 'max:'.WebsiteController::FORMAT],
-            /** The changed texts, as GET /texts lists them. They replace every stored text. */
-            'texts' => ['present', 'array', 'max:500'],
-            'texts.*.key' => ['required', 'distinct', 'string', 'max:'.TextOverride::MAX_KEY_LENGTH, 'regex:/^'.TextOverride::KEY.'$/'],
-            'texts.*.fr' => ['present', 'nullable', 'string', 'max:'.TextOverride::MAX_LENGTH],
-            'texts.*.de' => ['present', 'nullable', 'string', 'max:'.TextOverride::MAX_LENGTH],
+            /** The changed content blocks, as GET /blocks lists them. They replace every stored block. */
+            'blocks' => ['present', 'array', 'max:200'],
+            'blocks.*.key' => ['required', 'distinct', 'string', 'max:'.ContentBlock::MAX_KEY_LENGTH, 'regex:/^'.ContentBlock::KEY.'$/'],
+            // `present`: `required` would refuse an empty object.
+            /**
+             * The block's content, under the same limits as PUT /blocks/{key}.
+             *
+             * @var array<string, mixed>
+             */
+            'blocks.*.data' => ['present', 'array', function (string $attribute, mixed $value, Closure $fail): void {
+                $problem = BlockShape::check($value);
+                if ($problem !== null) {
+                    $fail($problem);
+                }
+            }],
             /** The photo slots, an event's poster and a history entry's photo aside. They replace every other slot. */
             'slots' => ['present', 'array', 'max:200'],
             'slots.*.slot' => ['required', 'distinct', 'string', 'regex:/^'.PhotoSlot::KEY.'$/', 'not_regex:/^(event|history)-\d+$/'],

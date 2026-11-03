@@ -241,7 +241,7 @@ function Summary({ site, onReplace }: { site: WebsiteExport200; onReplace: () =>
   return (
     <section aria-label={t("website.summaryRegion")} className="mt-related">
       <ul className="list-inside list-disc text-sm">
-        <li>{t("website.countTexts", { count: site.texts.length })}</li>
+        <li>{t("website.countBlocks", { count: site.blocks.length })}</li>
         <li>{t("website.countPhotos", { count: site.images.length })}</li>
         <li>{t("website.countSlots", { count: site.slots.length })}</li>
         <li>{t("website.countHistory", { count: site.history.length })}</li>

@@ -8,9 +8,9 @@ import type { WebsiteExport200 } from "../api/generated/model";
 import { buildBundle, readBundle } from "./bundle";
 
 const SITE: WebsiteExport200 = {
-  format: 1,
+  format: 2,
   exportedAt: "2026-11-02T10:00:00+00:00",
-  texts: [{ key: "committee.bookingNumber", fr: "026 000 00 03", de: "026 000 00 03" }],
+  blocks: [{ key: "committee.contact", data: { phone: "026 000 00 03", email: "" } }],
   images: [
     {
       sha256: "a".repeat(64),
@@ -66,8 +66,15 @@ test("a file that is not a zip is not a bundle", () => {
   expect(readBundle(strToU8("just text"))).toEqual({ reason: "not_a_bundle" });
 });
 
-test("a bundle of another format is refused", () => {
-  const zip = zipSync({ "site.json": strToU8(JSON.stringify({ ...SITE, format: 2 })) });
+test("a format 1 bundle, which carried single texts, is refused", () => {
+  // JSON drops the undefined `blocks`, as a format 1 file has none.
+  const old = {
+    ...SITE,
+    format: 1,
+    blocks: undefined,
+    texts: [{ key: "join.intro", fr: "Bonjour", de: null }],
+  };
+  const zip = zipSync({ "site.json": strToU8(JSON.stringify(old)) });
 
   expect(readBundle(zip)).toEqual({ reason: "unknown_format" });
 });

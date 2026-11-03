@@ -3402,11 +3402,11 @@ const overrides = [
       return id ? (sections.find((section) => section.id === Number(id))?.name ?? null) : null;
     };
     return HttpResponse.json({
-      format: 1,
+      format: 2,
       exportedAt: new Date().toISOString(),
-      texts: Object.keys(texts)
+      blocks: Object.keys(blocks)
         .sort()
-        .map((key) => ({ key, fr: texts[key]!.fr, de: texts[key]!.de })),
+        .map((key) => ({ key, data: blocks[key]!.data })),
       images: images.map((image) => ({
         sha256: image.sha256,
         name: image.name,
@@ -3446,7 +3446,7 @@ const overrides = [
     });
   }),
 
-  // Replaces the texts, the slots but event posters, and the history, as
+  // Replaces the blocks, the slots but event posters, and the history, as
   // WebsiteImport does. Every photo must already be in the library.
   http.post("/api/v1/website/import", async ({ request }) => {
     const refusal = refuseWithoutWebsite();
@@ -3455,7 +3455,7 @@ const overrides = [
     }
     const body = (await request.json()) as {
       format: number;
-      texts: Array<{ key: string; fr: string | null; de: string | null }>;
+      blocks: Array<{ key: string; data: unknown }>;
       slots: Array<{
         slot: string;
         sha256: string;
@@ -3469,10 +3469,18 @@ const overrides = [
         }
       >;
     };
-    if (body.format !== 1) {
+    if (body.format !== 2) {
       return problem(400, "validation_failed", "Invalid form submission", [
         { field: "format", reason: "invalid_value" },
       ]);
+    }
+    for (const [index, block] of body.blocks.entries()) {
+      const reason = blockProblem(block.data);
+      if (reason) {
+        return problem(400, "validation_failed", "Invalid form submission", [
+          { field: `blocks.${index}.data`, reason },
+        ]);
+      }
     }
     const idOf = (sha256: string) => images.find((image) => image.sha256 === sha256)?.id;
     const unknown = body.slots.findIndex((slot) => idOf(slot.sha256) === undefined);
@@ -3497,10 +3505,10 @@ const overrides = [
       }
       kept[key] = { imageId: idOf(slot.sha256)!, label: slot.label, path: slot.path };
     }
-    texts = Object.fromEntries(
-      body.texts.map((text) => [
-        text.key,
-        { fr: text.fr, de: text.de, updatedAt: new Date().toISOString() },
+    blocks = Object.fromEntries(
+      body.blocks.map((block) => [
+        block.key,
+        { data: block.data as Record<string, unknown>, updatedAt: new Date().toISOString() },
       ]),
     );
     const now = new Date().toISOString();
@@ -3514,7 +3522,7 @@ const overrides = [
     });
     photoSlots = kept;
     return HttpResponse.json({
-      texts: body.texts.length,
+      blocks: body.blocks.length,
       slots: body.slots.length - skipped.length,
       history: body.history.length,
       skipped,

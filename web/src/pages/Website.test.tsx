@@ -22,9 +22,9 @@ import { Website } from "./Website";
 const PHOTO_BYTES = "jpeg bytes";
 const SHA = createHash("sha256").update(PHOTO_BYTES).digest("hex");
 const SITE: WebsiteExport200 = {
-  format: 1,
+  format: 2,
   exportedAt: "2026-11-02T10:00:00+00:00",
-  texts: [{ key: "committee.bookingNumber", fr: "026 000 00 03", de: "026 000 00 03" }],
+  blocks: [{ key: "committee.contact", data: { phone: "026 000 00 03" } }],
   images: [
     {
       sha256: SHA,
@@ -126,7 +126,7 @@ test("a file shows what it holds before anything is replaced", async () => {
   await user.upload(screen.getByLabelText("Fichier du site"), bundleFile());
 
   const summary = await screen.findByRole("region", { name: "Contenu du fichier" });
-  expect(summary).toHaveTextContent("1 texte");
+  expect(summary).toHaveTextContent("1 bloc de contenu");
   expect(summary).toHaveTextContent("1 photo");
   expect(imported).toBe(false);
 });
@@ -137,12 +137,12 @@ test("import replaces the site after the typed confirmation, and names a skipped
   const bodies: unknown[] = [];
   server.use(
     http.get("/api/v1/website/export", () =>
-      HttpResponse.json({ ...SITE, texts: [], images: [], slots: [] }),
+      HttpResponse.json({ ...SITE, blocks: [], images: [], slots: [] }),
     ),
     http.post("/api/v1/website/import", async ({ request }) => {
       bodies.push(await request.json());
       return HttpResponse.json({
-        texts: 1,
+        blocks: 1,
         slots: 0,
         history: 0,
         skipped: [{ slot: "register-9", registerName: "Tubas" }],
@@ -164,6 +164,38 @@ test("import replaces the site after the typed confirmation, and names a skipped
   await waitFor(() => expect(result).toHaveTextContent("Site importé"));
   expect(result).toHaveTextContent("Tubas");
   expect(bodies).toHaveLength(1);
+});
+
+test("a format 1 bundle is refused as unknown_format and nothing is uploaded", async () => {
+  // Format 1 held single texts, from before the content blocks.
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  const upload = vi.fn(fakeUpload);
+  let imported = false;
+  server.use(
+    http.post("/api/v1/website/import", () => {
+      imported = true;
+      return HttpResponse.json({});
+    }),
+  );
+  const formatOne = {
+    ...SITE,
+    format: 1,
+    blocks: undefined,
+    texts: [{ key: "join.intro", fr: "Bonjour", de: null }],
+  };
+  await renderWithSession(<Website upload={upload} readFile={readFile} />, { route: "/website" });
+
+  await user.upload(screen.getByLabelText("Fichier du site"), bundleFile(formatOne));
+
+  expect(
+    await screen.findByText(
+      "Ce fichier vient d’une autre version du site et ne peut pas être lu ici.",
+    ),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Remplacer le site" })).toBeNull();
+  expect(upload).not.toHaveBeenCalled();
+  expect(imported).toBe(false);
 });
 
 test("a file that is not a site is refused in French, and nothing is sent", async () => {

@@ -346,7 +346,7 @@ members will log in.
 
 1. On QA, as an account holding `content.manage`, `images.manage` and
    `history.manage` (the `direction` role), open **Site web** under the avatar
-   and press **Télécharger le site**. The `.zip` holds the texts, every photo of
+   and press **Télécharger le site**. The `.zip` holds the content blocks, every photo of
    the library, where each is shown, and the history.
 2. On PROD, with the same permissions, open **Site web**, choose the file, check
    the counts it shows, press **Remplacer le site** and type `REMPLACER`.
@@ -354,7 +354,7 @@ members will log in.
    under the same French name is listed there and not placed; create the
    register on `/registers` and import again.
 
-The import replaces PROD's texts, photo slots and history in one transaction:
+The import replaces PROD's content blocks, photo slots and history in one transaction:
 a refused import changes nothing, and it can be run again. Photos are uploaded
 one per request before that, so no request comes near the host's upload limit,
 and they stay in the library if the import is refused. Library photos are never

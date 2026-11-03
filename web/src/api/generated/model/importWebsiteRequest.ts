@@ -309,9 +309,9 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { ImportWebsiteRequestBlocksItem } from "./importWebsiteRequestBlocksItem";
 import type { ImportWebsiteRequestHistoryItem } from "./importWebsiteRequestHistoryItem";
 import type { ImportWebsiteRequestSlotsItem } from "./importWebsiteRequestSlotsItem";
-import type { ImportWebsiteRequestTextsItem } from "./importWebsiteRequestTextsItem";
 
 /**
  * A website as GET /website/export wrote it, less the photos: the browser
@@ -321,16 +321,16 @@ import type { ImportWebsiteRequestTextsItem } from "./importWebsiteRequestTextsI
  */
 export interface ImportWebsiteRequest {
   /**
-   * The bundle's shape. Only `1` is read.
-   * @minimum 1
-   * @maximum 1
+   * The bundle's shape. Only `2` is read.
+   * @minimum 2
+   * @maximum 2
    */
   format: number;
   /**
-   * The changed texts, as GET /texts lists them. They replace every stored text.
-   * @maxItems 500
+   * The changed content blocks, as GET /blocks lists them. They replace every stored block.
+   * @maxItems 200
    */
-  texts: ImportWebsiteRequestTextsItem[];
+  blocks: ImportWebsiteRequestBlocksItem[];
   /**
    * The photo slots, an event's poster and a history entry's photo aside. They replace every other slot.
    * @maxItems 200

@@ -9,7 +9,7 @@ decision-makers: André Hofer
 ## Context and Problem Statement
 
 QA is to be cut over first. The Team Direction then sets up and approves the public
-website there: texts ([ADR-0038](0038-public-texts-are-catalogue-defaults-the-band-overrides.md)),
+website there: the content blocks of the public pages ([ADR-0038](0038-public-pages-are-content-blocks-edited-in-place.md)),
 photos and where they are shown ([ADR-0028](0028-photos-live-in-the-database-in-sizes-made-by-the-browser.md)),
 and the history. PROD should then go live with the same website.
 
@@ -32,7 +32,7 @@ Chosen option: "An export to one file and an import of it, both run from a page 
 app". It needs no shell, it can be run again, and it moves only what the Direction
 approves.
 
-- What travels is the website only: the stored texts, the whole photo library, the
+- What travels is the website only: the content blocks the band has changed, the whole photo library, the
   photo slots (event posters aside), and the history. Members, events, bookings, roles,
   registers, committee seats and event tags stay on the server they were entered on.
   The roster is entered on PROD, where the members log in.
@@ -41,11 +41,13 @@ approves.
   `history.manage` together, since an import replaces what each of them guards.
 - The browser does the heavy work. Export reads the JSON document and then fetches each
   stored size of each photo, writing one `.zip` (`site.json` and `images/<sha256>.jpg`,
-  stored uncompressed, `fflate`). Import reads the zip and checks the target library has
+  stored uncompressed, `fflate`). `site.json` carries `format: 2`, and the page refuses any
+  other format before it uploads a photo. Format 1 held single texts, from before the
+  content blocks. Import reads the zip and checks the target library has
   room. It uploads each missing photo through the same `POST /images` as `/media`, which
   finds a photo it already holds by its SHA-256 and keeps its name, waiting out a 429.
   Only then does it send the rest.
-- The server applies the import in one transaction. Every text, every photo slot except
+- The server applies the import in one transaction. Every content block, every photo slot except
   the event posters, and every history entry are replaced; a photo the library lacks
   refuses the whole import. A register's photo goes to the register with the same
   French name; one without a match is skipped and reported. Library photos are never

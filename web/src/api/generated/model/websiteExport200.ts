@@ -309,14 +309,15 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { WebsiteExport200BlocksItem } from "./websiteExport200BlocksItem";
 import type { WebsiteExport200HistoryItem } from "./websiteExport200HistoryItem";
 import type { WebsiteExport200ImagesItem } from "./websiteExport200ImagesItem";
 import type { WebsiteExport200SlotsItem } from "./websiteExport200SlotsItem";
 
 export type WebsiteExport200 = {
-  format: 1;
+  format: 2;
   exportedAt: string;
-  texts: string;
+  blocks: WebsiteExport200BlocksItem[];
   images: WebsiteExport200ImagesItem[];
   slots: WebsiteExport200SlotsItem[];
   history: WebsiteExport200HistoryItem[];
