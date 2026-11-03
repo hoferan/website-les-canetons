@@ -638,6 +638,7 @@ export * from "./textIndexParams";
 export * from "./textOverrideResource";
 export * from "./textUpdate200";
 export * from "./updateBlockRequest";
+export * from "./updateBlockRequestData";
 export * from "./updateEventRequest";
 export * from "./updateImageRequest";
 export * from "./updateMemberRequest";

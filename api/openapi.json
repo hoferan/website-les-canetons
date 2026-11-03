@@ -8059,7 +8059,7 @@
         "/blocks/{key}": {
             "put": {
                 "operationId": "block.update",
-                "description": "`{key}` is the block's name: a lower-case word, then up to three more\ndot-separated segments of lower-case letters, digits and hyphens, at\nmost 64 characters. `data` is an object of at most six levels, with\nlists of at most 24 items, strings of at most 2000 characters, keys of\na letter then letters and digits (32 at most), and 64 KB once encoded;\nnull puts the default back. A string may be empty: it means \"nothing\n     * here\". No `If-Match`: the write sets one block, and the last save is\nwhat the page shows, with both in the audit log.",
+                "description": "`{key}` is the block's name: a lower-case word, then up to three more\ndot-separated segments of lower-case letters, digits and hyphens, at\nmost 64 characters. `data` is an object of at most six levels, with\nlists of at most 24 items, strings of at most 2000 characters, keys of\na letter then letters and digits (32 at most), and 64 KB once encoded;\nnull puts the default back. A string may be empty, which means\nnothing is shown there. No `If-Match`: the write sets one block, and\nthe last save is what the page shows, with both in the audit log.",
                 "summary": "Changes one block, or puts it back. Requires `content.manage`",
                 "tags": [
                     "Content"
@@ -11660,13 +11660,11 @@
                 "properties": {
                     "data": {
                         "type": [
-                            "array",
+                            "object",
                             "null"
                         ],
                         "description": "The block's content as an object, or null for the page's default.",
-                        "items": {
-                            "type": "string"
-                        }
+                        "additionalProperties": {}
                     }
                 },
                 "required": [

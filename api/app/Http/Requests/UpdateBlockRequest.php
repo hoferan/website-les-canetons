@@ -17,7 +17,11 @@ class UpdateBlockRequest extends FormRequest
         // `present`, not `required`: `required` rejects the null that resets
         // the block, and a body without `data` must not reset it by accident.
         return [
-            /** The block's content as an object, or null for the page's default. */
+            /**
+             * The block's content as an object, or null for the page's default.
+             *
+             * @var array<string, mixed>|null
+             */
             'data' => ['present', 'nullable', 'array', function (string $attribute, mixed $value, Closure $fail): void {
                 $problem = BlockShape::check($value);
                 if ($problem !== null) {

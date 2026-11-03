@@ -309,6 +309,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { UpdateBlockRequestData } from "./updateBlockRequestData";
 
 /**
  * One content block's data. Null puts the page's default back.
@@ -318,5 +319,5 @@ export interface UpdateBlockRequest {
    * The block's content as an object, or null for the page's default.
    * @nullable
    */
-  data: string[] | null;
+  data: UpdateBlockRequestData;
 }

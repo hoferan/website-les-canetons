@@ -14771,9 +14771,9 @@ export const getBlockUpdateUrl = (key: string) => {
  * most 64 characters. `data` is an object of at most six levels, with
  * lists of at most 24 items, strings of at most 2000 characters, keys of
  * a letter then letters and digits (32 at most), and 64 KB once encoded;
- * null puts the default back. A string may be empty: it means "nothing
- *      * here". No `If-Match`: the write sets one block, and the last save is
- * what the page shows, with both in the audit log.
+ * null puts the default back. A string may be empty, which means
+ * nothing is shown there. No `If-Match`: the write sets one block, and
+ * the last save is what the page shows, with both in the audit log.
  * @summary Changes one block, or puts it back. Requires `content.manage`
  */
 export const blockUpdate = async (
