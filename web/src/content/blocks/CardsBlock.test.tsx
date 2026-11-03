@@ -148,6 +148,29 @@ test("deleting the last card leaves Ajouter une carte in edit mode", async () =>
   expect(screen.getByRole("button", { name: "Ajouter une carte" })).toBeInTheDocument();
 });
 
+test("Ajouter une carte stops at 24 cards and says why", async () => {
+  const user = userEvent.setup();
+  const card = (index: number) => ({
+    id: `card-${index}`,
+    icon: "star" as const,
+    tint: "pink" as const,
+    title: { fr: `Carte ${index}` },
+    rows: [],
+  });
+  storeBlock("committee.contact", { cards: Array.from({ length: 24 }, (_, i) => card(i)) });
+  editing();
+  await renderWithSession(<CardsBlock blockKey="committee.contact" />, { route: "/committee" });
+
+  // The server refuses a 25th card, so the editor is not offered one.
+  const add = await screen.findByRole("button", { name: "Ajouter une carte" });
+  expect(add).toHaveAttribute("aria-disabled", "true");
+  expect(add).toHaveAccessibleDescription(t("blockEditor.cardsFull", { max: 24 }));
+  expect(screen.getByText(t("blockEditor.cardsFull", { max: 24 }))).toBeVisible();
+
+  await user.click(add);
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
 test("a stored card list shows as stored", async () => {
   storeBlock("committee.contact", {
     cards: [

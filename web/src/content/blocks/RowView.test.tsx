@@ -34,11 +34,28 @@ test.each([
   ["+41 79 123 45 67", "tel:+41791234567"],
   ["0041 79 123 45 67", "tel:+41791234567"],
   ["+33 1 23 45 67 89", "tel:+33123456789"],
+  ["+41 (0)26 123 45 67", "tel:+41261234567"],
+  ["026 123 45 67", "tel:+41261234567"],
+  ["0041 26 123 45 67", "tel:+41261234567"],
+  ["+41 26 123 45 67", "tel:+41261234567"],
 ])("the number %s dials %s", (number, href) => {
   rows({ type: "phone", label: { fr: "" }, number });
 
   expect(screen.getByRole("link", { name: number })).toHaveAttribute("href", href);
 });
+
+// A stored or imported value is not checked on read, so a number with no
+// prefix would otherwise dial abroad: "26 …" is Madagascar, "79 …" Russia.
+test.each(["26 123 45 67", "79 123 45 67", "à demander"])(
+  "the stored value %s renders as text, never as a link",
+  (number) => {
+    rows({ type: "phone", label: { fr: "" }, number });
+
+    expect(screen.getByTestId("card").textContent).toBe(number);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(document.querySelector("[href]")).toBeNull();
+  },
+);
 
 test("an empty phone row shows its placeholder token", () => {
   rows(

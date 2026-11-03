@@ -20,15 +20,22 @@ const StoredBlocks = createContext<ReadonlyMap<string, unknown>>(new Map());
 const BLOCKS_WAIT_MS = 1500;
 
 /**
- * The band's content blocks, read once before the pages render.
+ * Whether the pages may render: the blocks have answered, or waited long
+ * enough. True outside the provider, so a component rendered on its own
+ * never waits.
+ */
+const BlocksReady = createContext(true);
+
+/**
+ * The band's content blocks, read once at boot.
  *
- * Children wait for them, briefly: a first paint in the shipped content would
- * flash and then change. A failed or slow read is not a failed boot, though.
- * Every block has its default to fall back on, so the site renders with that
- * and the failure goes to the console.
+ * It renders its children at once, so SessionProvider below it asks for the
+ * config and the session while the blocks are on their way. The pages wait
+ * in {@link BlocksGate}.
  *
- * It needs no session, so main.tsx puts it above SessionProvider and the
- * blocks are read beside the config and the session, not after them.
+ * A failed or slow read is not a failed boot. Every block has its default to
+ * fall back on, so the site renders with that and the failure goes to the
+ * console.
  */
 export function BlocksProvider({ children }: { children: ReactNode }) {
   const blocks = useBlockIndex(undefined, { query: { retry: false, staleTime: Infinity } });
@@ -50,11 +57,23 @@ export function BlocksProvider({ children }: { children: ReactNode }) {
     [blocks.data],
   );
 
-  if (blocks.isPending && !waitedEnough) {
-    return null;
-  }
+  const ready = !blocks.isPending || waitedEnough;
 
-  return <StoredBlocks value={stored}>{children}</StoredBlocks>;
+  return (
+    <StoredBlocks value={stored}>
+      <BlocksReady value={ready}>{children}</BlocksReady>
+    </StoredBlocks>
+  );
+}
+
+/**
+ * Holds the pages until the blocks have answered, at most 1.5 s from boot: a
+ * first paint in the shipped content would flash and then change. The wait
+ * counts from BlocksProvider's mount, so a gate placed under the session gate
+ * adds nothing to it.
+ */
+export function BlocksGate({ children }: { children: ReactNode }) {
+  return use(BlocksReady) ? children : null;
 }
 
 /**

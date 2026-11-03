@@ -70,8 +70,8 @@ enum Permission: string
     case ImagesManage = 'images.manage';
 
     /**
-     * Changing the texts of the public pages where they are shown: wording,
-     * contacts, the booking number, the band's links (#106).
+     * Changing the content blocks of the public pages where they are shown:
+     * wording, contacts, the booking number, the band's links (#106).
      *
      * Granted by migration to every role that held images.manage, since
      * choosing what the public site says and choosing what it shows have been

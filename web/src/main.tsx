@@ -1,14 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App, { createAppRouter } from "./App";
-import { BlocksProvider } from "./content/BlocksProvider";
+import { AppProviders } from "./AppProviders";
 import { applyDocumentMeta } from "./i18n/documentMeta";
 import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
-import { SessionProvider } from "./session/SessionProvider";
-import { EditModeProvider } from "./content/EditMode";
 import "./styles.css";
 
 // The mocked backend, opted into with `npm run dev:mock`. Guarded on
@@ -68,15 +66,9 @@ if (redirecting) {
 
   createRoot(root).render(
     <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <BlocksProvider>
-          <SessionProvider>
-            <EditModeProvider>
-              <App router={router} />
-            </EditModeProvider>
-          </SessionProvider>
-        </BlocksProvider>
-      </QueryClientProvider>
+      <AppProviders queryClient={queryClient}>
+        <App router={router} />
+      </AppProviders>
     </StrictMode>,
   );
 }

@@ -3,8 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Support\BlockShape;
-use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 /**
  * One content block's data. Null puts the page's default back.
@@ -22,12 +22,29 @@ class UpdateBlockRequest extends FormRequest
              *
              * @var array<string, mixed>|null
              */
-            'data' => ['present', 'nullable', 'array', function (string $attribute, mixed $value, Closure $fail): void {
-                $problem = BlockShape::check($value);
-                if ($problem !== null) {
-                    $fail($problem);
+            'data' => ['present', 'nullable', 'array'],
+        ];
+    }
+
+    /**
+     * The block's limits, added as a bare token so the client reads it as
+     * the reason. A closure rule would not do: ApiError reports any failed
+     * closure as `invalid_format`.
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
                 }
-            }],
+
+                $data = $this->input('data');
+                $problem = $data === null ? null : BlockShape::check($data);
+                if ($problem !== null) {
+                    $validator->errors()->add('data', $problem);
+                }
+            },
         ];
     }
 

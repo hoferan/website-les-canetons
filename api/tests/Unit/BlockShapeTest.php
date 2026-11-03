@@ -28,18 +28,18 @@ class BlockShapeTest extends TestCase
         return [
             'empty object' => [[], null],
             'depth 6' => [$nest(6), null],
-            'depth 7' => [$nest(7), BlockShape::TOO_DEEP],
+            'depth 7' => [$nest(7), 'block_too_deep'],
             '24 items' => [['items' => array_fill(0, 24, 'x')], null],
-            '25 items' => [['items' => array_fill(0, 25, 'x')], BlockShape::TOO_MANY],
+            '25 items' => [['items' => array_fill(0, 25, 'x')], 'block_too_many'],
             '2000 chars' => [['t' => str_repeat('a', 2000)], null],
-            '2001 chars' => [['t' => str_repeat('a', 2001)], BlockShape::TOO_LONG],
+            '2001 chars' => [['t' => str_repeat('a', 2001)], 'block_too_long'],
             'empty string kept' => [['t' => ''], null],
-            'key starting with a digit' => [['1x' => 'x'], BlockShape::BAD_KEY],
-            'key with a space, nested' => [['cards' => [['a b' => 'x']]], BlockShape::BAD_KEY],
-            'key of 33 characters' => [[str_repeat('a', 33) => 'x'], BlockShape::BAD_KEY],
-            'over 64 KB' => [$large, BlockShape::TOO_LARGE],
-            'a list' => [['a', 'b'], BlockShape::NOT_AN_OBJECT],
-            'a string' => ['text', BlockShape::NOT_AN_OBJECT],
+            'key starting with a digit' => [['1x' => 'x'], 'block_bad_key'],
+            'key with a space, nested' => [['cards' => [['a b' => 'x']]], 'block_bad_key'],
+            'key of 33 characters' => [[str_repeat('a', 33) => 'x'], 'block_bad_key'],
+            'over 64 KB' => [$large, 'block_too_large'],
+            'a list' => [['a', 'b'], 'block_not_an_object'],
+            'a string' => ['text', 'block_not_an_object'],
         ];
     }
 

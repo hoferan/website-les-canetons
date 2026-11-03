@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { Tbd } from "@/components/Tbd";
 
-import { mailtoHref } from "../../lib/contactHref";
+import { mailtoHref, swissTelHref } from "../../lib/contactHref";
 import { type TranslationKey, t } from "../../i18n";
 import { tr } from "../translated";
 import { isHttpsUrl, type Row } from "../types";
@@ -30,18 +30,24 @@ export function RowView({ row }: { row: Row }) {
       ));
     case "labelValue":
       return <Labelled label={tr(row.label)}>{tr(row.value)}</Labelled>;
-    case "phone":
+    case "phone": {
+      // A read does not check the number (see types.ts), so one the editor
+      // would refuse renders as text: a guessed prefix can ring abroad.
+      const href = swissTelHref(row.number);
       return (
         <Labelled label={tr(row.label)}>
           {row.number.trim() === "" ? (
             <Placeholder token={row.tbd} />
-          ) : (
-            <a href={telHref(row.number)} className={`whitespace-nowrap ${LINK}`}>
+          ) : href ? (
+            <a href={href} className={`whitespace-nowrap ${LINK}`}>
               {row.number}
             </a>
+          ) : (
+            row.number
           )}
         </Labelled>
       );
+    }
     case "email": {
       const href = mailtoHref(row.address);
       return (
@@ -109,19 +115,6 @@ function Placeholder({ token }: { token: string | undefined }) {
 
 function lines(text: string): string[] {
   return text.split("\n").filter((line) => line.trim() !== "");
-}
-
-/**
- * A dialable number from its digits alone: written with +41 or 0041 it is
- * already international, and written with a leading 0 it is Swiss.
- */
-function telHref(number: string): string {
-  const compact = number.replace(/[^\d+]/g, "");
-  const digits = compact.replace(/\D/g, "");
-  if (compact.startsWith("+")) return `tel:+${digits}`;
-  if (digits.startsWith("00")) return `tel:+${digits.slice(2)}`;
-  if (digits.startsWith("0")) return `tel:+41${digits.slice(1)}`;
-  return `tel:+${digits}`;
 }
 
 /**

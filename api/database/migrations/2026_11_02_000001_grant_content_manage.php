@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\DB;
  *
  * A fresh database needs nothing from this file: the direction seed grants
  * Permission::cases(). TEST, QA and PROD already have their roles, so without
- * this nobody would hold the token and every text write would answer 403.
+ * this nobody would hold the token and every content block write would
+ * answer 403.
  *
  * It follows images.manage rather than the `direction` key because the
  * committee may have made roles of its own that place photos, and the people
