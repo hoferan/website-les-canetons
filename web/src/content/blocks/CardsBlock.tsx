@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   useFieldArray,
   useFormContext,
@@ -29,6 +29,7 @@ import {
   EditChip,
   ICON_GLYPHS,
   IconPicker,
+  MAX_ITEMS,
   RowFields,
   TINT_BACKGROUNDS,
   TintPicker,
@@ -87,6 +88,8 @@ export function CardsBlock({
   // Remounts the card's fields after a reset, so every field reads it.
   const [resets, setResets] = useState(0);
   const blockLabel = t(BLOCKS[blockKey].label);
+  const full = cards.length >= MAX_ITEMS;
+  const fullId = useId();
   const shipped = opened
     ? BLOCKS[blockKey].defaults().cards.find((card) => card.id === opened.id)
     : undefined;
@@ -112,16 +115,27 @@ export function CardsBlock({
   return (
     <>
       {editing ? (
-        <Button
-          type="button"
-          variant="raised"
-          size="sm"
-          className="mb-related px-3"
-          onClick={() => setOpened({ id: crypto.randomUUID(), adding: true })}
-        >
-          <Plus aria-hidden="true" />
-          {t("blockEditor.addCard")}
-        </Button>
+        <div className="mb-related flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Button
+            type="button"
+            variant="raised"
+            size="sm"
+            className="px-3"
+            // The server refuses a list longer than MAX_ITEMS. Disabled
+            // rather than hidden, so the line beside it says why.
+            aria-disabled={full || undefined}
+            aria-describedby={full ? fullId : undefined}
+            onClick={full ? undefined : () => setOpened({ id: crypto.randomUUID(), adding: true })}
+          >
+            <Plus aria-hidden="true" />
+            {t("blockEditor.addCard")}
+          </Button>
+          {full ? (
+            <p id={fullId} className="text-sm text-ink-muted">
+              {t("blockEditor.cardsFull", { max: MAX_ITEMS })}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {cards.length > 0 ? (
