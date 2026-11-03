@@ -34,9 +34,16 @@ function useAttemptedPath(): string {
  * and the baseline role grants both to every account.
  *
  * A list means any one of them: the inbox gathers sources gated on different
- * permissions, and holding any of them gives it something to show.
+ * permissions, and holding any of them gives it something to show. With
+ * `every`, it means all of them, as /website needs.
  */
-export function RequirePermission({ permission }: { permission: string | readonly string[] }) {
+export function RequirePermission({
+  permission,
+  every = false,
+}: {
+  permission: string | readonly string[];
+  every?: boolean;
+}) {
   const { user, can } = useSession();
   const from = useAttemptedPath();
 
@@ -48,7 +55,8 @@ export function RequirePermission({ permission }: { permission: string | readonl
 
   // A member is refused in place. Sending them to the login form would read
   // as "your session expired" and invite them to log in again, repeatedly.
-  if (!(typeof permission === "string" ? [permission] : permission).some((one) => can(one))) {
+  const list = typeof permission === "string" ? [permission] : permission;
+  if (!(every ? list.every((one) => can(one)) : list.some((one) => can(one)))) {
     return <AccessDenied />;
   }
 

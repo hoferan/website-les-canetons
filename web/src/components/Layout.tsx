@@ -32,6 +32,7 @@ import { buttonVariants } from "./ui/button";
 import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
+import { WEBSITE_PERMISSIONS } from "@/lib/websitePermissions";
 
 import { EditModePill } from "../content/EditMode";
 import { useSite } from "../content/blocks/SiteBlock";
@@ -64,12 +65,13 @@ const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
  * A member without the permission never sees the entry: a link that leads to
  * "Accès refusé" teaches people that parts of the site are broken for them.
  * Gated on a permission, never a role name (ADR 0014). A list means any one
- * of them.
+ * of them, or all of them with `every`.
  */
 const TOOLS: Array<{
   to: string;
   labelKey: TranslationKey;
   permission: string | readonly string[];
+  every?: boolean;
   icon: LucideIcon;
 }> = [
   // First, beside Événements: the tags label the planning.
@@ -79,9 +81,13 @@ const TOOLS: Array<{
   { to: "/media", labelKey: "nav.media", permission: "images.manage", icon: Images },
   { to: "/registers", labelKey: "nav.registers", permission: "members.manage", icon: Drum },
   { to: "/roles", labelKey: "nav.roles", permission: "roles.manage", icon: ShieldCheck },
-  // The server also asks for images.manage and history.manage; every role
-  // that holds content.manage holds both today (ADR 0039).
-  { to: "/website", labelKey: "nav.website", permission: "content.manage", icon: Globe },
+  {
+    to: "/website",
+    labelKey: "nav.website",
+    permission: WEBSITE_PERMISSIONS,
+    every: true,
+    icon: Globe,
+  },
 ];
 
 export function Layout() {
@@ -153,7 +159,13 @@ export function Layout() {
   const memberEntries: NavEntry[] = mayReadPlanning
     ? [{ key: "/events", to: "/events", label: t("nav.events") }]
     : [];
-  const tools = TOOLS.filter((item) => canAny(item.permission));
+  const tools = TOOLS.filter((item) =>
+    item.every
+      ? (typeof item.permission === "string" ? [item.permission] : item.permission).every((one) =>
+          can(one),
+        )
+      : canAny(item.permission),
+  );
   const countFor = (to: string) => (to === "/inbox" ? inboxTotal : 0);
   const accountTools: AccountTool[] = tools.map((item) => ({
     to: item.to,

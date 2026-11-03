@@ -32,6 +32,7 @@ import { Roles } from "./pages/Roles";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
 import { INBOX_PERMISSIONS } from "./lib/inboxPermissions";
+import { WEBSITE_PERMISSIONS } from "./lib/websitePermissions";
 
 // The library's two pages are a chunk of their own: only `images.manage` opens
 // them, and they bring the upload queue and the shrink step. A navigation here
@@ -194,7 +195,7 @@ export function AppRoutes() {
           </Route>
 
           {/* The whole public site, carried between servers (#336). */}
-          <Route element={<RequirePermission permission="content.manage" />}>
+          <Route element={<RequirePermission permission={WEBSITE_PERMISSIONS} every />}>
             <Route
               path="/website"
               element={
