@@ -6,8 +6,10 @@ import { t } from "../i18n";
  * A stale name is worse than an obvious gap: a parent who rings the wrong
  * person gets a wrong answer, whereas a parent who sees a gap asks. So facts
  * the band has not confirmed render as something no reader can mistake for
- * real content. The Direction fills each one in from the page, in edit mode
- * (ADR 0038); what is still missing is counted by rendering
+ * real content. Some come from a content block's default: a phone row that
+ * ships with an empty number renders this until the Direction types one into
+ * the block's editor, in edit mode (ADR 0038). The others stand in for what
+ * the roster does not hold yet. What is still missing is counted by rendering
  * the public pages: a grep over call sites miscounts, because some sit in a
  * loop and others render only for an empty roster.
  *
@@ -21,8 +23,19 @@ import { t } from "../i18n";
  *
  * `token` is a stable English identifier for what is missing, carried on
  * `data-tbd` so it does not change per locale.
+ *
+ * `onMembersPage` says the gap is filled on the members page, for what comes
+ * from the roster and has no edit chip of its own.
  */
-export function Tbd({ what, token }: { what?: string; token?: string }) {
+export function Tbd({
+  what,
+  token,
+  onMembersPage = false,
+}: {
+  what?: string;
+  token?: string;
+  onMembersPage?: boolean;
+}) {
   return (
     <span
       // Italic and muted so it reads as unfinished rather than broken, with a
@@ -33,7 +46,9 @@ export function Tbd({ what, token }: { what?: string; token?: string }) {
       // blank for everyone, not that their software failed to read a name.
       data-tbd={token ?? ""}
     >
-      {what ? t("placeholders.tbdWhat", { what }) : t("placeholders.tbd")}
+      {what
+        ? t(onMembersPage ? "placeholders.tbdOnMembersPage" : "placeholders.tbdWhat", { what })
+        : t("placeholders.tbd")}
     </span>
   );
 }

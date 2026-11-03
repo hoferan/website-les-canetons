@@ -3,10 +3,9 @@ import { PageSection } from "@/components/PageSection";
 import { rowsOf } from "../api/collection";
 import { useAgendaIndex } from "../api/generated/endpoints";
 import type { PublicEventResource } from "../api/generated/model";
-import { PageHero } from "../carnival/PageHero";
+import { HeroBlock } from "../content/blocks/HeroBlock";
 import { AgendaEntry, BADGE_TINTS } from "../events/PublicAgenda";
 import { t } from "../i18n";
-import { EditableText } from "../texts/EditableText";
 
 /**
  * Every upcoming public appearance, where a visitor can come and watch.
@@ -26,15 +25,7 @@ export function Agenda() {
 
   return (
     <>
-      <PageHero
-        title={t("agenda.heading")}
-        titleKey="agenda.heading"
-        mark={t("agenda.headingHighlight")}
-        seed={3}
-        width="text"
-      >
-        <EditableText k="agenda.intro" as="p" />
-      </PageHero>
+      <HeroBlock blockKey="agenda.hero" seed={3} width="text" />
 
       <PageSection width="text">
         {upcoming.length > 0 ? (

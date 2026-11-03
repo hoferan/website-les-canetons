@@ -3038,14 +3038,47 @@ export function resetMockState(): void {
   resetAnswers();
   resetRegistrations();
   resetContactMessages();
-  texts = {};
+  blocks = {};
 }
 
 /**
- * The public texts the band has changed, by catalogue key, as text_overrides
- * holds them. Empty: every page shows its catalogue wording.
+ * The content blocks the band has changed, by key, as content_blocks holds
+ * them. Empty: every page shows its shipped content.
  */
-let texts: Record<string, { fr: string | null; de: string | null; updatedAt: string }> = {};
+let blocks: Record<string, { data: Record<string, unknown>; updatedAt: string }> = {};
+
+/** The reason a block's data breaks BlockShape's limits, or null. */
+function blockProblem(data: unknown): string | null {
+  const walk = (value: unknown, depth: number): string | null => {
+    if (typeof value === "string") {
+      return value.length > 2000 ? "block_too_long" : null;
+    }
+    if (typeof value !== "object" || value === null) {
+      return null;
+    }
+    if (depth > 6) {
+      return "block_too_deep";
+    }
+    if (Array.isArray(value)) {
+      if (value.length > 24) {
+        return "block_too_many";
+      }
+    } else if (Object.keys(value).some((key) => !/^[A-Za-z][A-Za-z0-9]{0,31}$/.test(key))) {
+      return "block_bad_key";
+    }
+    for (const item of Object.values(value)) {
+      const problem = walk(item, depth + 1);
+      if (problem) {
+        return problem;
+      }
+    }
+    return null;
+  };
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    return "block_not_an_object";
+  }
+  return walk(data, 1) ?? (JSON.stringify(data).length > 65536 ? "block_too_large" : null);
+}
 
 /** Typed by the model, so a field rename in ContactRequest is a compile error here. */
 const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "subject", "message"];
@@ -3488,52 +3521,48 @@ const overrides = [
     });
   }),
 
-  // Public: every changed text, by key, as TextOverrideController lists them.
-  http.get("/api/v1/texts", ({ request }) =>
+  // Public: every changed block, by key, as ContentBlockController lists them.
+  http.get("/api/v1/blocks", ({ request }) =>
     collection(
-      Object.keys(texts)
+      Object.keys(blocks)
         .sort()
-        .map((key) => ({ key, ...texts[key]! })),
+        .map((key) => ({ key, ...blocks[key]! })),
       request,
     ),
   ),
 
-  // One text per write with no If-Match, as TextOverrideController does it.
-  // Null in both languages puts the default back and deletes the row; an
-  // empty string stores "nothing here".
-  http.put("/api/v1/texts/:key", async ({ request, params }) => {
+  // One block per write with no If-Match, as ContentBlockController does it.
+  // Null data puts the default back and deletes the row.
+  http.put("/api/v1/blocks/:key", async ({ request, params }) => {
     const refusal = refuseWithout("content.manage");
     if (refusal) {
       return refusal;
     }
     const key = String(params.key);
-    if (key.length > 128 || !/^[a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+){1,7}$/.test(key)) {
+    if (key.length > 64 || !/^[a-z][a-z0-9-]*(?:\.[a-z0-9-]+){0,3}$/.test(key)) {
       return notFound();
     }
-    const body = (await request.json()) as { fr?: unknown; de?: unknown };
-    for (const field of ["fr", "de"] as const) {
-      const value = body[field];
-      if (value === undefined) {
-        return problem(400, "validation_failed", "Invalid form submission", [
-          { field, reason: "required" },
-        ]);
-      }
-      if (value !== null && (typeof value !== "string" || value.length > 2000)) {
-        return problem(400, "validation_failed", "Invalid form submission", [
-          { field, reason: typeof value === "string" ? "too_long" : "invalid_type" },
-        ]);
-      }
+    const body = (await request.json()) as { data?: unknown };
+    if (body.data === undefined) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "data", reason: "required" },
+      ]);
     }
-    const blank = (value: unknown) =>
-      typeof value === "string" ? (value.trim() === "" ? "" : value) : null;
-    const fr = blank(body.fr);
-    const de = blank(body.de);
-    if (fr === null && de === null) {
-      texts = Object.fromEntries(Object.entries(texts).filter(([name]) => name !== key));
-      return HttpResponse.json({ text: null });
+    if (body.data === null) {
+      blocks = Object.fromEntries(Object.entries(blocks).filter(([name]) => name !== key));
+      return HttpResponse.json({ block: null });
     }
-    texts = { ...texts, [key]: { fr, de, updatedAt: new Date().toISOString() } };
-    return HttpResponse.json({ text: { key, ...texts[key]! } });
+    const reason = blockProblem(body.data);
+    if (reason) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "data", reason },
+      ]);
+    }
+    blocks = {
+      ...blocks,
+      [key]: { data: body.data as Record<string, unknown>, updatedAt: new Date().toISOString() },
+    };
+    return HttpResponse.json({ block: { key, ...blocks[key]! } });
   }),
 
   // By rank, then by name, mirroring CommitteeController, whose ordering is

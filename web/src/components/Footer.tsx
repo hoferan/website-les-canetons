@@ -1,20 +1,17 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
 import { cn } from "@/lib/utils";
-import { EditableText } from "../texts/EditableText";
-import { useEditMode } from "../texts/EditMode";
+import { useEditPillShown } from "../content/EditMode";
+import { useSite } from "../content/blocks/SiteBlock";
+import { SiteEditor } from "../content/blocks/SiteEditor";
+import { useBlockEditing } from "../content/blocks/useBlockEditing";
+import { EditChip } from "../content/editor/EditChip";
+import { tr } from "../content/translated";
 import { buttonVariants } from "./ui/button";
-import {
-  checkNetworkUrl,
-  FacebookMark,
-  FlickrMark,
-  InstagramMark,
-  type Network,
-  NETWORK_KEYS,
-  networkUrl,
-} from "./social";
+import { FacebookMark, FlickrMark, InstagramMark, type Network, networkUrl } from "./social";
 
 /** Raised, as everything a visitor can press is, with the stage's pink shadow. */
 const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
@@ -33,10 +30,10 @@ const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
  *
  * The networks are named beside their marks, because few people recognise
  * Flickr's two dots without the word. A network the band has no address for
- * is left out; in edit mode each carries a pencil for its address.
+ * is left out.
  *
- * The band's name, the line under it and the legal name are texts the band
- * changes in place (#106).
+ * The band's name, the line under it, the legal name and the networks are the
+ * site block (#106). In edit mode one chip on the footer's top right opens its editor.
  *
  * The top edge is scalloped in the colour of whatever sits above (ADR 0029),
  * which only the page knows: `above` comes from carnival/footerEdge.ts, and
@@ -44,7 +41,11 @@ const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
  * band it sits flush, so the band's bumps hang straight into it.
  */
 export function Footer({ above }: { above: string | null }) {
-  const editMode = useEditMode();
+  const site = useSite();
+  const editing = useBlockEditing();
+  const [editingSite, setEditingSite] = useState(false);
+  // The floating pill sits over the last 4rem of the page; keep it off the footer's own buttons.
+  const pillShown = useEditPillShown();
   const follow: { network: Network; name: string; label: string; Mark: typeof InstagramMark }[] = [
     {
       network: "instagram",
@@ -57,13 +58,29 @@ export function Footer({ above }: { above: string | null }) {
   ];
 
   return (
-    <footer className={cn("relative bg-stage text-white", above === null && "mt-16")}>
+    <footer
+      className={cn(
+        "relative bg-stage text-white",
+        above === null && "mt-16",
+        pillShown && "pb-20",
+      )}
+    >
       <Scallop from={above ?? "var(--color-ground)"} />
+      {editing ? (
+        <>
+          <EditChip
+            label={t("blocks.site")}
+            text={t("blockEditor.site.edit")}
+            onClick={() => setEditingSite(true)}
+          />
+          <SiteEditor open={editingSite} onClose={() => setEditingSite(false)} />
+        </>
+      ) : null}
       <div className="mx-auto max-w-shell px-4 pt-14">
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-start">
           <div>
-            <EditableText k="site.name" as="p" className="font-display text-lg" neutral />
-            <EditableText k="nav.footerPitch" as="p" className="mt-2 max-w-md text-white/70" />
+            <p className="font-display text-lg">{site.name}</p>
+            <p className="mt-2 max-w-md whitespace-pre-line text-white/70">{tr(site.pitch)}</p>
             <div className="mt-5 grid grid-cols-2 gap-3 sm:flex">
               <Link to="/join" className={cn(buttonVariants({ variant: "raised" }), ACTION)}>
                 {t("nav.join")}
@@ -83,32 +100,20 @@ export function Footer({ above }: { above: string | null }) {
             </p>
             <ul className="mt-3 flex flex-wrap gap-2">
               {follow.map(({ network, name, label, Mark }) => {
-                const href = networkUrl(network);
-                if (!href && !editMode.on) return null;
+                const href = networkUrl(site.networks, network);
+                if (!href) return null;
                 return (
                   <li key={network} className="flex items-center">
-                    {href ? (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={label}
-                        className="focus-ring-stage inline-flex min-h-touch items-center gap-2 rounded-full bg-white/[0.08] px-3 text-sm font-semibold hover:bg-white/15 sm:px-4"
-                      >
-                        <Mark className="size-5" />
-                        {name}
-                      </a>
-                    ) : null}
-                    {/* The address itself is not shown, only its pencil. */}
-                    <EditableText
-                      k={NETWORK_KEYS[network]}
-                      neutral
-                      label={name}
-                      validate={checkNetworkUrl}
-                      allowEmpty
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={label}
+                      className="focus-ring-stage inline-flex min-h-touch items-center gap-2 rounded-full bg-white/[0.08] px-3 text-sm font-semibold hover:bg-white/15 sm:px-4"
                     >
-                      {() => null}
-                    </EditableText>
+                      <Mark className="size-5" />
+                      {name}
+                    </a>
                   </li>
                 );
               })}
@@ -117,8 +122,7 @@ export function Footer({ above }: { above: string | null }) {
         </div>
 
         <p className="mt-10 border-t border-white/10 py-5 text-xs text-white/70">
-          © {new Date().getFullYear()} <EditableText k="site.legalName" neutral />.{" "}
-          {t("nav.rights")}
+          © {new Date().getFullYear()} {site.legalName}. {t("nav.rights")}
         </p>
       </div>
     </footer>

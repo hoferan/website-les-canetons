@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 import { rowsOf } from "../api/collection";
 import { useBandIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
-import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
+import { FieldsBlock } from "../content/blocks/FieldsBlock";
+import { HeroBlock } from "../content/blocks/HeroBlock";
 import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { registerName, t } from "../i18n";
-import { EditableText } from "../texts/EditableText";
 
 /**
  * The anchor a jump link points at. Built from the register's ID, because a
@@ -50,7 +50,11 @@ function Register({ register }: { register: PublicSectionResource }) {
         {register.members.length > 0 ? (
           register.members.map((member) => member.firstName).join(", ")
         ) : (
-          <Tbd what={t("placeholders.registerFirstNames")} token="register-first-names" />
+          <Tbd
+            what={t("placeholders.registerFirstNames")}
+            token="register-first-names"
+            onMembersPage
+          />
         )}
       </p>
 
@@ -85,13 +89,7 @@ export function Band() {
 
   return (
     <>
-      <PageHero
-        title={t("band.heading")}
-        titleKey="band.heading"
-        mark={t("band.headingHighlight")}
-        seed={7}
-        width="text"
-      />
+      <HeroBlock blockKey="band.hero" seed={7} width="text" />
 
       <PageSection width="text">
         <SlotPhoto slot="band" label={t("photos.slot.band")} alt="Les Canetons de Fribourg" />
@@ -112,7 +110,8 @@ export function Band() {
         {/* Set apart from the registers: a parrain and a marraine do not
             play, and listing them among the registers implies they do.
 
-            Authored copy, the one thing on this page that is. `members` is
+            Authored copy (`band.godparents`), the one thing on this page
+            that is. `members` is
             the roster, and every row in it has an account and answers
             events, so there is no row for them.
 
@@ -123,15 +122,28 @@ export function Band() {
           <>
             <hr className="mt-section border-line" />
 
-            <Card className={cn(RAISED_CARD, "mt-block gap-0 p-5")}>
-              <EditableText k="band.patronsHeading" as="h2" className="font-display text-2xl" />
-              <SlotPhoto
-                slot="godparents"
-                label={t("photos.slot.godparents")}
-                alt={t("band.patronsAlt")}
-              />
-              <EditableText k="band.patrons" as="p" className="mt-tight text-ink-muted" neutral />
-            </Card>
+            {/* The margin outside the block, so its chip sits on the card. */}
+            <div className="mt-block">
+              <FieldsBlock
+                blockKey="band.godparents"
+                labels={{
+                  heading: t("blockEditor.field.title"),
+                  names: t("blockEditor.field.names"),
+                }}
+              >
+                {(texts) => (
+                  <Card className={cn(RAISED_CARD, "gap-0 p-5")}>
+                    <h2 className="font-display text-2xl">{texts.heading}</h2>
+                    <SlotPhoto
+                      slot="godparents"
+                      label={t("photos.slot.godparents")}
+                      alt={t("band.patronsAlt")}
+                    />
+                    <p className="mt-tight text-ink-muted">{texts.names}</p>
+                  </Card>
+                )}
+              </FieldsBlock>
+            </div>
           </>
         )}
       </PageSection>

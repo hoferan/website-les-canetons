@@ -3,7 +3,7 @@ import { lazy, Suspense } from "react";
 import { PhotoPending, PhotoReserved } from "@/components/PhotoPending";
 
 import { useSession } from "../session/SessionProvider";
-import { useEditMode } from "../texts/EditMode";
+import { useEditMode } from "../content/EditMode";
 import { Photo, PHOTO_SIZES } from "./Photo";
 import { usePhotoSlots } from "./photoSlots";
 import type { ShrinkFn, UploadFn } from "./uploadQueue";
@@ -32,7 +32,7 @@ type Props = {
 /**
  * One photo slot: put it on a page with a name and it shows whatever is
  * placed there, and lets whoever holds `images.manage` change it in place once
- * they turn edit mode on (texts/EditMode.tsx). It reads the slots itself, so a
+ * they turn edit mode on (content/EditMode.tsx). It reads the slots itself, so a
  * page passes no photo.
  *
  * A visitor gets the photo or the one-line placeholder, with no

@@ -8,10 +8,10 @@ import { cn } from "@/lib/utils";
 import { rowsOf } from "../api/collection";
 import { useCommitteeIndex } from "../api/generated/endpoints";
 import type { CommitteeMemberResource } from "../api/generated/model";
-import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
+import { CardsBlock } from "../content/blocks/CardsBlock";
+import { HeroBlock } from "../content/blocks/HeroBlock";
 import { t } from "../i18n";
-import { EditableText } from "../texts/EditableText";
 
 /**
  * The committee: who to write to, and who holds which seat.
@@ -24,8 +24,8 @@ import { EditableText } from "../texts/EditableText";
  * the two cannot disagree.
  *
  * No email address is published: the contact form stores the message for the
- * committee and cannot be harvested. The booking number is a text the band
- * stores from this page (#106); until then it is a placeholder, because a
+ * committee and cannot be harvested. The contact card is the band's to change
+ * (`committee.contact`); its booking number ships as a placeholder, because a
  * guessed number sends a caller to a stranger.
  */
 export function Committee() {
@@ -34,35 +34,26 @@ export function Committee() {
 
   return (
     <>
-      <PageHero
-        title={t("committee.heading")}
-        titleKey="committee.heading"
-        mark={t("committee.headingHighlight")}
-        seed={19}
-      />
+      <HeroBlock blockKey="committee.hero" seed={19} />
 
       <PageSection>
-        {/* On yellow, because it is what most visitors came for: how to reach
-            the committee. On it the violet link is 5.5:1 and the muted
-            placeholder 4.9:1. */}
-        <Card className={cn(RAISED_CARD, "gap-0 bg-yellow p-5")}>
-          <EditableText k="committee.contactHeading" as="h2" className="font-display text-xl" />
-          <p className="mt-tight">
-            <Link to="/contact" className="text-violet underline">
-              {t("committee.writeToCommittee")}
-            </Link>
-          </p>
-          <p className="mt-tight">
-            <EditableText k="committee.booking" />{" "}
-            <EditableText
-              k="committee.bookingNumber"
-              neutral
-              phones
-              label={t("placeholders.bookingNumber")}
-              empty={<Tbd what={t("placeholders.bookingNumber")} token="booking-number" />}
-            />
-          </p>
-        </Card>
+        {/* The link to the form is page code, between the card's heading and
+            its booking line: the band has nothing to change there. */}
+        <CardsBlock
+          blockKey="committee.contact"
+          layout="wide"
+          slots={{
+            contact: {
+              beforeRows: (
+                <p className="mt-tight">
+                  <Link to="/contact" className="text-violet underline">
+                    {t("committee.writeToCommittee")}
+                  </Link>
+                </p>
+              ),
+            },
+          }}
+        />
 
         {seats.length > 0 ? (
           <ul className="mt-block grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

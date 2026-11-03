@@ -312,17 +312,17 @@
 
 export type ImportWebsiteRequestTextsItem = {
   /**
-   * @maxLength 128
-   * @pattern ^[a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+){1,7}$
+   * @maxLength 0
+   * @pattern ^$
    */
   key: string;
   /**
-   * @maxLength 2000
+   * @maxLength 0
    * @nullable
    */
   fr: string | null;
   /**
-   * @maxLength 2000
+   * @maxLength 0
    * @nullable
    */
   de: string | null;

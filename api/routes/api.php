@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\CommitteeFunctionController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ContactMessageController;
+use App\Http\Controllers\Api\ContentBlockController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventSeriesController;
 use App\Http\Controllers\Api\EventTagController;
@@ -31,11 +32,10 @@ use App\Http\Controllers\Api\RegistrationOptionController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\SectionController;
-use App\Http\Controllers\Api\TextOverrideController;
 use App\Http\Controllers\Api\WebsiteController;
 use App\Http\Middleware\RunPendingMigrations;
+use App\Models\ContentBlock;
 use App\Models\PhotoSlot;
-use App\Models\TextOverride;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
@@ -98,9 +98,8 @@ Route::get('/committee', [CommitteeController::class, 'index']);
 // Public: every photo slot that shows a photo. Nothing here depends on who asks.
 Route::get('/photo-slots', [PhotoSlotController::class, 'index']);
 
-// Public: every text of the public pages the band has changed (#106). Every
-// page needs them before it renders, for every visitor alike.
-Route::get('/texts', [TextOverrideController::class, 'index']);
+// Public: every content block of the public pages the band has changed (#106).
+Route::get('/blocks', [ContentBlockController::class, 'index']);
 
 // Public: one size of a library photo (#105). Nothing is listed; the path is
 // the lower-case SHA-256 of the size's bytes, so a file is reachable only from
@@ -363,10 +362,10 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         Route::post('/website/import', [WebsiteController::class, 'import']);
     });
 
-    // The public pages' texts (#106), changed where they are shown. No
-    // `etag:`, for the reason photo slots have none (see ConditionalWrite).
-    Route::put('/texts/{key}', [TextOverrideController::class, 'update'])
-        ->where('key', TextOverride::KEY)
+    // The public pages' content blocks (#106), changed where they are shown.
+    // No `etag:`, for the reason photo slots have none (see ConditionalWrite).
+    Route::put('/blocks/{key}', [ContentBlockController::class, 'update'])
+        ->where('key', ContentBlock::KEY)
         ->middleware('permission:content.manage');
 
     // Answering for yourself: `attendance.respond`, held through `musician`

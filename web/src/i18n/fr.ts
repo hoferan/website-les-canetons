@@ -232,11 +232,16 @@ export const fr = {
     image_set_too_heavy: "est trop lourd dans son ensemble",
     image_set_widths_repeated: "contient deux fois la même taille",
     image_set_aspect_mismatch: "mélange des tailles qui n'ont pas les mêmes proportions",
+    // BlockShape: the limits on a content block's data.
+    block_not_an_object: "doit être un ensemble de champs, pas une liste",
+    block_too_deep: "est imbriqué sur trop de niveaux",
+    block_too_long: "contient un texte trop long (maximum 2000 caractères)",
+    block_too_many: "contient une liste trop longue (maximum 24 éléments)",
+    block_bad_key: "contient un nom de champ qui n'est pas valable",
+    block_too_large: "est trop volumineux",
   },
   fields: {
-    // The two languages of a public text (PUT /texts/{key}).
-    fr: "Texte en français",
-    de: "Texte en allemand",
+    data: "Contenu",
     // A website bundle (POST /website/import). A refusal here means the file
     // was made by something other than the export, or by another version.
     format: "Version du fichier",
@@ -1728,9 +1733,6 @@ export const fr = {
     contactHeading: "Contact des Canetons",
     writeToCommittee: "Écrire au comité",
     booking: "Pour réserver les Canetons :",
-    // Empty until the band stores one from the page (#106); the page then
-    // shows a placeholder, never a guessed number.
-    bookingNumber: "",
   },
 
   /** /join: how to join, for a parent or a curious child. */
@@ -1760,13 +1762,8 @@ export const fr = {
     // link searches for the two together.
     locationPlace: "Werkhof",
     locationAddress: "Planche-Inférieure 14, 1700 Fribourg",
-    locationAddressLabel: "Adresse pour le lien vers la carte",
     locationArea: "Basse-Ville de Fribourg",
     contacts: "Contacts",
-    // Who to ring about joining, one per line, name and number. Empty until
-    // the band stores them from the page (#106): a wrong number dials a
-    // stranger, so the page shows placeholders until then.
-    contactsList: "",
     contactMeanwhile: "En attendant, écrivez-nous depuis la",
     contactPageLink: "page de contact",
   },
@@ -1799,13 +1796,118 @@ export const fr = {
   },
 
   /**
-   * The two shared placeholder components, PhotoPending and Tbd.
-   *
-   * PhotoPending shows one sentence for every photo slot, so no French
-   * grammar is glued onto a register's name. A caller passes Tbd's `what` as
-   * a translated string, never a fragment glued together outside the
-   * catalogue.
+   * A content block's place on the site, the title of its editor. Nested as
+   * the block keys are, so `blocks.join.facts` names `join.facts`.
    */
+  blocks: {
+    site: "Infos du site",
+    home: { hero: "Accueil · en-tête" },
+    join: { hero: "Nous rejoindre · en-tête", facts: "Nous rejoindre · cartes" },
+    committee: { hero: "Comité · en-tête", contact: "Comité · contact" },
+    band: { hero: "Les canetons · en-tête", godparents: "Les canetons · parrain et marraine" },
+    history: { hero: "Histoire · en-tête" },
+    contact: { hero: "Contact · en-tête" },
+    agenda: { hero: "Où nous voir · en-tête" },
+  },
+
+  /** The floating pill that turns edit mode on and off on a public page (#106). */
+  editMode: {
+    start: "Modifier la page",
+    done: "Terminer la modification",
+    announceOn:
+      "Mode édition activé : chaque bloc a un bouton Modifier. Les visiteurs ne le voient pas.",
+    announceOff: "Mode édition désactivé.",
+  },
+
+  /** The dialog that changes one content block, and the fields inside it (#106). */
+  blockEditor: {
+    // The chip's accessible name; its visible word is common.edit.
+    edit: "Modifier : {{label}}",
+    save: "Enregistrer",
+    saving: "Enregistrement…",
+    reset: "Rétablir l’original",
+    saved: "Modifié",
+    saveFailed: "Le bloc n’a pas pu être enregistré. Réessayez.",
+    invalid: "Une valeur n’est pas acceptée. Corrigez-la avant d’enregistrer.",
+    // A card editor shows one card; the refused value sits in another one.
+    otherCardInvalid:
+      "La carte {{title}} contient un numéro ou un lien refusé. Ouvrez-la pour le corriger, puis réessayez.",
+    // The language badges beside a field's label, the same on both pages.
+    french: "FR",
+    german: "DE",
+    addGerman: "+ Deutsch",
+    removeGerman: "Retirer l’allemand",
+    up: "Monter",
+    down: "Descendre",
+    remove: "Supprimer",
+    addRow: "Ajouter une ligne",
+    addCard: "Ajouter une carte",
+    removeCard: "Supprimer la carte",
+    removeCardTitle: "Supprimer cette carte ?",
+    removeCardBody: "La carte et ses lignes disparaissent de la page.",
+    removeCardConfirm: "Supprimer",
+    moveLeft: "Déplacer à gauche",
+    moveRight: "Déplacer à droite",
+    rowType: {
+      text: "Texte",
+      labelValue: "Libellé + valeur",
+      phone: "Téléphone",
+      email: "E-mail",
+      address: "Adresse",
+      link: "Lien",
+    },
+    field: {
+      text: "Texte",
+      label: "Libellé",
+      value: "Valeur",
+      number: "Numéro",
+      email: "Adresse e-mail",
+      place: "Lieu",
+      address: "Adresse",
+      url: "Adresse du lien",
+      title: "Titre",
+      mark: "Mots surlignés",
+      intro: "Introduction",
+      names: "Noms",
+    },
+    httpsExpected: "Une adresse complète est attendue, commençant par https://.",
+    phoneInvalid: "Un numéro de téléphone est attendu, par exemple 026 123 45 67.",
+    icon: "Icône",
+    tint: "Couleur",
+    icons: {
+      music: "Musique",
+      clock: "Horloge",
+      cake: "Gâteau",
+      "map-pin": "Lieu",
+      phone: "Téléphone",
+      users: "Groupe",
+      calendar: "Calendrier",
+      star: "Étoile",
+      info: "Information",
+      mail: "Courrier",
+    },
+    tints: {
+      pink: "Rose",
+      cyan: "Turquoise",
+      lime: "Vert",
+      yellow: "Jaune",
+      lilac: "Lilas",
+    },
+    // The site editor, opened from the footer.
+    site: {
+      edit: "Modifier les infos du site",
+      name: "Nom du groupe",
+      pitch: "Phrase sous le nom",
+      legalName: "Nom officiel",
+      networks: "Réseaux",
+      network: "Réseau",
+      networkUrl: "Adresse de la page",
+      addNetwork: "Ajouter un réseau",
+    },
+    // Between a row's label and its value: "Lieu : Werkhof".
+    separator: " : ",
+  },
+
   /** /website: the public site carried from one server to another (#336). */
   website: {
     heading: "Site web",
@@ -1846,33 +1948,21 @@ export const fr = {
     importFailed: "L’import a échoué. Le site n’a pas changé.",
   },
 
-  /** A text of a public page, changed where it is shown (#106). */
-  texts: {
-    edit: "Modifier le texte : {{label}}",
-    title: "Modifier le texte",
-    french: "Français",
-    german: "Deutsch",
-    single: "Texte",
-    httpsExpected: "Une adresse complète est attendue, commençant par https://.",
-    multilineHint: "Une ligne par entrée.",
-    save: "Enregistrer",
-    reset: "Rétablir le texte d’origine",
-    saveFailed: "Le texte n’a pas pu être enregistré. Réessayez.",
-  },
-
-  /** The switch that shows the pencils on a public page (#106). */
-  editMode: {
-    start: "Modifier la page",
-    region: "Mode édition",
-    hint: "Mode édition : les crayons modifient la page. Les visiteurs ne voient pas ce mode.",
-    done: "Terminer",
-  },
-
+  /**
+   * The two shared placeholder components, PhotoPending and Tbd.
+   *
+   * PhotoPending shows one sentence for every photo slot, so no French
+   * grammar is glued onto a register's name. A caller passes Tbd's `what` as
+   * a translated string, never a fragment glued together outside the
+   * catalogue.
+   */
   placeholders: {
     tbd: "••• à compléter",
     // A whole string, punctuation included: French puts a space before a
     // colon and German does not.
     tbdWhat: "••• à compléter : {{what}}",
+    // For what is filled in on the members page rather than in place.
+    tbdOnMembersPage: "••• à compléter sur la page Membres : {{what}}",
     photoPending: "Photo à venir",
     registerFirstNames: "prénoms du registre",
     bookingNumber: "numéro pour les prestations",

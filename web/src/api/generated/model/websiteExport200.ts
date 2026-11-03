@@ -312,12 +312,11 @@
 import type { WebsiteExport200HistoryItem } from "./websiteExport200HistoryItem";
 import type { WebsiteExport200ImagesItem } from "./websiteExport200ImagesItem";
 import type { WebsiteExport200SlotsItem } from "./websiteExport200SlotsItem";
-import type { WebsiteExport200TextsItem } from "./websiteExport200TextsItem";
 
 export type WebsiteExport200 = {
   format: 1;
   exportedAt: string;
-  texts: WebsiteExport200TextsItem[];
+  texts: string;
   images: WebsiteExport200ImagesItem[];
   slots: WebsiteExport200SlotsItem[];
   history: WebsiteExport200HistoryItem[];

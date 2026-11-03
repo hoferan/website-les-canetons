@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Exceptions\ApiError;
+use App\Support\BlockShape;
 use App\Support\ErrorVocabulary;
 use App\Support\ImageSet;
 use App\Support\JpegInspector;
@@ -271,6 +272,7 @@ class ApiErrorVocabularyTest extends TestCase
             $this->scanAppFor("/errors\(\)->add\(\s*['\"][^'\"]*['\"]\s*,\s*'([a-z_]+)'\s*\)/"),
             JpegInspector::PROBLEMS,
             ImageSet::PROBLEMS,
+            BlockShape::PROBLEMS,
             self::EXTRA_REASONS,
         ), self::MUST_INCLUDE_REASONS, 'reasons');
     }

@@ -11,6 +11,7 @@ import {
 } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError } from "../components/FormField";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
@@ -252,16 +253,20 @@ export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: 
             />
             {/* Icon only on a phone (ADR 0025): the pencil means one thing and
                 the name says which slot. From sm up, hovering the photo or
-                focusing the pencil shows the word too. White and shadowed so
-                it reads on a dark or a light photograph; h-11 and min-w-11
-                keep the 44px touch target. */}
+                focusing the pencil shows the word too. The raised yellow chip
+                of every block's "Modifier" (EditChip), whose ink outline reads
+                on a dark or a light photograph; h-11 and min-w-11 keep the
+                44px touch target. */}
             <button
               ref={control}
               type="button"
               aria-label={name}
               aria-disabled={busy}
               onClick={open}
-              className="group/pencil absolute right-2 bottom-2 inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full bg-white/90 px-3 text-ink shadow-md outline-none hover:bg-white focus-visible:ring-[3px] focus-visible:ring-ring aria-disabled:opacity-60"
+              className={cn(
+                buttonVariants({ variant: "raised" }),
+                "group/pencil absolute right-2 bottom-2 h-11 min-w-11 px-3",
+              )}
             >
               <Pencil aria-hidden="true" className="size-5 shrink-0" />
               <span className="hidden pr-1 text-sm font-medium sm:group-hover/frame:inline sm:group-focus-visible/pencil:inline">
@@ -278,10 +283,20 @@ export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: 
             aria-label={name}
             aria-disabled={busy}
             onClick={open}
-            className="flex aspect-[3/2] w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-violet/70 bg-violet/5 px-4 text-center text-ink outline-none transition-colors hover:border-violet hover:bg-violet/10 focus-visible:border-violet focus-visible:bg-violet/10 focus-visible:ring-[3px] focus-visible:ring-ring/40"
+            className="group/add flex aspect-[3/2] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-violet/70 bg-violet/5 px-4 text-center text-ink outline-none transition-colors hover:border-violet hover:bg-violet/10 focus-visible:border-violet focus-visible:bg-violet/10 focus-visible:ring-[3px] focus-visible:ring-ring/40"
           >
-            <ImagePlus aria-hidden="true" className="mb-1 size-10 text-violet" strokeWidth={1.5} />
-            <span className="font-medium">{t("photos.addOne")}</span>
+            {/* The whole frame is the button; the chip inside it wears
+                EditChip's look, so an empty slot reads as one more thing to
+                change in edit mode. A span, not a button: one control. */}
+            <span
+              className={cn(
+                buttonVariants({ variant: "raised" }),
+                "px-4 group-hover/add:bg-yellow/85",
+              )}
+            >
+              <ImagePlus aria-hidden="true" className="size-5" />
+              {t("photos.addOne")}
+            </span>
             <span className="text-sm text-ink-muted">{t("photos.addFrom")}</span>
           </button>
         )}

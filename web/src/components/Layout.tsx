@@ -33,8 +33,8 @@ import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 
-import { EditModeBar } from "../texts/EditMode";
-import { useTextsVersion } from "../texts/TextsProvider";
+import { EditModePill } from "../content/EditMode";
+import { useSite } from "../content/blocks/SiteBlock";
 
 /**
  * The public nav in order of importance, left to right. The desktop bar folds
@@ -86,9 +86,7 @@ const TOOLS: Array<{
 
 export function Layout() {
   const { config, user, can } = useSession();
-  // The band's name and links are texts it can change; read so a save shows
-  // in the header and the nav at once.
-  useTextsVersion();
+  const site = useSite();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   // The colour the page ends on, for the footer's scalloped edge. Null is the
@@ -111,9 +109,9 @@ export function Layout() {
 
   // Built in one place so the desktop bar and the phone list cannot disagree
   // about what exists. A network the band has no address for is left out.
-  const gallery = networkUrl("flickr");
-  const instagram = networkUrl("instagram");
-  const facebook = networkUrl("facebook");
+  const gallery = networkUrl(site.networks, "flickr");
+  const instagram = networkUrl(site.networks, "instagram");
+  const facebook = networkUrl(site.networks, "facebook");
   const publicEntries: NavEntry[] = [
     ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
   ];
@@ -295,7 +293,7 @@ export function Layout() {
           pushed down when a page's data arrives (a layout shift, #236). The
           cost is a footer one scroll away on a page shorter than the screen. */}
       <main id="main" tabIndex={-1} className="min-h-dvh outline-none">
-        <EditModeBar />
+        <EditModePill />
         <FooterEdgeContext.Provider value={setFooterEdge}>
           <Outlet />
         </FooterEdgeContext.Provider>

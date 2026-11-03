@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 
+import { useSite } from "../content/blocks/SiteBlock";
 import { t } from "../i18n";
 
 /**
@@ -17,6 +18,8 @@ import { t } from "../i18n";
  * same artwork, as does the favicon.
  */
 export function Logo() {
+  const { name } = useSite();
+
   return (
     // aria-label so the accessible name is one phrase, not the wordmark and
     // "Guggenmusik" run together.
@@ -24,11 +27,7 @@ export function Logo() {
     // The label must not contain "accueil": name matching can be substring
     // and case insensitive, so a query for a link such as "Retour à
     // l'accueil" would also match the logo and fail on strict mode.
-    <Link
-      to="/"
-      aria-label={t("site.name")}
-      className="focus-ring-stage flex items-center gap-3 rounded"
-    >
+    <Link to="/" aria-label={name} className="focus-ring-stage flex items-center gap-3 rounded">
       {/* alt="": the wordmark beside it is real text saying the same thing.
 
           width/height are the file's intrinsic pixels, there to reserve the
@@ -49,7 +48,7 @@ export function Logo() {
             beak. Colour in the header means the mark, colour in the nav means
             state. */}
         <span className="font-display text-lg leading-tight sm:text-2xl sm:leading-none">
-          {t("site.name")}
+          {name}
         </span>
         <span className="mt-1.5 text-[10px] font-bold tracking-[0.28em] text-white/70 uppercase sm:text-[11px] sm:tracking-[0.3em]">
           Guggenmusik

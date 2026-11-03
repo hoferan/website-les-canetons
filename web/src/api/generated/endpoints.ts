@@ -348,6 +348,9 @@ import type {
   AuthMe200,
   BandIndex200,
   BandIndexParams,
+  BlockIndex200,
+  BlockIndexParams,
+  BlockUpdate200,
   BookingReadResource,
   BookingReadUnmarkParams,
   CommitteeFunctionIndex200,
@@ -475,14 +478,11 @@ import type {
   StoreRegistrationRequest,
   StoreRoleRequest,
   StoreSectionRequest,
-  TextIndex200,
-  TextIndexParams,
-  TextUpdate200,
+  UpdateBlockRequest,
   UpdateEventRequest,
   UpdateImageRequest,
   UpdateMemberRequest,
   UpdateRegistrationRequest,
-  UpdateTextRequest,
   WebsiteExport200,
   WebsiteImport200,
 } from "./model";
@@ -14558,26 +14558,26 @@ export const useImageReplace = <
   return useMutation(getImageReplaceMutationOptions(options), queryClient);
 };
 
-export type textIndexResponse200 = {
-  data: TextIndex200;
+export type blockIndexResponse200 = {
+  data: BlockIndex200;
   status: 200;
 };
 
-export type textIndexResponse503 = {
+export type blockIndexResponse503 = {
   data: Problem503Response;
   status: 503;
 };
 
-export type textIndexResponseSuccess = textIndexResponse200 & {
+export type blockIndexResponseSuccess = blockIndexResponse200 & {
   headers: Headers;
 };
-export type textIndexResponseError = textIndexResponse503 & {
+export type blockIndexResponseError = blockIndexResponse503 & {
   headers: Headers;
 };
 
-export type textIndexResponse = textIndexResponseSuccess | textIndexResponseError;
+export type blockIndexResponse = blockIndexResponseSuccess | blockIndexResponseError;
 
-export const getTextIndexUrl = (params?: TextIndexParams) => {
+export const getBlockIndexUrl = (params?: BlockIndexParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -14588,66 +14588,66 @@ export const getTextIndexUrl = (params?: TextIndexParams) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/texts?${stringifiedParams}` : `/texts`;
+  return stringifiedParams.length > 0 ? `/blocks?${stringifiedParams}` : `/blocks`;
 };
 
 /**
- * A key that is absent shows the page's default wording.
- * @summary Every changed text, by key. Public
+ * A key that is absent shows the page's default content.
+ * @summary Every changed block, by key. Public
  */
-export const textIndex = async (
-  params?: TextIndexParams,
+export const blockIndex = async (
+  params?: BlockIndexParams,
   options?: Parameters<typeof customFetch>[1],
-): Promise<textIndexResponse> => {
-  return customFetch<textIndexResponse>(getTextIndexUrl(params), {
+): Promise<blockIndexResponse> => {
+  return customFetch<blockIndexResponse>(getBlockIndexUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getTextIndexQueryKey = (params?: TextIndexParams) => {
-  return [`/texts`, ...(params ? [params] : [])] as const;
+export const getBlockIndexQueryKey = (params?: BlockIndexParams) => {
+  return [`/blocks`, ...(params ? [params] : [])] as const;
 };
 
-export const getTextIndexQueryOptions = <
-  TData = Awaited<ReturnType<typeof textIndex>>,
+export const getBlockIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof blockIndex>>,
   TError = Problem503Response,
 >(
-  params?: TextIndexParams,
+  params?: BlockIndexParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof blockIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getTextIndexQueryKey(params);
+  const queryKey = queryOptions?.queryKey ?? getBlockIndexQueryKey(params);
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof textIndex>>> = ({ signal }) =>
-    textIndex(params, { signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof blockIndex>>> = ({ signal }) =>
+    blockIndex(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof textIndex>>,
+    Awaited<ReturnType<typeof blockIndex>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type TextIndexQueryResult = NonNullable<Awaited<ReturnType<typeof textIndex>>>;
-export type TextIndexQueryError = Problem503Response;
+export type BlockIndexQueryResult = NonNullable<Awaited<ReturnType<typeof blockIndex>>>;
+export type BlockIndexQueryError = Problem503Response;
 
-export function useTextIndex<
-  TData = Awaited<ReturnType<typeof textIndex>>,
+export function useBlockIndex<
+  TData = Awaited<ReturnType<typeof blockIndex>>,
   TError = Problem503Response,
 >(
-  params: undefined | TextIndexParams,
+  params: undefined | BlockIndexParams,
   options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>> &
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof blockIndex>>, TError, TData>> &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof textIndex>>,
+          Awaited<ReturnType<typeof blockIndex>>,
           TError,
-          Awaited<ReturnType<typeof textIndex>>
+          Awaited<ReturnType<typeof blockIndex>>
         >,
         "initialData"
       >;
@@ -14655,18 +14655,18 @@ export function useTextIndex<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useTextIndex<
-  TData = Awaited<ReturnType<typeof textIndex>>,
+export function useBlockIndex<
+  TData = Awaited<ReturnType<typeof blockIndex>>,
   TError = Problem503Response,
 >(
-  params?: TextIndexParams,
+  params?: BlockIndexParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>> &
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof blockIndex>>, TError, TData>> &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof textIndex>>,
+          Awaited<ReturnType<typeof blockIndex>>,
           TError,
-          Awaited<ReturnType<typeof textIndex>>
+          Awaited<ReturnType<typeof blockIndex>>
         >,
         "initialData"
       >;
@@ -14674,33 +14674,33 @@ export function useTextIndex<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useTextIndex<
-  TData = Awaited<ReturnType<typeof textIndex>>,
+export function useBlockIndex<
+  TData = Awaited<ReturnType<typeof blockIndex>>,
   TError = Problem503Response,
 >(
-  params?: TextIndexParams,
+  params?: BlockIndexParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof blockIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary Every changed text, by key. Public
+ * @summary Every changed block, by key. Public
  */
 
-export function useTextIndex<
-  TData = Awaited<ReturnType<typeof textIndex>>,
+export function useBlockIndex<
+  TData = Awaited<ReturnType<typeof blockIndex>>,
   TError = Problem503Response,
 >(
-  params?: TextIndexParams,
+  params?: BlockIndexParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof textIndex>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof blockIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getTextIndexQueryOptions(params, options);
+  const queryOptions = getBlockIndexQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -14709,75 +14709,77 @@ export function useTextIndex<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type textUpdateResponse200 = {
-  data: TextUpdate200;
+export type blockUpdateResponse200 = {
+  data: BlockUpdate200;
   status: 200;
 };
 
-export type textUpdateResponse400 = {
+export type blockUpdateResponse400 = {
   data: Problem400Response;
   status: 400;
 };
 
-export type textUpdateResponse401 = {
+export type blockUpdateResponse401 = {
   data: Problem401Response;
   status: 401;
 };
 
-export type textUpdateResponse403 = {
+export type blockUpdateResponse403 = {
   data: Problem403Response;
   status: 403;
 };
 
-export type textUpdateResponse404 = {
+export type blockUpdateResponse404 = {
   data: Problem404Response;
   status: 404;
 };
 
-export type textUpdateResponse419 = {
+export type blockUpdateResponse419 = {
   data: Problem419Response;
   status: 419;
 };
 
-export type textUpdateResponse503 = {
+export type blockUpdateResponse503 = {
   data: Problem503Response;
   status: 503;
 };
 
-export type textUpdateResponseSuccess = textUpdateResponse200 & {
+export type blockUpdateResponseSuccess = blockUpdateResponse200 & {
   headers: Headers;
 };
-export type textUpdateResponseError = (
-  | textUpdateResponse400
-  | textUpdateResponse401
-  | textUpdateResponse403
-  | textUpdateResponse404
-  | textUpdateResponse419
-  | textUpdateResponse503
+export type blockUpdateResponseError = (
+  | blockUpdateResponse400
+  | blockUpdateResponse401
+  | blockUpdateResponse403
+  | blockUpdateResponse404
+  | blockUpdateResponse419
+  | blockUpdateResponse503
 ) & {
   headers: Headers;
 };
 
-export type textUpdateResponse = textUpdateResponseSuccess | textUpdateResponseError;
+export type blockUpdateResponse = blockUpdateResponseSuccess | blockUpdateResponseError;
 
-export const getTextUpdateUrl = (key: string) => {
-  return `/texts/${key}`;
+export const getBlockUpdateUrl = (key: string) => {
+  return `/blocks/${key}`;
 };
 
 /**
- * `{key}` is the text's path in the SPA's catalogue: two to eight
- * dot-separated segments of letters and digits, at most 128 characters.
- * Send both languages; null in both puts the default back, and an empty
- * string stores "nothing here" for that language. No
- * `If-Match`: the write sets one text, and the last save is what the page
- * shows, with both in the audit log.
- * @summary Changes one text, or puts it back. Requires `content.manage`
+ * `{key}` is the block's name: a lower-case word, then up to three more
+ * dot-separated segments of lower-case letters, digits and hyphens, at
+ * most 64 characters. `data` is an object of at most six levels, with
+ * lists of at most 24 items, strings of at most 2000 characters, keys of
+ * a letter then letters and digits (32 at most), and 64 KB once encoded;
+ * null puts the default back. A string may be empty, which means
+ * nothing is shown there. No `If-Match`: the write sets one block, and
+ * the last save is what the page shows, with both in the audit log.
+ * @summary Changes one block, or puts it back. Requires `content.manage`
  */
-export const textUpdate = async (
+export const blockUpdate = async (
   key: string,
-  updateTextRequest: UpdateTextRequest,
+  updateBlockRequest: UpdateBlockRequest,
   options?: Parameters<typeof customFetch>[1],
-): Promise<textUpdateResponse> => {
+): Promise<blockUpdateResponse> => {
   const getHeaders = (
     h?: NonNullable<RequestInit["headers"]>,
   ): Record<string, string | readonly string[]> => {
@@ -14797,17 +14799,17 @@ export const textUpdate = async (
     }
     return headers;
   };
-  return customFetch<textUpdateResponse>(getTextUpdateUrl(key), {
+  return customFetch<blockUpdateResponse>(getBlockUpdateUrl(key), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
-    body: JSON.stringify(updateTextRequest),
+    body: JSON.stringify(updateBlockRequest),
   });
 };
 
-export const getTextUpdateMutationKey = () => ["textUpdate"] as const;
+export const getBlockUpdateMutationKey = () => ["blockUpdate"] as const;
 
-export const getTextUpdateMutationOptions = <
+export const getBlockUpdateMutationOptions = <
   TError =
     | Problem400Response
     | Problem401Response
@@ -14818,19 +14820,19 @@ export const getTextUpdateMutationOptions = <
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof textUpdate>>,
+    Awaited<ReturnType<typeof blockUpdate>>,
     TError,
-    TextUpdateMutationVariables,
+    BlockUpdateMutationVariables,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof textUpdate>>,
+  Awaited<ReturnType<typeof blockUpdate>>,
   TError,
-  TextUpdateMutationVariables,
+  BlockUpdateMutationVariables,
   TContext
 > => {
-  const mutationKey = getTextUpdateMutationKey();
+  const mutationKey = getBlockUpdateMutationKey();
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
       ? options
@@ -14838,32 +14840,32 @@ export const getTextUpdateMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof textUpdate>>,
-    TextUpdateMutationVariables
+    Awaited<ReturnType<typeof blockUpdate>>,
+    BlockUpdateMutationVariables
   > = (props) => {
     const { key, data } = props ?? {};
 
-    return textUpdate(key, data, requestOptions);
+    return blockUpdate(key, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type TextUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof textUpdate>>>;
-export type TextUpdateMutationBody = UpdateTextRequest;
-export type TextUpdateMutationError =
+export type BlockUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof blockUpdate>>>;
+export type BlockUpdateMutationBody = UpdateBlockRequest;
+export type BlockUpdateMutationError =
   | Problem400Response
   | Problem401Response
   | Problem403Response
   | Problem404Response
   | Problem419Response
   | Problem503Response;
-export type TextUpdateMutationVariables = { key: string; data: UpdateTextRequest };
+export type BlockUpdateMutationVariables = { key: string; data: UpdateBlockRequest };
 
 /**
- * @summary Changes one text, or puts it back. Requires `content.manage`
+ * @summary Changes one block, or puts it back. Requires `content.manage`
  */
-export const useTextUpdate = <
+export const useBlockUpdate = <
   TError =
     | Problem400Response
     | Problem401Response
@@ -14875,21 +14877,21 @@ export const useTextUpdate = <
 >(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof textUpdate>>,
+      Awaited<ReturnType<typeof blockUpdate>>,
       TError,
-      TextUpdateMutationVariables,
+      BlockUpdateMutationVariables,
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof textUpdate>>,
+  Awaited<ReturnType<typeof blockUpdate>>,
   TError,
-  TextUpdateMutationVariables,
+  BlockUpdateMutationVariables,
   TContext
 > => {
-  return useMutation(getTextUpdateMutationOptions(options), queryClient);
+  return useMutation(getBlockUpdateMutationOptions(options), queryClient);
 };
 
 export type websiteExportResponse200 = {

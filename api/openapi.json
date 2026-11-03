@@ -57,8 +57,8 @@
             "description": "The shared photo library. Every route here needs `images.manage`, except the file itself, which is public."
         },
         {
-            "name": "Texts",
-            "description": "The public pages' texts the band has changed, by catalogue key. Reading them is public; changing one needs `content.manage`."
+            "name": "Content",
+            "description": "The public pages' content blocks the band has changed, by block key. Reading them is public; changing one needs `content.manage`."
         },
         {
             "name": "Website",
@@ -307,7 +307,13 @@
                                                             "image_set_too_many",
                                                             "image_set_too_heavy",
                                                             "image_set_widths_repeated",
-                                                            "image_set_aspect_mismatch"
+                                                            "image_set_aspect_mismatch",
+                                                            "block_not_an_object",
+                                                            "block_too_deep",
+                                                            "block_too_long",
+                                                            "block_too_many",
+                                                            "block_bad_key",
+                                                            "block_too_large"
                                                         ]
                                                     },
                                                     "params": {
@@ -2209,7 +2215,13 @@
                                                             "image_set_too_many",
                                                             "image_set_too_heavy",
                                                             "image_set_widths_repeated",
-                                                            "image_set_aspect_mismatch"
+                                                            "image_set_aspect_mismatch",
+                                                            "block_not_an_object",
+                                                            "block_too_deep",
+                                                            "block_too_long",
+                                                            "block_too_many",
+                                                            "block_bad_key",
+                                                            "block_too_large"
                                                         ]
                                                     },
                                                     "params": {
@@ -6961,7 +6973,13 @@
                                                             "image_set_too_many",
                                                             "image_set_too_heavy",
                                                             "image_set_widths_repeated",
-                                                            "image_set_aspect_mismatch"
+                                                            "image_set_aspect_mismatch",
+                                                            "block_not_an_object",
+                                                            "block_too_deep",
+                                                            "block_too_long",
+                                                            "block_too_many",
+                                                            "block_bad_key",
+                                                            "block_too_large"
                                                         ]
                                                     },
                                                     "params": {
@@ -7949,13 +7967,13 @@
                 }
             }
         },
-        "/texts": {
+        "/blocks": {
             "get": {
-                "operationId": "text.index",
-                "description": "A key that is absent shows the page's default wording.",
-                "summary": "Every changed text, by key. Public",
+                "operationId": "block.index",
+                "description": "A key that is absent shows the page's default content.",
+                "summary": "Every changed block, by key. Public",
                 "tags": [
-                    "Texts"
+                    "Content"
                 ],
                 "parameters": [
                     {
@@ -7982,7 +8000,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `TextOverrideResource`",
+                        "description": "Array of `ContentBlockResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7992,7 +8010,7 @@
                                             "type": "array",
                                             "description": "This page of the collection, in the collection's own order.",
                                             "items": {
-                                                "$ref": "#/components/schemas/TextOverrideResource"
+                                                "$ref": "#/components/schemas/ContentBlockResource"
                                             }
                                         },
                                         "meta": {
@@ -8043,13 +8061,13 @@
                 "security": []
             }
         },
-        "/texts/{key}": {
+        "/blocks/{key}": {
             "put": {
-                "operationId": "text.update",
-                "description": "`{key}` is the text's path in the SPA's catalogue: two to eight\ndot-separated segments of letters and digits, at most 128 characters.\nSend both languages; null in both puts the default back, and an empty\nstring stores \"nothing here\" for that language. No\n`If-Match`: the write sets one text, and the last save is what the page\nshows, with both in the audit log.",
-                "summary": "Changes one text, or puts it back. Requires `content.manage`",
+                "operationId": "block.update",
+                "description": "`{key}` is the block's name: a lower-case word, then up to three more\ndot-separated segments of lower-case letters, digits and hyphens, at\nmost 64 characters. `data` is an object of at most six levels, with\nlists of at most 24 items, strings of at most 2000 characters, keys of\na letter then letters and digits (32 at most), and 64 KB once encoded;\nnull puts the default back. A string may be empty, which means\nnothing is shown there. No `If-Match`: the write sets one block, and\nthe last save is what the page shows, with both in the audit log.",
+                "summary": "Changes one block, or puts it back. Requires `content.manage`",
                 "tags": [
-                    "Texts"
+                    "Content"
                 ],
                 "parameters": [
                     {
@@ -8058,7 +8076,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "[a-z][A-Za-z0-9]*(?:\\.[A-Za-z0-9]+){1,7}"
+                            "pattern": "[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+){0,3}"
                         }
                     }
                 ],
@@ -8067,23 +8085,23 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/UpdateTextRequest"
+                                "$ref": "#/components/schemas/UpdateBlockRequest"
                             }
                         }
                     }
                 },
                 "responses": {
                     "200": {
-                        "description": "The text as stored, or null when the page is back to its default.",
+                        "description": "The block as stored, or null when the page is back to its default.",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "text": {
+                                        "block": {
                                             "anyOf": [
                                                 {
-                                                    "$ref": "#/components/schemas/TextOverrideResource"
+                                                    "$ref": "#/components/schemas/ContentBlockResource"
                                                 },
                                                 {
                                                     "type": "null"
@@ -8092,7 +8110,7 @@
                                         }
                                     },
                                     "required": [
-                                        "text"
+                                        "block"
                                     ]
                                 }
                             }
@@ -8144,32 +8162,7 @@
                                             "format": "date-time"
                                         },
                                         "texts": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "key": {
-                                                        "type": "string"
-                                                    },
-                                                    "fr": {
-                                                        "type": [
-                                                            "string",
-                                                            "null"
-                                                        ]
-                                                    },
-                                                    "de": {
-                                                        "type": [
-                                                            "string",
-                                                            "null"
-                                                        ]
-                                                    }
-                                                },
-                                                "required": [
-                                                    "key",
-                                                    "fr",
-                                                    "de"
-                                                ]
-                                            }
+                                            "type": "string"
                                         },
                                         "images": {
                                             "type": "array",
@@ -9287,6 +9280,29 @@
                 ],
                 "title": "ContactRequest"
             },
+            "ContentBlockResource": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "The block's content, an object even when empty.",
+                        "additionalProperties": {}
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "key",
+                    "data",
+                    "updatedAt"
+                ],
+                "title": "ContentBlockResource"
+            },
             "EditableRegistrationOptionResource": {
                 "type": "object",
                 "properties": {
@@ -9972,22 +9988,22 @@
                             "properties": {
                                 "key": {
                                     "type": "string",
-                                    "pattern": "^[a-z][A-Za-z0-9]*(?:\\.[A-Za-z0-9]+){1,7}$",
-                                    "maxLength": 128
+                                    "pattern": "^$",
+                                    "maxLength": 0
                                 },
                                 "fr": {
                                     "type": [
                                         "string",
                                         "null"
                                     ],
-                                    "maxLength": 2000
+                                    "maxLength": 0
                                 },
                                 "de": {
                                     "type": [
                                         "string",
                                         "null"
                                     ],
-                                    "maxLength": 2000
+                                    "maxLength": 0
                                 }
                             },
                             "required": [
@@ -11904,36 +11920,23 @@
                 ],
                 "title": "TagColour"
             },
-            "TextOverrideResource": {
+            "UpdateBlockRequest": {
                 "type": "object",
+                "description": "One content block's data. Null puts the page's default back.",
                 "properties": {
-                    "key": {
-                        "type": "string"
-                    },
-                    "fr": {
+                    "data": {
                         "type": [
-                            "string",
+                            "object",
                             "null"
-                        ]
-                    },
-                    "de": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time"
+                        ],
+                        "description": "The block's content as an object, or null for the page's default.",
+                        "additionalProperties": {}
                     }
                 },
                 "required": [
-                    "key",
-                    "fr",
-                    "de",
-                    "updatedAt"
+                    "data"
                 ],
-                "title": "TextOverrideResource"
+                "title": "UpdateBlockRequest"
             },
             "UpdateEventRequest": {
                 "type": "object",
@@ -12182,33 +12185,6 @@
                     }
                 },
                 "title": "UpdateRegistrationRequest"
-            },
-            "UpdateTextRequest": {
-                "type": "object",
-                "description": "One public text in both languages. Null in a language means the page shows\nits default there; an empty string means it shows nothing (ADR 0038).",
-                "properties": {
-                    "fr": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "The French wording, null for the page's default, or \"\" for nothing.",
-                        "maxLength": 2000
-                    },
-                    "de": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "The German wording, or null: the German page then shows the French value, or its default.",
-                        "maxLength": 2000
-                    }
-                },
-                "required": [
-                    "fr",
-                    "de"
-                ],
-                "title": "UpdateTextRequest"
             }
         },
         "responses": {
@@ -12385,7 +12361,13 @@
                                                     "image_set_too_many",
                                                     "image_set_too_heavy",
                                                     "image_set_widths_repeated",
-                                                    "image_set_aspect_mismatch"
+                                                    "image_set_aspect_mismatch",
+                                                    "block_not_an_object",
+                                                    "block_too_deep",
+                                                    "block_too_long",
+                                                    "block_too_many",
+                                                    "block_bad_key",
+                                                    "block_too_large"
                                                 ]
                                             },
                                             "params": {

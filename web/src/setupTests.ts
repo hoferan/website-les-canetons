@@ -6,7 +6,6 @@ import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { setLocale } from "./i18n";
 import { resetMockState } from "./mocks/handlers";
 import { server } from "./mocks/node";
-import { applyOverrides } from "./i18n/overrides";
 
 // Guarded on `typeof window`: this setup file also runs for tests that opt
 // into `@vitest-environment node`, which have no window or document.
@@ -40,8 +39,6 @@ afterEach(async () => {
   server.resetHandlers();
   resetMockState();
 
-  // The band's texts live in i18next's resources, which outlive a test.
-  applyOverrides([]);
   // Edit mode is remembered per tab, and jsdom keeps one tab for a file.
   if (typeof sessionStorage !== "undefined") sessionStorage.removeItem("canetons.editMode");
 

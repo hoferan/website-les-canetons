@@ -6,8 +6,8 @@ import { PageSection } from "@/components/PageSection";
 import { rowsOf } from "../api/collection";
 import { useHistoryEntryIndex } from "../api/generated/endpoints";
 import type { HistoryEntryResource } from "../api/generated/model";
-import { PageHero } from "../carnival/PageHero";
 import { ButtonLink } from "../components/ButtonLink";
+import { HeroBlock } from "../content/blocks/HeroBlock";
 import { RowActions } from "../components/RowActions";
 import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
 import { dateWithPreposition, historyDate, shownIn } from "../history/entry";
@@ -78,13 +78,7 @@ export function History() {
 
   return (
     <>
-      <PageHero
-        title={t("history.heading")}
-        titleKey="history.heading"
-        mark={t("history.headingHighlight")}
-        seed={17}
-        width="text"
-      />
+      <HeroBlock blockKey="history.hero" seed={17} width="text" />
 
       <PageSection width="text">
         <p role="status" className="sr-only">
