@@ -82,12 +82,7 @@ export function Join() {
 
   return (
     <>
-      <PageHero
-        title={t("join.heading")}
-        titleKey="join.heading"
-        mark={t("join.headingHighlight")}
-        seed={5}
-      >
+      <PageHero title={t("join.heading")} mark={t("join.headingHighlight")} seed={5}>
         <EditableText k="join.intro" as="p" />
       </PageHero>
 

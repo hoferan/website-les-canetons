@@ -34,12 +34,7 @@ export function Committee() {
 
   return (
     <>
-      <PageHero
-        title={t("committee.heading")}
-        titleKey="committee.heading"
-        mark={t("committee.headingHighlight")}
-        seed={19}
-      />
+      <PageHero title={t("committee.heading")} mark={t("committee.headingHighlight")} seed={19} />
 
       <PageSection>
         {/* On yellow, because it is what most visitors came for: how to reach

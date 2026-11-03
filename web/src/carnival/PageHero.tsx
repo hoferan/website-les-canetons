@@ -1,9 +1,6 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/utils";
-
-import type { TranslationKey } from "../i18n";
-import { EditableText } from "../texts/EditableText";
 
 import { Confetti } from "./Confetti";
 import { Highlighted } from "./Highlighted";
@@ -33,21 +30,18 @@ export const POSTER_CONFETTI = [
  */
 export function PageHero({
   title,
-  titleKey,
   mark = "",
   seed,
   width = "shell",
   headingRef,
+  edit,
   children,
 }: {
   title: string;
   /**
-   * The catalogue key of `title`, which makes the heading a text the band can
-   * change in place. The highlight then stays only while the new wording
-   * still contains `mark`.
+   * The words of `title` to set on the yellow highlight, if any. A title that
+   * no longer contains them renders plain.
    */
-  titleKey?: TranslationKey;
-  /** The words of `title` to set on the yellow highlight, if any. */
   mark?: string;
   seed: number;
   width?: "shell" | "text" | "form";
@@ -57,8 +51,10 @@ export function PageHero({
    * focusable from script, never by Tab.
    */
   headingRef?: Ref<HTMLHeadingElement>;
+  /** The edit chip over the heading and its lines, in edit mode. */
+  edit?: ReactNode;
   /** A line or two under the heading, already translated. */
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <div className="relative overflow-hidden bg-poster text-white">
@@ -72,27 +68,25 @@ export function PageHero({
           width === "form" && "max-w-md",
         )}
       >
-        {/* leading-[1.18] as on the home page, so a highlight that wraps gets a
-            bar per line: see Highlighted.tsx. */}
-        <h1
-          ref={headingRef}
-          tabIndex={headingRef ? -1 : undefined}
-          data-confetti-avoid
-          className="w-fit font-display text-3xl leading-[1.18] outline-none sm:text-4xl md:text-5xl"
-        >
-          {titleKey ? (
-            <EditableText k={titleKey} label={title}>
-              {(text) => <Highlighted text={text} mark={mark} />}
-            </EditableText>
-          ) : (
+        {/* `relative` for the edit chip only: a block box adds no layout. */}
+        <div className="relative">
+          {edit}
+          {/* leading-[1.18] as on the home page, so a highlight that wraps gets a
+              bar per line: see Highlighted.tsx. */}
+          <h1
+            ref={headingRef}
+            tabIndex={headingRef ? -1 : undefined}
+            data-confetti-avoid
+            className="w-fit font-display text-3xl leading-[1.18] outline-none sm:text-4xl md:text-5xl"
+          >
             <Highlighted text={title} mark={mark} />
-          )}
-        </h1>
-        {children ? (
-          <div data-confetti-avoid className="mt-related w-fit max-w-text text-lg">
-            {children}
-          </div>
-        ) : null}
+          </h1>
+          {children ? (
+            <div data-confetti-avoid className="mt-related w-fit max-w-text text-lg">
+              {children}
+            </div>
+          ) : null}
+        </div>
       </div>
       <Scallop into="var(--color-ground)" />
     </div>

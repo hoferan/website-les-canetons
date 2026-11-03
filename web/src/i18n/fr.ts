@@ -1858,6 +1858,13 @@ export const fr = {
     down: "Descendre",
     remove: "Supprimer",
     addRow: "Ajouter une ligne",
+    addCard: "Ajouter une carte",
+    removeCard: "Supprimer la carte",
+    removeCardTitle: "Supprimer cette carte ?",
+    removeCardBody: "La carte et ses lignes disparaissent de la page.",
+    removeCardConfirm: "Supprimer",
+    moveLeft: "Déplacer à gauche",
+    moveRight: "Déplacer à droite",
     rowType: {
       text: "Texte",
       labelValue: "Libellé + valeur",
@@ -1875,6 +1882,10 @@ export const fr = {
       place: "Lieu",
       address: "Adresse",
       url: "Adresse du lien",
+      title: "Titre",
+      mark: "Mots surlignés",
+      intro: "Introduction",
+      names: "Noms",
     },
     httpsExpected: "Une adresse complète est attendue, commençant par https://.",
     phoneInvalid: "Un numéro de téléphone est attendu, par exemple 026 123 45 67.",
@@ -1899,6 +1910,19 @@ export const fr = {
       yellow: "Jaune",
       lilac: "Lilas",
     },
+    // The site editor, opened from the footer.
+    site: {
+      edit: "Modifier les infos du site",
+      name: "Nom du groupe",
+      pitch: "Phrase sous le nom",
+      legalName: "Nom officiel",
+      networks: "Réseaux",
+      network: "Réseau",
+      networkUrl: "Adresse de la page",
+      addNetwork: "Ajouter un réseau",
+    },
+    // Between a row's label and its value: "Lieu : Werkhof".
+    separator: " : ",
   },
 
   placeholders: {

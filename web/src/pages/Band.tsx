@@ -85,13 +85,7 @@ export function Band() {
 
   return (
     <>
-      <PageHero
-        title={t("band.heading")}
-        titleKey="band.heading"
-        mark={t("band.headingHighlight")}
-        seed={7}
-        width="text"
-      />
+      <PageHero title={t("band.heading")} mark={t("band.headingHighlight")} seed={7} width="text" />
 
       <PageSection width="text">
         <SlotPhoto slot="band" label={t("photos.slot.band")} alt="Les Canetons de Fribourg" />

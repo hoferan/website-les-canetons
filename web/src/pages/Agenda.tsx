@@ -28,7 +28,6 @@ export function Agenda() {
     <>
       <PageHero
         title={t("agenda.heading")}
-        titleKey="agenda.heading"
         mark={t("agenda.headingHighlight")}
         seed={3}
         width="text"

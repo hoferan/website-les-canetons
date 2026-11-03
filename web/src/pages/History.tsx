@@ -80,7 +80,6 @@ export function History() {
     <>
       <PageHero
         title={t("history.heading")}
-        titleKey="history.heading"
         mark={t("history.headingHighlight")}
         seed={17}
         width="text"

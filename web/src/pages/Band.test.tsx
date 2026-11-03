@@ -219,7 +219,7 @@ test("shows the godparents card when the roster cannot be read", async () => {
   ).toBeInTheDocument();
 });
 
-test("in edit mode the godparents' names and the heading carry a pencil", async () => {
+test("in edit mode the godparents' names carry a pencil", async () => {
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUser("demo.direction");
   await renderWithSession(<Band />, { route: "/band" });
@@ -228,8 +228,5 @@ test("in edit mode the godparents' names and the heading carry a pencil", async 
     await screen.findByRole("button", {
       name: "Modifier le texte : Richard Hertig et Annick Bürgisser",
     }),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole("button", { name: "Modifier le texte : Nos Canetons" }),
   ).toBeInTheDocument();
 });

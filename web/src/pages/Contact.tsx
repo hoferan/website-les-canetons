@@ -140,7 +140,7 @@ export function Contact() {
 
   return (
     <>
-      <PageHero title={t("contact.heading")} titleKey="contact.heading" seed={23} width="text">
+      <PageHero title={t("contact.heading")} seed={23} width="text">
         <EditableText k="contact.intro" as="p" />
       </PageHero>
 
