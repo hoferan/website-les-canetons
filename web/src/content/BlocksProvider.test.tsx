@@ -5,7 +5,7 @@ import { expect, test, vi } from "vitest";
 
 import { setLocale } from "../i18n";
 import { server } from "../mocks/node";
-import { BlocksProvider, useBlock, useBlockStored } from "./BlocksProvider";
+import { BlocksGate, BlocksProvider, useBlock, useBlockStored } from "./BlocksProvider";
 import { BLOCKS } from "./registry";
 import { tr } from "./translated";
 
@@ -25,7 +25,9 @@ function renderProvider() {
   return render(
     <QueryClientProvider client={queryClient}>
       <BlocksProvider>
-        <Probe />
+        <BlocksGate>
+          <Probe />
+        </BlocksGate>
       </BlocksProvider>
     </QueryClientProvider>,
   );
@@ -103,7 +105,9 @@ test("a stored block the editor's checks would refuse is still read as stored", 
   render(
     <QueryClientProvider client={queryClient}>
       <BlocksProvider>
-        <ContactProbe />
+        <BlocksGate>
+          <ContactProbe />
+        </BlocksGate>
       </BlocksProvider>
     </QueryClientProvider>,
   );
@@ -130,7 +134,7 @@ test("tr shows German when there is German", async () => {
   expect(await screen.findByTestId("title")).toHaveTextContent("Grüezi");
 });
 
-test("children wait for the blocks, at most 1.5 s", async () => {
+test("the gate holds its children for the blocks, at most 1.5 s", async () => {
   server.use(
     http.get("/api/v1/blocks", async () => {
       await delay("infinite");
@@ -148,9 +152,9 @@ test("children wait for the blocks, at most 1.5 s", async () => {
   expect((await screen.findByTestId("title", {}, { timeout: 3000 })).textContent).toBe(shipped());
 });
 
-test("the blocks are read without waiting for the session", async () => {
-  // The provider asks for nothing but the blocks, so main.tsx can start it
-  // beside the session's requests rather than after them.
+test("the provider asks for the blocks and nothing else", async () => {
+  // That the boot reads run in parallel is AppProviders.test's job; this
+  // pins that the provider itself needs no session.
   const requests: string[] = [];
   server.events.on("request:start", ({ request }) => {
     requests.push(new URL(request.url).pathname);
