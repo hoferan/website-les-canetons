@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { swissTelHref } from "../lib/contactHref";
 import { translated } from "./translated";
 
 /**
@@ -43,15 +44,14 @@ export const NETWORKS = ["instagram", "facebook", "flickr"] as const;
 export type Network = (typeof NETWORKS)[number];
 
 /**
- * Whether a typed phone number can be dialled: a Swiss number written the way
- * people write it ("026 123 45 67", "+41 26 123 45 67", "0041 26 ...") or any
- * international one, so 9 to 15 digits once spaces, dots, slashes, dashes and
- * brackets are set aside. Empty is accepted: the row then shows its
+ * Whether a typed phone number can be dialled, by the same rule the page
+ * links it with ({@link swissTelHref}): a Swiss number with its 0
+ * ("026 123 45 67"), or one with its country code ("+41 26 123 45 67",
+ * "+41 (0)26 ...", "0041 26 ..."). Empty is accepted: the row then shows its
  * placeholder.
  */
 export function isPhoneNumber(value: string): boolean {
-  const compact = value.replace(/[\s./()-]/g, "");
-  return compact === "" || /^(?:\+|00)?\d{9,15}$/.test(compact);
+  return value.trim() === "" || swissTelHref(value) !== null;
 }
 
 /**

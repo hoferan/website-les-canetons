@@ -59,6 +59,49 @@ export function telHref(phone: string): string | null {
 }
 
 /**
+ * A `tel:` URI in international form for a number the band typed itself, or
+ * null.
+ *
+ * Stricter than {@link telHref}, which links whatever a guest typed as they
+ * typed it. Here a number links only when its prefix says where it rings:
+ *
+ * - `+41 26 123 45 67` and `0041 26 123 45 67` are international already.
+ *   A `(0)` right after the country code is the trunk prefix and is dropped,
+ *   so `+41 (0)26 123 45 67` dials `+41261234567`.
+ * - `026 123 45 67` is Swiss: a 0 and nine digits.
+ * - Anything else is refused. `26 123 45 67` read as international would
+ *   ring Madagascar, and `79 123 45 67` Russia.
+ *
+ * Spaces, dots, slashes, dashes and brackets are set aside; any other
+ * character (a letter, a second `+`, a non-ASCII digit) refuses.
+ */
+export function swissTelHref(phone: string): string | null {
+  const trimmed = phone.trim();
+  const international = trimmed.startsWith("+") || trimmed.startsWith("00");
+  const withoutTrunk = international ? trimmed.replace(/\(\s*0\s*\)/, "") : trimmed;
+  const compact = withoutTrunk.replace(/[\s./()-]/g, "");
+
+  let e164: string;
+  if (/^\+[0-9]+$/.test(compact)) {
+    e164 = compact.slice(1);
+  } else if (/^00[0-9]+$/.test(compact)) {
+    e164 = compact.slice(2);
+  } else if (/^0[0-9]{9}$/.test(compact)) {
+    e164 = `41${compact.slice(1)}`;
+  } else {
+    return null;
+  }
+
+  // A country code never starts with 0, and E.164 caps a number at fifteen
+  // digits.
+  if (e164.startsWith("0") || e164.length < 9 || e164.length > 15) {
+    return null;
+  }
+
+  return `tel:+${e164}`;
+}
+
+/**
  * A `mailto:` URI, or null.
  *
  * Percent-encoded rather than filtered through a blocklist. RFC 6068's header

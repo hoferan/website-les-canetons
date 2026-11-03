@@ -73,9 +73,10 @@ lose and reorder cards with nothing new on the server.
   number has its own row type, so nothing guesses a number inside prose, and a row that
   ships with an empty number shows the `<Tbd>` placeholder until the band types one, so
   the count of what is missing before PROD (#106) still works by rendering the pages. The
-  editor refuses a number that cannot be dialled and a link that is not https; a read
-  only checks the shape, so one odd value from an import does not hide the whole block,
-  and a renderer checks a URL again before it becomes a link.
+  editor refuses a number that cannot be dialled (it needs a leading `+`, `00` or `0`)
+  and a link that is not https. A read only checks the shape, so one odd value from an
+  import does not hide the whole block, and a renderer checks a number or a URL again
+  before it becomes a link: an odd one shows as plain text.
 - One floating pill on the public pages, "Modifier la page", turns edit mode on, and
   "Terminer la modification" turns it off. In edit mode each block wears one raised
   "Modifier" chip on its top right corner. A hero or a card then makes 40px of room above
