@@ -45,8 +45,8 @@ use Throwable;
  * So is changing a content block, PUT /blocks/{key}, on the same grounds: one
  * block sent whole from one dialog, and the last save is what the page shows.
  *
- * Importing a website, POST /website/import, replaces the texts, the photo
- * slots and the history at once on purpose. There is no part of it a caller
+ * Importing a website, POST /website/import, replaces the content blocks, the
+ * photo slots and the history at once on purpose. There is no part of it a caller
  * read first and could lose; the page asks for a typed confirmation instead.
  *
  * There is no conditional GET: `If-None-Match` is not implemented and no 304 is
