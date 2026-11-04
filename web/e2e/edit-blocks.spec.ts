@@ -98,8 +98,6 @@ test("no edit chip covers the text of its block, on a phone or a desktop", async
       await expect(page.getByRole("button", { name: /^Modifier : / }).first()).toBeVisible();
       // The roster and fonts settle the layout after the first paint.
       await page.evaluate(() => document.fonts.ready);
-      const chips = await page.locator("[data-chip]").count();
-      expect(chips, `${path} at ${width}px has chips to check`).toBeGreaterThan(0);
       // Every public page has at least one chip, so a selector that matched
       // nothing could not pass for "no overlap".
       expect(await page.locator("[data-chip]").count()).toBeGreaterThan(0);

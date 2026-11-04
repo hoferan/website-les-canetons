@@ -176,7 +176,11 @@ function TimelineEntry({
       <TimelineMarker
         important={entry.important}
         icon={entry.icon}
-        className="absolute top-0 left-0 -translate-x-[calc(50%+1px)]"
+        className={cn(
+          "absolute left-0 -translate-x-[calc(50%+1px)]",
+          // Moves down with the entry's own text, which the chips' room pushes.
+          mayEdit ? "top-14" : "top-0",
+        )}
       />
 
       {/* wrap-anywhere: a pasted URL or a German compound is one unbroken

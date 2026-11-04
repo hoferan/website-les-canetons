@@ -65,7 +65,9 @@ export function useEditMode(): EditMode {
  */
 export function EditModeProvider({ children }: { children: ReactNode }) {
   const { can } = useSession();
-  const available = can("content.manage") || can("images.manage");
+  // history.manage too: the history page's controls show in edit mode, and
+  // blocks and photos still ask for their own permission.
+  const available = can("content.manage") || can("images.manage") || can("history.manage");
   const [stored, setStored] = useState(readStored);
 
   const setOn = (on: boolean) => {

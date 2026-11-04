@@ -1,8 +1,9 @@
-import { screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 
-import { setMockUser } from "../mocks/handlers";
+import { setMockUser, setMockUserWithPermissions } from "../mocks/handlers";
+import { History } from "../pages/History";
 import { Band } from "../pages/Band";
 import { renderWithSession } from "../test/renderWithSession";
 import { EDIT_MODE_KEY, EditModePill } from "./EditMode";
@@ -130,4 +131,18 @@ test("the pill is ink with white text and a white ring, so it reads on every bac
 
   await user.click(editButton()!);
   expect(classes(doneButton()!)).toEqual(expect.arrayContaining(expected));
+});
+
+test("a history.manage-only account gets the switch and the history controls, but no block chips", async () => {
+  const user = userEvent.setup();
+  setMockUserWithPermissions("demo.direction", ["history.manage"]);
+  await renderWithSession(<EditModePill />, { route: "/join" });
+  expect(editButton()).toBeInTheDocument();
+  await user.click(editButton()!);
+  expect(doneButton()).toBeInTheDocument();
+  cleanup();
+
+  await renderWithSession(<History />, { route: "/history" });
+  expect(await screen.findByRole("link", { name: "Ajouter à l’histoire" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Modifier : / })).toBeNull();
 });
