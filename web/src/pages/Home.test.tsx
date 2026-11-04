@@ -2,10 +2,11 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { HttpResponse, delay, http } from "msw";
 import { expect, test } from "vitest";
 
+import userEvent from "@testing-library/user-event";
 import { EDIT_MODE_KEY } from "../content/EditMode";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
-import { storeBlock } from "../test/renderBlockEditor";
+import { recordBlockPuts, storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
 import { Home } from "./Home";
 
@@ -268,8 +269,12 @@ test("a placed picture takes the badge's frame", async () => {
   placeHeroPhoto();
   await renderWithSession(<Home />, { route: "/" });
 
-  const photo = await screen.findByRole("img", { name: "Le logo des Canetons de Fribourg" });
-  await waitFor(() => expect(photo).toHaveAttribute("src", heroPhoto.url));
+  // The badge is drawn first and the photo replaces it once the slots answer.
+  const photo = await waitFor(() => {
+    const placed = document.querySelector<HTMLImageElement>(`img[src="${heroPhoto.url}"]`);
+    expect(placed).not.toBeNull();
+    return placed!;
+  });
   expect(photo.className).toContain("rotate-[4deg]");
   expect(photo.className).toContain("border-white");
   expect(photo.className).toContain("w-48");
@@ -307,4 +312,58 @@ test("edit mode off, an editor sees the badge as a visitor does", async () => {
 
   await screen.findByRole("img", { name: "Le logo des Canetons de Fribourg" });
   expect(screen.queryByRole("button", { name: /Image de l’en-tête/ })).toBeNull();
+});
+
+test("a hero stored before it had buttons keeps the shipped ones", async () => {
+  storeBlock("home.hero", { title: { fr: "Bonjour" } });
+  const { container } = await renderWithSession(<Home />, { route: "/" });
+
+  await screen.findByRole("heading", { level: 1, name: "Bonjour" });
+  const links = within(hero(container)).getAllByRole("link");
+  expect(links.map((link) => link.getAttribute("href"))).toEqual(["/join", "/agenda"]);
+});
+
+test("such a hero, opened in the editor and saved, keeps the shipped buttons", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  storeBlock("home.hero", { title: { fr: "Bonjour" } });
+  setMockUser("demo.direction");
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<Home />, { route: "/" });
+
+  await user.click(await screen.findByRole("button", { name: "Modifier : Accueil · en-tête" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(puts).toHaveLength(1));
+  const data = (puts[0]!.body as { data: { actions: unknown } }).data;
+  expect(data.actions).toEqual([
+    { label: { fr: "Nous rejoindre", de: "Mitmachen" }, to: "/join" },
+    { label: { fr: "Où nous voir", de: "Wo Sie uns sehen" }, to: "/agenda" },
+  ]);
+});
+
+test("the badge is drawn while the photo slots are still loading", async () => {
+  server.use(http.get("/api/v1/photo-slots", () => delay("infinite")));
+  await renderWithSession(<Home />, { route: "/" });
+
+  expect(screen.getByRole("img", { name: "Le logo des Canetons de Fribourg" })).toHaveAttribute(
+    "src",
+    "/assets/img/Les_Canetons_Fribourg_logo_2.jpg",
+  );
+});
+
+test("a placed picture is cropped to the badge's proportions", async () => {
+  placeHeroPhoto();
+  await renderWithSession(<Home />, { route: "/" });
+
+  // The badge is drawn first and the photo replaces it once the slots answer.
+  const photo = await waitFor(() => {
+    const placed = document.querySelector<HTMLImageElement>(`img[src="${heroPhoto.url}"]`);
+    expect(placed).not.toBeNull();
+    return placed!;
+  });
+  expect(photo.className).toContain("aspect-[237/174]");
+  expect(photo.className).toContain("object-cover");
+  expect(photo.className).not.toContain("h-auto");
 });

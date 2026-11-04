@@ -16,8 +16,10 @@ const SlotPhotoControl = lazy(() =>
  * badge). `SlotPhoto` draws a text-column photo and a placeholder; this hands
  * the slot's photo, or null, to `render` and draws nothing but what it returns.
  *
- * `reserved` stands in while the slots are on their way, so the page neither
- * shows the fallback and then swaps it for the photo, nor moves when it lands.
+ * While the slots are on their way `render(null)` is drawn, so the fallback is
+ * on screen at once and never waits on the slots' request (the home hero's
+ * badge is the page's largest paint). A placed photo then replaces it, which
+ * must not move the page: the frame it is drawn in has a fixed size.
  *
  * An editor with edit mode on gets the slot's button (`SlotPhotoControl`,
  * compact) under the picture. With edit mode off they see what a visitor sees.
@@ -26,26 +28,23 @@ export function SlotPicture({
   slot,
   label,
   alt,
-  reserved,
   render,
 }: {
   slot: string;
   label: string;
   alt: string;
-  reserved: ReactNode;
   render: (photo: PhotoData | null) => ReactNode;
 }) {
   const { can } = useSession();
   const editMode = useEditMode();
   const slots = usePhotoSlots();
 
-  if (slots.isPending) return reserved;
   const photo = slots.photoOf(slot);
 
   return (
     <>
       {render(photo)}
-      {editMode.on && can("images.manage") ? (
+      {!slots.isPending && editMode.on && can("images.manage") ? (
         <Suspense fallback={null}>
           <SlotPhotoControl slot={slot} label={label} photo={photo} alt={alt} compact />
         </Suspense>

@@ -136,9 +136,9 @@ export function Home() {
 
               It is the `home.hero` photo slot's fallback: a picture the band
               places there takes the same frame, and the badge returns when it
-              is removed. The slots load before either is drawn, so the badge
-              does not flash and then swap; the reserved box has the badge's
-              own proportions. */}
+              is removed. The badge is drawn while the slots load, since it is
+              the page's largest paint, and a placed picture is cropped to the
+              badge's proportions so that swapping it in moves nothing. */}
           <div
             data-confetti-avoid
             className="flex flex-col items-center justify-self-center md:order-2"
@@ -147,16 +147,13 @@ export function Home() {
               slot="home.hero"
               label={t("photos.slot.homeHero")}
               alt={t("home.brandLogoAlt")}
-              reserved={
-                <div aria-hidden="true" className="aspect-[237/174] w-48 sm:w-64 md:w-72" />
-              }
               render={(photo) =>
                 photo ? (
                   <Photo
                     photo={photo}
                     alt={t("home.brandLogoAlt")}
                     sizes={BADGE_SIZES}
-                    className={cn("h-auto rounded-lg", BADGE_FRAME)}
+                    className={cn("aspect-[237/174] rounded-lg object-cover", BADGE_FRAME)}
                   />
                 ) : (
                   <BrandLogo className={BADGE_FRAME} />
