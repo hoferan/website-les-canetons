@@ -71,3 +71,34 @@ test("the hero chip edits title and intro together", async () => {
   expect(screen.getByText("Les souffleurs sont les bienvenus.")).toBeInTheDocument();
   expect(highlight()).toBeNull();
 });
+
+test("clearing a saved intro removes it", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  setMockUser("demo.direction");
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }));
+  const dialog = await screen.findByRole("dialog");
+  const intro = within(dialog).getByRole("textbox", { name: "Introduction FR" });
+  const mark = within(dialog).getByRole("textbox", { name: "Mots surlignés FR" });
+  expect(intro).toHaveValue(shipped.intro!.fr);
+  expect(mark).toHaveValue("la guggen");
+  // The shipped texts carry a German wording; it goes with the French.
+  for (const remove of within(dialog).getAllByRole("button", { name: "Retirer l’allemand" })) {
+    await user.click(remove);
+  }
+  await user.clear(intro);
+  await user.clear(mark);
+  expect(intro).toHaveValue("");
+  expect(mark).toHaveValue("");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const data = (puts[0]!.body as { data: Record<string, unknown> }).data;
+  expect(data).not.toHaveProperty("intro");
+  expect(data).not.toHaveProperty("mark");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(document.querySelector("h1 + div p")).toBeNull();
+});

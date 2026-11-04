@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import type { z } from "zod";
 
 import { getBlockIndexQueryKey, useBlockUpdate } from "../../api/generated/endpoints";
 import type { UpdateBlockRequestData } from "../../api/generated/model";
@@ -34,9 +35,10 @@ export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
     },
   });
 
-  const save = (data: BlockData<K>) => {
+  const save = (typed: BlockData<K>) => {
     if (update.isPending) return;
     clear();
+    const data = withoutBlankTexts(BLOCKS[key].schema, typed);
     const original = sameData(data, BLOCKS[key].defaults());
     update.mutate({
       key,
@@ -67,4 +69,33 @@ function canonical(value: unknown): string {
       ? Object.fromEntries(Object.entries(inner).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)))
       : inner,
   );
+}
+
+/**
+ * The block without its texts that are blank in both languages, where the
+ * block's type lets them go. An editor holds such a text as `{ fr: "" }`,
+ * because an undefined value would bring back the one the form opened with;
+ * stored, it would only be a pair that renders as nothing. If dropping them
+ * leaves a block the type refuses (a required text, left blank), the block
+ * goes as typed and the refusal stays where it was.
+ */
+function withoutBlankTexts<T>(schema: z.ZodType, data: T): T {
+  const pruned = prune(data) as T;
+  return schema.safeParse(pruned).success ? pruned : data;
+}
+
+function prune(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(prune);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, inner]) => !isBlankText(inner))
+      .map(([key, inner]) => [key, prune(inner)]),
+  );
+}
+
+function isBlankText(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && (value as { fr?: unknown }).fr === "";
 }

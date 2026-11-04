@@ -83,8 +83,8 @@ export function HeroEditor({
       {() => (
         <>
           <TranslatedField name="title" label={t("blockEditor.field.title")} required />
-          <TranslatedField name="mark" label={t("blockEditor.field.mark")} optional />
-          <TranslatedField name="intro" label={t("blockEditor.field.intro")} multiline optional />
+          <TranslatedField name="mark" label={t("blockEditor.field.mark")} />
+          <TranslatedField name="intro" label={t("blockEditor.field.intro")} multiline />
         </>
       )}
     </BlockEditor>
