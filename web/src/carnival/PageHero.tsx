@@ -2,8 +2,6 @@ import type { ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { CHIP_ROOM } from "../content/editor/EditChip";
-
 import { Confetti } from "./Confetti";
 import { Highlighted } from "./Highlighted";
 import { Scallop } from "./Scallop";
@@ -53,7 +51,7 @@ export function PageHero({
    * focusable from script, never by Tab.
    */
   headingRef?: Ref<HTMLHeadingElement>;
-  /** The edit chip over the heading and its lines, in edit mode. */
+  /** The edit chip, in edit mode; the hero adds room above the heading for it. */
   edit?: ReactNode;
   /** A line or two under the heading, already translated. */
   children?: ReactNode;
@@ -61,19 +59,19 @@ export function PageHero({
   return (
     <div className="relative overflow-hidden bg-poster text-white">
       <Confetti seed={seed} colours={POSTER_CONFETTI} wobble />
+      {/* The chip sits in the header's own corner, not the text column's. */}
+      {edit}
       {/* `pb-14` and up leave the Scallop its 22px over the bottom edge. */}
       <div
         className={cn(
           "relative mx-auto px-4 pt-8 pb-14 md:pt-12 md:pb-20",
+          edit && "pt-14 md:pt-14",
           width === "shell" && "max-w-shell",
           width === "text" && "max-w-text",
           width === "form" && "max-w-md",
         )}
       >
-        {/* `relative` for the edit chip, and room above the heading while it
-            shows: a block box adds no layout otherwise. */}
-        <div className={cn("relative", edit ? CHIP_ROOM : undefined)}>
-          {edit}
+        <div className="relative">
           {/* leading-[1.18] as on the home page, so a highlight that wraps gets a
               bar per line: see Highlighted.tsx. */}
           <h1

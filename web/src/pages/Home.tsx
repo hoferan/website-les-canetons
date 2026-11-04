@@ -19,7 +19,7 @@ import { type TranslationKey, t } from "../i18n";
 import { useBlock } from "../content/BlocksProvider";
 import { HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
-import { CHIP_ROOM, EditChip } from "../content/editor";
+import { EditChip } from "../content/editor";
 import { BLOCKS } from "../content/registry";
 import { tr } from "../content/translated";
 
@@ -104,7 +104,16 @@ export function Home() {
           the Scallop room to draw over the bottom edge. */}
       <div className="relative overflow-hidden bg-poster text-white">
         <Confetti seed={11} colours={POSTER_CONFETTI} wobble />
-        <div className="relative mx-auto grid max-w-shell gap-block px-4 pt-8 pb-14 md:grid-cols-[1.4fr_1fr] md:items-center md:pt-16 md:pb-24">
+        {/* In the header's own corner; the grid below makes room for it. */}
+        {editing ? (
+          <EditChip label={t(BLOCKS["home.hero"].label)} onClick={() => setEditingHero(true)} />
+        ) : null}
+        <div
+          className={cn(
+            "relative mx-auto grid max-w-shell gap-block px-4 pt-8 pb-14 md:grid-cols-[1.4fr_1fr] md:items-center md:pt-16 md:pb-24",
+            editing && "pt-14 md:pt-16",
+          )}
+        >
           {/* The band's badge, the mark people know from the flyers and
               costumes, stuck on like a sticker. The header carries the duck
               beside a live-text wordmark instead; see Logo.tsx.
@@ -118,12 +127,7 @@ export function Home() {
             <BrandLogo className="w-48 rotate-[4deg] border-4 border-white shadow-raised sm:w-64 md:w-72" />
           </div>
 
-          {/* `relative` for the edit chip, and room above the heading while
-              it shows. */}
-          <div className={cn("relative", editing && CHIP_ROOM)}>
-            {editing ? (
-              <EditChip label={t(BLOCKS["home.hero"].label)} onClick={() => setEditingHero(true)} />
-            ) : null}
+          <div>
             {/* Bungee draws its lowercase as capitals, so this line sets as
                 caps whatever the source says, and is far wider than Karla at
                 the same size. That is the look, not a bug.
