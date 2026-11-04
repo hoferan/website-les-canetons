@@ -128,6 +128,13 @@ test("swissTelHref refuses a number with no prefix rather than dial abroad", () 
   expect(swissTelHref("+41 (0)79 123 45 67")).toBe("tel:+41791234567");
 });
 
+test("swissTelHref drops a Swiss trunk 0 written without brackets", () => {
+  expect(swissTelHref("+41 026 123 45 67")).toBe("tel:+41261234567");
+  expect(swissTelHref("0041 079 123 45 67")).toBe("tel:+41791234567");
+  // Only after +41: Italy dials its 0, so +39 06 is Rome as written.
+  expect(swissTelHref("+39 06 1234 5678")).toBe("tel:+390612345678");
+});
+
 test("an ordinary address becomes a mailto", () => {
   expect(mailtoHref("jeanne.aebischer@example.ch")).toBe("mailto:jeanne.aebischer@example.ch");
 });
