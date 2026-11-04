@@ -54,9 +54,12 @@ test("the booking number is stored from the contact card on /committee, and Term
  */
 function chipsOverText(page: Page) {
   return page.evaluate(() =>
-    [...document.querySelectorAll("button[aria-label^='Modifier : ']")].flatMap((chip) => {
+    [...document.querySelectorAll("[data-chip]")].flatMap((chip) => {
       const c = chip.getBoundingClientRect();
-      const walker = document.createTreeWalker(chip.parentElement!, NodeFilter.SHOW_TEXT);
+      // A row of chips names its block with data-chip-scope; a lone chip sits
+      // directly in its block.
+      const scope = chip.closest("[data-chip-scope]") ?? chip.parentElement!;
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
       const hits: string[] = [];
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         if (chip.contains(node) || node.textContent!.trim() === "") continue;
@@ -66,7 +69,9 @@ function chipsOverText(page: Page) {
           const x = Math.min(line.right, c.right) - Math.max(line.left, c.left);
           const y = Math.min(line.bottom, c.bottom) - Math.max(line.top, c.top);
           if (x > 0 && y > 0)
-            hits.push(`${chip.getAttribute("aria-label")} covers "${node.textContent!.trim()}"`);
+            hits.push(
+              `${chip.getAttribute("aria-label") ?? chip.textContent} covers "${node.textContent!.trim()}"`,
+            );
         }
       }
       return hits;
@@ -93,6 +98,11 @@ test("no edit chip covers the text of its block, on a phone or a desktop", async
       await expect(page.getByRole("button", { name: /^Modifier : / }).first()).toBeVisible();
       // The roster and fonts settle the layout after the first paint.
       await page.evaluate(() => document.fonts.ready);
+      const chips = await page.locator("[data-chip]").count();
+      expect(chips, `${path} at ${width}px has chips to check`).toBeGreaterThan(0);
+      // Every public page has at least one chip, so a selector that matched
+      // nothing could not pass for "no overlap".
+      expect(await page.locator("[data-chip]").count()).toBeGreaterThan(0);
       expect(await chipsOverText(page), `${path} at ${width}px`).toEqual([]);
     }
   }

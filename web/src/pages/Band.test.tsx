@@ -3,7 +3,12 @@ import { expect, test } from "vitest";
 
 import { HttpResponse, delay, http } from "msw";
 
-import { setMemberVisibility, setMockUser, setSectionNameDe } from "../mocks/handlers";
+import {
+  setMemberVisibility,
+  setMockUser,
+  setMockUserWithPermissions,
+  setSectionNameDe,
+} from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
@@ -259,4 +264,29 @@ test("an empty register's gap points at the members page, in both languages", as
   expect(leier.querySelector("[data-tbd='register-first-names']")?.textContent).toBe(
     "••• auf der Seite Mitglieder zu ergänzen: Vornamen des Registers",
   );
+});
+
+test("in edit mode, every register links to Membres, and not otherwise", async () => {
+  setMockUser("demo.direction");
+  const { unmount } = await renderWithSession(<Band />, { route: "/band" });
+  await screen.findByRole("heading", { name: "Trombones" });
+  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  unmount();
+
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<Band />, { route: "/band" });
+  const register = (await screen.findByRole("heading", { name: "Trombones" })).closest("article")!;
+  expect(within(register).getByRole("link", { name: "Géré dans Membres" })).toHaveAttribute(
+    "href",
+    "/members",
+  );
+  expect(screen.getAllByRole("link", { name: "Géré dans Membres" }).length).toBeGreaterThan(1);
+});
+
+test("a register shows no Membres link without members.manage", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
+  await renderWithSession(<Band />, { route: "/band" });
+  await screen.findByRole("heading", { name: "Trombones" });
+  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
 });

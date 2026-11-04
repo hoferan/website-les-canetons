@@ -1811,6 +1811,8 @@ export const fr = {
   blockEditor: {
     // The chip's accessible name; its visible word is common.edit.
     edit: "Modifier : {{label}}",
+    // The link chip on a block that shows data: where that data is managed.
+    managedIn: "Géré dans {{page}}",
     save: "Enregistrer",
     saving: "Enregistrement…",
     reset: "Rétablir l’original",

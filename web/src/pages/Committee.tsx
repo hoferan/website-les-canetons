@@ -10,6 +10,7 @@ import { useCommitteeIndex } from "../api/generated/endpoints";
 import type { CommitteeMemberResource } from "../api/generated/model";
 import { RAISED_CARD } from "../carnival/raised";
 import { CardsBlock } from "../content/blocks/CardsBlock";
+import { ManagedIn } from "../content/editor/ManagedIn";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { t } from "../i18n";
 
@@ -55,30 +56,39 @@ export function Committee() {
           }}
         />
 
-        {seats.length > 0 ? (
-          <ul className="mt-block grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {seats.map((seat) => (
-              <Card key={seat.id} asChild className={cn(RAISED_CARD, "gap-0 p-4")}>
-                <li>
-                  {/* The seat, then the person: a visitor looks for "the
+        {/* The seats are the roster's, so in edit mode the block says where
+            they are changed instead of offering a pencil. */}
+        <ManagedIn
+          to="/members"
+          page={t("nav.members")}
+          permission="members.manage"
+          className="mt-block"
+        >
+          {seats.length > 0 ? (
+            <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {seats.map((seat) => (
+                <Card key={seat.id} asChild className={cn(RAISED_CARD, "gap-0 p-4")}>
+                  <li>
+                    {/* The seat, then the person: a visitor looks for "the
                       person who handles costumes", not a name they know. */}
-                  <p className="text-xs font-semibold tracking-wide text-violet uppercase">
-                    {seat.function}
-                  </p>
-                  <p className="mt-tight">
-                    {seat.firstName} {seat.lastName}
-                  </p>
-                </li>
-              </Card>
-            ))}
-          </ul>
-        ) : (
-          // A gap, in the voice of every other gap on the public site.
-          // "Aucun membre du comité" would be a false claim about the band.
-          <p className="mt-block">
-            <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
-          </p>
-        )}
+                    <p className="text-xs font-semibold tracking-wide text-violet uppercase">
+                      {seat.function}
+                    </p>
+                    <p className="mt-tight">
+                      {seat.firstName} {seat.lastName}
+                    </p>
+                  </li>
+                </Card>
+              ))}
+            </ul>
+          ) : (
+            // A gap, in the voice of every other gap on the public site.
+            // "Aucun membre du comité" would be a false claim about the band.
+            <p>
+              <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
+            </p>
+          )}
+        </ManagedIn>
       </PageSection>
     </>
   );

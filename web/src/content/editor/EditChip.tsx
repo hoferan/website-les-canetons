@@ -57,6 +57,7 @@ export function EditChip({
     <button
       type="button"
       aria-label={text ?? t("blockEditor.edit", { label })}
+      data-chip="button"
       onClick={onClick}
       className={cn(buttonVariants({ variant: "raised" }), CHIP, CORNER)}
     >
@@ -68,14 +69,51 @@ export function EditChip({
 
 /**
  * A chip that leads somewhere instead of opening an editor, in the same
- * corner and look, with its label always visible: it says where a block's
- * content is managed.
+ * look. By default it sits in the block's corner with its label always
+ * visible: it says where a block's content is managed.
+ *
+ * `corner={false}` leaves the placing to the caller, for a chip in a row of
+ * chips. `reveal` gives it the pencil's manners instead: icon first, the word
+ * only on hover or focus from sm up. `ariaLabel` is the fuller accessible
+ * name of a chip that repeats once per row, beginning with the visible word.
  */
-export function ChipLink({ label, to }: { label: string; to: string }) {
+export function ChipLink({
+  label,
+  to,
+  icon: Icon = ArrowUpRight,
+  ariaLabel,
+  corner = true,
+  reveal = false,
+  id,
+}: {
+  label: string;
+  to: string;
+  icon?: LucideIcon;
+  ariaLabel?: string;
+  corner?: boolean;
+  reveal?: boolean;
+  id?: string;
+}) {
+  const icon = <Icon aria-hidden="true" className="size-5 shrink-0" />;
   return (
-    <Link to={to} className={cn(buttonVariants({ variant: "raised" }), CHIP, CORNER)}>
-      <span className="text-sm font-medium">{label}</span>
-      <ArrowUpRight aria-hidden="true" className="size-5 shrink-0" />
+    <Link
+      id={id}
+      to={to}
+      aria-label={ariaLabel}
+      data-chip="link"
+      className={cn(buttonVariants({ variant: "raised" }), CHIP, corner && CORNER)}
+    >
+      {reveal ? (
+        <>
+          {icon}
+          <span className={REVEALED}>{label}</span>
+        </>
+      ) : (
+        <>
+          <span className="text-sm font-medium">{label}</span>
+          {icon}
+        </>
+      )}
     </Link>
   );
 }
@@ -104,6 +142,7 @@ export function ChipButton({
     <button
       type="button"
       aria-label={label}
+      data-chip="button"
       disabled={disabled}
       onClick={onClick}
       className={cn(buttonVariants({ variant: "raised" }), CHIP)}

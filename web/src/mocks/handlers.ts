@@ -355,6 +355,17 @@ export function setMockUser(username: keyof typeof USERS | null): void {
   setCurrentUser(username ? (USERS[username] ?? null) : null);
 }
 
+/**
+ * Test seam: a copy of a seeded account holding exactly `permissions`, for the
+ * screens whose controls depend on one permission among the Direction's many.
+ */
+export function setMockUserWithPermissions(
+  username: keyof typeof USERS,
+  permissions: string[],
+): void {
+  setCurrentUser({ ...USERS[username], permissions } as MockUser);
+}
+
 /** A valid ULID, so anything that validates the shape of one still passes. */
 export const MOCK_REQUEST_ID = "01JB3K7QW8ZXMOCKMOCKMOCK00";
 
