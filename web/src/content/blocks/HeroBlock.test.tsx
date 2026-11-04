@@ -1,14 +1,17 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import { render } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 
+import { setLocale } from "../../i18n";
 import { setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";
 import { recordBlockPuts, storeBlock } from "../../test/renderBlockEditor";
 import { renderWithSession } from "../../test/renderWithSession";
 import { EDIT_MODE_KEY } from "../EditMode";
 import { BLOCKS } from "../registry";
-import { HeroBlock } from "./HeroBlock";
+import { HeroActions, HeroBlock } from "./HeroBlock";
 
 afterEach(() => server.events.removeAllListeners());
 
@@ -105,4 +108,174 @@ test("clearing a saved intro removes it", async () => {
   expect(data).not.toHaveProperty("mark");
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(document.querySelector("h1 + div p")).toBeNull();
+});
+
+const buttons = [
+  { label: { fr: "Nous rejoindre", de: "Mitmachen" }, to: "/join" },
+  { label: { fr: "Où nous voir" }, to: "/agenda" },
+];
+
+test("a stored hero shows its buttons, the first raised and the second light", async () => {
+  storeBlock("join.hero", { title: { fr: "Rejoins-nous" }, actions: buttons });
+  await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
+
+  const [first, second] = screen.getAllByRole("link");
+  expect(first).toHaveTextContent("Nous rejoindre");
+  expect(first).toHaveAttribute("href", "/join");
+  expect(first!.className).toContain("bg-yellow");
+  expect(second).toHaveTextContent("Où nous voir");
+  expect(second).toHaveAttribute("href", "/agenda");
+  expect(second!.className).toContain("bg-white");
+});
+
+test("a hero with no button draws no row of buttons", async () => {
+  await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
+
+  expect(screen.queryByRole("link")).toBeNull();
+});
+
+test("an internal button keeps the visitor in German under /de, in German words", async () => {
+  await setLocale("de-CH");
+  render(
+    <MemoryRouter basename="/de" initialEntries={["/de"]}>
+      <HeroActions actions={buttons} />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByRole("link", { name: "Mitmachen" })).toHaveAttribute("href", "/de/join");
+  // No German wording: the French one stands in.
+  expect(screen.getByRole("link", { name: "Où nous voir" })).toHaveAttribute("href", "/de/agenda");
+});
+
+test("an https button opens in a new tab without a referrer, and any other target is dropped", () => {
+  render(
+    <MemoryRouter>
+      <HeroActions
+        actions={[
+          { label: { fr: "Flickr" }, to: "https://www.flickr.com/photos/canetons" },
+          { label: { fr: "Piégé" }, to: "javascript:alert(1)" },
+        ]}
+      />
+    </MemoryRouter>,
+  );
+
+  const link = screen.getByRole("link", { name: "Flickr" });
+  expect(link).toHaveAttribute("href", "https://www.flickr.com/photos/canetons");
+  expect(link).toHaveAttribute("target", "_blank");
+  expect(link).toHaveAttribute("rel", "noreferrer");
+  expect(screen.queryByRole("link", { name: "Piégé" })).toBeNull();
+});
+
+async function openEditor(user: ReturnType<typeof userEvent.setup>) {
+  setMockUser("demo.direction");
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
+  await user.click(screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }));
+  return screen.findByRole("dialog");
+}
+
+test("the editor adds a button aimed at a public page, by its nav name", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  const dialog = await openEditor(user);
+
+  const section = within(dialog).getByRole("group", { name: "Boutons" });
+  await user.click(within(section).getByRole("button", { name: "Ajouter un bouton" }));
+  await user.type(within(section).getByRole("textbox", { name: "Libellé FR" }), "Où nous voir");
+  const target = within(section).getByRole("combobox", { name: "Destination" });
+  // Every public page, under the name the nav gives it, then the escape hatch.
+  expect(
+    within(target)
+      .getAllByRole("option")
+      .map((option) => option.textContent),
+  ).toEqual([
+    "Nous rejoindre",
+    "Où nous voir",
+    "Les canetons",
+    "Contact",
+    "Comité",
+    "Histoire",
+    "Autre lien (https)",
+  ]);
+  await user.selectOptions(target, "/agenda");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const data = (puts[0]!.body as { data: { actions: unknown } }).data;
+  expect(data.actions).toEqual([{ label: { fr: "Où nous voir" }, to: "/agenda" }]);
+});
+
+test("the editor offers two buttons at most", async () => {
+  const user = userEvent.setup();
+  storeBlock("join.hero", { title: { fr: "Rejoins-nous" }, actions: buttons });
+  const dialog = await openEditor(user);
+
+  expect(within(dialog).queryByRole("button", { name: "Ajouter un bouton" })).toBeNull();
+  await user.click(within(dialog).getAllByRole("button", { name: "Supprimer" })[1]!);
+  expect(within(dialog).getByRole("button", { name: "Ajouter un bouton" })).toBeInTheDocument();
+});
+
+test("another link takes an https address and refuses javascript: and http:", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  const dialog = await openEditor(user);
+
+  await user.click(within(dialog).getByRole("button", { name: "Ajouter un bouton" }));
+  await user.type(within(dialog).getByRole("textbox", { name: "Libellé FR" }), "Photos");
+  await user.selectOptions(
+    within(dialog).getByRole("combobox", { name: "Destination" }),
+    "Autre lien (https)",
+  );
+  const url = within(dialog).getByRole("textbox", { name: "Adresse du lien" });
+
+  for (const refused of ["javascript:alert(1)", "http://example.ch"]) {
+    await user.clear(url);
+    await user.type(url, refused);
+    await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+    expect(await within(dialog).findByText(/commençant par https:\/\//)).toBeInTheDocument();
+    expect(puts).toHaveLength(0);
+  }
+
+  await user.clear(url);
+  await user.type(url, "https://www.flickr.com/photos/canetons");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+  await expect.poll(() => puts).toHaveLength(1);
+  expect((puts[0]!.body as { data: { actions: unknown } }).data.actions).toEqual([
+    { label: { fr: "Photos" }, to: "https://www.flickr.com/photos/canetons" },
+  ]);
+});
+
+test("removing every button stores a hero without any", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  storeBlock("join.hero", { title: { fr: "Rejoins-nous" }, actions: buttons });
+  const dialog = await openEditor(user);
+
+  for (let i = 0; i < 2; i++) {
+    await user.click(within(dialog).getAllByRole("button", { name: "Supprimer" })[0]!);
+  }
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const data = (puts[0]!.body as { data: { actions?: unknown } }).data;
+  // The join hero ships none, so none is the shipped hero and nothing is pinned.
+  expect(data).not.toHaveProperty("actions");
+});
+
+test("removing the home hero's shipped buttons stores an empty list, not the shipped ones", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  setMockUser("demo.direction");
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<HeroBlock blockKey="home.hero" seed={5} />, { route: "/" });
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Accueil · en-tête" }));
+  const dialog = await screen.findByRole("dialog");
+  for (let i = 0; i < 2; i++) {
+    await user.click(within(dialog).getAllByRole("button", { name: "Supprimer" })[0]!);
+  }
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  expect((puts[0]!.body as { data: { actions: unknown } }).data.actions).toEqual([]);
 });

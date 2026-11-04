@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { swissTelHref } from "../lib/contactHref";
+import { isPublicPage } from "./publicPages";
 import { translated } from "./translated";
 
 /**
@@ -115,11 +116,21 @@ export function isHttpsUrl(value: string): boolean {
   return /^https:\/\//.test(value);
 }
 
+/**
+ * Where a hero's button may lead: one of the public pages, or an https
+ * address. Whatever else is typed would become a router target or an href as
+ * it stands, `javascript:` included.
+ */
+export function isActionTarget(value: string): boolean {
+  return isPublicPage(value) || /^https:\/\/\S+$/.test(value);
+}
+
 /** The strings an editor checks further than a read does. */
 type Checks = {
   phone: z.ZodType<string, string>;
   url: z.ZodType<string, string>;
   name: z.ZodType<string, string>;
+  target: z.ZodType<string, string>;
 };
 
 function schemas(checks: Checks) {
@@ -187,13 +198,27 @@ function schemas(checks: Checks) {
     ),
   });
 
-  return { row, card, cardsBlock, siteBlock };
+  // A public page's hero: its heading, the words of it set on the yellow
+  // highlight, the paragraph under it on some pages, and up to two buttons.
+  // The highlight shows only while the heading still contains those words.
+  const heroBlock = z.object({
+    title: translated,
+    mark: translated.optional(),
+    intro: translated.optional(),
+    actions: z
+      .array(z.object({ label: translated, to: checks.target }))
+      .max(2)
+      .optional(),
+  });
+
+  return { row, card, cardsBlock, siteBlock, heroBlock };
 }
 
-export const { row, card, cardsBlock, siteBlock } = schemas({
+export const { row, card, cardsBlock, siteBlock, heroBlock } = schemas({
   phone: z.string(),
   url: z.string(),
   name: z.string(),
+  target: z.string(),
 });
 
 /** The same blocks as an editor saves them: a number dials, a link is https. */
@@ -202,19 +227,11 @@ export const forEditor = schemas({
   url: z.string().refine(isHttpsUrl),
   // Spaces alone are no name: the page would drop the entry without a word.
   name: z.string().refine((value) => value.trim() !== ""),
+  target: z.string().refine(isActionTarget),
 });
 
 export type Row = z.infer<typeof row>;
 
 export type Card = z.infer<typeof card>;
 
-/**
- * A public page's hero: its heading, the words of it set on the yellow
- * highlight, and the paragraph under it on some pages. The highlight shows
- * only while the heading still contains those words.
- */
-export const heroBlock = z.object({
-  title: translated,
-  mark: translated.optional(),
-  intro: translated.optional(),
-});
+export type HeroAction = NonNullable<z.infer<typeof heroBlock>["actions"]>[number];

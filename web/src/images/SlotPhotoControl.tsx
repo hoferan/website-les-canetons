@@ -52,6 +52,12 @@ type Props = {
   photo: PhotoData | null;
   /** What the photo shows, said by the page. */
   alt: string;
+  /**
+   * Draws only the button, with the word beside its icon, and no photo or empty
+   * frame, for a page that shows the photo itself in a frame of its own (the
+   * home hero's badge). The picker, the drop and the saving are the same.
+   */
+  compact?: boolean;
   /** Injected by tests, which cannot send a multipart body through jsdom. */
   upload?: UploadFn | undefined;
   shrinker?: ShrinkFn | undefined;
@@ -82,7 +88,15 @@ type Props = {
  * the new state, focus moves to the slot's new button, and the status line
  * says what happened.
  */
-export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: Props) {
+export function SlotPhotoControl({
+  slot,
+  label,
+  photo,
+  alt,
+  compact = false,
+  upload,
+  shrinker,
+}: Props) {
   const { can } = useSession();
   const { pathname } = useLocation();
   const queryClient = useQueryClient();
@@ -243,7 +257,23 @@ export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: 
           },
         })}
       >
-        {photo ? (
+        {compact ? (
+          <button
+            ref={control}
+            type="button"
+            aria-label={name}
+            aria-disabled={busy}
+            onClick={open}
+            className={cn(buttonVariants({ variant: "raised" }), "h-11 px-3")}
+          >
+            {photo ? (
+              <Pencil aria-hidden="true" className="size-5 shrink-0" />
+            ) : (
+              <ImagePlus aria-hidden="true" className="size-5 shrink-0" />
+            )}
+            {photo ? t("photos.change") : t("photos.addOne")}
+          </button>
+        ) : photo ? (
           <>
             <Photo
               photo={photo}

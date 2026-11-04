@@ -33,28 +33,8 @@ import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 
 import { EditModePill } from "../content/EditMode";
+import { PUBLIC_NAV } from "../content/publicPages";
 import { useSite } from "../content/blocks/SiteBlock";
-
-/**
- * The public nav in order of importance, left to right. The desktop bar folds
- * from the right into "Plus" when it runs out of room, so this is also the
- * order in which entries disappear (#99).
- *
- * "Nous rejoindre" is first because recruiting is what this site is for: the
- * band takes players from 7 to 18, so the visitor worth optimising for is a
- * parent deciding whether to turn up on Saturday. The pages a parent needs
- * least come last, then the external sites, which fold first.
- *
- * Every entry must be a route that exists.
- */
-const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
-  { to: "/join", labelKey: "nav.join" },
-  { to: "/agenda", labelKey: "nav.agenda" },
-  { to: "/band", labelKey: "nav.band" },
-  { to: "/contact", labelKey: "nav.contact" },
-  { to: "/committee", labelKey: "nav.committee" },
-  { to: "/history", labelKey: "nav.history" },
-];
 
 /**
  * The committee's screens, each gated by the permission that gates the API

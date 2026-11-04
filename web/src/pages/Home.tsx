@@ -1,7 +1,6 @@
 import { Drum, type LucideIcon, MessageSquare, Music, Star } from "lucide-react";
 import { useState } from "react";
 
-import { ButtonLink } from "@/components/ButtonLink";
 import { DestinationCards } from "@/components/DestinationCards";
 import { BrandLogo } from "@/components/Logo";
 import { PageSection } from "@/components/PageSection";
@@ -13,11 +12,13 @@ import { useFooterEdge } from "../carnival/footerEdge";
 import { Highlighted } from "../carnival/Highlighted";
 import { POSTER_CONFETTI } from "../carnival/PageHero";
 import { Scallop } from "../carnival/Scallop";
+import { Photo } from "../images/Photo";
 import { SlotPhoto } from "../images/SlotPhoto";
+import { SlotPicture } from "../images/SlotPicture";
 import { PublicAgenda } from "../events/PublicAgenda";
 import { type TranslationKey, t } from "../i18n";
 import { useBlock } from "../content/BlocksProvider";
-import { HeroEditor } from "../content/blocks/HeroBlock";
+import { HeroActions, HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor";
 import { BLOCKS } from "../content/registry";
@@ -68,6 +69,18 @@ const DESTINATIONS: {
     tint: "bg-lilac",
   },
 ];
+
+/**
+ * The badge's frame: the sticker look and the sizes, for the badge and for a
+ * picture the band places in its stead.
+ *
+ * Narrower below `sm`, which saves about 47px of hero height at 390px, since
+ * the image keeps its aspect ratio.
+ */
+const BADGE_FRAME = "w-48 rotate-[4deg] border-4 border-white shadow-raised sm:w-64 md:w-72";
+
+/** The `sizes` of that frame: its width at each breakpoint of BADGE_FRAME. */
+const BADGE_SIZES = "(min-width: 768px) 288px, (min-width: 640px) 256px, 192px";
 
 /** On yellow, the colours that are not yellow. */
 const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
@@ -121,10 +134,35 @@ export function Home() {
               This is the badge's only placement: in the chrome of every page
               it would become wallpaper.
 
-              Narrower below `sm`, which saves about 47px of hero height at
-              390px, since the image keeps its aspect ratio. */}
-          <div data-confetti-avoid className="justify-self-center md:order-2">
-            <BrandLogo className="w-48 rotate-[4deg] border-4 border-white shadow-raised sm:w-64 md:w-72" />
+              It is the `home.hero` photo slot's fallback: a picture the band
+              places there takes the same frame, and the badge returns when it
+              is removed. The slots load before either is drawn, so the badge
+              does not flash and then swap; the reserved box has the badge's
+              own proportions. */}
+          <div
+            data-confetti-avoid
+            className="flex flex-col items-center justify-self-center md:order-2"
+          >
+            <SlotPicture
+              slot="home.hero"
+              label={t("photos.slot.homeHero")}
+              alt={t("home.brandLogoAlt")}
+              reserved={
+                <div aria-hidden="true" className="aspect-[237/174] w-48 sm:w-64 md:w-72" />
+              }
+              render={(photo) =>
+                photo ? (
+                  <Photo
+                    photo={photo}
+                    alt={t("home.brandLogoAlt")}
+                    sizes={BADGE_SIZES}
+                    className={cn("h-auto rounded-lg", BADGE_FRAME)}
+                  />
+                ) : (
+                  <BrandLogo className={BADGE_FRAME} />
+                )
+              }
+            />
           </div>
 
           <div>
@@ -152,16 +190,9 @@ export function Home() {
               </div>
             ) : null}
 
-            {/* The two things a visitor most often comes to do, as the nav
-                names them. */}
-            <div data-confetti-avoid className="mt-block flex w-fit flex-wrap gap-3">
-              <ButtonLink to="/join" variant="raised" className="h-12 px-5 text-base">
-                {t("nav.join")}
-              </ButtonLink>
-              <ButtonLink to="/agenda" variant="raised-light" className="h-12 px-5 text-base">
-                {t("nav.agenda")}
-              </ButtonLink>
-            </div>
+            {/* What a visitor most often comes to do: join and see the
+                agenda as shipped, and whatever the band has put there since. */}
+            <HeroActions actions={hero.actions ?? []} />
           </div>
         </div>
         <Scallop into="var(--color-ground)" />

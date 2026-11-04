@@ -38,8 +38,9 @@ export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
   const save = (typed: BlockData<K>) => {
     if (update.isPending) return;
     clear();
-    const data = withoutBlankTexts(BLOCKS[key].schema, typed);
-    const original = sameData(data, BLOCKS[key].defaults());
+    const defaults = BLOCKS[key].defaults();
+    const data = withoutBlankTexts(BLOCKS[key].schema, withoutIdleActions(typed, defaults));
+    const original = sameData(data, defaults);
     update.mutate({
       key,
       data: { data: original ? null : (data as UpdateBlockRequestData) },
@@ -98,4 +99,17 @@ function isBlankText(value: unknown): boolean {
   if (value === null || typeof value !== "object") return false;
   const keys = Object.keys(value);
   return keys.length === 1 && (value as { fr?: unknown }).fr === "";
+}
+
+/**
+ * A hero's empty list of buttons, when the shipped hero has none either. The
+ * list field opens an empty list on every hero, so saving without touching it
+ * would otherwise differ from the default and pin the hero. Where the shipped
+ * hero has buttons, an empty list is the band's answer and is kept.
+ */
+function withoutIdleActions<T>(data: T, defaults: unknown): T {
+  const typed = data as { actions?: unknown[] };
+  if (!Array.isArray(typed.actions) || typed.actions.length > 0) return data;
+  if ((defaults as { actions?: unknown }).actions !== undefined) return data;
+  return Object.fromEntries(Object.entries(typed).filter(([key]) => key !== "actions")) as T;
 }

@@ -18,8 +18,9 @@ export const POSTER_CONFETTI = [
  * The short poster hero that opens a public page (ADR 0029): the page's h1,
  * an optional line under it, confetti, and the scalloped edge into the cream.
  *
- * The home page has its own, taller hero with the badge and two buttons. This
- * one carries a heading and a sentence and nothing a visitor has to press.
+ * The home page has its own, taller hero with the badge. This one carries a
+ * heading and a sentence, and the buttons the band has put under them, if any
+ * (`HeroBlock`).
  *
  * `width` matches the PageSection below it, so the heading starts on the same
  * left edge as the page it opens.

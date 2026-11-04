@@ -1117,6 +1117,7 @@ export const de: typeof fr = {
     slot: {
       band: "Gruppenfoto",
       concert: "Konzertfoto",
+      homeHero: "Bild der Kopfzeile",
       history: "Geschichte: {{title}}",
       // Also the poster's alt text wherever the event shows it.
       event: "Plakat: {{title}}",
@@ -1426,6 +1427,13 @@ export const de: typeof fr = {
       mark: "Hervorgehobene Wörter",
       intro: "Einleitung",
       photo: "Foto",
+    },
+    hero: {
+      buttons: "Schaltflächen",
+      addButton: "Schaltfläche hinzufügen",
+      button: "Schaltfläche {{n}}",
+      destination: "Ziel",
+      otherLink: "Anderer Link (https)",
     },
     httpsExpected: "Erwartet wird eine vollständige Adresse, die mit https:// beginnt.",
     phoneInvalid: "Erwartet wird eine Telefonnummer, zum Beispiel 026 123 45 67.",

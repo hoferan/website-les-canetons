@@ -35,15 +35,30 @@ function block<S extends z.ZodType>(definition: BlockDefinition<S>): BlockDefini
  * page has no highlight or no paragraph under its heading.
  */
 function hero(
-  keys: { title: TranslationKey; mark?: TranslationKey; intro?: TranslationKey },
+  keys: {
+    title: TranslationKey;
+    mark?: TranslationKey;
+    intro?: TranslationKey;
+    /** The buttons under the heading: a public page and the catalogue key of its label. */
+    actions?: Array<{ to: string; label: TranslationKey }>;
+  },
   label: TranslationKey,
 ) {
   return block({
     schema: heroBlock,
+    editSchema: forEditor.heroBlock,
     defaults: () => ({
       title: fromCatalogue(keys.title),
       ...(keys.mark ? { mark: fromCatalogue(keys.mark) } : {}),
       ...(keys.intro ? { intro: fromCatalogue(keys.intro) } : {}),
+      ...(keys.actions
+        ? {
+            actions: keys.actions.map((action) => ({
+              label: fromCatalogue(action.label),
+              to: action.to,
+            })),
+          }
+        : {}),
     }),
     label,
   });
@@ -71,7 +86,16 @@ export const BLOCKS = {
   }),
 
   "home.hero": hero(
-    { title: "home.hero", mark: "home.heroHighlight", intro: "home.heroSub" },
+    {
+      title: "home.hero",
+      mark: "home.heroHighlight",
+      intro: "home.heroSub",
+      // The two things a visitor most often comes to do, as the nav names them.
+      actions: [
+        { to: "/join", label: "nav.join" },
+        { to: "/agenda", label: "nav.agenda" },
+      ],
+    },
     "blocks.home.hero",
   ),
 

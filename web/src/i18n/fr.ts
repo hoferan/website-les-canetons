@@ -1495,6 +1495,8 @@ export const fr = {
     slot: {
       band: "Photo du groupe",
       concert: "Photo en concert",
+      // The picture beside the home page's heading, where the badge stands until one is placed.
+      homeHero: "Image de l’en-tête",
       history: "Histoire\u00a0: {{title}}",
       // Also the poster's alternative text, wherever the event shows it.
       event: "Affiche\u00a0: {{title}}",
@@ -1860,6 +1862,14 @@ export const fr = {
       mark: "Mots surlignés",
       intro: "Introduction",
       photo: "Photo",
+    },
+    // A hero's buttons: a page of the site, or any other address.
+    hero: {
+      buttons: "Boutons",
+      addButton: "Ajouter un bouton",
+      button: "Bouton {{n}}",
+      destination: "Destination",
+      otherLink: "Autre lien (https)",
     },
     httpsExpected: "Une adresse complète est attendue, commençant par https://.",
     phoneInvalid: "Un numéro de téléphone est attendu, par exemple 026 123 45 67.",
