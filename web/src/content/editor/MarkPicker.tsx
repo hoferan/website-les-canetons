@@ -15,18 +15,18 @@ type Language = "fr" | "de";
  * dropped, as the page would stop highlighting it anyway.
  */
 export function MarkPicker({ titleName, markName }: { titleName: string; markName: string }) {
-  const { control, setValue } = useFormContext<FieldValues>();
+  const { control, setValue, getValues } = useFormContext<FieldValues>();
   const title = useWatch({ control, name: titleName as Path<FieldValues> }) as
     Translated | undefined;
   const mark = useWatch({ control, name: markName as Path<FieldValues> }) as Translated | undefined;
 
+  // Always from the form's current value, never from this render's: two
+  // writes in one render (French and German) must not overwrite each other.
   const write = (language: Language, text: string | undefined) => {
-    const next: Translated = { fr: mark?.fr ?? "" };
-    if (mark?.de !== undefined) next.de = mark.de;
-    if (language === "fr") next.fr = text ?? "";
-    else if (text === undefined) delete next.de;
-    else next.de = text;
-    setValue(markName as Path<FieldValues>, next, { shouldDirty: true });
+    const current = getValues(markName as Path<FieldValues>) as Translated | undefined;
+    setValue(markName as Path<FieldValues>, withMark(current, language, text), {
+      shouldDirty: true,
+    });
   };
 
   // Only a change of the title can orphan the mark; a stored mark that sits
@@ -35,13 +35,19 @@ export function MarkPicker({ titleName, markName }: { titleName: string; markNam
   useEffect(() => {
     const before = previous.current;
     previous.current = { fr: title?.fr, de: title?.de };
+    let next = getValues(markName as Path<FieldValues>) as Translated | undefined;
+    let changed = false;
     for (const language of ["fr", "de"] as const) {
       const text = title?.[language] ?? "";
-      const stored = mark?.[language];
+      const stored = next?.[language];
       if (before[language] === title?.[language] || !stored) continue;
-      if (runOf(text, tokenize(text), stored) === null) write(language, undefined);
+      if (runOf(text, tokenize(text), stored) === null) {
+        next = withMark(next, language, undefined);
+        changed = true;
+      }
     }
-    // `write` and `mark` change with every tap; the title is the trigger.
+    if (changed) setValue(markName as Path<FieldValues>, next, { shouldDirty: true });
+    // The title is the trigger; the rest is read fresh from the form.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title?.fr, title?.de]);
 
@@ -53,6 +59,16 @@ export function MarkPicker({ titleName, markName }: { titleName: string; markNam
       ) : null}
     </div>
   );
+}
+
+/** The mark pair with one language's text set, or taken away. */
+function withMark(current: Translated | undefined, language: Language, text: string | undefined) {
+  const next: Translated = { fr: current?.fr ?? "" };
+  if (current?.de !== undefined) next.de = current.de;
+  if (language === "fr") next.fr = text ?? "";
+  else if (text === undefined) delete next.de;
+  else next.de = text;
+  return next;
 }
 
 function Row({
@@ -84,7 +100,7 @@ function Row({
           {badge}
         </span>
       </span>
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="flex flex-wrap items-center gap-2">
         {tokens.map((token, index) => {
           const inside = run !== null && index >= run[0] && index <= run[1];
           if (!token.tappable) {
@@ -103,7 +119,7 @@ function Row({
               type="button"
               aria-pressed={inside}
               onClick={() => onPick(markOf(title, tokens, nextRun(tokens, run, index)))}
-              className={`min-h-touch rounded-md border-2 border-ink px-2 text-sm sm:min-h-8 focus-visible:outline-3 focus-visible:outline-violet ${inside ? "bg-highlight text-ink" : "bg-panel hover:bg-ground"}`}
+              className={`min-h-touch min-w-touch rounded-md border-2 border-ink px-2 text-sm sm:min-h-8 sm:min-w-0 focus-visible:outline-3 focus-visible:outline-violet ${inside ? "bg-highlight text-ink" : "bg-panel hover:bg-ground"}`}
             >
               {token.text}
             </button>

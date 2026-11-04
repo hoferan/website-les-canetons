@@ -85,7 +85,7 @@ test("clearing a saved intro removes it", async () => {
   const dialog = await screen.findByRole("dialog");
   const intro = within(dialog).getByRole("textbox", { name: "Introduction FR" });
   expect(intro).toHaveValue(shipped.intro!.fr);
-  const picked = within(dialog).getByRole("group", { name: "Mots en évidence FR" });
+  const picked = within(dialog).getByRole("group", { name: "Mots surlignés FR" });
   expect(within(picked).getByRole("button", { name: "la" })).toHaveAttribute(
     "aria-pressed",
     "true",

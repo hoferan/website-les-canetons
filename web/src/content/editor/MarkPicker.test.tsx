@@ -28,7 +28,7 @@ const open = (german = false) =>
   });
 
 const frRow = (dialog: HTMLElement) =>
-  within(dialog).getByRole("group", { name: "Mots en évidence FR" });
+  within(dialog).getByRole("group", { name: "Mots surlignés FR" });
 
 test("tapping two words picks the run between them", async () => {
   const { dialog, user } = await open();
@@ -74,14 +74,14 @@ test("changing the title so the words vanish clears them", async () => {
 
 test("the German title gets its own row, and none while German is absent", async () => {
   const { dialog, user } = await open(true);
-  expect(within(dialog).getByRole("group", { name: "Mots en évidence DE" })).toBeVisible();
+  expect(within(dialog).getByRole("group", { name: "Mots surlignés DE" })).toBeVisible();
   await user.click(
-    within(within(dialog).getByRole("group", { name: "Mots en évidence DE" })).getByRole("button", {
+    within(within(dialog).getByRole("group", { name: "Mots surlignés DE" })).getByRole("button", {
       name: "Kinder-",
     }),
   );
   expect(
-    within(within(dialog).getByRole("group", { name: "Mots en évidence DE" })).getByRole("button", {
+    within(within(dialog).getByRole("group", { name: "Mots surlignés DE" })).getByRole("button", {
       name: "Kinder-",
     }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -103,4 +103,54 @@ test("the stored mark is the picked text of the title", async () => {
   } finally {
     server.events.removeAllListeners();
   }
+});
+
+test("a short word that first occurs inside another word lights the standalone one", async () => {
+  const dialog = await renderBlockEditor("join.hero", () => (
+    <>
+      <TranslatedField name="title" label="Titre" required />
+      <MarkPicker titleName="title" markName="mark" />
+    </>
+  ));
+  const user = userEvent.setup();
+  const title = within(dialog).getByRole("textbox", { name: "Titre FR" });
+  await user.clear(title);
+  await user.type(title, "Les enfants en fête");
+  const row = frRow(dialog);
+  const pressed = within(row)
+    .queryAllByRole("button", { pressed: true })
+    .map((chip) => chip.textContent);
+  expect(pressed).toEqual([]);
+  // "enfants" is the second chip, the standalone "en" the third.
+  await user.click(within(row).getByRole("button", { name: "en" }));
+  expect(within(row).getByRole("button", { name: "en" })).toHaveAttribute("aria-pressed", "true");
+  expect(within(row).getByRole("button", { name: "enfants" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+});
+
+test("French and German titles changing in one render both clear their marks", async () => {
+  const user = userEvent.setup();
+  const dialog = await renderBlockEditor("join.hero", (form) => (
+    <>
+      <TranslatedField name="title" label="Titre" required />
+      <MarkPicker titleName="title" markName="mark" />
+      <button
+        type="button"
+        onClick={() => form.setValue("title", { fr: "Une fanfare", de: "Eine Fanfare" })}
+      >
+        Replace both
+      </button>
+    </>
+  ));
+  const fr = frRow(dialog);
+  const de = within(dialog).getByRole("group", { name: "Mots surlignés DE" });
+  expect(within(fr).getByRole("button", { name: "Aucun" })).toBeEnabled();
+  expect(within(de).getByRole("button", { name: "Aucun" })).toBeEnabled();
+
+  await user.click(within(dialog).getByRole("button", { name: "Replace both" }));
+
+  expect(within(fr).getByRole("button", { name: "Aucun" })).toBeDisabled();
+  expect(within(de).getByRole("button", { name: "Aucun" })).toBeDisabled();
 });

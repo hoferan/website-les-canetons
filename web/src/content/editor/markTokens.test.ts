@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { markOf, nextRun, runOf, tokenize } from "./markTokens";
+import { markOf, markRange, nextRun, runOf, tokenize } from "./markTokens";
 
 const view = (title: string) =>
   tokenize(title).map((token) => (token.tappable ? token.text : `[${token.text}]`));
@@ -77,4 +77,17 @@ test("runOf finds the first occurrence, on word edges", () => {
   expect(runOf(title, t, "absent")).toBeNull();
   expect(runOf(title, t, "")).toBeNull();
   expect(runOf(title, t, undefined)).toBeNull();
+});
+
+test("German quotes, dashes and a standalone hyphen are punctuation", () => {
+  expect(view("„Kinder“ – seit 2002")).toEqual(["[„]", "Kinder", "[“]", "[–]", "seit", "2002"]);
+  expect(view("‚a‘ — b - c")).toEqual(["[‚]", "a", "[‘]", "[—]", "b", "[-]", "c"]);
+});
+
+test("runOf skips an occurrence inside a word for a later one on word edges", () => {
+  const title = "Les enfants en fête";
+  const t = tokenize(title);
+  expect(runOf(title, t, "en")).toEqual([2, 2]);
+  expect(markRange(title, "en")).toEqual({ start: 12, end: 14 });
+  expect(markRange(title, "enf")).toBeNull();
 });

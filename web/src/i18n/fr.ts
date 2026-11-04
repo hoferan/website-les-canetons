@@ -1861,7 +1861,7 @@ export const fr = {
       address: "Adresse",
       url: "Adresse du lien",
       title: "Titre",
-      mark: "Mots en évidence",
+      mark: "Mots surlignés",
       intro: "Introduction",
       names: "Noms",
     },

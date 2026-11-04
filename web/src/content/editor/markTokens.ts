@@ -11,7 +11,28 @@ export type MarkToken = {
 /** A picked run of tokens, first and last index, both inclusive. */
 export type MarkRun = [number, number];
 
-const PUNCTUATION = new Set([".", ",", ";", ":", "!", "?", "«", "»", '"', "(", ")", "…"]);
+// Typographic quotes (French and German) and the en and em dashes count too.
+const PUNCTUATION = new Set([
+  ".",
+  ",",
+  ";",
+  ":",
+  "!",
+  "?",
+  "«",
+  "»",
+  '"',
+  "(",
+  ")",
+  "…",
+  "„",
+  "“",
+  "”",
+  "‚",
+  "‘",
+  "–",
+  "—",
+]);
 // A word is cut after these, so `d’enfants` offers `d’` and `enfants` apart,
 // and so does `Kinder-Guggenmusik`.
 const CUT_AFTER = new Set(["’", "'", "-"]);
@@ -40,6 +61,12 @@ export function tokenize(title: string): MarkToken[] {
 
     push(from, a, false);
     if (a === b) continue;
+    // A hyphen standing alone between words is a dash, not a word.
+    if (/^-+$/.test(title.slice(a, b))) {
+      push(a, b, false);
+      push(b, to, false);
+      continue;
+    }
     let piece = a;
     for (let i = a; i < b; i++) {
       if (CUT_AFTER.has(title[i]!) && i + 1 < b) {
@@ -88,15 +115,26 @@ export function markOf(
 }
 
 /**
- * The run a stored mark stands for: where its first occurrence in the title
- * starts and ends on a word, as the page highlights the first occurrence.
- * Otherwise nothing.
+ * The run a stored mark stands for: its first occurrence in the title that
+ * starts and ends on a word, so "en" in "Les enfants en fête" is the
+ * standalone one. Otherwise nothing.
  */
 export function runOf(title: string, tokens: MarkToken[], mark?: string): MarkRun | null {
   if (!mark) return null;
-  const at = title.indexOf(mark);
-  if (at === -1) return null;
-  const first = tokens.findIndex((token) => token.tappable && token.start === at);
-  const last = tokens.findIndex((token) => token.tappable && token.end === at + mark.length);
-  return first === -1 || last < first ? null : [first, last];
+  for (let at = title.indexOf(mark); at !== -1; at = title.indexOf(mark, at + 1)) {
+    const first = tokens.findIndex((token) => token.tappable && token.start === at);
+    const last = tokens.findIndex((token) => token.tappable && token.end === at + mark.length);
+    if (first !== -1 && last >= first) return [first, last];
+  }
+  return null;
+}
+
+/**
+ * Where the page cuts the highlight out of the heading: the same occurrence
+ * the picker shows, so what is lit in the editor is what is lit on the page.
+ */
+export function markRange(title: string, mark: string): { start: number; end: number } | null {
+  const tokens = tokenize(title);
+  const run = runOf(title, tokens, mark);
+  return run === null ? null : { start: tokens[run[0]]!.start, end: tokens[run[1]]!.end };
 }

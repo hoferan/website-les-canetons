@@ -23,3 +23,18 @@ test("renders the plain text when the words are not in it", () => {
   expect(container.textContent).toBe("Die Kinder-Guggenmusik.");
   expect(container.querySelector(".bg-highlight")).toBeNull();
 });
+
+test("lights the standalone word, not the same letters inside an earlier one", () => {
+  const { container } = render(<Highlighted text="Les enfants en fête" mark="en" />);
+
+  const lit = container.querySelector(".bg-highlight");
+  expect(lit?.textContent).toBe("en");
+  expect(lit?.previousSibling?.textContent).toBe("Les enfants ");
+});
+
+test("shows no highlight for a mark that is nowhere on word edges", () => {
+  const { container } = render(<Highlighted text="Les enfants" mark="enf" />);
+
+  expect(container.textContent).toBe("Les enfants");
+  expect(container.querySelector(".bg-highlight")).toBeNull();
+});
