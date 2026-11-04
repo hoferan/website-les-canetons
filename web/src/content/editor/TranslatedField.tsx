@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useController, useFormContext, type FieldValues, type Path } from "react-hook-form";
 
@@ -109,20 +110,22 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
             controlRef={(element) => {
               germanRef.current = element;
             }}
+            action={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t("blockEditor.removeGerman")}
+                onClick={() => {
+                  focusNext.current = "add";
+                  setRevealed(false);
+                  write(value?.fr ?? "", undefined);
+                }}
+              >
+                <X aria-hidden="true" />
+              </Button>
+            }
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="self-start"
-            onClick={() => {
-              focusNext.current = "add";
-              setRevealed(false);
-              write(value?.fr ?? "", undefined);
-            }}
-          >
-            {t("blockEditor.removeGerman")}
-          </Button>
         </>
       ) : (
         <Button
@@ -146,7 +149,7 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
 /** "FR" or "DE" beside a label. Flex, not inline-block: see docs/traps.md. */
 function LanguageBadge({ children }: { children: string }) {
   return (
-    <span className="inline-flex rounded-md border-2 border-ink bg-ground px-1.5 align-middle text-xs font-bold">
+    <span className="inline-flex rounded-md border-2 border-ink bg-ground px-1.5 align-[1.5px] text-xs font-bold">
       {children}
     </span>
   );

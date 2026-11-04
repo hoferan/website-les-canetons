@@ -118,3 +118,16 @@ test("with edit mode on, the photo controls appear", async () => {
     (await screen.findAllByRole("button", { name: /Ajouter une photo/ })).length,
   ).toBeGreaterThan(0);
 });
+
+test("the pill is ink with white text and a white ring, so it reads on every background", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<EditModePill />, { route: "/join" });
+
+  const classes = (pill: HTMLElement) => pill.className.split(" ");
+  const expected = ["bg-ink", "text-white", "ring-2", "ring-white", "shadow-raised"];
+  expect(classes(editButton()!)).toEqual(expect.arrayContaining(expected));
+
+  await user.click(editButton()!);
+  expect(classes(doneButton()!)).toEqual(expect.arrayContaining(expected));
+});

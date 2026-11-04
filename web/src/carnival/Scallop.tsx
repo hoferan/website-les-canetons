@@ -2,6 +2,12 @@ import { useId } from "react";
 
 const BUMP_WIDTH = 40;
 const BUMP_DEPTH = 22;
+// How far a `from` edge reaches up into the surface above. Two surfaces that
+// meet at a fractional pixel (the home page's yellow band ends at 1851.875px)
+// can leave a row between them that neither covers, and the cream behind
+// shows as a hairline. Painting the bump colour one pixel up into the upper
+// surface closes it.
+const OVERLAP = 1;
 
 /**
  * The scalloped edge where a surface ends: round bumps of the surface hanging
@@ -31,18 +37,19 @@ export function Scallop(props: { into: string } | { from: string }) {
   const id = `scallop-${useId().replace(/[^\w-]/g, "")}`;
   const half = BUMP_WIDTH / 2;
   const top = "from" in props;
+  const height = top ? BUMP_DEPTH + OVERLAP : BUMP_DEPTH;
 
   return (
     <svg
       aria-hidden="true"
-      className={`pointer-events-none absolute left-0 block w-full ${top ? "top-0" : "bottom-0"}`}
-      height={BUMP_DEPTH}
+      className={`pointer-events-none absolute left-0 block w-full ${top ? "-top-px" : "bottom-0"}`}
+      height={height}
     >
       <defs>
-        <pattern id={id} width={BUMP_WIDTH} height={BUMP_DEPTH} patternUnits="userSpaceOnUse">
+        <pattern id={id} width={BUMP_WIDTH} height={height} patternUnits="userSpaceOnUse">
           {top ? (
             <path
-              d={`M0 0H${BUMP_WIDTH}q-${half} ${BUMP_DEPTH} -${BUMP_WIDTH} 0z`}
+              d={`M0 0H${BUMP_WIDTH}V${OVERLAP}q-${half} ${BUMP_DEPTH} -${BUMP_WIDTH} 0z`}
               style={{ fill: props.from }}
             />
           ) : (
@@ -53,7 +60,7 @@ export function Scallop(props: { into: string } | { from: string }) {
           )}
         </pattern>
       </defs>
-      <rect width="100%" height={BUMP_DEPTH} fill={`url(#${id})`} />
+      <rect width="100%" height={height} fill={`url(#${id})`} />
     </svg>
   );
 }

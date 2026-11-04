@@ -101,7 +101,7 @@ export function useEditPillShown(): boolean {
 
 /**
  * The switch itself: a pill fixed at the bottom right of every public page an
- * editor may change, yellow while off, white while on. It is one element whose
+ * editor may change, ink in both states. It is one element whose
  * label changes, so focus stays on it after a toggle; a polite live region
  * says what the mode now is, since the page change is mostly silent.
  */
@@ -122,12 +122,14 @@ export function EditModePill() {
   return (
     <>
       <Button
-        variant={on ? "raised-light" : "raised"}
         onClick={toggle}
         className={cn(
           "fixed right-4 z-40 px-5",
           "bottom-[max(1rem,env(safe-area-inset-bottom))]",
-          "shadow-raised",
+          // Ink with a white ring reads on the yellow band, the cream, the
+          // violet hero and the footer alike; yellow or white vanished on one
+          // of them.
+          "bg-ink text-white ring-2 shadow-raised ring-white hover:bg-ink-hover",
         )}
       >
         {on ? <Check aria-hidden="true" /> : <Pencil aria-hidden="true" />}
