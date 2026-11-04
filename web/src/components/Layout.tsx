@@ -26,7 +26,7 @@ import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
-import { FacebookMark, FlickrMark, InstagramMark, networkUrl } from "./social";
+import { NETWORK_MARKS, networksOf } from "./social";
 import { buttonVariants } from "./ui/button";
 import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
@@ -105,41 +105,27 @@ export function Layout() {
 
   // Built in one place so the desktop bar and the phone list cannot disagree
   // about what exists. A network the band has no address for is left out.
-  const gallery = networkUrl(site.networks, "flickr");
-  const instagram = networkUrl(site.networks, "instagram");
-  const facebook = networkUrl(site.networks, "facebook");
+  const networks = networksOf(site.networks);
+  // The first Flickr entry is the gallery and keeps its word beside the mark
+  // (#224); every other network is its mark alone, named for screen readers.
+  const galleryAt = networks.findIndex((network) => network.icon === "flickr");
   const publicEntries: NavEntry[] = [
     ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
   ];
-  if (gallery) {
-    publicEntries.push({
-      key: "gallery",
-      href: gallery,
-      label: t("nav.gallery"),
-      ariaLabel: t("nav.galleryLabel"),
-      icon: FlickrMark,
-    });
-  }
-  if (instagram) {
-    publicEntries.push({
-      key: "instagram",
-      href: instagram,
-      label: "Instagram",
-      ariaLabel: t("nav.instagramLabel"),
-      icon: InstagramMark,
-      iconOnly: true,
-    });
-  }
-  if (facebook) {
-    publicEntries.push({
-      key: "facebook",
-      href: facebook,
-      label: "Facebook",
-      ariaLabel: t("nav.facebookLabel"),
-      icon: FacebookMark,
-      iconOnly: true,
-    });
-  }
+  networks.forEach(({ label, href, icon }, index) => {
+    const mark = NETWORK_MARKS[icon];
+    publicEntries.push(
+      index === galleryAt
+        ? {
+            key: "gallery",
+            href,
+            label: t("nav.gallery"),
+            ariaLabel: t("nav.galleryLabel"),
+            icon: mark,
+          }
+        : { key: `network-${index}`, href, label, ariaLabel: label, icon: mark, iconOnly: true },
+    );
+  });
   // The planning comes first when logged in: everybody in the band reads it
   // every week, so it is the last thing to fold. Shown on `events.view`, the
   // permission its route asks for; the account link answers to

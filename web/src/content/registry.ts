@@ -58,9 +58,13 @@ export const BLOCKS = {
       pitch: fromCatalogue("nav.footerPitch"),
       legalName: catalogueString("site.legalName"),
       networks: [
-        { network: "instagram" as const, url: catalogueString("site.instagramUrl") },
-        { network: "facebook" as const, url: catalogueString("site.facebookUrl") },
-        { network: "flickr" as const, url: catalogueString("site.flickrUrl") },
+        {
+          label: "Instagram",
+          url: catalogueString("site.instagramUrl"),
+          icon: "instagram" as const,
+        },
+        { label: "Facebook", url: catalogueString("site.facebookUrl"), icon: "facebook" as const },
+        { label: "Flickr", url: catalogueString("site.flickrUrl"), icon: "flickr" as const },
       ],
     }),
     label: "blocks.site",

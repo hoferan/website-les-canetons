@@ -19,7 +19,11 @@ import { translated } from "./translated";
  * content would then delete the stored one.
  */
 
-/** The pictures a card can carry, each a lucide-react icon by its own name. */
+/**
+ * The pictures a card can carry, each a lucide-react icon (glyphs and names in
+ * `editor/IconPicker.tsx`). The first ten are the original set: a stored card
+ * keeps its icon, so none is ever renamed or dropped.
+ */
 export const ICONS = [
   "music",
   "clock",
@@ -31,6 +35,38 @@ export const ICONS = [
   "star",
   "info",
   "mail",
+  "drum",
+  "notes",
+  "piano",
+  "mic",
+  "megaphone",
+  "party-popper",
+  "sparkles",
+  "ticket",
+  "shirt",
+  "bus",
+  "car",
+  "train",
+  "utensils",
+  "beer",
+  "coffee",
+  "gift",
+  "heart",
+  "smile",
+  "baby",
+  "camera",
+  "image",
+  "video",
+  "globe",
+  "link",
+  "euro",
+  "trophy",
+  "flag",
+  "sun",
+  "snowflake",
+  "house",
+  "school",
+  "check",
 ] as const;
 
 /** The carnival colours a card's icon sits on. */
@@ -39,9 +75,25 @@ export const TINTS = ["pink", "cyan", "lime", "yellow", "lilac"] as const;
 export type Icon = (typeof ICONS)[number];
 export type Tint = (typeof TINTS)[number];
 
-export const NETWORKS = ["instagram", "facebook", "flickr"] as const;
+/**
+ * The picture a network's link wears: a brand mark (`components/social.tsx`),
+ * or the generic `link` for any other site.
+ */
+export const NETWORK_ICONS = [
+  "instagram",
+  "facebook",
+  "flickr",
+  "youtube",
+  "tiktok",
+  "whatsapp",
+  "spotify",
+  "soundcloud",
+  "linkedin",
+  "x",
+  "link",
+] as const;
 
-export type Network = (typeof NETWORKS)[number];
+export type NetworkIcon = (typeof NETWORK_ICONS)[number];
 
 /**
  * Whether a typed phone number can be dialled, by the same rule the page
@@ -123,7 +175,10 @@ function schemas(checks: Checks) {
     name: z.string(),
     pitch: translated,
     legalName: z.string(),
-    networks: z.array(z.object({ network: z.enum(NETWORKS), url: checks.url })),
+    // Any page the band keeps: the name is typed and never translated.
+    networks: z.array(
+      z.object({ label: z.string(), url: checks.url, icon: z.enum(NETWORK_ICONS) }),
+    ),
   });
 
   return { row, card, cardsBlock, siteBlock };

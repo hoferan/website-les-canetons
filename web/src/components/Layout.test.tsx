@@ -30,14 +30,14 @@ test.each([
 
 /**
  * The band's accounts elsewhere (#224): the gallery and the two networks in
- * the nav, and all three again in the footer. Each opens a new tab and says so in
- * its name.
+ * the nav, and all three again in the footer. Each opens a new tab. The nav's
+ * gallery entry keeps its own name; the others are named after the network.
  */
 test.each([
   ["Galerie sur Flickr (nouvel onglet)", "flickr.com/photos/201962767@N02"],
-  ["Instagram des Canetons (nouvel onglet)", "instagram.com/guggen_lescanetons"],
-  ["Facebook des Canetons (nouvel onglet)", "facebook.com/p/Guggenmusik-Les-Canetons"],
-  ["Flickr, la galerie des Canetons (nouvel onglet)", "flickr.com/photos/201962767@N02"],
+  ["Instagram", "instagram.com/guggen_lescanetons"],
+  ["Facebook", "facebook.com/p/Guggenmusik-Les-Canetons"],
+  ["Flickr", "flickr.com/photos/201962767@N02"],
 ])("%s is external and opens in a new tab", async (name, url) => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
@@ -57,10 +57,7 @@ test("the networks are in both the nav and the footer", async () => {
 
   const nav = screen.getByRole("navigation", { name: "Navigation principale" });
   const footer = screen.getByRole("contentinfo");
-  for (const name of [
-    "Instagram des Canetons (nouvel onglet)",
-    "Facebook des Canetons (nouvel onglet)",
-  ]) {
+  for (const name of ["Instagram", "Facebook"]) {
     expect(within(nav).getByRole("link", { name })).toBeInTheDocument();
     expect(within(footer).getByRole("link", { name })).toBeInTheDocument();
   }
@@ -75,8 +72,8 @@ test("the desktop bar labels Galerie beside its mark, and shows the networks as 
   ).getAllByRole("list")[0]!;
   const text = (name: string) => within(bar).getByRole("link", { name }).textContent;
   expect(text("Galerie sur Flickr (nouvel onglet)")).toBe("Galerie");
-  expect(text("Instagram des Canetons (nouvel onglet)")).toBe("");
-  expect(text("Facebook des Canetons (nouvel onglet)")).toBe("");
+  expect(text("Instagram")).toBe("");
+  expect(text("Facebook")).toBe("");
   // Every external entry carries its brand mark, so none gets the arrow.
   expect(bar.querySelector(".lucide-external-link")).toBeNull();
 });
@@ -444,12 +441,8 @@ test("the nav renders in German under the German locale", async () => {
   expect(within(footer).getByRole("link", { name: "Kontakt" })).toBeInTheDocument();
   expect(screen.getByText(/Alle Rechte vorbehalten\./)).toBeInTheDocument();
   expect(screen.getByRole("contentinfo")).toHaveTextContent("Folgen Sie uns");
-  expect(screen.getAllByRole("link", { name: "Instagram der Canetons (neuer Tab)" })).toHaveLength(
-    2,
-  );
-  expect(
-    screen.getByRole("link", { name: "Flickr, die Galerie der Canetons (neuer Tab)" }),
-  ).toBeInTheDocument();
+  expect(screen.getAllByRole("link", { name: "Instagram" })).toHaveLength(2);
+  expect(screen.getByRole("link", { name: "Flickr" })).toBeInTheDocument();
 });
 
 test("the nav is still French by default", async () => {
