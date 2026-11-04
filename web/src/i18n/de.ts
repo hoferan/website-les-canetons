@@ -1117,7 +1117,6 @@ export const de: typeof fr = {
     slot: {
       band: "Gruppenfoto",
       concert: "Konzertfoto",
-      godparents: "Götti und Gotte",
       history: "Geschichte: {{title}}",
       // Also the poster's alt text wherever the event shows it.
       event: "Plakat: {{title}}",
@@ -1290,7 +1289,6 @@ export const de: typeof fr = {
     instructors: "Leiter:",
     registersNav: "Register",
     patronsHeading: "Der Götti und die Gotte",
-    patronsAlt: "Der Götti und die Gotte der Canetons",
     patrons: "Richard Hertig und Annick Bürgisser",
   },
 
@@ -1427,7 +1425,7 @@ export const de: typeof fr = {
       title: "Titel",
       mark: "Hervorgehobene Wörter",
       intro: "Einleitung",
-      names: "Namen",
+      photo: "Foto",
     },
     httpsExpected: "Erwartet wird eine vollständige Adresse, die mit https:// beginnt.",
     phoneInvalid: "Erwartet wird eine Telefonnummer, zum Beispiel 026 123 45 67.",

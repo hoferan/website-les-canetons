@@ -3,7 +3,7 @@ import type { z } from "zod";
 import type { TranslationKey } from "../i18n";
 import { catalogueString } from "../i18n/catalogueText";
 import { fromCatalogue } from "./translated";
-import { cardsBlock, fieldsBlock, forEditor, heroBlock, siteBlock } from "./types";
+import { cardsBlock, forEditor, heroBlock, siteBlock } from "./types";
 
 /**
  * Every content block a page shows, by the key it is stored under.
@@ -175,10 +175,21 @@ export const BLOCKS = {
   "band.hero": hero({ title: "band.heading", mark: "band.headingHighlight" }, "blocks.band.hero"),
 
   "band.godparents": block({
-    schema: fieldsBlock(["heading", "names"]),
+    schema: cardsBlock,
+    editSchema: forEditor.cardsBlock,
+    // One card with a photo, as the page showed it when it was a fields block.
+    // The photo lives in its own slot, `band.godparents.godparents`.
     defaults: () => ({
-      heading: fromCatalogue("band.patronsHeading"),
-      names: fromCatalogue("band.patrons"),
+      cards: [
+        {
+          id: "godparents",
+          icon: "heart" as const,
+          tint: "pink" as const,
+          title: fromCatalogue("band.patronsHeading"),
+          rows: [{ type: "text" as const, text: fromCatalogue("band.patrons") }],
+          photo: true,
+        },
+      ],
     }),
     label: "blocks.band.godparents",
   }),

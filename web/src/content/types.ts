@@ -169,6 +169,8 @@ function schemas(checks: Checks) {
     tint: z.enum(TINTS),
     title: translated,
     rows: z.array(row),
+    // A photo slot under the title, keyed by the block and this id (`cardSlot`).
+    photo: z.boolean().optional(),
   });
 
   const cardsBlock = z.object({ cards: z.array(card) });
@@ -216,9 +218,3 @@ export const heroBlock = z.object({
   mark: translated.optional(),
   intro: translated.optional(),
 });
-
-/** A fixed set of named texts, declared by the component that shows them. */
-export function fieldsBlock<const N extends string>(names: readonly N[]) {
-  const shape = Object.fromEntries(names.map((name) => [name, translated]));
-  return z.object(shape as Record<N, typeof translated>);
-}

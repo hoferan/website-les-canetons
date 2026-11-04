@@ -17,6 +17,14 @@ export const historySlot = (entryId: number) => `history-${entryId}`;
 export const eventSlot = (eventId: number) => `event-${eventId}`;
 
 /**
+ * A card's photo, named by its block and its own id so no two cards share one.
+ * An added card's id is a UUID, which keeps the key inside a slot name's 64
+ * characters and its allowed set. Deleting the card leaves the slot behind,
+ * unseen, like any slot nothing shows.
+ */
+export const cardSlot = (blockKey: string, cardId: string) => `${blockKey}.${cardId}`;
+
+/**
  * Every placed photo slot, read once however many slots a page shows: each
  * caller shares the one query. A slot with nothing placed is absent, and
  * `photoOf` answers null for it.

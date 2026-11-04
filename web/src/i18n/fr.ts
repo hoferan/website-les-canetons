@@ -1495,7 +1495,6 @@ export const fr = {
     slot: {
       band: "Photo du groupe",
       concert: "Photo en concert",
-      godparents: "Parrain et marraine",
       history: "Histoire\u00a0: {{title}}",
       // Also the poster's alternative text, wherever the event shows it.
       event: "Affiche\u00a0: {{title}}",
@@ -1706,7 +1705,6 @@ export const fr = {
     instructors: "Moniteurs :",
     registersNav: "Registres",
     patronsHeading: "Le parrain et la marraine",
-    patronsAlt: "Le parrain et la marraine des Canetons",
     // The names are content; the "et" between them is not, so the whole
     // line is catalogue copy.
     patrons: "Richard Hertig et Annick Bürgisser",
@@ -1861,7 +1859,7 @@ export const fr = {
       title: "Titre",
       mark: "Mots surlignés",
       intro: "Introduction",
-      names: "Noms",
+      photo: "Photo",
     },
     httpsExpected: "Une adresse complète est attendue, commençant par https://.",
     phoneInvalid: "Un numéro de téléphone est attendu, par exemple 026 123 45 67.",

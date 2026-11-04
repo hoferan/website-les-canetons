@@ -1,15 +1,12 @@
 import { PageSection } from "@/components/PageSection";
 import { RegisterIndex } from "@/components/RegisterIndex";
 import { Tbd } from "@/components/Tbd";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useBandIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
-import { RAISED_CARD } from "../carnival/raised";
 import { ManagedIn } from "../content/editor/ManagedIn";
-import { FieldsBlock } from "../content/blocks/FieldsBlock";
+import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
@@ -129,27 +126,8 @@ export function Band() {
           <>
             <hr className="mt-section border-line" />
 
-            {/* The margin outside the block, so its chip sits on the card. */}
             <div className="mt-block">
-              <FieldsBlock
-                blockKey="band.godparents"
-                labels={{
-                  heading: t("blockEditor.field.title"),
-                  names: t("blockEditor.field.names"),
-                }}
-              >
-                {(texts) => (
-                  <Card className={cn(RAISED_CARD, "gap-0 p-5")}>
-                    <h2 className="font-display text-2xl">{texts.heading}</h2>
-                    <SlotPhoto
-                      slot="godparents"
-                      label={t("photos.slot.godparents")}
-                      alt={t("band.patronsAlt")}
-                    />
-                    <p className="mt-tight text-ink-muted">{texts.names}</p>
-                  </Card>
-                )}
-              </FieldsBlock>
+              <CardsBlock blockKey="band.godparents" layout="wide" />
             </div>
           </>
         )}

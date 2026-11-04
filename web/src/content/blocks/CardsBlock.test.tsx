@@ -12,6 +12,7 @@ import { renderWithSession } from "../../test/renderWithSession";
 import { EDIT_MODE_KEY } from "../EditMode";
 import { BLOCKS } from "../registry";
 import { tr } from "../translated";
+import { cardSlot } from "../../images/photoSlots";
 import { CardsBlock } from "./CardsBlock";
 
 afterEach(() => server.events.removeAllListeners());
@@ -389,4 +390,77 @@ test("the default layout is the grid of up to three columns", async () => {
 
   const card = screen.getByRole("heading", { name: "Horaires" }).closest("[data-slot='card']");
   expect(card!.parentElement).toHaveClass("sm:grid-cols-2", "lg:grid-cols-3");
+});
+
+test("a card with a photo shows the slot named by its block and id, and others do not", async () => {
+  storeBlock("join.facts", {
+    cards: [
+      { ...BLOCKS["join.facts"].defaults().cards[0]!, photo: true },
+      BLOCKS["join.facts"].defaults().cards[1],
+    ],
+  });
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  await screen.findByRole("heading", { name: "Instruments recherchés" });
+  await waitFor(() =>
+    expect(
+      document.querySelector(`[data-photo-pending='${cardSlot("join.facts", "instruments")}']`),
+    ).not.toBeNull(),
+  );
+  expect(document.querySelectorAll("[data-photo-pending]")).toHaveLength(1);
+});
+
+test("the Photo switch in the card editor turns the slot on and saves it", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  const toggle = within(dialog).getByRole("switch", { name: "Photo" });
+  expect(toggle).not.toBeChecked();
+  await user.click(toggle);
+  expect(toggle).toBeChecked();
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const saved = (puts[0]!.body as { data: { cards: { id: string; photo?: boolean }[] } }).data
+    .cards;
+  expect(saved.find((card) => card.id === "schedule")?.photo).toBe(true);
+  expect(saved.find((card) => card.id === "age")?.photo).toBeUndefined();
+});
+
+test("deleting a card that carries a photo leaves the page rendering", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  // Put a photo on the card first, through the editor, so the stored block has it.
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  let dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("switch", { name: "Photo" }));
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+  await expect.poll(() => puts).toHaveLength(1);
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(document.querySelector("[data-photo-pending='join.facts.schedule']")).not.toBeNull(),
+  );
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  const confirm = await screen.findByRole("alertdialog");
+  await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
+
+  await expect.poll(() => puts).toHaveLength(2);
+  await waitFor(() => expect(screen.queryByRole("heading", { name: "Horaires" })).toBeNull());
+  expect(screen.getByRole("heading", { name: "Lieu" })).toBeInTheDocument();
+  expect(document.querySelector("[data-photo-pending='join.facts.schedule']")).toBeNull();
+});
+
+test("a slot key built from an added card's id is a valid slot name", () => {
+  const key = cardSlot("committee.contact", crypto.randomUUID());
+  expect(key).toMatch(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/);
 });

@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
+  Controller,
   useFieldArray,
   useFormContext,
   type FieldErrors,
@@ -18,11 +19,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 import { FormError } from "../../components/FormField";
 import { RAISED_CARD } from "../../carnival/raised";
 import { t } from "../../i18n";
+import { cardSlot } from "../../images/photoSlots";
+import { SlotPhoto } from "../../images/SlotPhoto";
 import { useBlock } from "../BlocksProvider";
 import {
   BlockEditor,
@@ -162,7 +166,13 @@ export function CardsBlock({
             // down where it stacks, so the arrow points where the card goes.
             const several = layout === "grid";
             return (
-              <CardView key={card.id} card={card} slot={slots[card.id]} editing={editing}>
+              <CardView
+                key={card.id}
+                blockKey={blockKey}
+                card={card}
+                slot={slots[card.id]}
+                editing={editing}
+              >
                 {editing ? (
                   <>
                     {/* Left of the chip, which is 44px wide and 8px inside. */}
@@ -218,11 +228,13 @@ export function CardsBlock({
  * about.
  */
 function CardView({
+  blockKey,
   card,
   slot,
   editing,
   children,
 }: {
+  blockKey: CardsKey;
   card: CardData;
   slot: CardSlot | undefined;
   /** Whether the card wears its chip, and so needs room for it. */
@@ -245,12 +257,39 @@ function CardView({
         </span>
         <h2 className="font-display text-xl">{tr(card.title)}</h2>
       </div>
+      {/* The slot shows a placeholder to a visitor while empty, like every
+          other slot, and carries its own pencil for an editor. */}
+      {card.photo ? (
+        <SlotPhoto
+          slot={cardSlot(blockKey, card.id)}
+          label={tr(card.title).trim() || t(BLOCKS[blockKey].label)}
+          alt={tr(card.title)}
+        />
+      ) : null}
       {slot?.beforeRows}
       {card.rows.map((row, index) => (
         <RowView key={index} row={row} />
       ))}
       {slot?.afterRows}
     </Card>
+  );
+}
+
+/** Whether the card shows a photo slot under its title. */
+function PhotoSwitch({ name }: { name: `cards.${number}.photo` }) {
+  const { control } = useFormContext<CardsData>();
+  const id = useId();
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <div className="flex min-h-touch items-center justify-between gap-2">
+          <label htmlFor={id}>{t("blockEditor.field.photo")}</label>
+          <Switch id={id} checked={field.value === true} onCheckedChange={field.onChange} />
+        </div>
+      )}
+    />
   );
 }
 
@@ -308,6 +347,7 @@ function CardEditor({ id, adding }: Opened) {
             />
             <IconPicker name={`cards.${index}.icon`} />
             <TintPicker name={`cards.${index}.tint`} />
+            <PhotoSwitch name={`cards.${index}.photo`} />
             <RowFields name={`cards.${index}.rows`} />
           </div>
 

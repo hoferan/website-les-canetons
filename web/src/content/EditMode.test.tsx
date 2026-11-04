@@ -106,7 +106,9 @@ test("with edit mode off, a photo manager sees the visitor's page", async () => 
   await renderWithSession(<Band />, { route: "/band" });
 
   await screen.findAllByText("Photo à venir");
-  expect(document.querySelector("[data-photo-pending='godparents']")).not.toBeNull();
+  expect(
+    document.querySelector("[data-photo-pending='band.godparents.godparents']"),
+  ).not.toBeNull();
   expect(screen.queryByRole("button", { name: /Ajouter une photo/ })).toBeNull();
 });
 
