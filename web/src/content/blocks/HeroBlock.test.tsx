@@ -61,6 +61,8 @@ test("the hero chip edits title and intro together", async () => {
         ...shipped,
         title: { ...shipped.title, fr: "Viens jouer avec nous" },
         intro: { ...shipped.intro, fr: "Les souffleurs sont les bienvenus." },
+        // The new title no longer holds the French words; the German ones stay.
+        mark: { ...shipped.mark, fr: "" },
       },
     },
   });
@@ -82,17 +84,19 @@ test("clearing a saved intro removes it", async () => {
   await user.click(screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }));
   const dialog = await screen.findByRole("dialog");
   const intro = within(dialog).getByRole("textbox", { name: "Introduction FR" });
-  const mark = within(dialog).getByRole("textbox", { name: "Mots surlignés FR" });
   expect(intro).toHaveValue(shipped.intro!.fr);
-  expect(mark).toHaveValue("la guggen");
+  const picked = within(dialog).getByRole("group", { name: "Mots en évidence FR" });
+  expect(within(picked).getByRole("button", { name: "la" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   // The shipped texts carry a German wording; it goes with the French.
   for (const remove of within(dialog).getAllByRole("button", { name: "Retirer l’allemand" })) {
     await user.click(remove);
   }
   await user.clear(intro);
-  await user.clear(mark);
+  await user.click(within(picked).getByRole("button", { name: "Aucun" }));
   expect(intro).toHaveValue("");
-  expect(mark).toHaveValue("");
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
   await expect.poll(() => puts).toHaveLength(1);

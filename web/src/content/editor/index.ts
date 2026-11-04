@@ -2,6 +2,7 @@ export { BlockEditor } from "./BlockEditor";
 export { CHIP_ROOM, ChipButton, ChipLink, EditChip } from "./EditChip";
 export { ICON_GLYPHS, IconPicker } from "./IconPicker";
 export { ListField, MAX_ITEMS } from "./ListField";
+export { MarkPicker } from "./MarkPicker";
 export { PlainField } from "./PlainField";
 export { RowFields } from "./RowFields";
 export { TINT_BACKGROUNDS, TintPicker } from "./TintPicker";

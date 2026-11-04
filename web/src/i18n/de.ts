@@ -1396,6 +1396,7 @@ export const de: typeof fr = {
     german: "DE",
     addGerman: "+ Deutsch",
     removeGerman: "Deutsch entfernen",
+    markNone: "Keine",
     up: "Nach oben",
     down: "Nach unten",
     remove: "Entfernen",

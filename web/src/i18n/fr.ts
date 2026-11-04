@@ -1827,6 +1827,8 @@ export const fr = {
     german: "DE",
     addGerman: "+ Deutsch",
     removeGerman: "Retirer l’allemand",
+    // Clears the words picked on the title for the highlight.
+    markNone: "Aucun",
     up: "Monter",
     down: "Descendre",
     remove: "Supprimer",
@@ -1859,7 +1861,7 @@ export const fr = {
       address: "Adresse",
       url: "Adresse du lien",
       title: "Titre",
-      mark: "Mots surlignés",
+      mark: "Mots en évidence",
       intro: "Introduction",
       names: "Noms",
     },

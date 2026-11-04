@@ -3,7 +3,7 @@ import { useState, type ReactNode } from "react";
 import { PageHero } from "../../carnival/PageHero";
 import { t } from "../../i18n";
 import { useBlock } from "../BlocksProvider";
-import { BlockEditor, EditChip, TranslatedField } from "../editor";
+import { BlockEditor, EditChip, MarkPicker, TranslatedField } from "../editor";
 import { BLOCKS, type BlockKey } from "../registry";
 import { tr } from "../translated";
 import type { heroBlock } from "../types";
@@ -83,7 +83,7 @@ export function HeroEditor({
       {() => (
         <>
           <TranslatedField name="title" label={t("blockEditor.field.title")} required />
-          <TranslatedField name="mark" label={t("blockEditor.field.mark")} />
+          <MarkPicker titleName="title" markName="mark" />
           <TranslatedField name="intro" label={t("blockEditor.field.intro")} multiline />
         </>
       )}
