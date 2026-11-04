@@ -172,3 +172,23 @@ test("a stored site block in the old {network, url} shape falls back to the ship
 
   await waitFor(() => expect(screen.getByTestId("name")).toHaveTextContent(shipped.name));
 });
+
+test("a network name of spaces only is refused", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  setMockUser("demo.direction");
+  storeBlock("site", { ...shipped, networks: [] });
+  await renderWithSession(<Harness />, { route: "/" });
+  const dialog = await screen.findByRole("dialog", { name: "Infos du site" });
+
+  await user.click(within(dialog).getByRole("button", { name: "Ajouter un réseau" }));
+  await user.type(within(dialog).getByRole("textbox", { name: "Nom du réseau" }), "   ");
+  await user.type(
+    within(dialog).getByRole("textbox", { name: "Adresse de la page" }),
+    "https://example.ch",
+  );
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  expect(await within(dialog).findByText("Un nom est attendu.")).toBeInTheDocument();
+  expect(puts).toEqual([]);
+});

@@ -116,7 +116,11 @@ export function isHttpsUrl(value: string): boolean {
 }
 
 /** The strings an editor checks further than a read does. */
-type Checks = { phone: z.ZodType<string, string>; url: z.ZodType<string, string> };
+type Checks = {
+  phone: z.ZodType<string, string>;
+  url: z.ZodType<string, string>;
+  name: z.ZodType<string, string>;
+};
 
 function schemas(checks: Checks) {
   const textRow = z.object({ type: z.literal("text"), text: translated });
@@ -177,7 +181,7 @@ function schemas(checks: Checks) {
     legalName: z.string(),
     // Any page the band keeps: the name is typed and never translated.
     networks: z.array(
-      z.object({ label: z.string(), url: checks.url, icon: z.enum(NETWORK_ICONS) }),
+      z.object({ label: checks.name, url: checks.url, icon: z.enum(NETWORK_ICONS) }),
     ),
   });
 
@@ -187,12 +191,15 @@ function schemas(checks: Checks) {
 export const { row, card, cardsBlock, siteBlock } = schemas({
   phone: z.string(),
   url: z.string(),
+  name: z.string(),
 });
 
 /** The same blocks as an editor saves them: a number dials, a link is https. */
 export const forEditor = schemas({
   phone: z.string().refine(isPhoneNumber),
   url: z.string().refine(isHttpsUrl),
+  // Spaces alone are no name: the page would drop the entry without a word.
+  name: z.string().refine((value) => value.trim() !== ""),
 });
 
 export type Row = z.infer<typeof row>;

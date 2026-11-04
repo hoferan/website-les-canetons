@@ -63,7 +63,7 @@ test("a network the band removed disappears from the nav and the footer", async 
 
   expect(screen.queryAllByRole("link", { name: /Instagram/ })).toHaveLength(0);
   const nav = screen.getByRole("navigation", { name: "Navigation principale" });
-  expect(within(nav).getByRole("link", { name: "Facebook" })).toBeInTheDocument();
+  expect(within(nav).getByRole("link", { name: "Facebook (nouvel onglet)" })).toBeInTheDocument();
   expect(
     within(screen.getByRole("contentinfo")).getByRole("link", { name: /^Facebook/ }),
   ).toBeInTheDocument();
@@ -174,12 +174,12 @@ test("each network is a link named after it, with the icon the band picked", asy
   await renderWithSession(<AppRoutes />, { route: "/join" });
 
   const footer = screen.getByRole("contentinfo");
-  const videos = within(footer).getByRole("link", { name: "Nos vidéos" });
+  const videos = within(footer).getByRole("link", { name: "Nos vidéos (nouvel onglet)" });
   expect(videos).toHaveAttribute("href", "https://www.youtube.com/@canetons");
   expect(videos).toHaveAttribute("target", "_blank");
   expect(videos).toHaveTextContent("Nos vidéos");
   expect(videos.querySelector("[data-icon='youtube']")).not.toBeNull();
-  const blog = within(footer).getByRole("link", { name: "Notre blog" });
+  const blog = within(footer).getByRole("link", { name: "Notre blog (nouvel onglet)" });
   expect(blog.querySelector("[data-icon='link']")).not.toBeNull();
   expect(within(footer).queryAllByRole("link", { name: /Instagram|Facebook|Flickr/ })).toHaveLength(
     0,

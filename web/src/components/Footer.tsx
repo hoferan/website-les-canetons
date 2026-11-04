@@ -97,7 +97,7 @@ export function Footer({ above }: { above: string | null }) {
                     href={href}
                     target="_blank"
                     rel="noreferrer"
-                    aria-label={label}
+                    aria-label={t("nav.newTab", { name: label })}
                     className="focus-ring-stage inline-flex min-h-touch items-center gap-2 rounded-full bg-white/[0.08] px-3 text-sm font-semibold hover:bg-white/15 sm:px-4"
                   >
                     <NetworkMark icon={icon} className="size-5" />

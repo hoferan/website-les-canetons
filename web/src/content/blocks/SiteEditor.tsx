@@ -73,7 +73,12 @@ function NetworkFields({ path }: { path: string }) {
 
   return (
     <>
-      <PlainField name={`${path}.label`} label={t("blockEditor.site.networkName")} required />
+      <PlainField
+        name={`${path}.label`}
+        label={t("blockEditor.site.networkName")}
+        required
+        invalidMessage={t("blockEditor.site.networkNameExpected")}
+      />
       <PlainField
         name={`${path}.url`}
         label={t("blockEditor.site.networkUrl")}

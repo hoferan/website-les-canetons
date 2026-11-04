@@ -35,9 +35,9 @@ test.each([
  */
 test.each([
   ["Galerie sur Flickr (nouvel onglet)", "flickr.com/photos/201962767@N02"],
-  ["Instagram", "instagram.com/guggen_lescanetons"],
-  ["Facebook", "facebook.com/p/Guggenmusik-Les-Canetons"],
-  ["Flickr", "flickr.com/photos/201962767@N02"],
+  ["Instagram (nouvel onglet)", "instagram.com/guggen_lescanetons"],
+  ["Facebook (nouvel onglet)", "facebook.com/p/Guggenmusik-Les-Canetons"],
+  ["Flickr (nouvel onglet)", "flickr.com/photos/201962767@N02"],
 ])("%s is external and opens in a new tab", async (name, url) => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
@@ -57,7 +57,7 @@ test("the networks are in both the nav and the footer", async () => {
 
   const nav = screen.getByRole("navigation", { name: "Navigation principale" });
   const footer = screen.getByRole("contentinfo");
-  for (const name of ["Instagram", "Facebook"]) {
+  for (const name of ["Instagram (nouvel onglet)", "Facebook (nouvel onglet)"]) {
     expect(within(nav).getByRole("link", { name })).toBeInTheDocument();
     expect(within(footer).getByRole("link", { name })).toBeInTheDocument();
   }
@@ -72,8 +72,8 @@ test("the desktop bar labels Galerie beside its mark, and shows the networks as 
   ).getAllByRole("list")[0]!;
   const text = (name: string) => within(bar).getByRole("link", { name }).textContent;
   expect(text("Galerie sur Flickr (nouvel onglet)")).toBe("Galerie");
-  expect(text("Instagram")).toBe("");
-  expect(text("Facebook")).toBe("");
+  expect(text("Instagram (nouvel onglet)")).toBe("");
+  expect(text("Facebook (nouvel onglet)")).toBe("");
   // Every external entry carries its brand mark, so none gets the arrow.
   expect(bar.querySelector(".lucide-external-link")).toBeNull();
 });
@@ -441,8 +441,11 @@ test("the nav renders in German under the German locale", async () => {
   expect(within(footer).getByRole("link", { name: "Kontakt" })).toBeInTheDocument();
   expect(screen.getByText(/Alle Rechte vorbehalten\./)).toBeInTheDocument();
   expect(screen.getByRole("contentinfo")).toHaveTextContent("Folgen Sie uns");
-  expect(screen.getAllByRole("link", { name: "Instagram" })).toHaveLength(2);
-  expect(screen.getByRole("link", { name: "Flickr" })).toBeInTheDocument();
+  expect(screen.getAllByRole("link", { name: "Instagram (neuer Tab)" })).toHaveLength(2);
+  expect(screen.getByRole("link", { name: "Flickr (neuer Tab)" })).toBeInTheDocument();
+  expect(
+    screen.getAllByRole("link", { name: "Galerie auf Flickr (neuer Tab)" }).length,
+  ).toBeGreaterThan(0);
 });
 
 test("the nav is still French by default", async () => {

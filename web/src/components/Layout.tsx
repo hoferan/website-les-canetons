@@ -112,18 +112,31 @@ export function Layout() {
   const publicEntries: NavEntry[] = [
     ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
   ];
-  networks.forEach(({ label, href, icon }, index) => {
+  // The gallery leads, as it always has, so the bar folds the same entries
+  // first whatever order the band keeps its networks in.
+  const ordered =
+    galleryAt < 0
+      ? networks
+      : [networks[galleryAt]!, ...networks.filter((_, i) => i !== galleryAt)];
+  ordered.forEach(({ label, href, icon }, index) => {
     const mark = NETWORK_MARKS[icon];
     publicEntries.push(
-      index === galleryAt
+      index === 0 && galleryAt >= 0
         ? {
             key: "gallery",
             href,
             label: t("nav.gallery"),
-            ariaLabel: t("nav.galleryLabel"),
+            ariaLabel: t("nav.newTab", { name: t("nav.galleryName") }),
             icon: mark,
           }
-        : { key: `network-${index}`, href, label, ariaLabel: label, icon: mark, iconOnly: true },
+        : {
+            key: `network-${index}`,
+            href,
+            label,
+            ariaLabel: t("nav.newTab", { name: label }),
+            icon: mark,
+            iconOnly: true,
+          },
     );
   });
   // The planning comes first when logged in: everybody in the band reads it

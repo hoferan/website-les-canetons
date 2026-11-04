@@ -62,6 +62,6 @@ test("at 1280px nothing folds", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
 
   const nav = page.getByRole("navigation", { name: "Navigation principale" });
-  await expect(nav.getByRole("link", { name: "Facebook" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Facebook (nouvel onglet)" })).toBeVisible();
   await expect(nav.getByRole("button", { name: "Plus", exact: true })).toHaveCount(0);
 });

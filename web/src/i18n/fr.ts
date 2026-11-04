@@ -459,7 +459,9 @@ export const fr = {
     // The external links' whole names. Each says it opens a new tab and
     // begins with the words on screen, so voice control still finds it. The
     // networks' names are brands and stay untranslated.
-    galleryLabel: "Galerie sur Flickr (nouvel onglet)",
+    galleryName: "Galerie sur Flickr",
+    // Every external link says it opens a new tab: {{name}} is its name.
+    newTab: "{{name}} (nouvel onglet)",
     followUs: "Suivez-nous",
     footerPitch:
       "La guggen d’enfants de Fribourg, depuis 2002. De 7 à 18 ans, pas besoin de connaître la musique.",
@@ -1929,6 +1931,7 @@ export const fr = {
       networkUrl: "Adresse de la page",
       addNetwork: "Ajouter un réseau",
       networkName: "Nom du réseau",
+      networkNameExpected: "Un nom est attendu.",
       networkIcon: "Icône",
       networkLink: "Lien",
     },

@@ -367,7 +367,8 @@ export const de: typeof fr = {
     registers: "Register",
     roles: "Rollen",
     gallery: "Galerie",
-    galleryLabel: "Galerie auf Flickr (neuer Tab)",
+    galleryName: "Galerie auf Flickr",
+    newTab: "{{name}} (neuer Tab)",
     followUs: "Folgen Sie uns",
     footerPitch:
       "Die Kinder-Guggenmusik aus Freiburg, seit 2002. Von 7 bis 18 Jahren, ganz ohne Musikkenntnisse.",
@@ -1495,6 +1496,7 @@ export const de: typeof fr = {
       networkUrl: "Adresse der Seite",
       addNetwork: "Netzwerk hinzufügen",
       networkName: "Name des Netzwerks",
+      networkNameExpected: "Erwartet wird ein Name.",
       networkIcon: "Symbol",
       networkLink: "Link",
     },
