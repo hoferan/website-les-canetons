@@ -83,15 +83,20 @@ export function ChipLink({ label, to }: { label: string; to: string }) {
 /**
  * A round icon-only chip button, named by `label`. Not positioned: the caller
  * lays it out, for controls such as a card's move arrows.
+ *
+ * `narrowIcon` replaces `icon` below `sm`, for an arrow whose direction
+ * follows a layout that stacks on a phone.
  */
 export function ChipButton({
   label,
   icon: Icon,
+  narrowIcon: NarrowIcon,
   onClick,
   disabled,
 }: {
   label: string;
   icon: LucideIcon;
+  narrowIcon?: LucideIcon;
   onClick: () => void;
   disabled?: boolean;
 }) {
@@ -103,7 +108,14 @@ export function ChipButton({
       onClick={onClick}
       className={cn(buttonVariants({ variant: "raised" }), CHIP)}
     >
-      <Icon aria-hidden="true" className="size-5 shrink-0" />
+      {NarrowIcon ? (
+        <>
+          <NarrowIcon aria-hidden="true" className="size-5 shrink-0 sm:hidden" />
+          <Icon aria-hidden="true" className="hidden size-5 shrink-0 sm:block" />
+        </>
+      ) : (
+        <Icon aria-hidden="true" className="size-5 shrink-0" />
+      )}
     </button>
   );
 }

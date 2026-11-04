@@ -1405,8 +1405,8 @@ export const de: typeof fr = {
     removeCardTitle: "Diese Karte löschen?",
     removeCardBody: "Die Karte und ihre Zeilen verschwinden von der Seite.",
     removeCardConfirm: "Löschen",
-    moveLeft: "Nach links",
-    moveRight: "Nach rechts",
+    moveCardBefore: "„{{title}}“ nach vorn verschieben",
+    moveCardAfter: "„{{title}}“ nach hinten verschieben",
     rowType: {
       text: "Text",
       labelValue: "Bezeichnung + Wert",

@@ -1836,8 +1836,9 @@ export const fr = {
     removeCardTitle: "Supprimer cette carte ?",
     removeCardBody: "La carte et ses lignes disparaissent de la page.",
     removeCardConfirm: "Supprimer",
-    moveLeft: "Déplacer à gauche",
-    moveRight: "Déplacer à droite",
+    // The arrows beside a card's chip in edit mode, which reorder the grid.
+    moveCardBefore: "Déplacer « {{title}} » avant",
+    moveCardAfter: "Déplacer « {{title}} » après",
     rowType: {
       text: "Texte",
       labelValue: "Libellé + valeur",

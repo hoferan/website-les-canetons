@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   useFieldArray,
@@ -20,12 +20,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
+import { FormError } from "../../components/FormField";
 import { RAISED_CARD } from "../../carnival/raised";
 import { t } from "../../i18n";
 import { useBlock } from "../BlocksProvider";
 import {
   BlockEditor,
   CHIP_ROOM,
+  ChipButton,
   EditChip,
   ICON_GLYPHS,
   IconPicker,
@@ -34,6 +36,7 @@ import {
   TINT_BACKGROUNDS,
   TintPicker,
   TranslatedField,
+  useSaveBlock,
 } from "../editor";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 import { tr } from "../translated";
@@ -90,9 +93,20 @@ export function CardsBlock({
   const blockLabel = t(BLOCKS[blockKey].label);
   const full = cards.length >= MAX_ITEMS;
   const fullId = useId();
+  // Moving a card saves at once, with no dialog to close.
+  const { save, pending, error } = useSaveBlock(blockKey, () => {});
   const shipped = opened
     ? BLOCKS[blockKey].defaults().cards.find((card) => card.id === opened.id)
     : undefined;
+
+  // The arrows are disabled while a save is on its way, so a move never starts
+  // from a list that lacks the one before it. Blocks are written without an
+  // ETag, so a stale list would silently undo that move instead of failing.
+  const shift = (from: number, to: number) => {
+    const moved = [...cards];
+    moved.splice(to, 0, ...moved.splice(from, 1));
+    save({ cards: moved } as CardsData);
+  };
 
   const restore = (form: UseFormReturn<CardsData>) => {
     const index = form.getValues("cards").findIndex((card) => card.id === shipped?.id);
@@ -138,18 +152,49 @@ export function CardsBlock({
         </div>
       ) : null}
 
+      {editing ? <FormError error={error} /> : null}
+
       {cards.length > 0 ? (
         <div className={LAYOUTS[layout]}>
-          {cards.map((card) => (
-            <CardView key={card.id} card={card} slot={slots[card.id]} editing={editing}>
-              {editing ? (
-                <EditChip
-                  label={tr(card.title).trim() || blockLabel}
-                  onClick={() => setOpened({ id: card.id, adding: false })}
-                />
-              ) : null}
-            </CardView>
-          ))}
+          {cards.map((card, index) => {
+            const title = tr(card.title).trim() || blockLabel;
+            // Left and right where the grid shows columns (from sm), up and
+            // down where it stacks, so the arrow points where the card goes.
+            const several = layout === "grid";
+            return (
+              <CardView key={card.id} card={card} slot={slots[card.id]} editing={editing}>
+                {editing ? (
+                  <>
+                    {/* Left of the chip, which is 44px wide and 8px inside. */}
+                    <div className="absolute top-2 right-[3.75rem] z-10 flex gap-2">
+                      {index > 0 ? (
+                        <ChipButton
+                          label={t("blockEditor.moveCardBefore", { title })}
+                          icon={several ? ArrowLeft : ArrowUp}
+                          narrowIcon={several ? ArrowUp : undefined}
+                          disabled={pending}
+                          onClick={() => shift(index, index - 1)}
+                        />
+                      ) : null}
+                      {index < cards.length - 1 ? (
+                        <ChipButton
+                          label={t("blockEditor.moveCardAfter", { title })}
+                          icon={several ? ArrowRight : ArrowDown}
+                          narrowIcon={several ? ArrowDown : undefined}
+                          disabled={pending}
+                          onClick={() => shift(index, index + 1)}
+                        />
+                      ) : null}
+                    </div>
+                    <EditChip
+                      label={title}
+                      onClick={() => setOpened({ id: card.id, adding: false })}
+                    />
+                  </>
+                ) : null}
+              </CardView>
+            );
+          })}
         </div>
       ) : null}
 
@@ -221,7 +266,7 @@ function newCard(id: string): CardData {
  */
 function CardEditor({ id, adding }: Opened) {
   const { control, getValues } = useFormContext<CardsData>();
-  const { append, move, remove } = useFieldArray({ control, name: "cards" });
+  const { append, remove } = useFieldArray({ control, name: "cards" });
   // Read from the form, which a move changes before the re-render it causes.
   // useWatch would lag one render behind, and the fields left at the old
   // path would write stale defaults into the card that moved there.
@@ -248,11 +293,6 @@ function CardEditor({ id, adding }: Opened) {
     root.current?.closest("form")?.requestSubmit();
   }, [deleted]);
 
-  const shift = (to: number) => {
-    if (to < 0 || to >= cards.length) return;
-    move(index, to);
-  };
-
   const shown = !deleted && index !== -1;
 
   return (
@@ -272,26 +312,6 @@ function CardEditor({ id, adding }: Opened) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="raised-light"
-              size="sm"
-              aria-disabled={index === 0 || undefined}
-              onClick={() => shift(index - 1)}
-            >
-              <ArrowLeft aria-hidden="true" />
-              {t("blockEditor.moveLeft")}
-            </Button>
-            <Button
-              type="button"
-              variant="raised-light"
-              size="sm"
-              aria-disabled={index === cards.length - 1 || undefined}
-              onClick={() => shift(index + 1)}
-            >
-              <ArrowRight aria-hidden="true" />
-              {t("blockEditor.moveRight")}
-            </Button>
             <Button
               type="button"
               variant="raised-danger"

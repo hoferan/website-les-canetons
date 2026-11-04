@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http } from "msw";
 import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 
+import { Toaster } from "../../components/ui/sonner";
 import { t } from "../../i18n";
 import { setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";
@@ -9,6 +11,7 @@ import { recordBlockPuts, storeBlock } from "../../test/renderBlockEditor";
 import { renderWithSession } from "../../test/renderWithSession";
 import { EDIT_MODE_KEY } from "../EditMode";
 import { BLOCKS } from "../registry";
+import { tr } from "../translated";
 import { CardsBlock } from "./CardsBlock";
 
 afterEach(() => server.events.removeAllListeners());
@@ -102,28 +105,108 @@ test("an editor adds a card, sets icon, colour and a phone row, and saves", asyn
   );
 });
 
-test("each card's chip opens that card, and moving it saves the new order", async () => {
+test("each card's chip opens that card, and its editor has no move buttons", async () => {
   const user = userEvent.setup();
-  const puts = recordBlockPuts();
   editing();
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
   await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
   const dialog = await screen.findByRole("dialog");
   expect(within(dialog).getByRole("textbox", { name: "Titre FR" })).toHaveValue("Horaires");
+  expect(within(dialog).queryByRole("button", { name: /Déplacer/ })).toBeNull();
+});
 
-  await user.click(within(dialog).getByRole("button", { name: "Déplacer à gauche" }));
-  // The editor follows its card, which is now the first.
-  expect(within(dialog).getByRole("button", { name: "Déplacer à gauche" })).toHaveAttribute(
-    "aria-disabled",
-    "true",
+test("moves a card after the next one and saves at once", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(
+    <>
+      <CardsBlock blockKey="join.facts" />
+      <Toaster />
+    </>,
+    { route: "/join" },
   );
-  expect(within(dialog).getByRole("textbox", { name: "Titre FR" })).toHaveValue("Horaires");
-  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await user.click(
+    screen.getByRole("button", { name: "Déplacer « Instruments recherchés » après" }),
+  );
 
   await expect.poll(() => puts).toHaveLength(1);
   const [instruments, schedule, ...rest] = BLOCKS["join.facts"].defaults().cards;
   expect(puts[0]?.body).toEqual({ data: { cards: [schedule, instruments, ...rest] } });
+  expect((await screen.findAllByText("Modifié")).length).toBeGreaterThan(0);
+  // The page follows the stored order, with no dialog in between.
+  await waitFor(() =>
+    expect(screen.getAllByRole("heading", { level: 2 })[0]).toHaveTextContent("Horaires"),
+  );
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("the first card has no 'avant' button and the last has no 'après' button", async () => {
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  const titles = BLOCKS["join.facts"].defaults().cards.map((card) => tr(card.title));
+  const first = titles[0]!;
+  const last = titles[titles.length - 1]!;
+  expect(screen.queryByRole("button", { name: `Déplacer « ${first} » avant` })).toBeNull();
+  expect(screen.getByRole("button", { name: `Déplacer « ${first} » après` })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: `Déplacer « ${last} » avant` })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: `Déplacer « ${last} » après` })).toBeNull();
+});
+
+test("a second move waits for the first save, then builds on its result", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const [instruments, schedule, age, ...rest] = BLOCKS["join.facts"].defaults().cards;
+  const after = { name: "Déplacer « Instruments recherchés » après" };
+  // The first save is held back until the test lets it go; returning nothing
+  // passes the request on to the default handler.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.put("/api/v1/blocks/:key", async () => {
+      await held;
+    }),
+  );
+
+  // The second tap lands before the first save has come back. Blocks are
+  // written without an ETag, so what would go wrong is a list read from the
+  // page before it shows the first move: it would undo it.
+  await user.click(screen.getByRole("button", after));
+  await expect.poll(() => puts).toHaveLength(1);
+  expect(screen.getByRole("button", after)).toBeDisabled();
+  await user.click(screen.getByRole("button", after));
+  expect(puts).toHaveLength(1);
+  release();
+  await waitFor(() => expect(screen.getByRole("button", after)).toBeEnabled());
+
+  await user.click(screen.getByRole("button", after));
+  await expect.poll(() => puts).toHaveLength(2);
+  expect(puts[0]?.body).toEqual({ data: { cards: [schedule, instruments, age, ...rest] } });
+  expect(puts[1]?.body).toEqual({ data: { cards: [schedule, age, instruments, ...rest] } });
+});
+
+test("the arrows follow the grid: left and right from sm, up and down on one column", async () => {
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const grid = screen.getByRole("button", { name: "Déplacer « Horaires » avant" });
+  expect(grid.querySelector(".lucide-arrow-left")).toHaveClass("hidden", "sm:block");
+  expect(grid.querySelector(".lucide-arrow-up")).toHaveClass("sm:hidden");
+  const next = screen.getByRole("button", { name: "Déplacer « Horaires » après" });
+  expect(next.querySelector(".lucide-arrow-right")).toHaveClass("hidden", "sm:block");
+  expect(next.querySelector(".lucide-arrow-down")).toHaveClass("sm:hidden");
+});
+
+test("on a one-column list the arrows are up and down at every width", async () => {
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" layout="wide" />, { route: "/join" });
+  const before = screen.getByRole("button", { name: "Déplacer « Horaires » avant" });
+  expect(before.querySelector(".lucide-arrow-up")).not.toHaveClass("sm:hidden");
+  expect(before.querySelector(".lucide-arrow-left")).toBeNull();
 });
 
 test("deleting the last card leaves Ajouter une carte in edit mode", async () => {
