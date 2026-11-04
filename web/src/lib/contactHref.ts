@@ -67,7 +67,9 @@ export function telHref(phone: string): string | null {
  *
  * - `+41 26 123 45 67` and `0041 26 123 45 67` are international already.
  *   A `(0)` right after the country code is the trunk prefix and is dropped,
- *   so `+41 (0)26 123 45 67` dials `+41261234567`.
+ *   so `+41 (0)26 123 45 67` dials `+41261234567`. After +41 a 0 is dropped
+ *   even without brackets (`+41 026 …`), since a Swiss number never has one
+ *   there. Other country codes keep it: an Italian number dials its 0.
  * - `026 123 45 67` is Swiss: a 0 and nine digits.
  * - Anything else is refused. `26 123 45 67` read as international would
  *   ring Madagascar, and `79 123 45 67` Russia.
@@ -90,6 +92,9 @@ export function swissTelHref(phone: string): string | null {
     e164 = `41${compact.slice(1)}`;
   } else {
     return null;
+  }
+  if (e164.startsWith("410")) {
+    e164 = `41${e164.slice(3)}`;
   }
 
   // A country code never starts with 0, and E.164 caps a number at fifteen
