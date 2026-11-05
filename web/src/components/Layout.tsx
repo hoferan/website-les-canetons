@@ -27,7 +27,7 @@ import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
-import { FacebookMark, FlickrMark, InstagramMark, networkUrl } from "./social";
+import { NETWORK_MARKS, networksOf } from "./social";
 import { buttonVariants } from "./ui/button";
 import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
@@ -35,28 +35,8 @@ import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 import { WEBSITE_PERMISSIONS } from "@/lib/websitePermissions";
 
 import { EditModePill } from "../content/EditMode";
+import { PUBLIC_NAV } from "../content/publicPages";
 import { useSite } from "../content/blocks/SiteBlock";
-
-/**
- * The public nav in order of importance, left to right. The desktop bar folds
- * from the right into "Plus" when it runs out of room, so this is also the
- * order in which entries disappear (#99).
- *
- * "Nous rejoindre" is first because recruiting is what this site is for: the
- * band takes players from 7 to 18, so the visitor worth optimising for is a
- * parent deciding whether to turn up on Saturday. The pages a parent needs
- * least come last, then the external sites, which fold first.
- *
- * Every entry must be a route that exists.
- */
-const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
-  { to: "/join", labelKey: "nav.join" },
-  { to: "/agenda", labelKey: "nav.agenda" },
-  { to: "/band", labelKey: "nav.band" },
-  { to: "/contact", labelKey: "nav.contact" },
-  { to: "/committee", labelKey: "nav.committee" },
-  { to: "/history", labelKey: "nav.history" },
-];
 
 /**
  * The committee's screens, each gated by the permission that gates the API
@@ -115,41 +95,40 @@ export function Layout() {
 
   // Built in one place so the desktop bar and the phone list cannot disagree
   // about what exists. A network the band has no address for is left out.
-  const gallery = networkUrl(site.networks, "flickr");
-  const instagram = networkUrl(site.networks, "instagram");
-  const facebook = networkUrl(site.networks, "facebook");
+  const networks = networksOf(site.networks);
+  // The first Flickr entry is the gallery and keeps its word beside the mark
+  // (#224); every other network is its mark alone, named for screen readers.
+  const galleryAt = networks.findIndex((network) => network.icon === "flickr");
   const publicEntries: NavEntry[] = [
     ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
   ];
-  if (gallery) {
-    publicEntries.push({
-      key: "gallery",
-      href: gallery,
-      label: t("nav.gallery"),
-      ariaLabel: t("nav.galleryLabel"),
-      icon: FlickrMark,
-    });
-  }
-  if (instagram) {
-    publicEntries.push({
-      key: "instagram",
-      href: instagram,
-      label: "Instagram",
-      ariaLabel: t("nav.instagramLabel"),
-      icon: InstagramMark,
-      iconOnly: true,
-    });
-  }
-  if (facebook) {
-    publicEntries.push({
-      key: "facebook",
-      href: facebook,
-      label: "Facebook",
-      ariaLabel: t("nav.facebookLabel"),
-      icon: FacebookMark,
-      iconOnly: true,
-    });
-  }
+  // The gallery leads, as it always has, so the bar folds the same entries
+  // first whatever order the band keeps its networks in.
+  const ordered =
+    galleryAt < 0
+      ? networks
+      : [networks[galleryAt]!, ...networks.filter((_, i) => i !== galleryAt)];
+  ordered.forEach(({ label, href, icon }, index) => {
+    const mark = NETWORK_MARKS[icon];
+    publicEntries.push(
+      index === 0 && galleryAt >= 0
+        ? {
+            key: "gallery",
+            href,
+            label: t("nav.gallery"),
+            ariaLabel: t("nav.newTab", { name: t("nav.galleryName") }),
+            icon: mark,
+          }
+        : {
+            key: `network-${index}`,
+            href,
+            label,
+            ariaLabel: t("nav.newTab", { name: label }),
+            icon: mark,
+            iconOnly: true,
+          },
+    );
+  });
   // The planning comes first when logged in: everybody in the band reads it
   // every week, so it is the last thing to fold. Shown on `events.view`, the
   // permission its route asks for; the account link answers to

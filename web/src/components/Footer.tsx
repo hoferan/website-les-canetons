@@ -11,7 +11,7 @@ import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor/EditChip";
 import { tr } from "../content/translated";
 import { buttonVariants } from "./ui/button";
-import { FacebookMark, FlickrMark, InstagramMark, type Network, networkUrl } from "./social";
+import { NetworkMark, networksOf } from "./social";
 
 /** Raised, as everything a visitor can press is, with the stage's pink shadow. */
 const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
@@ -29,8 +29,8 @@ const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
  * on the home page, not a repeat on every page. The band's name is text.
  *
  * The networks are named beside their marks, because few people recognise
- * Flickr's two dots without the word. A network the band has no address for
- * is left out.
+ * Flickr's two dots without the word. A network with no name or no https
+ * address is left out.
  *
  * The band's name, the line under it, the legal name and the networks are the
  * site block (#106). In edit mode one chip on the footer's top right opens its editor.
@@ -46,16 +46,7 @@ export function Footer({ above }: { above: string | null }) {
   const [editingSite, setEditingSite] = useState(false);
   // The floating pill sits over the last 4rem of the page; keep it off the footer's own buttons.
   const pillShown = useEditPillShown();
-  const follow: { network: Network; name: string; label: string; Mark: typeof InstagramMark }[] = [
-    {
-      network: "instagram",
-      name: "Instagram",
-      label: t("nav.instagramLabel"),
-      Mark: InstagramMark,
-    },
-    { network: "facebook", name: "Facebook", label: t("nav.facebookLabel"), Mark: FacebookMark },
-    { network: "flickr", name: "Flickr", label: t("nav.flickrLabel"), Mark: FlickrMark },
-  ];
+  const follow = networksOf(site.networks);
 
   return (
     <footer
@@ -99,24 +90,21 @@ export function Footer({ above }: { above: string | null }) {
               {t("nav.followUs")}
             </p>
             <ul className="mt-3 flex flex-wrap gap-2">
-              {follow.map(({ network, name, label, Mark }) => {
-                const href = networkUrl(site.networks, network);
-                if (!href) return null;
-                return (
-                  <li key={network} className="flex items-center">
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={label}
-                      className="focus-ring-stage inline-flex min-h-touch items-center gap-2 rounded-full bg-white/[0.08] px-3 text-sm font-semibold hover:bg-white/15 sm:px-4"
-                    >
-                      <Mark className="size-5" />
-                      {name}
-                    </a>
-                  </li>
-                );
-              })}
+              {follow.map(({ label, href, icon }, index) => (
+                // The index too: two entries may share a name or an address.
+                <li key={`${index}-${href}`} className="flex items-center">
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={t("nav.newTab", { name: label })}
+                    className="focus-ring-stage inline-flex min-h-touch items-center gap-2 rounded-full bg-white/[0.08] px-3 text-sm font-semibold hover:bg-white/15 sm:px-4"
+                  >
+                    <NetworkMark icon={icon} className="size-5" />
+                    {label}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </div>

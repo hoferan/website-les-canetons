@@ -6,7 +6,7 @@ import { Confetti } from "../carnival/Confetti";
 import { useFooterEdge } from "../carnival/footerEdge";
 import { POSTER_CONFETTI } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
-import { Scallop } from "../carnival/Scallop";
+import { SCALLOP_CLIP, Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
 
 /**
@@ -27,7 +27,7 @@ export function NotFound() {
   useFooterEdge("var(--color-stage)");
 
   return (
-    <div className="relative flex min-h-dvh flex-col justify-center overflow-hidden bg-poster">
+    <div className={cn("relative flex min-h-dvh flex-col justify-center bg-poster", SCALLOP_CLIP)}>
       <Confetti seed={31} colours={POSTER_CONFETTI} density={3} wobble />
       {/* `pb-20` and up leave the Scallop its 22px over the bottom edge. */}
       <div className="relative mx-auto flex max-w-text flex-col items-center px-4 pt-10 pb-20 text-center md:pt-16 md:pb-28">

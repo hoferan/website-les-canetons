@@ -1,14 +1,23 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http } from "msw";
 import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 
+import { Toaster } from "../../components/ui/sonner";
 import { t } from "../../i18n";
-import { setMockUser } from "../../mocks/handlers";
+import {
+  mockPhotoSlot,
+  setMockPhotoSlot,
+  setMockUser,
+  setMockUserWithPermissions,
+} from "../../mocks/handlers";
 import { server } from "../../mocks/node";
 import { recordBlockPuts, storeBlock } from "../../test/renderBlockEditor";
 import { renderWithSession } from "../../test/renderWithSession";
 import { EDIT_MODE_KEY } from "../EditMode";
 import { BLOCKS } from "../registry";
+import { tr } from "../translated";
+import { cardSlot } from "../../images/photoSlots";
 import { CardsBlock } from "./CardsBlock";
 
 afterEach(() => server.events.removeAllListeners());
@@ -102,28 +111,160 @@ test("an editor adds a card, sets icon, colour and a phone row, and saves", asyn
   );
 });
 
-test("each card's chip opens that card, and moving it saves the new order", async () => {
+test("each card's chip opens that card, and its editor has no move buttons", async () => {
   const user = userEvent.setup();
-  const puts = recordBlockPuts();
   editing();
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
   await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
   const dialog = await screen.findByRole("dialog");
   expect(within(dialog).getByRole("textbox", { name: "Titre FR" })).toHaveValue("Horaires");
+  expect(within(dialog).queryByRole("button", { name: /Déplacer/ })).toBeNull();
+});
 
-  await user.click(within(dialog).getByRole("button", { name: "Déplacer à gauche" }));
-  // The editor follows its card, which is now the first.
-  expect(within(dialog).getByRole("button", { name: "Déplacer à gauche" })).toHaveAttribute(
-    "aria-disabled",
-    "true",
+test("moves a card after the next one and saves at once", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(
+    <>
+      <CardsBlock blockKey="join.facts" />
+      <Toaster />
+    </>,
+    { route: "/join" },
   );
-  expect(within(dialog).getByRole("textbox", { name: "Titre FR" })).toHaveValue("Horaires");
-  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await user.click(
+    screen.getByRole("button", { name: "Déplacer « Instruments recherchés » après" }),
+  );
 
   await expect.poll(() => puts).toHaveLength(1);
   const [instruments, schedule, ...rest] = BLOCKS["join.facts"].defaults().cards;
   expect(puts[0]?.body).toEqual({ data: { cards: [schedule, instruments, ...rest] } });
+  expect((await screen.findAllByText("Modifié")).length).toBeGreaterThan(0);
+  // The page follows the stored order, with no dialog in between.
+  await waitFor(() =>
+    expect(screen.getAllByRole("heading", { level: 2 })[0]).toHaveTextContent("Horaires"),
+  );
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("the first card has no 'avant' button and the last has no 'après' button", async () => {
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  const titles = BLOCKS["join.facts"].defaults().cards.map((card) => tr(card.title));
+  const first = titles[0]!;
+  const last = titles[titles.length - 1]!;
+  expect(screen.queryByRole("button", { name: `Déplacer « ${first} » avant` })).toBeNull();
+  expect(screen.getByRole("button", { name: `Déplacer « ${first} » après` })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: `Déplacer « ${last} » avant` })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: `Déplacer « ${last} » après` })).toBeNull();
+});
+
+test("a second move waits for the first save, then builds on its result", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const [instruments, schedule, age, ...rest] = BLOCKS["join.facts"].defaults().cards;
+  const after = { name: "Déplacer « Instruments recherchés » après" };
+  // The first save is held back until the test lets it go; returning nothing
+  // passes the request on to the default handler.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.put("/api/v1/blocks/:key", async () => {
+      await held;
+    }),
+  );
+
+  // The second tap lands before the first save has come back. Blocks are
+  // written without an ETag, so what would go wrong is a list read from the
+  // page before it shows the first move: it would undo it.
+  await user.click(screen.getByRole("button", after));
+  await expect.poll(() => puts).toHaveLength(1);
+  // Marked, not disabled: a disabled button would drop the keyboard's focus.
+  expect(screen.getByRole("button", after)).toHaveAttribute("aria-disabled", "true");
+  expect(screen.getByRole("button", after)).toBeEnabled();
+  await user.click(screen.getByRole("button", after));
+  expect(puts).toHaveLength(1);
+  release();
+  await waitFor(() =>
+    expect(screen.getByRole("button", after)).not.toHaveAttribute("aria-disabled", "true"),
+  );
+
+  await user.click(screen.getByRole("button", after));
+  await expect.poll(() => puts).toHaveLength(2);
+  expect(puts[0]?.body).toEqual({ data: { cards: [schedule, instruments, age, ...rest] } });
+  expect(puts[1]?.body).toEqual({ data: { cards: [schedule, age, instruments, ...rest] } });
+});
+
+test("a card moved from the keyboard keeps focus on the same arrow of the moved card", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const after = { name: "Déplacer « Instruments recherchés » après" };
+
+  screen.getByRole("button", after).focus();
+  await user.keyboard("{Enter}");
+
+  await expect.poll(() => puts).toHaveLength(1);
+  await waitFor(() =>
+    expect(screen.getAllByRole("heading", { level: 2 })[1]).toHaveTextContent(
+      "Instruments recherchés",
+    ),
+  );
+  await waitFor(() => expect(screen.getByRole("button", after)).toHaveFocus());
+
+  // So a second Enter carries on moving the same card.
+  await user.keyboard("{Enter}");
+  await expect.poll(() => puts).toHaveLength(2);
+  await waitFor(() =>
+    expect(screen.getAllByRole("heading", { level: 2 })[2]).toHaveTextContent(
+      "Instruments recherchés",
+    ),
+  );
+  await waitFor(() => expect(screen.getByRole("button", after)).toHaveFocus());
+});
+
+test("a card moved to the front, where its arrow is gone, hands focus to its pencil", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  screen.getByRole("button", { name: "Déplacer « Horaires » avant" }).focus();
+  await user.keyboard("{Enter}");
+
+  await expect.poll(() => puts).toHaveLength(1);
+  await waitFor(() =>
+    expect(screen.getAllByRole("heading", { level: 2 })[0]).toHaveTextContent("Horaires"),
+  );
+  expect(screen.queryByRole("button", { name: "Déplacer « Horaires » avant" })).toBeNull();
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Modifier : Horaires" })).toHaveFocus(),
+  );
+});
+
+test("the arrows follow the grid: left and right from sm, up and down on one column", async () => {
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const grid = screen.getByRole("button", { name: "Déplacer « Horaires » avant" });
+  expect(grid.querySelector(".lucide-arrow-left")).toHaveClass("hidden", "sm:block");
+  expect(grid.querySelector(".lucide-arrow-up")).toHaveClass("sm:hidden");
+  const next = screen.getByRole("button", { name: "Déplacer « Horaires » après" });
+  expect(next.querySelector(".lucide-arrow-right")).toHaveClass("hidden", "sm:block");
+  expect(next.querySelector(".lucide-arrow-down")).toHaveClass("sm:hidden");
+});
+
+test("on a one-column list the arrows are up and down at every width", async () => {
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" layout="wide" />, { route: "/join" });
+  const before = screen.getByRole("button", { name: "Déplacer « Horaires » avant" });
+  expect(before.querySelector(".lucide-arrow-up")).not.toHaveClass("sm:hidden");
+  expect(before.querySelector(".lucide-arrow-left")).toBeNull();
 });
 
 test("deleting the last card leaves Ajouter une carte in edit mode", async () => {
@@ -306,4 +447,175 @@ test("the default layout is the grid of up to three columns", async () => {
 
   const card = screen.getByRole("heading", { name: "Horaires" }).closest("[data-slot='card']");
   expect(card!.parentElement).toHaveClass("sm:grid-cols-2", "lg:grid-cols-3");
+});
+
+test("a card with a photo shows the slot named by its block and id, and others do not", async () => {
+  storeBlock("join.facts", {
+    cards: [
+      { ...BLOCKS["join.facts"].defaults().cards[0]!, photo: true },
+      BLOCKS["join.facts"].defaults().cards[1],
+    ],
+  });
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  await screen.findByRole("heading", { name: "Instruments recherchés" });
+  await waitFor(() =>
+    expect(
+      document.querySelector(`[data-photo-pending='${cardSlot("join.facts", "instruments")}']`),
+    ).not.toBeNull(),
+  );
+  expect(document.querySelectorAll("[data-photo-pending]")).toHaveLength(1);
+});
+
+test("the Photo switch in the card editor turns the slot on and saves it", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  const toggle = within(dialog).getByRole("switch", { name: "Photo" });
+  expect(toggle).not.toBeChecked();
+  await user.click(toggle);
+  expect(toggle).toBeChecked();
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const saved = (puts[0]!.body as { data: { cards: { id: string; photo?: boolean }[] } }).data
+    .cards;
+  expect(saved.find((card) => card.id === "schedule")?.photo).toBe(true);
+  expect(saved.find((card) => card.id === "age")?.photo).toBeUndefined();
+});
+
+test("deleting a card that carries a photo leaves the page rendering", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  // Put a photo on the card first, through the editor, so the stored block has it.
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  let dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("switch", { name: "Photo" }));
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+  await expect.poll(() => puts).toHaveLength(1);
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(document.querySelector("[data-photo-pending='join.facts.schedule']")).not.toBeNull(),
+  );
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  const confirm = await screen.findByRole("alertdialog");
+  await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
+
+  await expect.poll(() => puts).toHaveLength(2);
+  await waitFor(() => expect(screen.queryByRole("heading", { name: "Horaires" })).toBeNull());
+  expect(screen.getByRole("heading", { name: "Lieu" })).toBeInTheDocument();
+  expect(document.querySelector("[data-photo-pending='join.facts.schedule']")).toBeNull();
+});
+
+/** Every write the page sends, blocks and photo slots alike, in the order sent. */
+function recordWrites() {
+  const writes: Array<{ path: string; body: unknown }> = [];
+  server.events.on("request:start", async ({ request }) => {
+    const path = new URL(request.url).pathname;
+    if (request.method === "PUT") writes.push({ path, body: await request.clone().json() });
+  });
+  return writes;
+}
+
+const SCHEDULE_SLOT = cardSlot("join.facts", "schedule");
+
+/** The join cards as stored with a photo on the schedule card, and a photo placed in its slot. */
+function scheduleWithPhoto() {
+  storeBlock("join.facts", {
+    cards: BLOCKS["join.facts"]
+      .defaults()
+      .cards.map((card) => (card.id === "schedule" ? { ...card, photo: true } : card)),
+  });
+  setMockPhotoSlot(SCHEDULE_SLOT, { imageId: 1, label: "Horaires", path: "/join" });
+}
+
+test("deleting a card whose photo is placed empties its slot once the list is saved", async () => {
+  const user = userEvent.setup();
+  editing();
+  scheduleWithPhoto();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const writes = recordWrites();
+
+  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  const confirm = await screen.findByRole("alertdialog");
+  await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
+
+  // Otherwise the photo stays placed where nothing shows it, and the library
+  // can neither delete it nor offer a page to take it off.
+  await expect.poll(() => writes).toHaveLength(2);
+  expect(writes[0]?.path).toBe("/api/v1/blocks/join.facts");
+  expect(writes[1]).toEqual({
+    path: `/api/v1/photo-slots/${SCHEDULE_SLOT}`,
+    body: { imageId: null },
+  });
+  await waitFor(() => expect(mockPhotoSlot(SCHEDULE_SLOT)).toBeNull());
+});
+
+test("switching a card's photo off empties its slot", async () => {
+  const user = userEvent.setup();
+  editing();
+  scheduleWithPhoto();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const writes = recordWrites();
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("switch", { name: "Photo" }));
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => writes).toHaveLength(2);
+  expect(writes[1]?.path).toBe(`/api/v1/photo-slots/${SCHEDULE_SLOT}`);
+  await waitFor(() => expect(mockPhotoSlot(SCHEDULE_SLOT)).toBeNull());
+});
+
+test("a save that keeps a card's photo leaves its slot alone", async () => {
+  const user = userEvent.setup();
+  editing();
+  scheduleWithPhoto();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const writes = recordWrites();
+
+  await user.click(screen.getByRole("button", { name: "Déplacer « Horaires » avant" }));
+
+  await expect.poll(() => writes).toHaveLength(1);
+  // Long enough for a slot write to have followed the block's.
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(writes.map((write) => write.path)).toEqual(["/api/v1/blocks/join.facts"]);
+  expect(mockPhotoSlot(SCHEDULE_SLOT)).not.toBeNull();
+});
+
+test("an editor who cannot manage photos deletes the card and leaves the slot to the library", async () => {
+  const user = userEvent.setup();
+  setMockUserWithPermissions("demo.direction", ["content.manage", "events.view", "account.manage"]);
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  scheduleWithPhoto();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const writes = recordWrites();
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  const confirm = await screen.findByRole("alertdialog");
+  await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
+
+  await expect.poll(() => writes).toHaveLength(1);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(writes.map((write) => write.path)).toEqual(["/api/v1/blocks/join.facts"]);
+});
+
+test("a slot key built from an added card's id is a valid slot name", () => {
+  const key = cardSlot("committee.contact", crypto.randomUUID());
+  expect(key).toMatch(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/);
 });

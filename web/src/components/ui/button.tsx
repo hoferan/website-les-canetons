@@ -40,13 +40,13 @@ const buttonVariants = cva(
         // secondary and destructive. On the stage the caller swaps the shadow
         // for shadow-raised-stage, since ink on black vanishes.
         raised:
-          "rounded-xl border-3 border-ink bg-yellow font-bold text-ink shadow-raised-sm hover:bg-yellow/85",
+          "rounded-xl border-3 border-ink bg-yellow font-bold text-ink shadow-raised-sm hover:bg-yellow-hover",
         "raised-light":
           "rounded-xl border-3 border-ink bg-white font-bold text-ink shadow-raised-sm hover:bg-ground",
         "raised-violet":
-          "rounded-xl border-3 border-ink bg-violet font-bold text-white shadow-raised-sm hover:bg-violet/90",
+          "rounded-xl border-3 border-ink bg-violet font-bold text-white shadow-raised-sm hover:bg-violet-hover",
         "raised-danger":
-          "rounded-xl border-3 border-ink bg-danger font-bold text-white shadow-raised-sm hover:bg-danger/90",
+          "rounded-xl border-3 border-ink bg-danger font-bold text-white shadow-raised-sm hover:bg-danger-hover",
         // Ghost and link stay flat: an icon inside a field, a link in a sentence.
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",

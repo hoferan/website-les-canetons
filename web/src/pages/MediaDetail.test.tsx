@@ -8,7 +8,13 @@ import type { ImageResource } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import type { Turn } from "../images/rotate";
 import type { ReplaceFn } from "../images/useUploadQueue";
-import { addUnusedMockImage, mockEntityTag, setMockUser } from "../mocks/handlers";
+import {
+  addUnusedMockImage,
+  mockEntityTag,
+  mockPhotoSlot,
+  setMockPhotoSlot,
+  setMockUser,
+} from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { MediaDetail } from "./MediaDetail";
@@ -401,6 +407,66 @@ test("a delete the server refuses is shown in the dialog", async () => {
   );
 });
 
+/** The removal button of one place, by the place's name. */
+const removal = (place: string) => ({ name: `Retirer de cet emplacement\u00a0: ${place}` });
+
+test("a place nothing shows any more can be emptied here, and the photo is then unused", async () => {
+  const user = userEvent.setup();
+  // The slot the godparents' card replaced: no page draws it, so this is the
+  // only control left for it.
+  const id = addUnusedMockImage();
+  setMockPhotoSlot("godparents", { imageId: id, label: "Parrain et marraine", path: "/band" });
+  await renderDetail(id);
+  const sent: Array<{ path: string; body: unknown }> = [];
+  server.events.on("request:start", async ({ request }) => {
+    if (request.method === "PUT") {
+      sent.push({ path: new URL(request.url).pathname, body: await request.clone().json() });
+    }
+  });
+
+  await user.click(screen.getByRole("button", removal("Parrain et marraine")));
+
+  expect(await screen.findByText("Non utilisée")).toBeInTheDocument();
+  expect(sent).toEqual([{ path: "/api/v1/photo-slots/godparents", body: { imageId: null } }]);
+  expect(mockPhotoSlot("godparents")).toBeNull();
+  expect(screen.getByRole("status")).toHaveTextContent("Photo retirée de « Parrain et marraine ».");
+  server.events.removeAllListeners();
+});
+
+test("only a page's own places offer the removal; a history entry keeps its own control", async () => {
+  await renderDetail(2);
+
+  expect(screen.getByRole("button", removal("Trompettes"))).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Le flambeau passe$/ })).toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: /^Retirer de cet emplacement/ })).toHaveLength(1);
+});
+
+test("a removal the server refuses says so and leaves the place listed", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.put("/api/v1/photo-slots/:slot", () =>
+      HttpResponse.json(
+        {
+          title: "Forbidden",
+          status: 403,
+          code: "forbidden",
+          instance: "",
+          errors: [],
+          requestId: "x",
+          detail: "",
+        },
+        { status: 403, headers: { "Content-Type": "application/problem+json" } },
+      ),
+    ),
+  );
+  await renderDetail(1);
+
+  await user.click(screen.getByRole("button", removal("Photo du groupe")));
+
+  await waitFor(() => expect(screen.getByRole("alert")).not.toBeEmptyDOMElement());
+  expect(screen.getByRole("link", { name: "Photo du groupe" })).toBeInTheDocument();
+});
+
 test("on the German side the page speaks German", async () => {
   setMockUser("demo.direction");
   await renderWithSession(
@@ -412,4 +478,7 @@ test("on the German side the page speaks German", async () => {
 
   expect(await screen.findByRole("button", { name: "Nach links drehen" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Herunterladen" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Von diesem Platz entfernen: Photo du groupe" }),
+  ).toBeInTheDocument();
 });

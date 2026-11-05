@@ -1,10 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 
 import { EDIT_MODE_KEY } from "../content/EditMode";
 import { BLOCKS } from "../content/registry";
-import type { Network } from "../content/types";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { AppRoutes } from "../routes";
@@ -13,6 +12,20 @@ import { renderWithSession } from "../test/renderWithSession";
 
 afterEach(() => server.events.removeAllListeners());
 
+// Radix sizes a radio's hidden form input with ResizeObserver, which jsdom
+// lacks. Stubbed here only: DesktopNav and Confetti test their jsdom fallback.
+beforeAll(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+});
+afterAll(() => vi.unstubAllGlobals());
+
 const shipped = BLOCKS.site.defaults();
 
 /** The shipped site info with some of it changed. */
@@ -20,8 +33,8 @@ function site(change: Partial<typeof shipped>) {
   return { ...shipped, ...change };
 }
 
-function without(network: Network) {
-  return shipped.networks.filter((entry) => entry.network !== network);
+function without(label: string) {
+  return shipped.networks.filter((entry) => entry.label !== label);
 }
 
 test("the band's name, pitch and legal name in the footer and the header follow the stored site", async () => {
@@ -45,14 +58,12 @@ test("the band's name, pitch and legal name in the footer and the header follow 
 });
 
 test("a network the band removed disappears from the nav and the footer", async () => {
-  storeBlock("site", site({ networks: without("instagram") }));
+  storeBlock("site", site({ networks: without("Instagram") }));
   await renderWithSession(<AppRoutes />, { route: "/join" });
 
   expect(screen.queryAllByRole("link", { name: /Instagram/ })).toHaveLength(0);
   const nav = screen.getByRole("navigation", { name: "Navigation principale" });
-  expect(
-    within(nav).getByRole("link", { name: "Facebook des Canetons (nouvel onglet)" }),
-  ).toBeInTheDocument();
+  expect(within(nav).getByRole("link", { name: "Facebook (nouvel onglet)" })).toBeInTheDocument();
   expect(
     within(screen.getByRole("contentinfo")).getByRole("link", { name: /^Facebook/ }),
   ).toBeInTheDocument();
@@ -63,8 +74,8 @@ test("a stored link replaces the network's address everywhere", async () => {
     "site",
     site({
       networks: [
-        ...without("facebook"),
-        { network: "facebook", url: "https://www.facebook.com/lespetitscanards" },
+        ...without("Facebook"),
+        { label: "Facebook", url: "https://www.facebook.com/lespetitscanards", icon: "facebook" },
       ],
     }),
   );
@@ -80,7 +91,12 @@ test("a stored link replaces the network's address everywhere", async () => {
 test("a stored network address that is not https is never a link", async () => {
   storeBlock(
     "site",
-    site({ networks: [...without("flickr"), { network: "flickr", url: "javascript:alert(1)" }] }),
+    site({
+      networks: [
+        ...without("Flickr"),
+        { label: "Flickr", url: "javascript:alert(1)", icon: "flickr" },
+      ],
+    }),
   );
   await renderWithSession(<AppRoutes />, { route: "/join" });
 
@@ -106,7 +122,7 @@ test("an editor removes a network from the footer's site editor, and it leaves n
 
   await waitFor(() => expect(screen.queryAllByRole("link", { name: /Instagram/ })).toHaveLength(0));
   expect(puts).toEqual([
-    { key: "site", body: { data: { ...shipped, networks: without("instagram") } } },
+    { key: "site", body: { data: { ...shipped, networks: without("Instagram") } } },
   ]);
   expect(screen.getAllByRole("link", { name: /Facebook/ }).length).toBeGreaterThan(0);
 });
@@ -143,4 +159,29 @@ test("the footer's chip is the shared corner chip, over the footer and out of it
   // The footer is the chip's positioning parent.
   expect(footer).toHaveClass("relative");
   expect(chip.parentElement).toBe(footer);
+});
+
+test("each network is a link named after it, with the icon the band picked", async () => {
+  storeBlock(
+    "site",
+    site({
+      networks: [
+        { label: "Nos vidéos", url: "https://www.youtube.com/@canetons", icon: "youtube" },
+        { label: "Notre blog", url: "https://blog.example.ch", icon: "link" },
+      ],
+    }),
+  );
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+
+  const footer = screen.getByRole("contentinfo");
+  const videos = within(footer).getByRole("link", { name: "Nos vidéos (nouvel onglet)" });
+  expect(videos).toHaveAttribute("href", "https://www.youtube.com/@canetons");
+  expect(videos).toHaveAttribute("target", "_blank");
+  expect(videos).toHaveTextContent("Nos vidéos");
+  expect(videos.querySelector("[data-icon='youtube']")).not.toBeNull();
+  const blog = within(footer).getByRole("link", { name: "Notre blog (nouvel onglet)" });
+  expect(blog.querySelector("[data-icon='link']")).not.toBeNull();
+  expect(within(footer).queryAllByRole("link", { name: /Instagram|Facebook|Flickr/ })).toHaveLength(
+    0,
+  );
 });

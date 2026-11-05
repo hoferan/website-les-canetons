@@ -18,7 +18,7 @@ import type { ShrinkFn, UploadFn } from "./uploadQueue";
  * and lets whoever holds images.manage change it in place.
  *
  * The mock places image 1 in `band` and image 2 in `register-5` (Trompettes)
- * and `history-4`; `register-4` (Cloches), `concert` and `godparents` are
+ * and `history-4`; `register-4` (Cloches), `concert` and `band.godparents.godparents` are
  * empty.
  *
  * Every test here is an editor at work, so edit mode is on throughout; what
@@ -516,9 +516,11 @@ test("with nothing placed, the godparents' slot shows the placeholder like any o
   await renderWithSession(<Band />, { route: "/band" });
 
   await waitFor(() =>
-    expect(document.querySelector('[data-photo-pending="godparents"]')).not.toBeNull(),
+    expect(
+      document.querySelector('[data-photo-pending="band.godparents.godparents"]'),
+    ).not.toBeNull(),
   );
-  expect(screen.queryByRole("img", { name: "Le parrain et la marraine des Canetons" })).toBeNull();
+  expect(screen.queryByRole("img", { name: "Le parrain et la marraine" })).toBeNull();
   // Nothing on the band page is served from the static images.
   expect(document.querySelector('img[src^="/assets/img/"]')).toBeNull();
 });
@@ -530,18 +532,16 @@ test("an editor places the godparents' photo like any other", async () => {
   await renderWithSession(<Band />, { route: "/band" });
 
   await user.click(
-    await screen.findByRole("button", { name: "Ajouter une photo — Parrain et marraine" }),
+    await screen.findByRole("button", { name: "Ajouter une photo — Le parrain et la marraine" }),
   );
   await user.click(await screen.findByRole("button", { name: "Trompettes en répétition" }));
 
-  expect(
-    await screen.findByRole("img", { name: "Le parrain et la marraine des Canetons" }),
-  ).toBeInTheDocument();
+  expect(await screen.findByRole("img", { name: "Le parrain et la marraine" })).toBeInTheDocument();
   expect(puts).toEqual([
     {
-      path: "/api/v1/photo-slots/godparents",
+      path: "/api/v1/photo-slots/band.godparents.godparents",
       ifMatch: null,
-      body: { imageId: 2, label: "Parrain et marraine", path: "/band" },
+      body: { imageId: 2, label: "Le parrain et la marraine", path: "/band" },
     },
   ]);
 });

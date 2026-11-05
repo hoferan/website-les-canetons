@@ -1,8 +1,9 @@
-import { screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 
-import { setMockUser } from "../mocks/handlers";
+import { setMockUser, setMockUserWithPermissions } from "../mocks/handlers";
+import { History } from "../pages/History";
 import { Band } from "../pages/Band";
 import { renderWithSession } from "../test/renderWithSession";
 import { EDIT_MODE_KEY, EditModePill } from "./EditMode";
@@ -105,7 +106,9 @@ test("with edit mode off, a photo manager sees the visitor's page", async () => 
   await renderWithSession(<Band />, { route: "/band" });
 
   await screen.findAllByText("Photo à venir");
-  expect(document.querySelector("[data-photo-pending='godparents']")).not.toBeNull();
+  expect(
+    document.querySelector("[data-photo-pending='band.godparents.godparents']"),
+  ).not.toBeNull();
   expect(screen.queryByRole("button", { name: /Ajouter une photo/ })).toBeNull();
 });
 
@@ -117,4 +120,31 @@ test("with edit mode on, the photo controls appear", async () => {
   expect(
     (await screen.findAllByRole("button", { name: /Ajouter une photo/ })).length,
   ).toBeGreaterThan(0);
+});
+
+test("the pill is ink with white text and a white ring, so it reads on every background", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<EditModePill />, { route: "/join" });
+
+  const classes = (pill: HTMLElement) => pill.className.split(" ");
+  const expected = ["bg-ink", "text-white", "ring-2", "ring-white", "shadow-raised"];
+  expect(classes(editButton()!)).toEqual(expect.arrayContaining(expected));
+
+  await user.click(editButton()!);
+  expect(classes(doneButton()!)).toEqual(expect.arrayContaining(expected));
+});
+
+test("a history.manage-only account gets the switch and the history controls, but no block chips", async () => {
+  const user = userEvent.setup();
+  setMockUserWithPermissions("demo.direction", ["history.manage"]);
+  await renderWithSession(<EditModePill />, { route: "/join" });
+  expect(editButton()).toBeInTheDocument();
+  await user.click(editButton()!);
+  expect(doneButton()).toBeInTheDocument();
+  cleanup();
+
+  await renderWithSession(<History />, { route: "/history" });
+  expect(await screen.findByRole("link", { name: "Ajouter à l’histoire" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Modifier : / })).toBeNull();
 });

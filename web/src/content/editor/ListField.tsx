@@ -21,6 +21,8 @@ type Props<T> = {
   /** Where the list sits in the block. */
   name: string;
   addLabel: string;
+  /** Fewer items than the server's limit, for a list the page lays out in a fixed space. */
+  max?: number;
   /** The fields of the item at `index`. */
   renderItem: (index: number) => ReactNode;
   /** What heads the item at `index`, beside its buttons. */
@@ -43,7 +45,7 @@ type Action = "up" | "down" | "remove";
  * limit rather than letting a save be refused.
  */
 export function ListField<T extends FieldValues>(props: Props<T>) {
-  const { name, addLabel, renderItem, itemTitle } = props;
+  const { name, addLabel, renderItem, itemTitle, max = MAX_ITEMS } = props;
   const { control } = useFormContext();
   const { fields, append, move, remove } = useFieldArray({ control, name });
   const list = useRef<HTMLOListElement>(null);
@@ -117,7 +119,7 @@ export function ListField<T extends FieldValues>(props: Props<T>) {
         ))}
       </ol>
 
-      {fields.length >= MAX_ITEMS ? null : props.choices ? (
+      {fields.length >= max ? null : props.choices ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button ref={addRef} type="button" variant="raised-light" className="self-start">

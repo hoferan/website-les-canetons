@@ -1,14 +1,15 @@
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { PageSection } from "@/components/PageSection";
+import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useHistoryEntryIndex } from "../api/generated/endpoints";
 import type { HistoryEntryResource } from "../api/generated/model";
-import { ButtonLink } from "../components/ButtonLink";
 import { HeroBlock } from "../content/blocks/HeroBlock";
-import { RowActions } from "../components/RowActions";
+import { ChipButton, ChipLink, CHIP_ROOM } from "../content/editor/EditChip";
+import { useEditMode } from "../content/EditMode";
 import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
 import { dateWithPreposition, historyDate, shownIn } from "../history/entry";
 import { TimelineMarker } from "../history/TimelineMarker";
@@ -41,8 +42,10 @@ export type HistorySavedState = { historySaved: true; photoFailed?: boolean };
  * untitled entry still gets a heading. There is no date column, because the
  * page is text-width and a second column only narrows the text.
  *
- * The controls are absent without the permission rather than refused, like
- * the planning's: a link that leads to "Accès refusé" reads as a broken site.
+ * The controls show in edit mode only, as chips like every other edit control
+ * on the public pages (#106), and only with the permission: absent rather than
+ * refused, like the planning's, because a link that leads to "Accès refusé"
+ * reads as a broken site.
  *
  * The longest page on the site, so the carnival look stops at the hero (ADR
  * 0029): the entries stay on plain cream, and the only colour below it is the
@@ -52,7 +55,8 @@ export function History() {
   const { can } = useSession();
   const list = useHistoryEntryIndex();
   const entries = rowsOf<HistoryEntryResource>(list.data);
-  const mayEdit = can("history.manage");
+  const { on: editing } = useEditMode();
+  const mayEdit = can("history.manage") && editing;
   const [deleting, setDeleting] = useState<HistoryEntryResource | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -88,10 +92,15 @@ export function History() {
             than on the poster with the heading a visitor reads. */}
         {mayEdit ? (
           <div className="mb-block flex justify-end">
-            <ButtonLink to="/history/new" ariaLabel={t("history.addAria")} id={ADD_ID}>
-              <Plus aria-hidden="true" />
-              {t("history.add")}
-            </ButtonLink>
+            <ChipLink
+              to="/history/new"
+              label={t("history.add")}
+              ariaLabel={t("history.addAria")}
+              icon={Plus}
+              corner={false}
+              iconFirst
+              id={ADD_ID}
+            />
           </div>
         ) : null}
 
@@ -163,11 +172,16 @@ function TimelineEntry({
   const textLang = shown.fallback ? shown.lang : undefined;
 
   return (
-    <li className="relative mb-block pl-8">
+    // data-chip-scope: the block the chips are measured against (edit-blocks.spec.ts).
+    <li data-chip-scope className={cn("relative mb-block pl-8", mayEdit && CHIP_ROOM)}>
       <TimelineMarker
         important={entry.important}
         icon={entry.icon}
-        className="absolute top-0 left-0 -translate-x-[calc(50%+1px)]"
+        className={cn(
+          "absolute left-0 -translate-x-[calc(50%+1px)]",
+          // Moves down with the entry's own text, which the chips' room pushes.
+          mayEdit ? "top-14" : "top-0",
+        )}
       />
 
       {/* wrap-anywhere: a pasted URL or a German compound is one unbroken
@@ -212,25 +226,19 @@ function TimelineEntry({
       ) : null}
 
       {mayEdit ? (
-        <div className="mt-tight">
-          <RowActions
-            inlineKey="edit"
-            rowName={rowName}
-            actions={[
-              {
-                key: "edit",
-                label: t("history.edit"),
-                ariaLabel: t("history.editAria", { name: rowName }),
-                to: `/history/${entry.id}/edit`,
-              },
-              {
-                key: "delete",
-                label: t("history.delete"),
-                ariaLabel: t("history.deleteAria", { name: rowName }),
-                destructive: true,
-                onSelect: onDelete,
-              },
-            ]}
+        <div className="absolute top-2 right-2 z-10 flex gap-tight">
+          <ChipLink
+            to={`/history/${entry.id}/edit`}
+            label={t("history.edit")}
+            ariaLabel={t("history.editAria", { name: rowName })}
+            icon={Pencil}
+            corner={false}
+            reveal
+          />
+          <ChipButton
+            label={t("history.deleteAria", { name: rowName })}
+            icon={Trash2}
+            onClick={onDelete}
           />
         </div>
       ) : null}

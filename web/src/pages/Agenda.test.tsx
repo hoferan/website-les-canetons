@@ -2,7 +2,9 @@ import { screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
+import { setMockUser, setMockUserWithPermissions } from "../mocks/handlers";
 import { server } from "../mocks/node";
+import { EDIT_MODE_KEY } from "../content/EditMode";
 import { renderWithSession } from "../test/renderWithSession";
 import { Agenda } from "./Agenda";
 import { Home } from "./Home";
@@ -147,4 +149,27 @@ test("offers a booking link in German", async () => {
 
   const link = await screen.findByRole("link", { name: "Jetzt anmelden — Souper de soutien" });
   expect(link).toHaveAttribute("href", "/events/7/book");
+});
+
+test("in edit mode, the list links to Événements, and not otherwise", async () => {
+  setMockUser("demo.direction");
+  const { unmount } = await renderWithSession(<Agenda />, { route: "/agenda" });
+  await screen.findByRole("heading", { level: 1 });
+  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  unmount();
+
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<Agenda />, { route: "/agenda" });
+  expect(await screen.findByRole("link", { name: "Géré dans Événements" })).toHaveAttribute(
+    "href",
+    "/events",
+  );
+});
+
+test("the Événements link needs events.manage", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
+  await renderWithSession(<Agenda />, { route: "/agenda" });
+  await screen.findByRole("button", { name: /^Modifier : / });
+  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
 });

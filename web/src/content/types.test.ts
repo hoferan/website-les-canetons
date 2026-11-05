@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { forEditor, isPhoneNumber } from "./types";
+import { forEditor, heroBlock, isPhoneNumber } from "./types";
 
 test.each(["+41 (0)26 123 45 67", "026 123 45 67", "0041 26 123 45 67", "+41 26 123 45 67", ""])(
   "the editor accepts %j",
@@ -22,4 +22,41 @@ test("a phone row with a number that cannot be dialled does not save", () => {
 
   expect(forEditor.row.safeParse(row).success).toBe(false);
   expect(forEditor.row.safeParse({ ...row, number: "079 123 45 67" }).success).toBe(true);
+});
+
+const heroWith = (to: string) => ({
+  title: { fr: "Titre" },
+  actions: [{ label: { fr: "Go" }, to }],
+});
+
+test.each(["/join", "/agenda", "https://www.example.ch/page"])(
+  "a hero button may lead to %s",
+  (to) => {
+    expect(forEditor.heroBlock.safeParse(heroWith(to)).success).toBe(true);
+  },
+);
+
+// Anything else would become an href or a router target as typed.
+test.each([
+  "javascript:alert(1)",
+  "http://example.ch",
+  "join",
+  "//evil.example",
+  "/members",
+  "https://",
+  "",
+])("a hero button may not lead to %j", (to) => {
+  expect(forEditor.heroBlock.safeParse(heroWith(to)).success).toBe(false);
+});
+
+test("a hero carries at most two buttons, and none by default", () => {
+  const action = { label: { fr: "Go" }, to: "/join" };
+
+  expect(heroBlock.safeParse({ title: { fr: "Titre" } }).success).toBe(true);
+  expect(heroBlock.safeParse({ title: { fr: "Titre" }, actions: [action, action] }).success).toBe(
+    true,
+  );
+  expect(
+    heroBlock.safeParse({ title: { fr: "Titre" }, actions: [action, action, action] }).success,
+  ).toBe(false);
 });

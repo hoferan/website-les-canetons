@@ -1,14 +1,12 @@
 import { PageSection } from "@/components/PageSection";
 import { RegisterIndex } from "@/components/RegisterIndex";
 import { Tbd } from "@/components/Tbd";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useBandIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
-import { RAISED_CARD } from "../carnival/raised";
-import { FieldsBlock } from "../content/blocks/FieldsBlock";
+import { ManagedIn } from "../content/editor/ManagedIn";
+import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
@@ -35,35 +33,42 @@ function Register({ register }: { register: PublicSectionResource }) {
       aria-labelledby={`${anchorOf(register)}-heading`}
       className="scroll-mt-6"
     >
-      <h2 id={`${anchorOf(register)}-heading`} className="heading-wave w-fit font-display text-2xl">
-        {registerName(register.name, register.nameDe)}
-      </h2>
-      {/* The library lists the slot under the French name, as the band
+      {/* One chip per register, for its heading and names: the photo has its
+          own control. The article keeps the scroll anchor. */}
+      <ManagedIn to="/members" page={t("nav.members")} permission="members.manage">
+        <h2
+          id={`${anchorOf(register)}-heading`}
+          className="heading-wave w-fit font-display text-2xl"
+        >
+          {registerName(register.name, register.nameDe)}
+        </h2>
+        {/* The library lists the slot under the French name, as the band
           types it; what a visitor reads is the page's own. */}
-      <SlotPhoto
-        slot={registerSlot(register.id)}
-        label={register.name}
-        alt={registerName(register.name, register.nameDe)}
-      />
+        <SlotPhoto
+          slot={registerSlot(register.id)}
+          label={register.name}
+          alt={registerName(register.name, register.nameDe)}
+        />
 
-      <p className="mt-tight text-ink-muted">
-        {register.members.length > 0 ? (
-          register.members.map((member) => member.firstName).join(", ")
-        ) : (
-          <Tbd
-            what={t("placeholders.registerFirstNames")}
-            token="register-first-names"
-            onMembersPage
-          />
-        )}
-      </p>
-
-      {register.instructors.length > 0 ? (
-        <p className="mt-tight text-sm text-ink-muted">
-          {t("band.instructors")}{" "}
-          {register.instructors.map((instructor) => instructor.firstName).join(", ")}
+        <p className="mt-tight text-ink-muted">
+          {register.members.length > 0 ? (
+            register.members.map((member) => member.firstName).join(", ")
+          ) : (
+            <Tbd
+              what={t("placeholders.registerFirstNames")}
+              token="register-first-names"
+              onMembersPage
+            />
+          )}
         </p>
-      ) : null}
+
+        {register.instructors.length > 0 ? (
+          <p className="mt-tight text-sm text-ink-muted">
+            {t("band.instructors")}{" "}
+            {register.instructors.map((instructor) => instructor.firstName).join(", ")}
+          </p>
+        ) : null}
+      </ManagedIn>
     </article>
   );
 }
@@ -121,27 +126,8 @@ export function Band() {
           <>
             <hr className="mt-section border-line" />
 
-            {/* The margin outside the block, so its chip sits on the card. */}
             <div className="mt-block">
-              <FieldsBlock
-                blockKey="band.godparents"
-                labels={{
-                  heading: t("blockEditor.field.title"),
-                  names: t("blockEditor.field.names"),
-                }}
-              >
-                {(texts) => (
-                  <Card className={cn(RAISED_CARD, "gap-0 p-5")}>
-                    <h2 className="font-display text-2xl">{texts.heading}</h2>
-                    <SlotPhoto
-                      slot="godparents"
-                      label={t("photos.slot.godparents")}
-                      alt={t("band.patronsAlt")}
-                    />
-                    <p className="mt-tight text-ink-muted">{texts.names}</p>
-                  </Card>
-                )}
-              </FieldsBlock>
+              <CardsBlock blockKey="band.godparents" layout="wide" />
             </div>
           </>
         )}

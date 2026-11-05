@@ -93,7 +93,15 @@ export function useBlock<K extends BlockKey>(key: K): BlockData<K> {
     }
     const parsed = definition.schema.safeParse(stored);
     if (parsed.success) {
-      return parsed.data as BlockData<K>;
+      const data = parsed.data as BlockData<K>;
+      // A block saved before a hero carried buttons has no `actions`, which
+      // means "never edited", not "none": `[]` is the band's way to say none.
+      // Filling them in also seeds the editor, so saving such a block keeps them.
+      const shipped = definition.defaults() as { actions?: unknown };
+      if (shipped.actions !== undefined && (data as { actions?: unknown }).actions === undefined) {
+        return { ...data, actions: shipped.actions } as BlockData<K>;
+      }
+      return data;
     }
     console.warn(
       `The stored block "${key}" does not fit its type; showing the default.`,

@@ -1,6 +1,11 @@
+import { ImageMinus } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { Button } from "@/components/ui/button";
+
 import type { ImageResourceUsagesItem } from "../api/generated/model";
+import { t } from "../i18n";
+import { isRecordSlot } from "./photoSlots";
 
 /**
  * The slot's name in its page's words, as the page sent it with the
@@ -16,12 +21,26 @@ export function usageLabel(usage: ImageResourceUsagesItem): string {
  * it is also changed. The path is the one the page sent with the placement,
  * without the `/de` prefix, which the router's basename adds on the German
  * side. A placement without a path is listed without a link.
+ *
+ * With `onRemove`, a place on a page also gets "Retirer de cet emplacement":
+ * a slot whose page no longer draws it (a deleted card, a replaced slot) has
+ * no other control, and the library cannot delete a photo still placed. A
+ * history entry's or an event's photo is left to that record's editor.
  */
-export function UsageLinks({ usages }: { usages: ImageResourceUsagesItem[] }) {
+export function UsageLinks({
+  usages,
+  onRemove,
+  busy = false,
+}: {
+  usages: ImageResourceUsagesItem[];
+  onRemove?: (usage: ImageResourceUsagesItem) => void;
+  /** While a write runs: the removals wait for it. */
+  busy?: boolean;
+}) {
   return (
     <ul className="wrap-anywhere">
       {usages.map((usage) => (
-        <li key={usage.slot}>
+        <li key={usage.slot} className="flex flex-wrap items-center gap-x-3">
           {usage.path ? (
             <Link
               to={usage.path}
@@ -32,6 +51,19 @@ export function UsageLinks({ usages }: { usages: ImageResourceUsagesItem[] }) {
           ) : (
             <span className="flex min-h-touch items-center">{usageLabel(usage)}</span>
           )}
+          {onRemove && !isRecordSlot(usage.slot) ? (
+            <Button
+              type="button"
+              variant="raised-light"
+              size="sm"
+              aria-label={t("photos.detail.removeUsageNamed", { place: usageLabel(usage) })}
+              aria-disabled={busy || undefined}
+              onClick={busy ? undefined : () => onRemove(usage)}
+            >
+              <ImageMinus aria-hidden="true" />
+              {t("photos.detail.removeUsage")}
+            </Button>
+          ) : null}
         </li>
       ))}
     </ul>

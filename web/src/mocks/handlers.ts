@@ -355,6 +355,17 @@ export function setMockUser(username: keyof typeof USERS | null): void {
   setCurrentUser(username ? (USERS[username] ?? null) : null);
 }
 
+/**
+ * Test seam: a copy of a seeded account holding exactly `permissions`, for the
+ * screens whose controls depend on one permission among the Direction's many.
+ */
+export function setMockUserWithPermissions(
+  username: keyof typeof USERS,
+  permissions: string[],
+): void {
+  setCurrentUser({ ...USERS[username], permissions } as MockUser);
+}
+
 /** A valid ULID, so anything that validates the shape of one still passes. */
 export const MOCK_REQUEST_ID = "01JB3K7QW8ZXMOCKMOCKMOCK00";
 
@@ -845,6 +856,20 @@ export function addUnusedMockImage(name = `Photo inutilisée ${nextImageId}`): n
     },
   ];
   return id;
+}
+
+/**
+ * Test seam: put a photo in a slot, or empty it with null, as a placement on
+ * the page would, so a test can start from a slot nothing on screen placed.
+ */
+export function setMockPhotoSlot(slot: string, placement: PhotoSlot | null): void {
+  const others = Object.entries(photoSlots).filter(([name]) => name !== slot);
+  photoSlots = Object.fromEntries(placement ? [...others, [slot, placement]] : others);
+}
+
+/** Test seam: what a slot holds now, or null when it is empty. */
+export function mockPhotoSlot(slot: string): PhotoSlot | null {
+  return photoSlots[slot] ?? null;
 }
 
 function resetImages(): void {
