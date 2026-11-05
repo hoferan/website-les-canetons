@@ -5,7 +5,7 @@ import { NetworkMark } from "@/components/social";
 import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
 
 import { t } from "../../i18n";
-import { BlockEditor, ListField, PlainField, TranslatedField } from "../editor";
+import { ActionsField, BlockEditor, ListField, PlainField, TranslatedField } from "../editor";
 import { NETWORK_ICONS, type NetworkIcon } from "../types";
 
 /**
@@ -34,9 +34,10 @@ function iconName(icon: NetworkIcon): string {
 
 /**
  * The site's info in one dialog: the band's name, the line under it, the
- * legal name and the networks the footer links to. A network is any page: a
- * name, an https address and an icon. One the band has no page on is removed
- * from the list.
+ * footer's buttons, the legal name and the networks the footer links to. The
+ * buttons are the hero's (ActionsField). A network is any page: a name, an
+ * https address and an icon. One the band has no page on is removed from the
+ * list.
  */
 export function SiteEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -45,6 +46,7 @@ export function SiteEditor({ open, onClose }: { open: boolean; onClose: () => vo
         <>
           <PlainField name="name" label={t("blockEditor.site.name")} required />
           <TranslatedField name="pitch" label={t("blockEditor.site.pitch")} multiline required />
+          <ActionsField name="actions" />
           <PlainField name="legalName" label={t("blockEditor.site.legalName")} required />
           <fieldset className="space-y-2">
             <legend className="font-bold">{t("blockEditor.site.networks")}</legend>

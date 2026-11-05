@@ -1,28 +1,40 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 
 import { Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
 import { cn } from "@/lib/utils";
 import { useEditPillShown } from "../content/EditMode";
+import { ActionLink, shownActions } from "../content/blocks/ActionLink";
 import { useSite } from "../content/blocks/SiteBlock";
 import { SiteEditor } from "../content/blocks/SiteEditor";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor/EditChip";
 import { tr } from "../content/translated";
-import { buttonVariants } from "./ui/button";
 import { NetworkMark, networksOf } from "./social";
 
-const ACTION = "px-5";
+/**
+ * Where the pencil sits in edit mode. The scallops reach 22px into the footer
+ * (BUMP_DEPTH in carnival/Scallop.tsx), so the corner's usual 8px would put the
+ * pencil among them; at 36px it keeps a clear 14px below their lowest point.
+ */
+const CHIP_TOP = "top-9";
+
+/**
+ * The footer's top padding while the pencil shows: the 44px pencil ends at
+ * 80px, and the band's name starts 4px below it, as CHIP_ROOM leaves a block's
+ * heading clear of its chip.
+ */
+const CHIP_ROOM_BELOW = "pt-21";
 
 /**
  * The foot of every page: who the band is, the two things a parent who has
  * read this far wants to do, and the band's accounts elsewhere.
  *
- * "Nous rejoindre" and "Contact" are the only page links. On a phone the Menu
- * bar stays pinned to the top, so a copy of the nav here would only lengthen
- * the page; on a desktop these two cover what a parent at the bottom of a page
- * is looking for.
+ * Two buttons at most, "Nous rejoindre" and "Contact" as shipped, are the only
+ * page links. On a phone the Menu bar stays pinned to the top, so a copy of the
+ * nav here would only lengthen the page; on a desktop these two cover what a
+ * parent at the bottom of a page is looking for. They are the hero's buttons:
+ * a public page or an https address, which opens in a new tab and says so.
  *
  * No badge: the mark on the flyers and costumes gets one prominent placement,
  * on the home page, not a repeat on every page. The band's name is text.
@@ -31,8 +43,11 @@ const ACTION = "px-5";
  * Flickr's two dots without the word. A network with no name or no https
  * address is left out.
  *
- * The band's name, the line under it, the legal name and the networks are the
- * site block (#106). In edit mode one chip on the footer's top right opens its editor.
+ * The band's name, the line under it, the buttons, the legal name and the
+ * networks are the site block (#106). In edit mode one chip on the footer's top
+ * right opens its editor. It sits lower than a block's corner chip, below the
+ * scallops, and the footer's text moves down to make room for it (see
+ * {@link CHIP_TOP}).
  *
  * The top edge is scalloped in the colour of whatever sits above (ADR 0029),
  * which only the page knows: `above` comes from carnival/footerEdge.ts, and
@@ -46,6 +61,7 @@ export function Footer({ above }: { above: string | null }) {
   // The floating pill sits over the last 4rem of the page; keep it off the footer's own buttons.
   const pillShown = useEditPillShown();
   const follow = networksOf(site.networks);
+  const actions = shownActions(site.actions);
 
   return (
     <footer
@@ -58,33 +74,35 @@ export function Footer({ above }: { above: string | null }) {
       <Scallop from={above ?? "var(--color-ground)"} />
       {editing ? (
         <>
-          <EditChip
-            label={t("blocks.site")}
-            text={t("blockEditor.site.edit")}
-            onClick={() => setEditingSite(true)}
-          />
+          <div className={cn("absolute right-2 z-10", CHIP_TOP)}>
+            <EditChip
+              label={t("blocks.site")}
+              text={t("blockEditor.site.edit")}
+              corner={false}
+              onClick={() => setEditingSite(true)}
+            />
+          </div>
           <SiteEditor open={editingSite} onClose={() => setEditingSite(false)} />
         </>
       ) : null}
-      <div className="mx-auto max-w-shell px-4 pt-14">
+      <div className={cn("mx-auto max-w-shell px-4", editing ? CHIP_ROOM_BELOW : "pt-14")}>
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-start">
           <div>
             <p className="font-display text-lg">{site.name}</p>
             <p className="mt-2 max-w-md whitespace-pre-line text-white/70">{tr(site.pitch)}</p>
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:flex">
-              <Link
-                to="/join"
-                className={cn(buttonVariants({ variant: "accent", surface: "stage" }), ACTION)}
-              >
-                {t("nav.join")}
-              </Link>
-              <Link
-                to="/contact"
-                className={cn(buttonVariants({ variant: "secondary", surface: "stage" }), ACTION)}
-              >
-                {t("nav.contact")}
-              </Link>
-            </div>
+            {actions.length > 0 ? (
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:flex">
+                {actions.map((action, index) => (
+                  <ActionLink
+                    key={`${action.to}-${index}`}
+                    action={action}
+                    index={index}
+                    surface="stage"
+                    className="px-5"
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div>

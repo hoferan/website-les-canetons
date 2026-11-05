@@ -91,6 +91,11 @@ export const BLOCKS = {
         { label: "Facebook", url: catalogueString("site.facebookUrl"), icon: "facebook" as const },
         { label: "Flickr", url: catalogueString("site.flickrUrl"), icon: "flickr" as const },
       ],
+      // What a parent who has read a page to its foot most wants to do next.
+      actions: [
+        { label: fromCatalogue("nav.join"), to: "/join" },
+        { label: fromCatalogue("nav.contact"), to: "/contact" },
+      ],
     }),
     label: "blocks.site",
   }),

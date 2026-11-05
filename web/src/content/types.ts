@@ -117,8 +117,8 @@ export function isHttpsUrl(value: string): boolean {
 }
 
 /**
- * Where a hero's button may lead: one of the public pages, or an https
- * address. Whatever else is typed would become a router target or an href as
+ * Where a button of a hero or of the footer may lead: one of the public
+ * pages, or an https address. Whatever else is typed would become a router target or an href as
  * it stands, `javascript:` included.
  */
 export function isActionTarget(value: string): boolean {
@@ -186,8 +186,17 @@ function schemas(checks: Checks) {
 
   const cardsBlock = z.object({ cards: z.array(card) });
 
-  // What the header and the footer of every page show. The band's name and
-  // legal name are typed once and never translated.
+  // Up to two buttons, each a label and where it leads: what a hero and the
+  // footer have room for, side by side on a phone. Optional, because a block
+  // stored before it carried buttons has none (see `useBlock`).
+  const actions = z
+    .array(z.object({ label: translated, to: checks.target }))
+    .max(2)
+    .optional();
+
+  // What the header and the footer of every page show, the footer's two
+  // buttons included. The band's name and legal name are typed once and never
+  // translated.
   const siteBlock = z.object({
     name: z.string(),
     pitch: translated,
@@ -196,6 +205,7 @@ function schemas(checks: Checks) {
     networks: z.array(
       z.object({ label: checks.name, url: checks.url, icon: z.enum(NETWORK_ICONS) }),
     ),
+    actions,
   });
 
   // A public page's hero: its heading, the words of it set on the yellow
@@ -205,10 +215,7 @@ function schemas(checks: Checks) {
     title: translated,
     mark: translated.optional(),
     intro: translated.optional(),
-    actions: z
-      .array(z.object({ label: translated, to: checks.target }))
-      .max(2)
-      .optional(),
+    actions,
   });
 
   return { row, card, cardsBlock, siteBlock, heroBlock };
@@ -234,4 +241,5 @@ export type Row = z.infer<typeof row>;
 
 export type Card = z.infer<typeof card>;
 
-export type HeroAction = NonNullable<z.infer<typeof heroBlock>["actions"]>[number];
+/** A button of a hero or of the footer. */
+export type Action = NonNullable<z.infer<typeof heroBlock>["actions"]>[number];

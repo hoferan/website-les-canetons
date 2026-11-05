@@ -10,7 +10,7 @@ import type { TranslationKey } from "../i18n";
  * parent deciding whether to turn up on Saturday. The pages a parent needs
  * least come last, then the external sites, which fold first.
  *
- * Every entry must be a route that exists. A hero's buttons may lead to any
+ * Every entry must be a route that exists. A hero's or the footer's buttons may lead to any
  * of them (`isActionTarget`), so a page the band can reach from a button is a
  * page a visitor can reach from the nav.
  */

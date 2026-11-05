@@ -1512,7 +1512,7 @@ export const de: typeof fr = {
       intro: "Einleitung",
       photo: "Foto",
     },
-    hero: {
+    actions: {
       buttons: "Schaltflächen",
       addButton: "Schaltfläche hinzufügen",
       button: "Schaltfläche {{n}}",

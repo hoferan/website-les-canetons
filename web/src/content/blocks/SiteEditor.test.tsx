@@ -65,7 +65,9 @@ test("the site editor changes the name, drops a network and saves", async () => 
       .getAllByRole("textbox", { name: "Nom du réseau" })
       .map((input) => (input as HTMLInputElement).value),
   ).toEqual(["Instagram", "Facebook", "Flickr"]);
-  const facebook = within(dialog).getAllByRole("listitem")[1]!;
+  const facebook = within(within(dialog).getByRole("group", { name: "Réseaux" })).getAllByRole(
+    "listitem",
+  )[1]!;
   await user.click(within(facebook).getByRole("button", { name: "Supprimer" }));
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
