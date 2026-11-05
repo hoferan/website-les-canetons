@@ -31,7 +31,8 @@ test.each([
   expect(container.textContent).toBe(shown ? env.toUpperCase() : "");
 });
 
-// Only a PR preview's mocked backend answers "preview" (#353).
+// Only a PR preview's mocked backend answers "preview" (#353). English in
+// both locales: only developers and reviewers see it.
 test("a preview says which PR it is and that its data is made up", () => {
   const { container } = render(
     <MemoryRouter>
@@ -39,7 +40,7 @@ test("a preview says which PR it is and that its data is made up", () => {
     </MemoryRouter>,
   );
 
-  expect(container.textContent).toMatch(/^Aperçu PR .+, données fictives$/);
+  expect(container.textContent).toMatch(/^Preview PR .+, mocked data$/);
 });
 
 /**

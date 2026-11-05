@@ -1,5 +1,3 @@
-import { t } from "../i18n";
-
 const NON_PROD = ["dev", "test", "qa"];
 
 /**
@@ -10,12 +8,14 @@ const NON_PROD = ["dev", "test", "qa"];
  * real site, which teaches everyone to ignore ribbons.
  *
  * "preview" is no server's env: only the mocked backend of a PR preview
- * answers it (#353), and the PR number is baked into that build alone.
+ * answers it (#353), and the PR number is baked into that build alone. Its
+ * label is English in both locales, like the env names, because only
+ * developers and reviewers ever see a preview.
  */
 export function EnvRibbon({ env }: { env: string }) {
   let label: string;
   if (env === "preview") {
-    label = t("envRibbon.preview", { pr: import.meta.env.VITE_PREVIEW_PR ?? "?" });
+    label = `Preview PR ${import.meta.env.VITE_PREVIEW_PR ?? "?"}, mocked data`;
   } else if (NON_PROD.includes(env)) {
     label = env.toUpperCase();
   } else {
