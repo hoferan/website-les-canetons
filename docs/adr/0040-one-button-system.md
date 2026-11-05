@@ -28,7 +28,7 @@ André picked each point below from a rendered mockup at 1280px and at 390px.
 - Five variants named by role live in `web/src/components/ui/button.tsx`: `primary`, `secondary`, `danger`, `quiet` and `accent`. Yellow stays for the public call to action and for edit tools, so `accent` never sits in a form footer. `quiet` has no frame and serves an icon inside a field or a link in a sentence. `danger` marks the final confirm of something irreversible, and it also marks a selected "No" answer, as in `AttendanceControls` and `CorrectAnswerDialog`, where it is a state colour.
 - A `surface` of `page` or `stage`. The page is cream and the stage is black, where an ink shadow would vanish, so on the stage the shadow and the focus ring turn pink.
 - One shape. Framed buttons have 12px corners and no size sets a radius of its own.
-- A pressed-in press. A framed button moves onto its shadow when pressed, and the stage's pink shadow does the same. Every button shows a pointer cursor.
+- A pressed-in press. A framed button moves onto its shadow when pressed, and the stage's pink shadow does the same. A `quiet` button has no shadow, so its underline takes that part: the word drops 3px onto the line while the line and a grey patch behind it stay put. André picked this from six mocked presses. Every button shows a pointer cursor.
 - `IconButton` is the only way to render an icon-only button. In `tip` mode, for icons in rows, the name appears as a small ink label above the button, in a Radix tooltip in a portal so a scrolling dialog or a clipped card cannot cut it off. It opens on hover and on focus moved by Tab or an arrow key, and not after a mouse click. In `grow` mode, for the edit chips, the button widens in place and the name rises into it, from the `sm` breakpoint up. Touch shows no name, since a tap is not a hover.
 - `FormActions` is the one footer for every form and dialog, through `DialogFooter` and `AlertDialogFooter`. Save comes first and sits on the left. On a phone the buttons stack full width with Save on top. A quiet action goes to the far end from `sm`. The caller orders the buttons: confirm, then Cancel, then the quiet one.
 - A dev-only catalogue at `/dev/ui`, mounted only in development, shows every variant, size, surface and state side by side.
@@ -45,7 +45,7 @@ André picked each point below from a rendered mockup at 1280px and at 390px.
 
 - The ESLint rule in `eslint.config.js` bans `size="icon…"` on JSX, so an icon-only `Button` fails the lint.
 - `tools/form-actions.test.mjs` fails a file with a submit button that uses no footer component, a footer that holds an `accent` button, and a confirm dialog footer that lists Cancel first.
-- `web/src/components/ui/button.test.tsx` and `web/src/components/ui/icon-button.test.tsx` pin the pointer cursor, the 12px corners, the press and when the tip opens.
+- `web/src/components/ui/button.test.tsx` and `web/src/components/ui/icon-button.test.tsx` pin the pointer cursor, the 12px corners, the press and when the tip opens. `web/e2e/quiet-press.spec.ts` measures the quiet press in a browser.
 - `/dev/ui` is in `web/screenshots/pages.json`, and a test requires every page route to be listed there, so the catalogue is rendered in every screenshot sweep.
 
 ## Pros and Cons of the Options

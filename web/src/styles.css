@@ -302,6 +302,63 @@ h2 {
   }
 }
 
+/* The quiet button's press (ADR 0040). A framed button presses onto its
+   shadow; a quiet one has none, so its line plays the shadow: the word drops
+   3px onto it while the line and the grey patch stay where they are.
+
+   Both live on ::before, which moves back up by as much as the button moves
+   down. The line is the first background layer, sized to the content box so
+   it spans the word and not the padding; the second, empty layer only gives
+   the patch colour a padding-box clip. An icon-only button keeps the patch
+   and the drop and loses the line. The button must be positioned: the cva
+   variant adds `relative`, a field's icon button is `absolute`. */
+@utility press-quiet {
+  isolation: isolate;
+
+  --quiet-patch: transparent;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    padding: inherit;
+    border-radius: inherit;
+    background-color: var(--quiet-patch);
+    background-image: linear-gradient(var(--color-ink), var(--color-ink)), none;
+    background-repeat: no-repeat;
+    background-origin: content-box, padding-box;
+    background-clip: content-box, padding-box;
+    background-size:
+      100% 2px,
+      auto;
+    background-position:
+      0 calc(50% + 0.85em),
+      0 0;
+    transition: inherit;
+  }
+
+  &[data-slot="icon-button"]::before {
+    background-image: none;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      --quiet-patch: color-mix(in srgb, var(--color-ink) 5%, transparent);
+    }
+  }
+
+  &:active {
+    --quiet-patch: color-mix(in srgb, var(--color-ink) 11%, transparent);
+
+    translate: 0 3px;
+  }
+
+  &:active::before {
+    translate: 0 -3px;
+  }
+}
+
 /* The poster surface behind a hero (ADR 0029). Violet at the bottom left,
    where the text sits at every width, and pink only at the top right: white
    on the pink end is 3.3:1, too little for body text, so the gradient runs

@@ -23,8 +23,8 @@ import { cn } from "@/lib/utils";
  *    text, so a full example generates the class.
  * 4. Pressing a framed button moves it onto its shadow: it translates by the
  *    shadow offset minus 1px and the shadow shrinks to 1px, the colour
- *    unchanged. `quiet` has no frame, so it sinks 1px and takes a darker
- *    patch. `transition-all` animates it and the reduced-motion block in
+ *    unchanged. `quiet` has no frame, so its word drops 3px onto its line
+ *    while the line and a grey patch stay put (`press-quiet` in styles.css). `transition-all` animates it and the reduced-motion block in
  *    styles.css zeroes it; do not add a duration here.
  * 5. Variants named by role (primary, secondary, danger, quiet, accent) in
  *    place of shadcn's own, a `surface` for the black stage, and sizes that
@@ -48,8 +48,7 @@ const buttonVariants = cva(
           "rounded-xl border-3 border-ink bg-danger font-bold text-white hover:bg-danger-hover",
         accent: "rounded-xl border-3 border-ink bg-yellow font-bold text-ink hover:bg-yellow-hover",
         // Quiet stays flat: an icon inside a field, a link in a sentence.
-        quiet:
-          "hover:bg-accent hover:text-accent-foreground active:translate-y-px active:bg-violet/20",
+        quiet: "relative press-quiet",
       },
       // The page is cream, the stage is black. Ink on black vanishes, so on the
       // stage the shadow and the focus ring turn pink.

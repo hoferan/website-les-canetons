@@ -37,10 +37,14 @@ test("a stage button keeps a pink shadow when pressed", () => {
   expect(classes).not.toContain("active:shadow-raised-pressed");
 });
 
-test("quiet sinks a pixel", () => {
+// The press itself is CSS (press-quiet in styles.css), measured in a browser
+// by e2e/quiet-press.spec.ts. Here: the class is there and nothing in the
+// variant moves the button on its own, which would carry the line along.
+test("quiet presses onto its line", () => {
   const classes = buttonVariants({ variant: "quiet" }).split(" ");
-  expect(classes).toContain("active:translate-y-px");
-  expect(classes.some((name) => name.startsWith("active:bg-"))).toBe(true);
+  expect(classes).toContain("press-quiet");
+  expect(classes).toContain("relative");
+  expect(classes.some((name) => name.startsWith("active:translate"))).toBe(false);
 });
 
 test.each(FRAMED)("%s is rounded-xl", (variant) => {
