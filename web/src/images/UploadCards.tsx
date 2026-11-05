@@ -48,7 +48,7 @@ export function UploadCards({
     <div className="flex flex-col gap-2">
       {failed > 1 ? (
         <div>
-          <Button type="button" variant="raised-light" onClick={onRetryAll}>
+          <Button type="button" variant="secondary" onClick={onRetryAll}>
             {t("photos.retryAll")}
           </Button>
         </div>
@@ -71,7 +71,7 @@ export function UploadCards({
             {card.state === "failed" ? (
               <Button
                 type="button"
-                variant="raised-light"
+                variant="secondary"
                 size="sm"
                 className="mt-1"
                 onClick={() => onRetry(card.id)}

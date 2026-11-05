@@ -52,7 +52,7 @@ export function CopyFrom({
 
   if (!open) {
     return (
-      <Button type="button" variant="raised-light" className="w-fit" onClick={() => setOpen(true)}>
+      <Button type="button" variant="secondary" className="w-fit" onClick={() => setOpen(true)}>
         <Copy aria-hidden="true" />
         {t("registrationOptions.copyFrom")}
       </Button>
@@ -83,7 +83,7 @@ export function CopyFrom({
           </li>
         ))}
       </ul>
-      <Button type="button" variant="raised-light" className="w-fit" onClick={() => setOpen(false)}>
+      <Button type="button" variant="secondary" className="w-fit" onClick={() => setOpen(false)}>
         {t("registrationOptions.cancel")}
       </Button>
     </div>

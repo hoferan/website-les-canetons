@@ -443,7 +443,7 @@ export function HistoryForm({
         <Button type="submit" aria-disabled={busy}>
           {t("common.save")}
         </Button>
-        <Button type="button" variant="raised-light" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </div>

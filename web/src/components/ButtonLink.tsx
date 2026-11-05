@@ -20,7 +20,7 @@ export function ButtonLink({
   to,
   children,
   external = false,
-  variant = "raised-violet",
+  variant = "primary",
   className,
   ariaLabel,
   id,

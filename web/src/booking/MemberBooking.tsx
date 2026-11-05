@@ -162,7 +162,7 @@ export function MemberBooking({
               <div className="flex flex-wrap gap-related">
                 <Button
                   type="submit"
-                  variant="raised-violet"
+                  variant="primary"
                   className="h-12 px-5 text-base"
                   aria-disabled={save.isPending}
                 >
@@ -173,7 +173,7 @@ export function MemberBooking({
                       : t("booking.memberSubmit")}
                 </Button>
                 {mine ? (
-                  <Button type="button" variant="raised-light" onClick={() => setEditing(false)}>
+                  <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
                     {t("common.cancel")}
                   </Button>
                 ) : null}
@@ -186,12 +186,12 @@ export function MemberBooking({
             <AnswersSummary booking={mine} countsPeople={typed.countsPeople} />
             {offer.open ? (
               <div className="mt-related flex flex-wrap gap-related">
-                <Button type="button" variant="raised-violet" onClick={change}>
+                <Button type="button" variant="primary" onClick={change}>
                   {t("booking.memberChange")}
                 </Button>
                 <Button
                   type="button"
-                  variant="raised-light"
+                  variant="secondary"
                   aria-disabled={withdraw.isPending}
                   onClick={() => {
                     if (withdraw.isPending) return;

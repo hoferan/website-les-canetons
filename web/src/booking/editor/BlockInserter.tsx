@@ -55,7 +55,7 @@ export function BlockInserter({
         </div>
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           className="w-fit"
           onClick={() => setPicking(false)}
         >
@@ -82,7 +82,7 @@ export function BlockInserter({
     <div className="flex justify-center">
       <Button
         type="button"
-        variant="raised-light"
+        variant="secondary"
         size="icon"
         className="rounded-full"
         aria-label={label}

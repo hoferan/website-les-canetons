@@ -446,7 +446,7 @@ export function Members() {
       {filtering && !roster.isPending && !roster.isError && members.length === 0 ? (
         <div className="mt-block" data-testid="roster-no-match">
           <p className="text-ink-muted">{t("members.noMatch")}</p>
-          <Button type="button" variant="raised-light" className="mt-tight" onClick={clearFilters}>
+          <Button type="button" variant="secondary" className="mt-tight" onClick={clearFilters}>
             {t("members.clearFilters")}
           </Button>
         </div>
@@ -623,7 +623,7 @@ function MemberActions({
       label: t("common.delete"),
       ariaLabel: t("members.deleteTitle", { name }),
       disabled: busy,
-      // Not raised-danger: a filled red block would outweigh the person's
+      // Not the danger variant: a filled red block would outweigh the person's
       // name for a rare action, and the planning shows the same action the
       // same way (#118). ConfirmByTypingName is the actual guard.
       destructive: true,

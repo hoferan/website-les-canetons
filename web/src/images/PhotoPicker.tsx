@@ -81,7 +81,7 @@ export function PhotoPicker({ open, onOpenChange, onPick, onRemove, upload, shri
           <div className="flex items-start justify-between gap-2">
             <DialogTitle>{t("photos.pickerTitle")}</DialogTitle>
             <DialogClose asChild>
-              <Button type="button" variant="ghost" size="icon" aria-label={t("photos.close")}>
+              <Button type="button" variant="quiet" size="icon" aria-label={t("photos.close")}>
                 <X />
               </Button>
             </DialogClose>
@@ -107,14 +107,14 @@ export function PhotoPicker({ open, onOpenChange, onPick, onRemove, upload, shri
               event.target.value = "";
             }}
           />
-          <Button type="button" variant="raised-light" onClick={() => input.current?.click()}>
+          <Button type="button" variant="secondary" onClick={() => input.current?.click()}>
             <Plus aria-hidden="true" />
             {t("photos.pickerAdd")}
           </Button>
           {onRemove ? (
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               onClick={() => {
                 onRemove();
                 close(false);

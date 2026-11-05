@@ -54,7 +54,7 @@ export function UsageLinks({
           {onRemove && !isRecordSlot(usage.slot) ? (
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               size="sm"
               aria-label={t("photos.detail.removeUsageNamed", { place: usageLabel(usage) })}
               aria-disabled={busy || undefined}

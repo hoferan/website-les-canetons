@@ -75,7 +75,7 @@ export function BookingReadLine({ eventId }: { eventId: number }) {
           <Button
             type="button"
             size="sm"
-            variant="raised-light"
+            variant="secondary"
             aria-disabled={saving}
             onClick={() =>
               void save(() => bookingReadMark(eventId, { upTo: state.latestChangeId }))
@@ -88,7 +88,7 @@ export function BookingReadLine({ eventId }: { eventId: number }) {
           <Button
             type="button"
             size="sm"
-            variant="raised-light"
+            variant="secondary"
             aria-disabled={saving}
             onClick={() => void save(() => bookingReadUnmark(eventId, { mark: markId }))}
           >

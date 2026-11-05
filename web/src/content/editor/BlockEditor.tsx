@@ -123,14 +123,14 @@ function EditorForm<K extends BlockKey>({
         {/* In the order a phone stacks them, the save first. From sm up they
             line up from the right, and Rétablir moves to the far left. */}
         <div className="flex flex-col gap-2 sm:flex-row-reverse sm:flex-wrap">
-          <Button type="submit" variant="raised" aria-disabled={pending}>
+          <Button type="submit" variant="accent" aria-disabled={pending}>
             {pending ? t("blockEditor.saving") : t("blockEditor.save")}
           </Button>
-          <Button type="button" variant="raised-light" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             {t("common.cancel")}
           </Button>
           {onReset === false ? null : (
-            <Button type="button" variant="ghost" onClick={reset} className="sm:mr-auto">
+            <Button type="button" variant="quiet" onClick={reset} className="sm:mr-auto">
               <RotateCcw aria-hidden="true" />
               {t("blockEditor.reset")}
             </Button>

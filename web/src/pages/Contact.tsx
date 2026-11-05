@@ -200,7 +200,7 @@ export function Contact() {
                 submit handler's early return is the real guard. */}
             <Button
               type="submit"
-              variant="raised-violet"
+              variant="primary"
               className="h-12 px-5 text-base"
               aria-disabled={send.isPending}
             >

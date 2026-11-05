@@ -349,7 +349,7 @@ export function SeriesForm({
               ? t("seriesForm.create", { count: chosen.length })
               : t("seriesForm.createNone")}
         </Button>
-        <Button type="button" variant="raised-light" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </div>

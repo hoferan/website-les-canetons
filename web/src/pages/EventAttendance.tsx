@@ -183,7 +183,7 @@ export function EventAttendance() {
                   <span className="flex shrink-0 gap-tight">
                     <Button
                       type="button"
-                      variant="raised-light"
+                      variant="secondary"
                       size="sm"
                       aria-label={t("attendance.comingAria", { name: nameOf(entry) })}
                       aria-disabled={recording === entry.memberId}
@@ -198,7 +198,7 @@ export function EventAttendance() {
                     </Button>
                     <Button
                       type="button"
-                      variant="raised-light"
+                      variant="secondary"
                       size="sm"
                       aria-label={t("attendance.notComingAria", { name: nameOf(entry) })}
                       aria-disabled={recording === entry.memberId}
@@ -325,7 +325,7 @@ function CorrectionAction({
   }
 
   return (
-    <Button type="button" variant="raised-light" size="sm" onClick={() => onCorrect(entry)}>
+    <Button type="button" variant="secondary" size="sm" onClick={() => onCorrect(entry)}>
       <span aria-hidden="true">{t("attendance.correct")}</span>
       <span className="sr-only">{t("attendance.correctFor", { name: nameOf(entry) })}</span>
     </Button>

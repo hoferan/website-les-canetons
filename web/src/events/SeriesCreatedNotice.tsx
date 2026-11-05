@@ -64,7 +64,7 @@ export function SeriesCreatedNotice() {
           </Link>
           <Button
             type="button"
-            variant="ghost"
+            variant="quiet"
             size="icon"
             aria-label={t("seriesForm.dismissCreated")}
             onClick={() => setCount(null)}

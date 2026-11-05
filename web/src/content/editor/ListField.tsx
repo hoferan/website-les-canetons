@@ -122,7 +122,7 @@ export function ListField<T extends FieldValues>(props: Props<T>) {
       {fields.length >= max ? null : props.choices ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button ref={addRef} type="button" variant="raised-light" className="self-start">
+            <Button ref={addRef} type="button" variant="secondary" className="self-start">
               <Plus aria-hidden="true" />
               {addLabel}
             </Button>
@@ -139,7 +139,7 @@ export function ListField<T extends FieldValues>(props: Props<T>) {
         <Button
           ref={addRef}
           type="button"
-          variant="raised-light"
+          variant="secondary"
           className="self-start"
           onClick={() => add(props.newItem())}
         >
@@ -172,7 +172,7 @@ function ItemButton({
   return (
     <Button
       type="button"
-      variant="ghost"
+      variant="quiet"
       size="icon"
       data-action={action}
       aria-label={label}

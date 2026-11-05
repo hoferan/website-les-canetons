@@ -112,7 +112,7 @@ function DownloadButton({ label, className }: { label: string; className?: strin
     <>
       <Button
         type="button"
-        variant="raised"
+        variant="accent"
         className={className}
         aria-disabled={progress !== null}
         onClick={() => void download()}
@@ -240,7 +240,7 @@ function ImportCard({
       <div className="mt-related flex flex-wrap items-center gap-x-related gap-y-tight">
         <Button
           type="button"
-          variant="raised"
+          variant="accent"
           aria-describedby={fileNameId}
           aria-disabled={running}
           onClick={() => {
@@ -306,7 +306,7 @@ function Summary({ site, onReplace }: { site: BundledSite; onReplace: () => void
         <p>{t("website.backupTip")}</p>
         <DownloadButton label={t("website.backupButton")} className="mt-tight" />
       </Notice>
-      <Button type="button" variant="raised-danger" className="mt-related" onClick={onReplace}>
+      <Button type="button" variant="danger" className="mt-related" onClick={onReplace}>
         <Upload aria-hidden="true" />
         {t("website.replace")}
       </Button>
@@ -336,7 +336,7 @@ function Result({ result }: { result: ImportOutcome }) {
           {t("website.skipped", { name: skipped.registerName })}
         </p>
       ))}
-      <ButtonLink to="/" variant="raised" className="mt-related">
+      <ButtonLink to="/" variant="accent" className="mt-related">
         {t("website.viewSite")}
       </ButtonLink>
     </div>

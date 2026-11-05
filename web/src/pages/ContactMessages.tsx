@@ -277,7 +277,7 @@ export function ContactMessages() {
         <Button
           type="button"
           size="sm"
-          variant={filter === "all" ? "raised-violet" : "raised-light"}
+          variant={filter === "all" ? "primary" : "secondary"}
           aria-pressed={filter === "all"}
           onClick={() => setFilter("all")}
         >
@@ -286,7 +286,7 @@ export function ContactMessages() {
         <Button
           type="button"
           size="sm"
-          variant={filter === "open" ? "raised-violet" : "raised-light"}
+          variant={filter === "open" ? "primary" : "secondary"}
           aria-pressed={filter === "open"}
           onClick={() => setFilter("open")}
         >
@@ -295,7 +295,7 @@ export function ContactMessages() {
         <Button
           type="button"
           size="sm"
-          variant={filter === "handled" ? "raised-violet" : "raised-light"}
+          variant={filter === "handled" ? "primary" : "secondary"}
           aria-pressed={filter === "handled"}
           onClick={() => setFilter("handled")}
         >
@@ -393,7 +393,7 @@ export function ContactMessages() {
                 on click: a 412 has to be readable where it happened. */}
             <Button
               type="button"
-              variant="raised-danger"
+              variant="danger"
               aria-disabled={destroy.isPending}
               onClick={() => {
                 if (destroy.isPending) return;
@@ -443,7 +443,7 @@ function MessageSummary({
       <div className="mt-related">
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           size="sm"
           aria-disabled={busy}
           onClick={() => {
@@ -529,7 +529,7 @@ function MessagePanel({
             only way out of the panel. */}
         <Button
           type="button"
-          variant="ghost"
+          variant="quiet"
           size="icon-sm"
           onClick={onClose}
           aria-label={t("contactMessages.close")}
@@ -546,7 +546,7 @@ function MessagePanel({
             <Button
               type="button"
               size="sm"
-              variant="raised-light"
+              variant="secondary"
               aria-disabled={busy}
               onClick={() => {
                 if (busy) return;
@@ -595,13 +595,7 @@ function MessagePanel({
             />
             <label htmlFor={switchId}>{t("contactMessages.handledSwitch")}</label>
           </div>
-          <Button
-            type="button"
-            variant="raised-danger"
-            size="sm"
-            aria-disabled={busy}
-            onClick={onDelete}
-          >
+          <Button type="button" variant="danger" size="sm" aria-disabled={busy} onClick={onDelete}>
             {t("contactMessages.delete")}
           </Button>
         </div>

@@ -156,7 +156,7 @@ function AlertDialogMedia({ className, ...props }: React.ComponentProps<"div">) 
 
 function AlertDialogAction({
   className,
-  variant = "raised-violet",
+  variant = "primary",
   size = "default",
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action> &
@@ -174,7 +174,7 @@ function AlertDialogAction({
 
 function AlertDialogCancel({
   className,
-  variant = "raised-light",
+  variant = "secondary",
   size = "default",
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel> &

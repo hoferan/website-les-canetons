@@ -305,7 +305,7 @@ export function FormField({
             />
             <Button
               type="button"
-              variant="ghost"
+              variant="quiet"
               size="icon"
               className="absolute top-1/2 right-0 -translate-y-1/2"
               aria-label={t("common.showPassword")}

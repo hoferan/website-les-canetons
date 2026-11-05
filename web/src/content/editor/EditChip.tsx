@@ -69,7 +69,7 @@ export function EditChip({
       aria-label={text ?? t("blockEditor.edit", { label })}
       data-chip="button"
       onClick={onClick}
-      className={cn(buttonVariants({ variant: "raised" }), CHIP, corner && CORNER)}
+      className={cn(buttonVariants({ variant: "accent" }), CHIP, corner && CORNER)}
     >
       <Pencil aria-hidden="true" className="size-5 shrink-0" />
       <span className={REVEALED}>{text ?? t("common.edit")}</span>
@@ -115,7 +115,7 @@ export function ChipLink({
       to={to}
       aria-label={ariaLabel}
       data-chip="link"
-      className={cn(buttonVariants({ variant: "raised" }), CHIP, corner && CORNER)}
+      className={cn(buttonVariants({ variant: "accent" }), CHIP, corner && CORNER)}
     >
       {reveal ? (
         <>
@@ -172,7 +172,7 @@ export function ChipButton({
       aria-disabled={disabled || undefined}
       data-chip="button"
       onClick={disabled ? undefined : onClick}
-      className={cn(buttonVariants({ variant: "raised" }), CHIP)}
+      className={cn(buttonVariants({ variant: "accent" }), CHIP)}
     >
       {NarrowIcon ? (
         <>

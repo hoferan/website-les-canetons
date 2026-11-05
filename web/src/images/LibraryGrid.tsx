@@ -192,7 +192,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
               key={key}
               type="button"
               size="sm"
-              variant={filter === key ? "raised-violet" : "raised-light"}
+              variant={filter === key ? "primary" : "secondary"}
               aria-pressed={filter === key}
               onClick={() => setFilter(key)}
             >
@@ -203,7 +203,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
         {filter === "used" ? null : (
           <Button
             type="button"
-            variant="raised-light"
+            variant="secondary"
             className="ml-auto"
             disabled={chosen.length === 0}
             onClick={() => void openConfirm()}
@@ -358,7 +358,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
                 dialog before the deletes have run. */}
             <Button
               type="button"
-              variant="raised-danger"
+              variant="danger"
               aria-disabled={tags === null || deleting}
               onClick={() => void confirmDelete()}
             >

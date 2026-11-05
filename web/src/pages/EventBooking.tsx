@@ -60,7 +60,7 @@ export function EventBooking() {
   // The way into the editor, from the form it changes. Offered beside a
   // closed form too, which answers 404 to everybody, the committee included.
   const editLink = can("events.manage") ? (
-    <Button asChild variant="raised-light" className="mb-related w-fit">
+    <Button asChild variant="secondary" className="mb-related w-fit">
       <Link to={`/events/${eventId}/book/edit`}>{t("booking.editForm")}</Link>
     </Button>
   ) : null;
@@ -304,7 +304,7 @@ export function EventBooking() {
 
                 <Button
                   type="submit"
-                  variant="raised-violet"
+                  variant="primary"
                   className="h-12 px-5 text-base"
                   aria-disabled={send.isPending}
                 >

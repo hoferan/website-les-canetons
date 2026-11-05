@@ -51,7 +51,7 @@ export function NotFound() {
           {/* A ButtonLink rather than a text link: the page's only control
               belongs above the 44px floor. Inline links in prose are a
               different case. */}
-          <ButtonLink to="/" variant="raised" className="mt-block h-12 px-5 text-base">
+          <ButtonLink to="/" variant="accent" className="mt-block h-12 px-5 text-base">
             {t("common.backHome")}
           </ButtonLink>
         </Card>

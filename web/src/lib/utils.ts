@@ -8,7 +8,11 @@ import { extendTailwindMerge } from "tailwind-merge";
  * belongs in this list too.
  */
 const twMerge = extendTailwindMerge({
-  extend: { theme: { shadow: ["raised", "raised-sm", "raised-stage"] } },
+  extend: {
+    theme: {
+      shadow: ["raised", "raised-sm", "raised-stage", "raised-pressed", "raised-stage-pressed"],
+    },
+  },
 });
 
 /**

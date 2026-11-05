@@ -118,7 +118,7 @@ export function EventCalendar({
       <div className="flex items-center justify-between gap-related">
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           size="sm"
           aria-label={t("events.calendarGrid.previousMonth")}
           onClick={() => setMonth(shiftMonth(month, -1))}
@@ -132,7 +132,7 @@ export function EventCalendar({
 
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           size="sm"
           aria-label={t("events.calendarGrid.nextMonth")}
           onClick={() => setMonth(shiftMonth(month, 1))}

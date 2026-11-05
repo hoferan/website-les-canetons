@@ -169,7 +169,7 @@ export function CardsBlock({
         <div className="mb-related flex flex-wrap items-center gap-x-3 gap-y-1">
           <Button
             type="button"
-            variant="raised"
+            variant="accent"
             size="sm"
             className="px-3"
             // The server refuses a list longer than MAX_ITEMS. Disabled
@@ -392,7 +392,7 @@ function CardEditor({ id, adding }: Opened) {
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              variant="raised-danger"
+              variant="danger"
               size="sm"
               className="sm:ml-auto"
               onClick={() => setConfirming(true)}
@@ -414,7 +414,7 @@ function CardEditor({ id, adding }: Opened) {
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <Button
               type="button"
-              variant="raised-danger"
+              variant="danger"
               onClick={() => {
                 setConfirming(false);
                 remove(index);

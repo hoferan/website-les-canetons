@@ -66,6 +66,10 @@
   --shadow-raised-sm: 3px 3px 0 var(--color-ink);
   --shadow-raised-stage: 4px 4px 0 var(--color-pink);
 
+  /* What the shadow shrinks to while a button is pressed in. */
+  --shadow-raised-pressed: 1px 1px 0 var(--color-ink);
+  --shadow-raised-stage-pressed: 1px 1px 0 var(--color-pink);
+
   /* Event tag chips: a tint and an ink per name in App\Support\TagColour.
      Each ink is at least 7:1 on its tint. None is the brand violet or the
      error red at full strength, so a tag never reads as a link or a fault. */

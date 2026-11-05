@@ -21,35 +21,41 @@ import { cn } from "@/lib/utils";
  *
  *    Do not spell one out, even in a comment: Tailwind scans this file as
  *    text, so a full example generates the class.
- * 4. `active:scale-[0.98]` on the base, the press feedback. `transition-all`
- *    animates it and the reduced-motion block in styles.css zeroes it; do not
- *    add a duration here.
- * 5. The `raised` variants in place of shadcn's own, and sizes that set no
- *    radius of their own.
+ * 4. Pressing a framed button moves it onto its shadow: it translates by the
+ *    shadow offset minus 1px and the shadow shrinks to 1px, the colour
+ *    unchanged. `quiet` has no frame, so it sinks 1px and takes a darker
+ *    patch. `transition-all` animates it and the reduced-motion block in
+ *    styles.css zeroes it; do not add a duration here.
+ * 5. Variants named by role (primary, secondary, danger, quiet, accent) in
+ *    place of shadcn's own, a `surface` for the black stage, and sizes that
+ *    set no radius of their own.
  *
  * Which controls carry an icon, and which carry only one, is decided in
  * docs/adr/0025-icons-on-controls.md.
  */
 const buttonVariants = cva(
-  "inline-flex min-h-touch shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none active:scale-[0.98] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex min-h-touch shrink-0 items-center justify-center gap-2 cursor-pointer rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        // 5. The raised variants (ADR 0029): an ink outline and a hard offset
-        // shadow on every page. They replace shadcn's default, outline,
-        // secondary and destructive. On the stage the caller swaps the shadow
-        // for shadow-raised-stage, since ink on black vanishes.
-        raised:
-          "rounded-xl border-3 border-ink bg-yellow font-bold text-ink shadow-raised-sm hover:bg-yellow-hover",
-        "raised-light":
-          "rounded-xl border-3 border-ink bg-white font-bold text-ink shadow-raised-sm hover:bg-ground",
-        "raised-violet":
-          "rounded-xl border-3 border-ink bg-violet font-bold text-white shadow-raised-sm hover:bg-violet-hover",
-        "raised-danger":
-          "rounded-xl border-3 border-ink bg-danger font-bold text-white shadow-raised-sm hover:bg-danger-hover",
-        // Ghost and link stay flat: an icon inside a field, a link in a sentence.
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        // 5. The framed variants (ADR 0029): an ink outline and a hard offset
+        // shadow. The shadow and the press live in compoundVariants below,
+        // because they depend on the surface.
+        primary:
+          "rounded-xl border-3 border-ink bg-violet font-bold text-white hover:bg-violet-hover",
+        secondary: "rounded-xl border-3 border-ink bg-white font-bold text-ink hover:bg-ground",
+        danger:
+          "rounded-xl border-3 border-ink bg-danger font-bold text-white hover:bg-danger-hover",
+        accent: "rounded-xl border-3 border-ink bg-yellow font-bold text-ink hover:bg-yellow-hover",
+        // Quiet stays flat: an icon inside a field, a link in a sentence.
+        quiet:
+          "hover:bg-accent hover:text-accent-foreground active:translate-y-px active:bg-violet/20",
+      },
+      // The page is cream, the stage is black. Ink on black vanishes, so on the
+      // stage the shadow and the focus ring turn pink.
+      surface: {
+        page: "",
+        stage: "focus-ring-stage",
       },
       // No size sets a radius. tailwind-merge lets the size's class win over
       // the variant's, so a radius here would square off the small raised
@@ -68,17 +74,35 @@ const buttonVariants = cva(
         "icon-lg": "size-10 min-w-touch",
       },
     },
+    // A framed button presses onto its shadow: the offset minus 1px, and the
+    // shadow shrinks to 1px.
+    compoundVariants: [
+      {
+        variant: ["primary", "secondary", "danger", "accent"],
+        surface: "page",
+        class:
+          "shadow-raised-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-raised-pressed",
+      },
+      {
+        variant: ["primary", "secondary", "danger", "accent"],
+        surface: "stage",
+        class:
+          "shadow-raised-stage active:translate-x-[3px] active:translate-y-[3px] active:shadow-raised-stage-pressed",
+      },
+    ],
     defaultVariants: {
-      variant: "raised-violet",
+      variant: "primary",
       size: "default",
+      surface: "page",
     },
   },
 );
 
 function Button({
   className,
-  variant = "raised-violet",
+  variant = "primary",
   size = "default",
+  surface = "page",
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> &
@@ -92,7 +116,8 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      data-surface={surface}
+      className={cn(buttonVariants({ variant, size, surface, className }))}
       {...props}
     />
   );

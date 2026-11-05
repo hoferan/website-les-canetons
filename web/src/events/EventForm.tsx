@@ -300,7 +300,7 @@ export function EventForm({
                 outlined: Enter never reaches for it. */}
             <Button
               type="submit"
-              variant="raised-light"
+              variant="secondary"
               aria-disabled={busy}
               onClick={() => (intent.current = "publish")}
             >
@@ -312,7 +312,7 @@ export function EventForm({
             {busy ? t("eventForm.saving") : t("common.save")}
           </Button>
         )}
-        <Button type="button" variant="raised-light" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </div>

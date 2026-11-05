@@ -140,7 +140,7 @@ export function EditableBlock({
           <div className="flex flex-wrap items-center gap-tight">
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               size="icon"
               aria-label={t("registrationOptions.moveUp", { option: name })}
               aria-disabled={first}
@@ -150,7 +150,7 @@ export function EditableBlock({
             </Button>
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               size="icon"
               aria-label={t("registrationOptions.moveDown", { option: name })}
               aria-disabled={last}
@@ -160,7 +160,7 @@ export function EditableBlock({
             </Button>
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               onClick={() => {
                 closedByDone.current = true;
                 onClose();
@@ -173,7 +173,7 @@ export function EditableBlock({
             {row.answered ? null : (
               <Button
                 type="button"
-                variant="raised-light"
+                variant="secondary"
                 className="ml-auto text-danger"
                 onClick={onRemove}
               >
@@ -383,7 +383,7 @@ function AnswersEditor({
           ) : (
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               size="icon"
               aria-label={t("registrationOptions.removeAnswer", { n: n + 1 })}
               onClick={() => onChange(row.answers.filter((other) => other.key !== answer.key))}
@@ -400,7 +400,7 @@ function AnswersEditor({
       ) : null}
       <Button
         type="button"
-        variant="raised-light"
+        variant="secondary"
         className="w-fit"
         // Twenty is the API's cap.
         aria-disabled={row.answers.length >= 20}

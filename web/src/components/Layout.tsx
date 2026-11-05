@@ -267,14 +267,13 @@ export function Layout() {
                 showAccount={mayManageAccount}
               />
             ) : (
-              // The raised yellow button, its shadow pink because ink vanishes
-              // on the stage.
+              // The yellow button on the stage, which gives it a pink shadow.
               <Link
                 to="/login"
                 aria-current={active === "/login" ? "page" : undefined}
                 className={cn(
-                  buttonVariants({ variant: "raised" }),
-                  "focus-ring-stage border-2 px-3.5 shadow-raised-stage",
+                  buttonVariants({ variant: "accent", surface: "stage" }),
+                  "border-2 px-3.5",
                 )}
               >
                 {t("nav.login")}

@@ -117,7 +117,7 @@ export function Login() {
 
             <Button
               type="submit"
-              variant="raised-violet"
+              variant="primary"
               className="h-12 px-5 text-base"
               aria-disabled={login.isPending}
             >

@@ -439,7 +439,7 @@ export function EventFormEditor() {
           </Link>
           <Button
             type="button"
-            variant="raised-light"
+            variant="secondary"
             onClick={() => {
               setOpenKey(null);
               setGuest((current) => !current);

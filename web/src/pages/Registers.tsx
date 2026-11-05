@@ -225,7 +225,7 @@ function RegisterRow({
           <div className="flex flex-wrap items-center gap-tight">
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               size="icon"
               aria-label={t("registers.moveUpAria", { label })}
               aria-disabled={first || moving}
@@ -238,7 +238,7 @@ function RegisterRow({
             </Button>
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               size="icon"
               aria-label={t("registers.moveDownAria", { label })}
               aria-disabled={last || moving}
@@ -251,7 +251,7 @@ function RegisterRow({
             </Button>
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               aria-label={t("registers.editAria", { label })}
               aria-disabled={busy}
               onClick={() => {
@@ -263,7 +263,7 @@ function RegisterRow({
             </Button>
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               aria-label={t("registers.deleteAria", { label })}
               aria-disabled={busy}
               onClick={() => {
@@ -303,7 +303,7 @@ function RegisterRow({
             <Button type="submit" aria-disabled={busy}>
               {t("common.save")}
             </Button>
-            <Button type="button" variant="raised-light" onClick={() => setEditing(null)}>
+            <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
               {t("common.cancel")}
             </Button>
           </div>
@@ -344,7 +344,7 @@ function RegisterRow({
             {inUse ? null : (
               <Button
                 type="button"
-                variant="raised-danger"
+                variant="danger"
                 aria-disabled={busy}
                 onClick={() => {
                   if (busy) return;

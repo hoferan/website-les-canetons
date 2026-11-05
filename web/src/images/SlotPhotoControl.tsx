@@ -264,7 +264,7 @@ export function SlotPhotoControl({
             aria-label={name}
             aria-disabled={busy}
             onClick={open}
-            className={cn(buttonVariants({ variant: "raised" }), "h-11 px-3")}
+            className={cn(buttonVariants({ variant: "accent" }), "h-11 px-3")}
           >
             {photo ? (
               <Pencil aria-hidden="true" className="size-5 shrink-0" />
@@ -294,7 +294,7 @@ export function SlotPhotoControl({
               aria-disabled={busy}
               onClick={open}
               className={cn(
-                buttonVariants({ variant: "raised" }),
+                buttonVariants({ variant: "accent" }),
                 "group/pencil absolute right-2 bottom-2 h-11 min-w-11 px-3",
               )}
             >
@@ -320,7 +320,7 @@ export function SlotPhotoControl({
                 change in edit mode. A span, not a button: one control. */}
             <span
               className={cn(
-                buttonVariants({ variant: "raised" }),
+                buttonVariants({ variant: "accent" }),
                 "px-4 group-hover/add:bg-yellow/85",
               )}
             >

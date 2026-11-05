@@ -113,7 +113,7 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
             action={
               <Button
                 type="button"
-                variant="ghost"
+                variant="quiet"
                 size="icon"
                 aria-label={t("blockEditor.removeGerman")}
                 onClick={() => {
@@ -131,7 +131,7 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
         <Button
           ref={addRef}
           type="button"
-          variant="ghost"
+          variant="quiet"
           size="sm"
           className="self-start font-bold text-violet"
           onClick={() => {

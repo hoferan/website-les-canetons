@@ -757,7 +757,7 @@ function DownloadButton({
   onClick: () => void;
 }) {
   return (
-    <Button type="button" variant="raised-light" size="sm" aria-disabled={busy} onClick={onClick}>
+    <Button type="button" variant="secondary" size="sm" aria-disabled={busy} onClick={onClick}>
       {busy ? "…" : label}
     </Button>
   );
@@ -893,7 +893,7 @@ function SuspectLine({
         <Button
           type="button"
           size="sm"
-          variant="raised-light"
+          variant="secondary"
           className="mt-tight"
           aria-disabled={busy}
           aria-label={t("suspect.clearAria", { name: `${booking.firstName} ${booking.lastName}` })}
@@ -1131,7 +1131,7 @@ function AmendForm({
         <Button type="submit" aria-disabled={busy}>
           {busy ? t("registrations.saving") : t("common.save")}
         </Button>
-        <Button type="button" variant="raised-light" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </div>
