@@ -41,7 +41,7 @@ export function DevUi() {
 
       <Block
         title="Variantes et tailles"
-        note="Chaque variante en taille par défaut et sm, puis la même rangée avec aria-disabled."
+        note="Chaque variante en taille par défaut et sm, puis la même rangée désactivée (aria-disabled), puis un bouton en cours d'envoi."
       >
         <div className="grid gap-6">
           {[false, true].map((disabled) => (
@@ -60,6 +60,10 @@ export function DevUi() {
               )}
             </div>
           ))}
+          {/* Pending is aria-disabled plus a pending word, as in BlockEditor's Save. */}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button aria-disabled>Enregistrement…</Button>
+          </div>
         </div>
       </Block>
 
@@ -155,9 +159,6 @@ export function DevUi() {
             <Button variant="secondary" surface="stage">
               Nous contacter
             </Button>
-            <Button variant="quiet" surface="stage" className="text-white">
-              Plus tard
-            </Button>
           </div>
         </Stage>
       </Block>
@@ -169,6 +170,7 @@ export function DevUi() {
         <div className="grid gap-8 md:grid-cols-2">
           <div>
             <p className="mb-2 text-sm font-bold">Dans une boîte de dialogue</p>
+            {/* Mirrors DialogContent's frame by hand: the real one is a portal. */}
             <div className="grid gap-4 rounded-lg border bg-background p-4 shadow-lg sm:p-6">
               <div>
                 <p className="text-lg font-semibold">Modifier le pupitre</p>
