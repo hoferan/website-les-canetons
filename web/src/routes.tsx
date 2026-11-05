@@ -48,6 +48,12 @@ const Website = lazy(() =>
   import("./pages/Website").then((module) => ({ default: module.Website })),
 );
 
+// The button catalogue is for developers. `import.meta.env.DEV` is a literal
+// in a build, so the import and the route below are dropped from the bundle.
+const DevUi = import.meta.env.DEV
+  ? lazy(() => import("./pages/DevUi").then((module) => ({ default: module.DevUi })))
+  : null;
+
 /**
  * The route table.
  *
@@ -205,6 +211,17 @@ export function AppRoutes() {
               }
             />
           </Route>
+
+          {DevUi ? (
+            <Route
+              path="/dev/ui"
+              element={
+                <Suspense fallback={null}>
+                  <DevUi />
+                </Suspense>
+              }
+            />
+          ) : null}
 
           <Route path="*" element={<NotFound />} />
         </Route>

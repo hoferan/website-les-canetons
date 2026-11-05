@@ -236,5 +236,12 @@
     "as": "demo.committee",
     "name": "contact-messages",
     "heading": "Messages"
+  },
+  {
+    "route": "/dev/ui",
+    "path": "/dev/ui",
+    "as": null,
+    "name": "dev-ui",
+    "heading": "Catalogue des composants"
   }
 ]
