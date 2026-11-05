@@ -44,7 +44,7 @@ André picked each point below from a rendered mockup at 1280px and at 390px.
 ### Confirmation
 
 - The ESLint rule in `eslint.config.js` bans `size="icon…"` on JSX, so an icon-only `Button` fails the lint.
-- `tools/form-actions.test.mjs` fails a submit form that does not end in a footer component, a footer that holds an `accent` button, and an action placed after Cancel.
+- `tools/form-actions.test.mjs` fails a file with a submit button that uses no footer component, a footer that holds an `accent` button, and a confirm dialog footer that lists Cancel first.
 - `web/src/components/ui/button.test.tsx` and `web/src/components/ui/icon-button.test.tsx` pin the pointer cursor, the 12px corners, the press and when the tip opens.
 - `/dev/ui` is in `web/screenshots/pages.json`, and a test requires every page route to be listed there, so the catalogue is rendered in every screenshot sweep.
 
