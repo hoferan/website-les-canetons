@@ -1437,7 +1437,7 @@ export const de: typeof fr = {
 
   blocks: {
     site: "Infos zur Website",
-    home: { hero: "Startseite · Kopfbereich" },
+    home: { hero: "Startseite · Kopfbereich", cards: "Startseite · Karten" },
     join: { hero: "Mitmachen · Kopfbereich", facts: "Mitmachen · Karten" },
     committee: { hero: "Vorstand · Kopfbereich", contact: "Vorstand · Kontakt" },
     band: { hero: "Die Canetons · Kopfbereich", godparents: "Die Canetons · Götti und Gotte" },
@@ -1511,6 +1511,7 @@ export const de: typeof fr = {
       mark: "Hervorgehobene Wörter",
       intro: "Einleitung",
       photo: "Foto",
+      link: "Die ganze Karte ist ein Link",
     },
     actions: {
       buttons: "Schaltflächen",
@@ -1568,6 +1569,7 @@ export const de: typeof fr = {
       house: "Haus",
       school: "Schule",
       check: "Häkchen",
+      message: "Nachricht",
     },
     tints: {
       pink: "Rosa",

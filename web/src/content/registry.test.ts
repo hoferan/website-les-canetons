@@ -28,6 +28,7 @@ test("the registry holds every block a page shows", () => {
     [
       "site",
       "home.hero",
+      "home.cards",
       "join.hero",
       "join.facts",
       "committee.hero",

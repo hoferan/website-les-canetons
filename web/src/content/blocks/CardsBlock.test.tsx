@@ -619,3 +619,178 @@ test("a slot key built from an added card's id is a valid slot name", () => {
   const key = cardSlot("committee.contact", crypto.randomUUID());
   expect(key).toMatch(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/);
 });
+
+/** The home page's band, as Home.tsx renders it: a list named by its heading. */
+function Band() {
+  return (
+    <>
+      <h2 id="discover">Découvrir</h2>
+      <CardsBlock blockKey="home.cards" layout="band" links labelledBy="discover" />
+    </>
+  );
+}
+
+const flickrCard = {
+  id: "photos",
+  icon: "camera",
+  tint: "yellow",
+  title: { fr: "Photos" },
+  rows: [
+    { type: "text", text: { fr: "Nos albums" } },
+    { type: "phone", label: { fr: "Appeler" }, number: "079 123 45 67" },
+  ],
+  to: "https://www.flickr.com/canetons",
+};
+
+test("each band card is one link to its page, tilted, as the home page shipped them", async () => {
+  await renderWithSession(<Band />, { route: "/" });
+
+  const list = screen.getByRole("list", { name: "Découvrir" });
+  const links = within(list).getAllByRole("link");
+  expect(links.map((link) => link.getAttribute("href"))).toEqual([
+    "/join",
+    "/band",
+    "/history",
+    "/committee",
+  ]);
+  // The whole card is the link, so its name says where it goes and why.
+  expect(links[0]).toHaveAccessibleName(
+    "Nous rejoindre Les instruments recherchés, les horaires et les critères d’âge.",
+  );
+  const items = within(list).getAllByRole("listitem");
+  expect(items[0]!.className).toContain("-rotate-[1.2deg]");
+  expect(items[1]!.className).toContain("rotate-1");
+  expect(screen.queryByRole("button")).toBeNull();
+});
+
+test("a card leading to another site opens it in a new tab, its rows as text", async () => {
+  storeBlock("home.cards", { cards: [flickrCard] });
+  await renderWithSession(<Band />, { route: "/" });
+
+  const link = await screen.findByRole("link", { name: "Photos (nouvel onglet)" });
+  expect(link).toHaveAttribute("href", "https://www.flickr.com/canetons");
+  expect(link).toHaveAttribute("target", "_blank");
+  expect(link).toHaveAttribute("rel", "noreferrer");
+  // A link inside a link is invalid: the number shows, but dials nothing.
+  expect(within(link).getByText(/079 123 45 67/)).toBeInTheDocument();
+  expect(screen.getAllByRole("link")).toHaveLength(1);
+});
+
+test("a stored target no link may carry leaves the card as no link", async () => {
+  storeBlock("home.cards", { cards: [{ ...flickrCard, to: "javascript:alert(1)" }] });
+  await renderWithSession(<Band />, { route: "/" });
+
+  expect(await screen.findByRole("heading", { name: "Photos" })).toBeInTheDocument();
+  // The card is no link, so its phone row is one of its own again.
+  expect(screen.getByRole("link")).toHaveAttribute("href", "tel:+41791234567");
+});
+
+test("a grid that offers no links ignores a stored target", async () => {
+  storeBlock("join.facts", { cards: [{ ...flickrCard, to: "/band" }] });
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  expect(await screen.findByRole("heading", { name: "Photos" })).toBeInTheDocument();
+  // Only the phone row's own link.
+  expect(screen.getByRole("link")).toHaveAttribute("href", "tel:+41791234567");
+});
+
+test("in edit mode a band card is no link, so its chips sit in no link", async () => {
+  editing();
+  await renderWithSession(<Band />, { route: "/" });
+
+  const chip = screen.getByRole("button", { name: "Modifier : Nous rejoindre" });
+  expect(chip.closest("a")).toBeNull();
+  expect(screen.queryByRole("link")).toBeNull();
+  // Four across from lg, so the arrows point sideways from sm.
+  expect(
+    screen.getByRole("button", { name: "Déplacer « Nous rejoindre » après" }),
+  ).toBeInTheDocument();
+});
+
+test("an editor adds a card that leads to another site", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<Band />, { route: "/" });
+
+  await user.click(screen.getByRole("button", { name: "Ajouter une carte" }));
+  const dialog = await screen.findByRole("dialog", { name: "Accueil · cartes" });
+  await user.type(within(dialog).getByRole("textbox", { name: "Titre FR" }), "Photos");
+  const toggle = within(dialog).getByRole("switch", { name: "Toute la carte est un lien" });
+  expect(toggle).not.toBeChecked();
+  await user.click(toggle);
+  await user.selectOptions(
+    within(dialog).getByRole("combobox", { name: "Destination" }),
+    "Autre lien (https)",
+  );
+  const address = within(dialog).getByRole("textbox", { name: "Adresse du lien" });
+  await user.clear(address);
+  await user.type(address, "https://www.flickr.com/canetons");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const cards = (puts[0]!.body as { data: { cards: unknown[] } }).data.cards;
+  expect(cards).toEqual([
+    ...BLOCKS["home.cards"].defaults().cards,
+    {
+      id: expect.any(String),
+      icon: "star",
+      tint: "yellow",
+      title: { fr: "Photos" },
+      rows: [],
+      to: "https://www.flickr.com/canetons",
+    },
+  ]);
+});
+
+test("a card whose link is switched off is saved without a target", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<Band />, { route: "/" });
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Le comité" }));
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).getByRole("combobox", { name: "Destination" })).toHaveValue("/committee");
+  await user.click(within(dialog).getByRole("switch", { name: "Toute la carte est un lien" }));
+  expect(within(dialog).queryByRole("combobox", { name: "Destination" })).toBeNull();
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const cards = (puts[0]!.body as { data: { cards: Record<string, unknown>[] } }).data.cards;
+  // Found by place, since the committee card's id reads like a role key to the lint.
+  expect(cards[3]).toHaveProperty("title.fr", "Le comité");
+  expect(cards[3]).not.toHaveProperty("to");
+  expect(cards[0]).toHaveProperty("to", "/join");
+});
+
+test("the editor refuses a link that is not https", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<Band />, { route: "/" });
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Notre histoire" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.selectOptions(
+    within(dialog).getByRole("combobox", { name: "Destination" }),
+    "Autre lien (https)",
+  );
+  const address = within(dialog).getByRole("textbox", { name: "Adresse du lien" });
+  await user.clear(address);
+  await user.type(address, "http://www.flickr.com/canetons");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  expect(await within(dialog).findByText(t("blockEditor.invalid"))).toBeInTheDocument();
+  expect(puts).toEqual([]);
+});
+
+test("the editor of a grid without links offers no link switch", async () => {
+  const user = userEvent.setup();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).queryByRole("switch", { name: "Toute la carte est un lien" })).toBeNull();
+});

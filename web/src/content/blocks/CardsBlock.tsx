@@ -7,6 +7,7 @@ import {
   type FieldErrors,
   type UseFormReturn,
 } from "react-hook-form";
+import { Link } from "react-router-dom";
 
 import {
   AlertDialog,
@@ -28,6 +29,7 @@ import { t } from "../../i18n";
 import { cardSlot } from "../../images/photoSlots";
 import { SlotPhoto } from "../../images/SlotPhoto";
 import { useBlock } from "../BlocksProvider";
+import { PUBLIC_NAV, isPublicPage } from "../publicPages";
 import {
   BlockEditor,
   CHIP_ROOM,
@@ -37,6 +39,7 @@ import {
   IconPicker,
   MAX_ITEMS,
   RowFields,
+  TargetField,
   TINT_BACKGROUNDS,
   TintPicker,
   TranslatedField,
@@ -44,7 +47,7 @@ import {
 } from "../editor";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 import { tr } from "../translated";
-import type { Card as CardData, cardsBlock } from "../types";
+import { isActionTarget, type Card as CardData, type cardsBlock } from "../types";
 import { RowView } from "./RowView";
 import { useBlockEditing } from "./useBlockEditing";
 
@@ -71,7 +74,16 @@ const LAYOUTS = {
   grid: "grid gap-5 sm:grid-cols-2 lg:grid-cols-3",
   // One card per line at every width, as wide as the page section.
   wide: "grid gap-5",
+  // Tiles on a coloured band, four across on a wide screen, each tilted the
+  // other way from its neighbour (ADR 0029).
+  band: "grid gap-5 sm:grid-cols-2 lg:grid-cols-4",
 };
+
+/**
+ * A band tile's own tilt, on the <li>, so the focus ring tilts with the card
+ * it outlines and the chips tilt with the card they sit on.
+ */
+const BAND_TILT = "odd:-rotate-[1.2deg] even:rotate-1";
 
 /**
  * A grid of raised cards, each a picture on a carnival colour, a heading and
@@ -86,15 +98,26 @@ const LAYOUTS = {
  * `slots` puts page code into a card by its id, before or after its rows: a
  * link to a page, or a line that depends on what the rows hold. A slot for a
  * card the band deleted shows nowhere.
+ *
+ * `links` lets a card lead somewhere, a public page or an https address,
+ * picked with the buttons' target editor. A card with a target is one big
+ * link, so its rows show as text, never as links of their own. A grid with
+ * links must therefore have no slot holding a link.
+ *
+ * The `band` layout is a list, named by the heading `labelledBy` points at.
  */
 export function CardsBlock({
   blockKey,
   layout = "grid",
   slots = {},
+  links = false,
+  labelledBy,
 }: {
   blockKey: CardsKey;
   layout?: keyof typeof LAYOUTS;
   slots?: Record<string, CardSlot>;
+  links?: boolean;
+  labelledBy?: string;
 }) {
   const { cards } = useBlock(blockKey);
   const editing = useBlockEditing();
@@ -102,6 +125,8 @@ export function CardsBlock({
   // Remounts the card's fields after a reset, so every field reads it.
   const [resets, setResets] = useState(0);
   const blockLabel = t(BLOCKS[blockKey].label);
+  const band = layout === "band";
+  const List = band ? "ul" : "div";
   const full = cards.length >= MAX_ITEMS;
   const fullId = useId();
   // Moving a card saves at once, with no dialog to close.
@@ -192,19 +217,21 @@ export function CardsBlock({
       {editing ? <FormError error={error} /> : null}
 
       {cards.length > 0 ? (
-        <div className={LAYOUTS[layout]}>
+        <List className={LAYOUTS[layout]} aria-labelledby={band ? labelledBy : undefined}>
           {cards.map((card, index) => {
             const title = tr(card.title).trim() || blockLabel;
             // Left and right where the grid shows columns (from sm), up and
             // down where it stacks, so the arrow points where the card goes.
-            const several = layout === "grid";
-            return (
+            const several = layout !== "wide";
+            const view = (
               <CardView
                 key={card.id}
                 blockKey={blockKey}
                 card={card}
                 slot={slots[card.id]}
                 editing={editing}
+                band={band}
+                links={links}
               >
                 {editing ? (
                   // One row in the card's corner, the pencil last: its word
@@ -243,8 +270,15 @@ export function CardsBlock({
                 ) : null}
               </CardView>
             );
+            return band ? (
+              <li key={card.id} className={BAND_TILT} data-confetti-avoid>
+                {view}
+              </li>
+            ) : (
+              view
+            );
           })}
-        </div>
+        </List>
       ) : null}
 
       {editing ? (
@@ -255,7 +289,7 @@ export function CardsBlock({
           onReset={shipped ? restore : false}
           invalidMessage={elsewhere}
         >
-          {() => (opened ? <CardEditor key={resets} {...opened} /> : null)}
+          {() => (opened ? <CardEditor key={resets} {...opened} links={links} /> : null)}
         </BlockEditor>
       ) : null}
     </>
@@ -265,12 +299,25 @@ export function CardsBlock({
 /**
  * One card. The icon is decoration: the heading already says what the card is
  * about.
+ *
+ * A card with a target is the link itself, through `Card asChild`: one
+ * element carrying both class strings, a target far larger than 44px on a
+ * phone, whose accessible name is everything the card says. `Slot` joins the
+ * two class strings without tailwind-merge, so a `display` class on the link
+ * would not override the Card's `flex`. In edit mode the card is no link: its
+ * chips and its photo's control are buttons, which a link must not hold, and
+ * a stray click would leave the page mid-edit.
+ *
+ * On a band the icon stands above the title, as on a poster tile, and the
+ * title is a level below the band's own heading.
  */
 function CardView({
   blockKey,
   card,
   slot,
   editing,
+  band,
+  links,
   children,
 }: {
   blockKey: CardsKey;
@@ -278,41 +325,132 @@ function CardView({
   slot: CardSlot | undefined;
   /** Whether the card wears its chip, and so needs room for it. */
   editing: boolean;
+  band: boolean;
+  /** Whether the grid lets a card lead somewhere. */
+  links: boolean;
   children: ReactNode;
 }) {
   const Glyph = ICON_GLYPHS[card.icon];
+  // A read lets any string through, so an imported `javascript:` target must
+  // never become an href.
+  const target = links && card.to !== undefined && isActionTarget(card.to) ? card.to : undefined;
+  const title = tr(card.title);
+  const look = band
+    ? "h-full gap-3 rounded-[20px] border-3 border-ink p-4 shadow-raised"
+    : cn(RAISED_CARD, "gap-0 p-5");
+  const rows = <Rows rows={card.rows} plain={target !== undefined} />;
 
-  return (
-    // The card is its chips' scope: edit-blocks.spec.ts checks them against
-    // its text, and against each other.
-    <Card data-chip-scope className={cn(RAISED_CARD, "relative gap-0 p-5", editing && CHIP_ROOM)}>
-      {children}
-      <div className="flex items-center gap-3">
-        <span
-          className={cn(
-            "grid size-11 shrink-0 place-items-center rounded-xl border-3 border-ink",
-            TINT_BACKGROUNDS[card.tint],
-          )}
-        >
-          <Glyph aria-hidden="true" className="size-6" strokeWidth={2.25} />
-        </span>
-        <h2 className="font-display text-xl">{tr(card.title)}</h2>
-      </div>
+  const body = (
+    <>
+      {band ? (
+        <>
+          <span
+            className={cn(
+              "grid size-13 place-items-center rounded-[14px] border-3 border-ink",
+              TINT_BACKGROUNDS[card.tint],
+            )}
+          >
+            <Glyph aria-hidden="true" className="size-7" strokeWidth={2.25} />
+          </span>
+          <h3 className="font-display text-xl text-ink uppercase">{title}</h3>
+        </>
+      ) : (
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "grid size-11 shrink-0 place-items-center rounded-xl border-3 border-ink",
+              TINT_BACKGROUNDS[card.tint],
+            )}
+          >
+            <Glyph aria-hidden="true" className="size-6" strokeWidth={2.25} />
+          </span>
+          <h2 className="font-display text-xl">{title}</h2>
+        </div>
+      )}
       {/* The slot shows a placeholder to a visitor while empty, like every
           other slot, and carries its own pencil for an editor. */}
       {card.photo ? (
         <SlotPhoto
           slot={cardSlot(blockKey, card.id)}
-          label={tr(card.title).trim() || t(BLOCKS[blockKey].label)}
-          alt={tr(card.title)}
+          label={title.trim() || t(BLOCKS[blockKey].label)}
+          alt={title}
         />
       ) : null}
       {slot?.beforeRows}
-      {card.rows.map((row, index) => (
-        <RowView key={index} row={row} />
-      ))}
+      {band ? (
+        // The card's gap already parts the rows from the title.
+        <div className="text-ink-muted [&>:first-child]:mt-0">{rows}</div>
+      ) : (
+        rows
+      )}
       {slot?.afterRows}
+    </>
+  );
+
+  if (target !== undefined && !editing) {
+    const className = cn(look, "transition-transform hover:-translate-y-0.5");
+    return isPublicPage(target) ? (
+      // The router's basename keeps a visitor in their language.
+      <Card asChild className={className}>
+        <Link to={target} className="focus-ring">
+          {body}
+        </Link>
+      </Card>
+    ) : (
+      // Another site opens in a new tab and says so, as every outbound link does.
+      <Card asChild className={className}>
+        <a
+          href={target}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={t("nav.newTab", { name: title })}
+          className="focus-ring"
+        >
+          {body}
+        </a>
+      </Card>
+    );
+  }
+
+  return (
+    // The card is its chips' scope: edit-blocks.spec.ts checks them against
+    // its text, and against each other.
+    <Card data-chip-scope className={cn(look, "relative", editing && CHIP_ROOM)}>
+      {children}
+      {body}
     </Card>
+  );
+}
+
+/** A card's rows; as text alone inside a card that is a link. */
+function Rows({ rows, plain }: { rows: CardData["rows"]; plain: boolean }) {
+  return rows.map((row, index) => <RowView key={index} row={row} plain={plain} />);
+}
+
+/**
+ * Whether the card leads somewhere, and where. Off, the target is held as ""
+ * and saved as absent (see `forEditor`). The switch keeps its own state, so
+ * emptying a typed address does not switch the link off under the cursor.
+ */
+function LinkFields({ name }: { name: `cards.${number}.to` }) {
+  const { getValues, setValue } = useFormContext<CardsData>();
+  const id = useId();
+  const [linked, setLinked] = useState(() => (getValues(name) ?? "") !== "");
+  return (
+    <>
+      <div className="flex min-h-touch items-center justify-between gap-2">
+        <label htmlFor={id}>{t("blockEditor.field.link")}</label>
+        <Switch
+          id={id}
+          checked={linked}
+          onCheckedChange={(on) => {
+            setLinked(on);
+            setValue(name, on ? PUBLIC_NAV[0]!.to : "", { shouldDirty: true });
+          }}
+        />
+      </div>
+      {linked ? <TargetField name={name} /> : null}
+    </>
   );
 }
 
@@ -344,7 +482,7 @@ function newCard(id: string): CardData {
  * appended it. Deleting the card saves the list at once, through the
  * editor's own submit, so its checks and its error line apply.
  */
-function CardEditor({ id, adding }: Opened) {
+function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
   const { control, getValues } = useFormContext<CardsData>();
   const { append, remove } = useFieldArray({ control, name: "cards" });
   // Read from the form, which the append and the removal change before the
@@ -387,6 +525,7 @@ function CardEditor({ id, adding }: Opened) {
             />
             <IconPicker name={`cards.${index}.icon`} />
             <TintPicker name={`cards.${index}.tint`} />
+            {links ? <LinkFields name={`cards.${index}.to`} /> : null}
             <PhotoSwitch name={`cards.${index}.photo`} />
             <RowFields name={`cards.${index}.rows`} />
           </div>

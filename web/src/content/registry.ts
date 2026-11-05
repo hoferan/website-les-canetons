@@ -3,7 +3,15 @@ import type { z } from "zod";
 import type { TranslationKey } from "../i18n";
 import { catalogueString, catalogueValue } from "../i18n/catalogueText";
 import { fromCatalogue, type Translated } from "./translated";
-import { cardsBlock, forEditor, heroBlock, siteBlock } from "./types";
+import {
+  cardsBlock,
+  forEditor,
+  heroBlock,
+  siteBlock,
+  type Card,
+  type Icon,
+  type Tint,
+} from "./types";
 
 /**
  * Every content block a page shows, by the key it is stored under.
@@ -113,6 +121,23 @@ export const BLOCKS = {
     },
     "blocks.home.hero",
   ),
+
+  // The yellow band's cards, each one big link: the four pages a stranger
+  // most likely wants, in that order. A curated subset of the nav, never
+  // derived from it: the nav lists what exists, this what to read first.
+  "home.cards": block({
+    schema: cardsBlock,
+    editSchema: forEditor.cardsBlock,
+    defaults: () => ({
+      cards: [
+        destination("join", "music", "pink"),
+        destination("band", "drum", "cyan"),
+        destination("history", "star", "lime"),
+        destination("committee", "message", "lilac"),
+      ],
+    }),
+    label: "blocks.home.cards",
+  }),
 
   "join.hero": hero(
     { title: "join.heading", mark: "join.headingHighlight", intro: "join.intro" },
@@ -246,6 +271,26 @@ export const BLOCKS = {
     "blocks.agenda.hero",
   ),
 };
+
+/**
+ * A card of the home page's band, leading to the public page of the same name.
+ * Its description says what that page shows as it ships, not a promise about
+ * a finished version, and asserts no fact about the band.
+ */
+function destination(
+  page: "join" | "band" | "history" | "committee",
+  icon: Icon,
+  tint: Tint,
+): Card {
+  return {
+    id: page,
+    icon,
+    tint,
+    title: fromCatalogue(`home.destinations.${page}.title`),
+    rows: [{ type: "text", text: fromCatalogue(`home.destinations.${page}.description`) }],
+    to: `/${page}`,
+  };
+}
 
 function joiningContact() {
   return { type: "phone" as const, label: { fr: "" }, number: "", tbd: "join-contact" };
