@@ -26,10 +26,31 @@ export const GERMAN_SEGMENT = "de";
  */
 const GERMAN_PATH = new RegExp(`^/${GERMAN_SEGMENT}(?=/|$)`);
 
-export function localeFromPath(pathname: string): { locale: Locale; basename: string } {
-  return GERMAN_PATH.test(pathname)
-    ? { locale: "de-CH", basename: `/${GERMAN_SEGMENT}` }
-    : { locale: DEFAULT_LOCALE, basename: "/" };
+/**
+ * Where the SPA is mounted, with no trailing slash.
+ *
+ * Empty on every server, which serve it from the document root. A PR preview
+ * serves it from `/website-les-canetons/pr-<n>/` on GitHub Pages (#353), and
+ * Vite's `base` sets BASE_URL to that. The prefix comes off before the locale
+ * is read and goes back on every path handed to the router or the browser.
+ */
+export const APP_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+/** The path inside the app: the same pathname with the base taken off. */
+export function pathInApp(pathname: string, base: string = APP_BASE): string {
+  if (!base) return pathname;
+  if (pathname === base) return "/";
+
+  return pathname.startsWith(`${base}/`) ? pathname.slice(base.length) : pathname;
+}
+
+export function localeFromPath(
+  pathname: string,
+  base: string = APP_BASE,
+): { locale: Locale; basename: string } {
+  return GERMAN_PATH.test(pathInApp(pathname, base))
+    ? { locale: "de-CH", basename: `${base}/${GERMAN_SEGMENT}` }
+    : { locale: DEFAULT_LOCALE, basename: base || "/" };
 }
 
 /**
@@ -40,14 +61,14 @@ export function localeFromPath(pathname: string): { locale: Locale; basename: st
  * `basename` is fixed when the router mounts, so each locale boots clean with
  * no stale i18next state.
  */
-export function pathInLocale(pathname: string, target: Locale): string {
-  const bare = pathname.replace(GERMAN_PATH, "") || "/";
+export function pathInLocale(pathname: string, target: Locale, base: string = APP_BASE): string {
+  const bare = pathInApp(pathname, base).replace(GERMAN_PATH, "") || "/";
 
   if (target === DEFAULT_LOCALE) {
-    return bare;
+    return `${base}${bare}`;
   }
 
-  return bare === "/" ? `/${GERMAN_SEGMENT}` : `/${GERMAN_SEGMENT}${bare}`;
+  return bare === "/" ? `${base}/${GERMAN_SEGMENT}` : `${base}/${GERMAN_SEGMENT}${bare}`;
 }
 
 /**

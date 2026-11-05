@@ -286,8 +286,13 @@ const USERS = {
  * it, invisible to any other test or window. Reads and writes are wrapped
  * because it throws in a few contexts (a browser set to block site data),
  * where forgetting the session is the right fallback.
+ *
+ * Every PR preview shares one origin, hoferan.github.io, and a tab opened from
+ * one inherits its sessionStorage, so the key carries the base the app is
+ * served from. Otherwise logging into one preview logs into the others
+ * (#353). The base is empty everywhere else, which leaves the key as is.
  */
-const SESSION_KEY = "msw:user";
+const SESSION_KEY = `msw:user${import.meta.env.BASE_URL.replace(/\/$/, "")}`;
 
 function readSession(): MockUser | null {
   try {
@@ -3346,7 +3351,15 @@ const overrides = [
   // Mirrors App\Http\Controllers\Api\ConfigController: `env` and `features`.
   // The calendar flag is on here and off by default on a real server, so the
   // mocked app is where the calendar can be looked at.
-  http.get("/api/v1/config", () => HttpResponse.json({ env: "dev", features: { calendar: true } })),
+  //
+  // A PR preview answers "preview", which no server does, so the ribbon can
+  // say which PR it is and that the data is made up (#353).
+  http.get("/api/v1/config", () =>
+    HttpResponse.json({
+      env: import.meta.env.MODE === "preview" ? "preview" : "dev",
+      features: { calendar: true },
+    }),
+  ),
 
   http.get("/api/v1/me", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
 

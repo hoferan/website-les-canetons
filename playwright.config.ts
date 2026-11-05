@@ -69,7 +69,9 @@ export default defineConfig({
       : {}),
   },
   webServer: {
-    command: `npx vite --config vite.config.ts --mode mock --port ${PORT} --strictPort`,
+    // Its own Vite config, with no file watcher, so an edit during the run
+    // reloads no page under a test (#348).
+    command: `npx vite --config web/e2e/vite.config.ts --mode mock --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
   },
