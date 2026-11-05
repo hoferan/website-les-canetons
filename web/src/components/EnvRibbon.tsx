@@ -1,5 +1,3 @@
-import { type ReactNode } from "react";
-
 /**
  * A colour per env, so a tester knows at a glance which site they are on
  * without reading a word. The carnival colours, with ink text like every
@@ -21,24 +19,16 @@ const ENV_COLOUR: Record<string, string> = {
  * real site, which teaches everyone to ignore ribbons.
  *
  * "preview" is no server's env: only the mocked backend of a PR preview
- * answers it (#353), and the PR number is baked into that build alone. Its
- * label is English in both locales, like the env names, because only
- * developers and reviewers ever see a preview.
+ * answers it (#353), and the PR number is baked into that build alone. It
+ * reads "PR-n": a pull request is all a preview ever is, and the short
+ * label can be large enough to read at a glance.
  */
 export function EnvRibbon({ env }: { env: string }) {
   const colour = ENV_COLOUR[env];
   if (!colour) return null;
 
-  let label: ReactNode = env.toUpperCase();
-  if (env === "preview") {
-    // "Preview" only where the band has room for it; see the sizes below.
-    label = (
-      <>
-        <span className="hidden min-[380px]:inline md:hidden xl:inline">Preview </span>PR-
-        {import.meta.env.VITE_PREVIEW_PR ?? "?"}
-      </>
-    );
-  }
+  const label =
+    env === "preview" ? `PR-${import.meta.env.VITE_PREVIEW_PR ?? "?"}` : env.toUpperCase();
 
   return (
     <>
@@ -54,21 +44,18 @@ export function EnvRibbon({ env }: { env: string }) {
            past the viewport.
 
            The corner holds the end of the band's name on a phone and the
-           language switch from md up, and the band must cover neither. How
-           far it can sit from the corner, and so how long a label it can
-           carry, was measured at each width:
-
-             below 380px      the name runs nearly to the edge: close, "PR-n"
-             380px to md      the phone header leaves room: "Preview PR-n"
-             md to xl         the header spans the width and the switch sits
-                              in the corner: close again, "PR-n"
-             xl and up        the header is centred with a margin: the full
-                              label, larger
+           language switch from md up, where the header spans the width, and
+           the band must cover neither. So it sits close to the corner below
+           xl, and closer and smaller still below 380px, where the name runs
+           nearly to the edge. From xl the header is centred with a margin,
+           and the band moves out and grows. All three were measured from 320
+           to 1440px with a five-digit PR number, the longest label, so
+           "PR-12345" still fits inside the band.
 
            z-[35]: over the header (sticky at z-30 on a phone), under the
            phone menu (z-40). pointer-events none, so a click on whatever the
            band crosses still lands. */
-        className="pointer-events-none fixed top-0 right-0 z-[35] size-[76px] overflow-hidden motion-safe:animate-ribbon-in xl:size-[132px]"
+        className="pointer-events-none fixed top-0 right-0 z-[35] size-[76px] overflow-hidden motion-safe:animate-ribbon-in xl:size-[104px]"
       >
         <div
           /* Its centre sits on the square's diagonal, the same distance from
@@ -77,7 +64,7 @@ export function EnvRibbon({ env }: { env: string }) {
              the right edge. Twice the square's size, so its ends never show.
              The raised ink shadow is the site's buttons'; the dashed outline
              inside the edge is the stitching of a sewn-on ribbon. */
-          className={`absolute top-[17px] right-[17px] w-[152px] translate-x-1/2 -translate-y-1/2 rotate-45 ${colour} py-0.5 text-center font-display text-[8px] leading-tight tracking-wider text-ink uppercase shadow-raised-sm outline-1 -outline-offset-2 outline-ink/50 outline-dashed min-[380px]:top-[29px] min-[380px]:right-[29px] md:top-[21px] md:right-[21px] md:text-[10px] xl:top-[45px] xl:right-[45px] xl:w-[264px] xl:py-1.5 xl:text-xs xl:outline-2 xl:-outline-offset-4`}
+          className={`absolute top-[22px] right-[22px] max-[379px]:top-[16px] max-[379px]:right-[16px] max-[379px]:text-[8px] w-[152px] translate-x-1/2 -translate-y-1/2 rotate-45 ${colour} py-0.5 text-center font-display text-[11px] leading-tight text-ink uppercase shadow-raised-sm outline-1 -outline-offset-2 outline-ink/40 outline-dashed xl:top-[30px] xl:right-[30px] xl:w-[208px] xl:py-1.5 xl:text-base xl:outline-2 xl:-outline-offset-4`}
         >
           {label}
         </div>

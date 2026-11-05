@@ -56,7 +56,7 @@ test("a preview says which PR it is", () => {
     </MemoryRouter>,
   );
 
-  expect(container.textContent).toMatch(/^Preview PR-\S+$/);
+  expect(container.textContent).toMatch(/^PR-\S+$/);
 });
 
 /**
