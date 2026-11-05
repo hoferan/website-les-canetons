@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { t, translateApiError } from "../i18n";
 import { kilobytes } from "../images/kilobytes";
 import { Photo, PHOTO_SIZES } from "../images/Photo";
@@ -304,7 +305,7 @@ export function MediaDetail({
               {nameError.error.message}
             </p>
           ) : null}
-          <div className="flex flex-wrap gap-tight">
+          <FormActions>
             <Button type="submit" aria-disabled={savingName}>
               {savingName ? t("common.busy") : t("common.save")}
             </Button>
@@ -318,7 +319,7 @@ export function MediaDetail({
             >
               {t("common.cancel")}
             </Button>
-          </div>
+          </FormActions>
         </form>
       ) : null}
 

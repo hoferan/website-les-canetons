@@ -306,7 +306,7 @@ function Summary({ site, onReplace }: { site: BundledSite; onReplace: () => void
         <p>{t("website.backupTip")}</p>
         <DownloadButton label={t("website.backupButton")} className="mt-tight" />
       </Notice>
-      <Button type="button" variant="danger" className="mt-related" onClick={onReplace}>
+      <Button type="button" variant="secondary" className="mt-related" onClick={onReplace}>
         <Upload aria-hidden="true" />
         {t("website.replace")}
       </Button>

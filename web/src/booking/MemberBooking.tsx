@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -159,7 +160,7 @@ export function MemberBooking({
 
               <AnswerFields offer={offer} form={typed} messageFor={messageFor} />
 
-              <div className="flex flex-wrap gap-related">
+              <FormActions>
                 <Button
                   type="submit"
                   variant="primary"
@@ -177,7 +178,7 @@ export function MemberBooking({
                     {t("common.cancel")}
                   </Button>
                 ) : null}
-              </div>
+              </FormActions>
             </form>
           </Card>
         ) : mine ? (

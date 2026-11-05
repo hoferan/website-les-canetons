@@ -382,14 +382,6 @@ export function ContactMessages() {
           ) : null}
 
           <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                action.clear();
-                setDeleting(null);
-              }}
-            >
-              {t("common.cancel")}
-            </AlertDialogCancel>
             {/* A plain Button, not AlertDialogAction, which closes the dialog
                 on click: a 412 has to be readable where it happened. */}
             <Button
@@ -403,6 +395,14 @@ export function ContactMessages() {
             >
               {destroy.isPending ? t("common.busy") : t("contactMessages.delete")}
             </Button>
+            <AlertDialogCancel
+              onClick={() => {
+                action.clear();
+                setDeleting(null);
+              }}
+            >
+              {t("common.cancel")}
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -595,7 +595,13 @@ function MessagePanel({
             />
             <label htmlFor={switchId}>{t("contactMessages.handledSwitch")}</label>
           </div>
-          <Button type="button" variant="danger" size="sm" aria-disabled={busy} onClick={onDelete}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            aria-disabled={busy}
+            onClick={onDelete}
+          >
             {t("contactMessages.delete")}
           </Button>
         </div>

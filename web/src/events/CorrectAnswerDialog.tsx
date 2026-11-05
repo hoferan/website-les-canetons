@@ -119,7 +119,6 @@ export function CorrectAnswerDialog({
         <FormError error={error} />
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>{t("common.cancel")}</AlertDialogCancel>
           <Button
             type="button"
             aria-disabled={busy}
@@ -132,6 +131,7 @@ export function CorrectAnswerDialog({
           >
             {busy ? t("common.busy") : t("common.save")}
           </Button>
+          <AlertDialogCancel onClick={onCancel}>{t("common.cancel")}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

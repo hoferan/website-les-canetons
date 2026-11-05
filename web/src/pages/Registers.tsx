@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { IconButton } from "@/components/ui/icon-button";
 
 import { rowsOf } from "../api/collection";
@@ -298,14 +299,14 @@ function RegisterRow({
             problemFor={saving.messageFor}
           />
           <FormError error={saving.error} />
-          <div className="flex flex-wrap gap-tight">
+          <FormActions>
             <Button type="submit" aria-disabled={busy}>
               {t("common.save")}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
               {t("common.cancel")}
             </Button>
-          </div>
+          </FormActions>
         </form>
       )}
 
@@ -396,11 +397,11 @@ function NewRegister({ onCreated }: { onCreated: () => Promise<void> }) {
         problemFor={creating.messageFor}
       />
       <FormError error={creating.error} />
-      <div>
+      <FormActions>
         <Button type="submit" aria-disabled={busy}>
           {t("registers.add")}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

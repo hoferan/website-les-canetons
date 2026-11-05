@@ -109,9 +109,6 @@ export function ConfirmByTypingName({
         <FormError error={error} />
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={close}>
-            {dismissLabel ?? t("common.cancel")}
-          </AlertDialogCancel>
           {/*
             A plain Button, not AlertDialogAction, which closes the dialog on
             click: this action can fail (a 409, a server error) and the message
@@ -130,6 +127,9 @@ export function ConfirmByTypingName({
           >
             {busy ? t("common.busy") : confirmLabel}
           </Button>
+          <AlertDialogCancel onClick={close}>
+            {dismissLabel ?? t("common.cancel")}
+          </AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

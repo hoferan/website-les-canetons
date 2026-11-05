@@ -4,6 +4,7 @@ import { flushSync } from "react-dom";
 import { Link, useLocation, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -302,14 +303,16 @@ export function EventBooking() {
                   onChange={(changed) => setWebsite(changed.target.value)}
                 />
 
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="h-12 px-5 text-base"
-                  aria-disabled={send.isPending}
-                >
-                  {send.isPending ? t("booking.sending") : t("booking.submit")}
-                </Button>
+                <FormActions>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="h-12 px-5 text-base"
+                    aria-disabled={send.isPending}
+                  >
+                    {send.isPending ? t("booking.sending") : t("booking.submit")}
+                  </Button>
+                </FormActions>
               </form>
             </Card>
           </>

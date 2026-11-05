@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 
 import type {
   HistoryEntryResource,
@@ -439,14 +440,14 @@ export function HistoryForm({
 
       <FormError error={error} />
 
-      <div className="flex flex-wrap gap-related">
+      <FormActions>
         <Button type="submit" aria-disabled={busy}>
           {t("common.save")}
         </Button>
         <Button type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

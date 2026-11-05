@@ -143,7 +143,6 @@ export function DeleteHistoryEntry({
         ) : null}
 
         <AlertDialogFooter>
-          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           <Button
             type="button"
             variant="danger"
@@ -152,6 +151,7 @@ export function DeleteHistoryEntry({
           >
             {t("common.delete")}
           </Button>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

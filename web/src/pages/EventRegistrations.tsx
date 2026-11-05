@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { Switch } from "@/components/ui/switch";
 
 import { rowsOf, totalOf } from "../api/collection";
@@ -1127,14 +1128,14 @@ function AmendForm({
 
       <FormError error={error} />
 
-      <div className="flex flex-wrap gap-related">
+      <FormActions>
         <Button type="submit" aria-disabled={busy}>
           {busy ? t("registrations.saving") : t("common.save")}
         </Button>
         <Button type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

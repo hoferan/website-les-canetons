@@ -2,6 +2,7 @@ import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
+import { FormActions } from "@/components/ui/form-actions";
 
 /**
  * VENDORED from shadcn/ui (ADR 0022), shaped like alert-dialog.tsx. The same
@@ -86,6 +87,10 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
+function DialogFooter({ className, ...props }: React.ComponentProps<typeof FormActions>) {
+  return <FormActions className={className} {...props} />;
+}
+
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
@@ -114,6 +119,7 @@ export {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogOverlay,
   DialogTitle,

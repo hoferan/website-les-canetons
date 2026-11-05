@@ -394,7 +394,7 @@ function CardEditor({ id, adding }: Opened) {
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              variant="danger"
+              variant="secondary"
               size="sm"
               className="sm:ml-auto"
               onClick={() => setConfirming(true)}
@@ -413,7 +413,6 @@ function CardEditor({ id, adding }: Opened) {
             <AlertDialogDescription>{t("blockEditor.removeCardBody")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <Button
               type="button"
               variant="danger"
@@ -425,6 +424,7 @@ function CardEditor({ id, adding }: Opened) {
             >
               {t("blockEditor.removeCardConfirm")}
             </Button>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

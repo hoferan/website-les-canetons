@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -252,14 +253,14 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
             problemFor={saving.messageFor}
           />
           <FormError error={saving.error} />
-          <div className="flex flex-wrap gap-tight">
+          <FormActions>
             <Button type="submit" aria-disabled={busy}>
               {t("common.save")}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
               {t("common.cancel")}
             </Button>
-          </div>
+          </FormActions>
         </form>
       )}
 
@@ -290,7 +291,6 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
             ) : null}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel aria-disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
             <Button
               type="button"
               variant="danger"
@@ -302,6 +302,7 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
             >
               {t("common.delete")}
             </Button>
+            <AlertDialogCancel aria-disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -349,11 +350,11 @@ function NewRole({ onCreated }: { onCreated: () => Promise<void> }) {
         problemFor={creating.messageFor}
       />
       <FormError error={creating.error} />
-      <div>
+      <FormActions>
         <Button type="submit" aria-disabled={busy}>
           {t("rolesPage.add")}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

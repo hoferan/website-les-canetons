@@ -4,6 +4,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { cn } from "@/lib/utils";
 
 import { getAuthMeQueryKey, useAccountPassword } from "../api/generated/endpoints";
@@ -159,9 +160,11 @@ export function AccountPassword() {
           {done ? <p className="text-ink-muted">{t("account.changed")}</p> : null}
         </div>
 
-        <Button type="submit" aria-disabled={change.isPending}>
-          {change.isPending ? t("account.changing") : t("account.change")}
-        </Button>
+        <FormActions>
+          <Button type="submit" aria-disabled={change.isPending}>
+            {change.isPending ? t("account.changing") : t("account.change")}
+          </Button>
+        </FormActions>
       </form>
     </PageSection>
   );

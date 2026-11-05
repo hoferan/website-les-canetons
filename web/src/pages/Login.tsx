@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -115,14 +116,16 @@ export function Login() {
 
             <FormError error={error} />
 
-            <Button
-              type="submit"
-              variant="primary"
-              className="h-12 px-5 text-base"
-              aria-disabled={login.isPending}
-            >
-              {login.isPending ? t("auth.signingIn") : t("auth.signIn")}
-            </Button>
+            <FormActions>
+              <Button
+                type="submit"
+                variant="primary"
+                className="h-12 px-5 text-base"
+                aria-disabled={login.isPending}
+              >
+                {login.isPending ? t("auth.signingIn") : t("auth.signIn")}
+              </Button>
+            </FormActions>
           </form>
         </Card>
       </PageSection>

@@ -349,11 +349,6 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
             ))}
           </ul>
           <AlertDialogFooter>
-            {/* The deletes keep running once the dialog is gone, so cancelling
-                mid-batch would hide an outcome the person is waiting for. */}
-            <AlertDialogCancel disabled={deleting} onClick={closeConfirm}>
-              {t("common.cancel")}
-            </AlertDialogCancel>
             {/* A plain Button, not AlertDialogAction, which would close the
                 dialog before the deletes have run. */}
             <Button
@@ -364,6 +359,11 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
             >
               {tags === null || deleting ? t("common.busy") : t("photos.deleteConfirm")}
             </Button>
+            {/* The deletes keep running once the dialog is gone, so cancelling
+                mid-batch would hide an outcome the person is waiting for. */}
+            <AlertDialogCancel disabled={deleting} onClick={closeConfirm}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
