@@ -33,6 +33,22 @@ test.each([
 
 // Only a PR preview's mocked backend answers "preview" (#353). English in
 // both locales: only developers and reviewers see it.
+// The colour is what tells a tester where they are before they read
+// anything, so no two envs may share one.
+test("every env's ribbon has a colour of its own", () => {
+  const colours = ["dev", "test", "qa", "preview"].map((env) => {
+    const { container, unmount } = render(<EnvRibbon env={env} />);
+    const found = [...container.querySelectorAll("div")]
+      .flatMap((el) => [...el.classList])
+      .filter((c) => c.startsWith("bg-"));
+    unmount();
+    return [...new Set(found)].join(" ");
+  });
+
+  expect(colours.every((c) => /^bg-\w+$/.test(c))).toBe(true);
+  expect(new Set(colours).size).toBe(4);
+});
+
 test("a preview says which PR it is", () => {
   const { container } = render(
     <MemoryRouter>
