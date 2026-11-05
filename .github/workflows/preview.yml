@@ -90,9 +90,17 @@ jobs:
         with:
           name: preview-pr-${{ github.event.pull_request.number }}
           path: site
-      # Replaces pr-<n>/ on gh-pages, or removes it when the PR closed. Starts
-      # from a fresh fetch on every attempt, so a push that lost the race to
-      # another PR's simply redoes its one directory on top of theirs.
+      # Replaces pr-<n>/ on gh-pages, or removes it when the PR closed.
+      #
+      # gh-pages is always ONE commit with no parent, holding every open PR's
+      # preview, force-pushed over the last. Each push brings a few MB of new
+      # hashed bundles, and a plain clone fetches every branch, so a history
+      # would grow every checkout for previews nobody opens again.
+      #
+      # The force push carries a lease on the commit it was built from. If
+      # another PR pushed in between, the lease fails, and the next attempt
+      # starts from a fresh fetch and redoes this PR's one directory on top of
+      # theirs. Without the lease, the faster PR's preview would be lost.
       - name: Update gh-pages
         env:
           GH_TOKEN: ${{ github.token }}
@@ -124,8 +132,11 @@ jobs:
               git fetch -q --depth 1 origin gh-pages
               git checkout -q -B gh-pages FETCH_HEAD
               git reset -q --hard FETCH_HEAD
+              lease="gh-pages:$(git rev-parse FETCH_HEAD)"
             elif [ "$status" = 2 ]; then
               git checkout -q --orphan gh-pages
+              # An empty expected value: the branch must still not exist.
+              lease="gh-pages:"
             else
               exit "$status"
             fi
@@ -144,8 +155,8 @@ jobs:
               echo "gh-pages already holds this."
               exit 0
             fi
-            git commit -q -m "$message"
-            if git push -q origin HEAD:gh-pages; then
+            commit=$(git commit-tree "$(git write-tree)" -m "$message")
+            if git push -q --force-with-lease="$lease" origin "$commit:refs/heads/gh-pages"; then
               echo "$message: pushed."
               exit 0
             fi
