@@ -11,6 +11,7 @@ use Dedoc\Scramble\Scramble;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -68,6 +69,16 @@ class AppServiceProvider extends ServiceProvider
             'image-upload',
             fn (Request $request) => Limit::perMinute(60)->by($request->user()->id ?? $request->ip()),
         );
+
+        // Escape Markdown in what a mail template echoes. `{{ }}` escapes
+        // only HTML, so `[text](url)` or `![](url)` typed as a first name
+        // would turn into a working link or a remote image in the booking
+        // confirmation, which goes to whatever address the visitor types: a
+        // phishing relay in the band's own template (#337). Set here, it
+        // covers every Markdown mail, including any added later. A bare
+        // https:// URL still arrives as text, and mail clients link those
+        // themselves.
+        Markdown::withSecuredEncoding();
 
         // Resources go out bare, like /api/v1/config, /api/v1/me and the
         // problem documents, instead of in JsonResource's default {"data": …}
