@@ -22,14 +22,14 @@ test("pushes a quiet action to the end", () => {
   expect(screen.getByTestId("footer")).toHaveClass("sm:[&>[data-variant=quiet]]:ml-auto");
 });
 
-test("keeps the caller's order", () => {
+test("never reverses the caller's order", () => {
+  // DOM order is JSX order, so the real regression is a reverse class that
+  // flips the visual order on a phone or in a row.
   render(
-    <FormActions>
+    <FormActions data-testid="footer">
       <Button>Enregistrer</Button>
       <Button variant="secondary">Annuler</Button>
-      <Button variant="quiet">Rétablir</Button>
     </FormActions>,
   );
-  const names = screen.getAllByRole("button").map((button) => button.textContent);
-  expect(names).toEqual(["Enregistrer", "Annuler", "Rétablir"]);
+  expect(screen.getByTestId("footer").className).not.toMatch(/-reverse/);
 });

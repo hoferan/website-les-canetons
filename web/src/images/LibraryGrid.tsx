@@ -361,7 +361,12 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
             </Button>
             {/* The deletes keep running once the dialog is gone, so cancelling
                 mid-batch would hide an outcome the person is waiting for. */}
-            <AlertDialogCancel disabled={deleting} onClick={closeConfirm}>
+            <AlertDialogCancel
+              aria-disabled={deleting}
+              onClick={() => {
+                if (!deleting) closeConfirm();
+              }}
+            >
               {t("common.cancel")}
             </AlertDialogCancel>
           </AlertDialogFooter>

@@ -366,7 +366,10 @@ test("the delete dialog cannot be cancelled while the deletes run", async () => 
   await user.click(await within(dialog).findByRole("button", { name: "Supprimer" }));
 
   await waitFor(() =>
-    expect(within(dialog).getByRole("button", { name: "Annuler" })).toBeDisabled(),
+    expect(within(dialog).getByRole("button", { name: "Annuler" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    ),
   );
   await user.click(within(dialog).getByRole("button", { name: "Annuler" }));
   expect(screen.getByRole("alertdialog")).toBeInTheDocument();

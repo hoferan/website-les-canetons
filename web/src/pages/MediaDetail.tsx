@@ -489,7 +489,7 @@ export function MediaDetail({
                 {deleteBusy ? t("common.busy") : t("photos.deleteConfirm")}
               </Button>
             )}
-            <AlertDialogCancel disabled={deleteBusy}>
+            <AlertDialogCancel aria-disabled={deleteBusy}>
               {inUse ? t("photos.detail.close") : t("common.cancel")}
             </AlertDialogCancel>
           </AlertDialogFooter>

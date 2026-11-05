@@ -25,7 +25,7 @@ Chosen option: "Role variants plus three components", because a rule that only a
 
 André picked each point below from a rendered mockup at 1280px and at 390px.
 
-- Five variants named by role live in `web/src/components/ui/button.tsx`: `primary`, `secondary`, `danger`, `quiet` and `accent`. Yellow stays for the public call to action and for edit tools, so `accent` never sits in a form footer. `quiet` has no frame and serves an icon inside a field or a link in a sentence.
+- Five variants named by role live in `web/src/components/ui/button.tsx`: `primary`, `secondary`, `danger`, `quiet` and `accent`. Yellow stays for the public call to action and for edit tools, so `accent` never sits in a form footer. `quiet` has no frame and serves an icon inside a field or a link in a sentence. `danger` marks the final confirm of something irreversible, and it also marks a selected "No" answer, as in `AttendanceControls` and `CorrectAnswerDialog`, where it is a state colour.
 - A `surface` of `page` or `stage`. The page is cream and the stage is black, where an ink shadow would vanish, so on the stage the shadow and the focus ring turn pink.
 - One shape. Framed buttons have 12px corners and no size sets a radius of its own.
 - A pressed-in press. A framed button moves onto its shadow when pressed, and the stage's pink shadow does the same. Every button shows a pointer cursor.

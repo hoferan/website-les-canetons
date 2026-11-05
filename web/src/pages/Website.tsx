@@ -112,7 +112,7 @@ function DownloadButton({ label, className }: { label: string; className?: strin
     <>
       <Button
         type="button"
-        variant="accent"
+        variant="primary"
         className={className}
         aria-disabled={progress !== null}
         onClick={() => void download()}
@@ -240,7 +240,7 @@ function ImportCard({
       <div className="mt-related flex flex-wrap items-center gap-x-related gap-y-tight">
         <Button
           type="button"
-          variant="accent"
+          variant="secondary"
           aria-describedby={fileNameId}
           aria-disabled={running}
           onClick={() => {
@@ -336,7 +336,7 @@ function Result({ result }: { result: ImportOutcome }) {
           {t("website.skipped", { name: skipped.registerName })}
         </p>
       ))}
-      <ButtonLink to="/" variant="accent" className="mt-related">
+      <ButtonLink to="/" variant="secondary" className="mt-related">
         {t("website.viewSite")}
       </ButtonLink>
     </div>

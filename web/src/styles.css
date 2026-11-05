@@ -231,6 +231,16 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Tailwind 4 resets buttons to the arrow cursor. Give every enabled button the
+   hand, including the raw ones that do not use buttonVariants. A control that
+   is aria-disabled keeps the arrow. */
+@layer base {
+  button:not(:disabled, [aria-disabled="true"]),
+  [role="button"]:not(:disabled, [aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
 /* The page's own ground and default face. Everything else is a utility class. */
 body {
   background-color: var(--color-ground);
