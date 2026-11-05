@@ -1,3 +1,5 @@
+import { type ReactNode } from "react";
+
 const NON_PROD = ["dev", "test", "qa"];
 
 /**
@@ -13,9 +15,17 @@ const NON_PROD = ["dev", "test", "qa"];
  * developers and reviewers ever see a preview.
  */
 export function EnvRibbon({ env }: { env: string }) {
-  let label: string;
+  let label: ReactNode;
   if (env === "preview") {
-    label = `Preview PR ${import.meta.env.VITE_PREVIEW_PR ?? "?"}, mocked data`;
+    const pr = import.meta.env.VITE_PREVIEW_PR ?? "?";
+    // The whole label is wider than a phone's header leaves free and would
+    // cover the band's name, so a phone gets the PR number alone.
+    label = (
+      <>
+        <span className="sm:hidden">PR {pr}</span>
+        <span className="hidden sm:inline">Preview PR {pr}, mocked data</span>
+      </>
+    );
   } else if (NON_PROD.includes(env)) {
     label = env.toUpperCase();
   } else {
@@ -29,8 +39,11 @@ export function EnvRibbon({ env }: { env: string }) {
          inside the viewport and readable.
 
          z-20, under the nav (z-30) and the phone menu (z-40), so it never
-         covers the language switch or the menu's close button. */
-      className="pointer-events-none fixed top-0 right-0 z-20 rounded-bl bg-danger px-3 py-1 text-xs font-bold tracking-widest text-white shadow-lg"
+         covers the language switch or the menu's close button.
+
+         Shorter on a phone, where the band's name in the header starts 17px
+         from the top and a full-height tab clips its last letters. */
+      className="pointer-events-none fixed top-0 right-0 z-20 rounded-bl bg-danger px-2 py-0.5 text-[10px] leading-tight font-bold tracking-widest text-white shadow-lg sm:px-3 sm:py-1 sm:text-xs sm:leading-4"
     >
       {label}
     </div>

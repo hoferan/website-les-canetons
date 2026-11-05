@@ -40,7 +40,11 @@ test("a preview says which PR it is and that its data is made up", () => {
     </MemoryRouter>,
   );
 
-  expect(container.textContent).toMatch(/^Preview PR .+, mocked data$/);
+  // jsdom applies no Tailwind, so both forms are in the text: the phone's
+  // short one, then the full one shown from sm up.
+  const [phone, wide] = [...container.querySelectorAll("span")].map((s) => s.textContent);
+  expect(phone).toMatch(/^PR \S+$/);
+  expect(wide).toMatch(/^Preview PR \S+, mocked data$/);
 });
 
 /**
