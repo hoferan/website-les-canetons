@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
  *    set no radius of their own.
  *
  * Which controls carry an icon, and which carry only one, is decided in
- * docs/adr/0025-icons-on-controls.md.
+ * docs/adr/0025-icons-on-controls.md, and amended by docs/adr/0040-one-button-system.md.
  */
 const buttonVariants = cva(
   "inline-flex min-h-touch shrink-0 items-center justify-center gap-2 cursor-pointer rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",

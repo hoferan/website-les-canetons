@@ -1,5 +1,6 @@
 ---
 status: accepted
+# Amended by ADR 0040
 date: 2026-10-08
 decision-makers: André Hofer
 ---
