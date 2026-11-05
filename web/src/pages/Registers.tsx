@@ -338,9 +338,6 @@ function RegisterRow({
           <AlertDialogFooter>
             {/* A register somebody is in cannot go, and the server refuses
                 it anyway; offering the button would only earn a 409. */}
-            <AlertDialogCancel aria-disabled={busy}>
-              {inUse ? t("registers.close") : t("common.cancel")}
-            </AlertDialogCancel>
             {inUse ? null : (
               <Button
                 type="button"
@@ -354,6 +351,9 @@ function RegisterRow({
                 {t("common.delete")}
               </Button>
             )}
+            <AlertDialogCancel aria-disabled={busy}>
+              {inUse ? t("registers.close") : t("common.cancel")}
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

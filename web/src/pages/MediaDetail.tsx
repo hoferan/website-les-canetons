@@ -479,9 +479,6 @@ export function MediaDetail({
             {deleteError ? <p className="text-danger">{deleteError}</p> : null}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteBusy}>
-              {inUse ? t("photos.detail.close") : t("common.cancel")}
-            </AlertDialogCancel>
             {inUse ? null : (
               <Button
                 type="button"
@@ -492,6 +489,9 @@ export function MediaDetail({
                 {deleteBusy ? t("common.busy") : t("photos.deleteConfirm")}
               </Button>
             )}
+            <AlertDialogCancel disabled={deleteBusy}>
+              {inUse ? t("photos.detail.close") : t("common.cancel")}
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
