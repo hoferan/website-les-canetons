@@ -34,9 +34,17 @@ import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 import { WEBSITE_PERMISSIONS } from "@/lib/websitePermissions";
 
-import { EditModePill } from "../content/EditMode";
+import { EditModePill, useEditPillShown } from "../content/EditMode";
 import { PUBLIC_NAV } from "../content/publicPages";
 import { useSite } from "../content/blocks/SiteBlock";
+
+/**
+ * Where toasts stand while the edit pill is shown: above it, not on it. The
+ * pill sits 1rem (or the safe-area inset) from the bottom and is 44px tall,
+ * so 4rem more clears it with a gap. Over the pill, a toast took the click
+ * that ends edit mode for as long as the pointer rested on it.
+ */
+const ABOVE_THE_PILL = { bottom: "calc(max(1rem, env(safe-area-inset-bottom)) + 4rem)" };
 
 /**
  * The committee's screens, each gated by the permission that gates the API
@@ -74,6 +82,7 @@ export function Layout() {
   const { config, user, can } = useSession();
   const site = useSite();
   const { pathname } = useLocation();
+  const pillShown = useEditPillShown();
   const [open, setOpen] = useState(false);
   // The colour the page ends on, for the footer's scalloped edge. Null is the
   // cream; see carnival/footerEdge.ts.
@@ -294,7 +303,10 @@ export function Layout() {
 
       {/* Mounted once here, so a toast raised by a mutation survives the
           redirect that follows it. */}
-      <Toaster />
+      <Toaster
+        offset={pillShown ? ABOVE_THE_PILL : undefined}
+        mobileOffset={pillShown ? ABOVE_THE_PILL : undefined}
+      />
     </>
   );
 }
