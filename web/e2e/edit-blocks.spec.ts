@@ -34,7 +34,19 @@ test("the booking number is stored from the contact card on /committee, and Term
   await dialog.getByLabel("Numéro").fill("026 123 45 67");
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.locator("[data-sonner-toast]").getByText("Modifié")).toBeVisible();
+  const toast = page.locator("[data-sonner-toast]");
+  await expect(toast.getByText("Modifié")).toBeVisible();
+
+  // Both sit at the bottom right. A toast over the pill swallows the click
+  // that ends edit mode, for as long as the pointer rests on it. Polled,
+  // because the toast is still sliding in when it becomes visible.
+  const pill = page.getByRole("button", { name: "Terminer la modification" });
+  await expect
+    .poll(async () => {
+      const [toastBox, pillBox] = [await toast.boundingBox(), await pill.boundingBox()];
+      return toastBox !== null && pillBox !== null && toastBox.y + toastBox.height <= pillBox.y;
+    })
+    .toBe(true);
 
   const number = page.getByRole("link", { name: "026 123 45 67" });
   await expect(number).toHaveAttribute("href", "tel:+41261234567");
