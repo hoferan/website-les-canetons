@@ -1,9 +1,9 @@
 import type { z } from "zod";
 
 import type { TranslationKey } from "../i18n";
-import { catalogueString } from "../i18n/catalogueText";
-import { fromCatalogue } from "./translated";
-import { cardsBlock, fieldsBlock, forEditor, heroBlock, siteBlock } from "./types";
+import { catalogueString, catalogueValue } from "../i18n/catalogueText";
+import { fromCatalogue, type Translated } from "./translated";
+import { cardsBlock, forEditor, heroBlock, siteBlock } from "./types";
 
 /**
  * Every content block a page shows, by the key it is stored under.
@@ -33,20 +33,45 @@ function block<S extends z.ZodType>(definition: BlockDefinition<S>): BlockDefini
 /**
  * A hero from its catalogue keys. `mark` and `intro` are left out where the
  * page has no highlight or no paragraph under its heading.
+ *
+ * A title with a German wording gets its German highlight stored even when it
+ * reads the same as the French one ("Canetons"): the German page then reads
+ * the German mark alone (see `trMark`).
  */
 function hero(
-  keys: { title: TranslationKey; mark?: TranslationKey; intro?: TranslationKey },
+  keys: {
+    title: TranslationKey;
+    mark?: TranslationKey;
+    intro?: TranslationKey;
+    /** The buttons under the heading: a public page and the catalogue key of its label. */
+    actions?: Array<{ to: string; label: TranslationKey }>;
+  },
   label: TranslationKey,
 ) {
   return block({
     schema: heroBlock,
+    editSchema: forEditor.heroBlock,
     defaults: () => ({
       title: fromCatalogue(keys.title),
-      ...(keys.mark ? { mark: fromCatalogue(keys.mark) } : {}),
+      ...(keys.mark ? { mark: markOf(keys.title, keys.mark) } : {}),
       ...(keys.intro ? { intro: fromCatalogue(keys.intro) } : {}),
+      ...(keys.actions
+        ? {
+            actions: keys.actions.map((action) => ({
+              label: fromCatalogue(action.label),
+              to: action.to,
+            })),
+          }
+        : {}),
     }),
     label,
   });
+}
+
+function markOf(title: TranslationKey, mark: TranslationKey): Translated {
+  const shipped = fromCatalogue(mark);
+  if (fromCatalogue(title).de === undefined) return shipped;
+  return { fr: shipped.fr, de: catalogueValue("de-CH", mark) ?? shipped.fr };
 }
 
 export const BLOCKS = {
@@ -58,16 +83,29 @@ export const BLOCKS = {
       pitch: fromCatalogue("nav.footerPitch"),
       legalName: catalogueString("site.legalName"),
       networks: [
-        { network: "instagram" as const, url: catalogueString("site.instagramUrl") },
-        { network: "facebook" as const, url: catalogueString("site.facebookUrl") },
-        { network: "flickr" as const, url: catalogueString("site.flickrUrl") },
+        {
+          label: "Instagram",
+          url: catalogueString("site.instagramUrl"),
+          icon: "instagram" as const,
+        },
+        { label: "Facebook", url: catalogueString("site.facebookUrl"), icon: "facebook" as const },
+        { label: "Flickr", url: catalogueString("site.flickrUrl"), icon: "flickr" as const },
       ],
     }),
     label: "blocks.site",
   }),
 
   "home.hero": hero(
-    { title: "home.hero", mark: "home.heroHighlight", intro: "home.heroSub" },
+    {
+      title: "home.hero",
+      mark: "home.heroHighlight",
+      intro: "home.heroSub",
+      // The two things a visitor most often comes to do, as the nav names them.
+      actions: [
+        { to: "/join", label: "nav.join" },
+        { to: "/agenda", label: "nav.agenda" },
+      ],
+    },
     "blocks.home.hero",
   ),
 
@@ -171,10 +209,21 @@ export const BLOCKS = {
   "band.hero": hero({ title: "band.heading", mark: "band.headingHighlight" }, "blocks.band.hero"),
 
   "band.godparents": block({
-    schema: fieldsBlock(["heading", "names"]),
+    schema: cardsBlock,
+    editSchema: forEditor.cardsBlock,
+    // One card with a photo, as the page showed it when it was a fields block.
+    // The photo lives in its own slot, `band.godparents.godparents`.
     defaults: () => ({
-      heading: fromCatalogue("band.patronsHeading"),
-      names: fromCatalogue("band.patrons"),
+      cards: [
+        {
+          id: "godparents",
+          icon: "heart" as const,
+          tint: "pink" as const,
+          title: fromCatalogue("band.patronsHeading"),
+          rows: [{ type: "text" as const, text: fromCatalogue("band.patrons") }],
+          photo: true,
+        },
+      ],
     }),
     label: "blocks.band.godparents",
   }),

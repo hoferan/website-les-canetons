@@ -51,6 +51,14 @@
   --color-lime: #b6f23a;
   --color-lilac: #b9a8ff;
 
+  /* What a raised button turns to on hover: solid, because a see-through hover
+     lets the page behind show through. Each is its colour one step darker,
+     except ink: nothing on the site is darker, so it goes one step lighter. */
+  --color-yellow-hover: #f2bd1f;
+  --color-violet-hover: #3a21b5;
+  --color-danger-hover: #c01712;
+  --color-ink-hover: #3a364c;
+
   /* The raised look: a hard offset shadow under a 3px ink outline, on the
      things a visitor can press. Ink on light surfaces; on the stage, where ink
      would vanish, the -stage shadow is pink. */

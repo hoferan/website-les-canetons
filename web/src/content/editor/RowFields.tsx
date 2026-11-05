@@ -94,7 +94,7 @@ function RowBody({ path }: { path: string }) {
     case "address":
       return (
         <>
-          <TranslatedField name={`${path}.label`} label={t("blockEditor.field.place")} optional />
+          <TranslatedField name={`${path}.label`} label={t("blockEditor.field.place")} />
           <PlainField name={`${path}.address`} label={t("blockEditor.field.address")} />
         </>
       );

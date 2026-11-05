@@ -471,11 +471,9 @@ export const fr = {
     // The external links' whole names. Each says it opens a new tab and
     // begins with the words on screen, so voice control still finds it. The
     // networks' names are brands and stay untranslated.
-    galleryLabel: "Galerie sur Flickr (nouvel onglet)",
-    instagramLabel: "Instagram des Canetons (nouvel onglet)",
-    facebookLabel: "Facebook des Canetons (nouvel onglet)",
-    // The footer's Flickr link, which reads "Flickr" on screen.
-    flickrLabel: "Flickr, la galerie des Canetons (nouvel onglet)",
+    galleryName: "Galerie sur Flickr",
+    // Every external link says it opens a new tab: {{name}} is its name.
+    newTab: "{{name}} (nouvel onglet)",
     followUs: "Suivez-nous",
     footerPitch:
       "La guggen d’enfants de Fribourg, depuis 2002. De 7 à 18 ans, pas besoin de connaître la musique.",
@@ -1509,7 +1507,8 @@ export const fr = {
     slot: {
       band: "Photo du groupe",
       concert: "Photo en concert",
-      godparents: "Parrain et marraine",
+      // The picture beside the home page's heading, where the badge stands until one is placed.
+      homeHero: "Image de l’en-tête",
       history: "Histoire\u00a0: {{title}}",
       // Also the poster's alternative text, wherever the event shows it.
       event: "Affiche\u00a0: {{title}}",
@@ -1596,6 +1595,12 @@ export const fr = {
       deleteInUseTitle: "Cette photo est encore affichée",
       deleteInUse: "Retirez-la d’abord de chacune de ces pages, puis supprimez-la.",
       close: "Fermer",
+      // Beside a place under "Utilisée sur": empties that slot from here, for
+      // a place whose page no longer draws it.
+      removeUsage: "Retirer de cet emplacement",
+      removeUsageNamed: "Retirer de cet emplacement\u00a0: {{place}}",
+      removedUsage: "Photo retirée de « {{place}} ».",
+      removeUsageFailed: "La photo n’a pas pu être retirée.",
     },
   },
 
@@ -1720,7 +1725,6 @@ export const fr = {
     instructors: "Moniteurs :",
     registersNav: "Registres",
     patronsHeading: "Le parrain et la marraine",
-    patronsAlt: "Le parrain et la marraine des Canetons",
     // The names are content; the "et" between them is not, so the whole
     // line is catalogue copy.
     patrons: "Richard Hertig et Annick Bürgisser",
@@ -1823,6 +1827,8 @@ export const fr = {
   blockEditor: {
     // The chip's accessible name; its visible word is common.edit.
     edit: "Modifier : {{label}}",
+    // The link chip on a block that shows data: where that data is managed.
+    managedIn: "Géré dans {{page}}",
     save: "Enregistrer",
     saving: "Enregistrement…",
     reset: "Rétablir l’original",
@@ -1837,6 +1843,8 @@ export const fr = {
     german: "DE",
     addGerman: "+ Deutsch",
     removeGerman: "Retirer l’allemand",
+    // Clears the words picked on the title for the highlight.
+    markNone: "Aucun",
     up: "Monter",
     down: "Descendre",
     remove: "Supprimer",
@@ -1848,8 +1856,9 @@ export const fr = {
     removeCardTitle: "Supprimer cette carte ?",
     removeCardBody: "La carte et ses lignes disparaissent de la page.",
     removeCardConfirm: "Supprimer",
-    moveLeft: "Déplacer à gauche",
-    moveRight: "Déplacer à droite",
+    // The arrows beside a card's chip in edit mode, which reorder the grid.
+    moveCardBefore: "Déplacer « {{title}} » avant",
+    moveCardAfter: "Déplacer « {{title}} » après",
     rowType: {
       text: "Texte",
       labelValue: "Libellé + valeur",
@@ -1870,12 +1879,22 @@ export const fr = {
       title: "Titre",
       mark: "Mots surlignés",
       intro: "Introduction",
-      names: "Noms",
+      photo: "Photo",
+    },
+    // A hero's buttons: a page of the site, or any other address.
+    hero: {
+      buttons: "Boutons",
+      addButton: "Ajouter un bouton",
+      button: "Bouton {{n}}",
+      destination: "Destination",
+      otherLink: "Autre lien (https)",
     },
     httpsExpected: "Une adresse complète est attendue, commençant par https://.",
     phoneInvalid: "Un numéro de téléphone est attendu, par exemple 026 123 45 67.",
     icon: "Icône",
     tint: "Couleur",
+    iconSearch: "Chercher une icône",
+    noIcon: "Aucune icône ne correspond.",
     icons: {
       music: "Musique",
       clock: "Horloge",
@@ -1887,6 +1906,38 @@ export const fr = {
       star: "Étoile",
       info: "Information",
       mail: "Courrier",
+      drum: "Tambour",
+      notes: "Notes",
+      piano: "Piano",
+      mic: "Micro",
+      megaphone: "Mégaphone",
+      "party-popper": "Fête",
+      sparkles: "Étincelles",
+      ticket: "Billet",
+      shirt: "Costume",
+      bus: "Bus",
+      car: "Voiture",
+      train: "Train",
+      utensils: "Repas",
+      beer: "Bière",
+      coffee: "Café",
+      gift: "Cadeau",
+      heart: "Cœur",
+      smile: "Sourire",
+      baby: "Enfant",
+      camera: "Appareil photo",
+      image: "Image",
+      video: "Vidéo",
+      globe: "Globe",
+      link: "Lien",
+      euro: "Argent",
+      trophy: "Trophée",
+      flag: "Drapeau",
+      sun: "Soleil",
+      snowflake: "Neige",
+      house: "Maison",
+      school: "École",
+      check: "Coche",
     },
     tints: {
       pink: "Rose",
@@ -1905,6 +1956,10 @@ export const fr = {
       network: "Réseau",
       networkUrl: "Adresse de la page",
       addNetwork: "Ajouter un réseau",
+      networkName: "Nom du réseau",
+      networkNameExpected: "Un nom est attendu.",
+      networkIcon: "Icône",
+      networkLink: "Lien",
     },
     // Between a row's label and its value: "Lieu : Werkhof".
     separator: " : ",

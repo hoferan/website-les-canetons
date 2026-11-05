@@ -3,7 +3,12 @@ import { expect, test } from "vitest";
 
 import { EDIT_MODE_KEY } from "../content/EditMode";
 import { BLOCKS } from "../content/registry";
-import { setMemberSeat, setMemberVisibility, setMockUser } from "../mocks/handlers";
+import {
+  setMemberSeat,
+  setMemberVisibility,
+  setMockUser,
+  setMockUserWithPermissions,
+} from "../mocks/handlers";
 import { storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
 import { Committee } from "./Committee";
@@ -146,5 +151,41 @@ test("in edit mode the hero and the contact card carry a chip", async () => {
   ).toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: "Modifier : Contact des Canetons" }),
+  ).toBeInTheDocument();
+});
+
+test("in edit mode, the seats link to Membres for whoever may manage members", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  await renderWithSession(<Committee />, { route: "/committee" });
+
+  expect(await screen.findByRole("link", { name: "Géré dans Membres" })).toHaveAttribute(
+    "href",
+    "/members",
+  );
+});
+
+test("the Membres link is absent outside edit mode, and without members.manage", async () => {
+  setMockUser("demo.direction");
+  const { unmount } = await renderWithSession(<Committee />, { route: "/committee" });
+  await screen.findByText("Responsable intendance");
+  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  unmount();
+
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage", "events.manage"]);
+  await renderWithSession(<Committee />, { route: "/committee" });
+  await screen.findByText("Responsable intendance");
+  expect(screen.getByRole("button", { name: "Modifier : Comité · en-tête" })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+});
+
+test("the link says Verwaltet unter Mitglieder on the German page", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
+
+  expect(
+    await screen.findByRole("link", { name: "Verwaltet unter Mitglieder" }),
   ).toBeInTheDocument();
 });

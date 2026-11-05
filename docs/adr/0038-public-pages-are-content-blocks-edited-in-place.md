@@ -57,9 +57,19 @@ lose and reorder cards with nothing new on the server.
   conversion.
 - The SPA owns the block types (`web/src/content/`). Each is a `zod` schema in `types.ts`
   and a renderer in `blocks/`, registered with its default and its editor title in
-  `registry.ts`. The first set is `hero`, `cards` (cards with an icon, a colour, a title and
-  typed rows), `fields` (named fields a component declares) and `site` (the band's name,
-  its pitch, its legal name and its networks, read by the header and the footer).
+  `registry.ts`. The first set is `hero`, `cards` and `site`. A hero has a title, the words
+  of it set on the highlight, an intro on some pages and up to two buttons, each with a label
+  per language and a target that is a public page or an https address. A card has an icon, a
+  colour, a title and typed rows. `site` holds the band's name, its pitch, its legal name
+  and its networks, read by the header and the footer. A network is a name, an https address
+  and an icon chosen from the common brands or a generic link, so the band can add any page
+  it keeps.
+- The highlight is picked by tapping the words of the title, never typed. It is stored as
+  the substring of the title and shows only while the title still contains it, matched on
+  word edges. A hero whose title has a German wording takes its German highlight from the
+  German mark alone and never from the French one, so the picker and the page agree and
+  the German highlight can be removed on its own. Without a German title, the German page
+  uses the French title and the French mark.
 - A block's default is the page as the code ships it, built from `fr.ts`/`de.ts`. An empty
   database shows the site as shipped, and "Rétablir l'original" always has a target. A
   stored block that its type does not accept, saved by another build or under a type that
@@ -78,17 +88,34 @@ lose and reorder cards with nothing new on the server.
   import does not hide the whole block, and a renderer checks a number or a URL again
   before it becomes a link: an odd one shows as plain text.
 - One floating pill on the public pages, "Modifier la page", turns edit mode on, and
-  "Terminer la modification" turns it off. In edit mode each block wears one raised
-  "Modifier" chip on its top right corner. A hero or a card then makes 40px of room above
-  its first line, so the chip covers no text and the lines break as a visitor sees them.
-  A card grid also shows "Ajouter une carte", and each card its own chip. The photo slots follow the
-  same switch. Off, an editor sees the page as a visitor does.
+  "Terminer la modification" turns it off. It is offered to anyone holding `content.manage`,
+  `images.manage` or `history.manage`. Off, an editor sees the page as a visitor does.
+- In edit mode everything changeable wears one chip family, after the photo slot's minimal
+  control: a round pencil at the top right corner of a block, with its label shown on
+  hover or keyboard focus from `sm` up and the icon alone on a phone, so no chip covers a
+  heading. A card grid also shows "Ajouter une carte". Each card has two arrow chips beside
+  its pencil, in one row so the pencil's label pushes them and never covers them. The
+  arrows save at once, with no dialog: the card waits for the save and refetches, and
+  keyboard focus stays on the moved card's arrow. Data a page shows from elsewhere wears a link chip,
+  "Géré dans Membres" or "Géré dans Événements", shown only to someone who holds the
+  permission of the page it leads to: the committee functions, the registers on `/band` and
+  the events on `/agenda`. On `/history`, adding an entry and each entry's edit and delete
+  controls show in edit mode only. The photo slots follow the same switch.
+- Any card may carry a photo. A "Photo" switch in the card editor puts a photo slot under
+  the card's title, keyed `<blockKey>.<cardId>` and edited with the slot control. The
+  godparents on `/band` are such a card. Deleting the card or switching its photo off
+  empties the slot once the block is saved, and the media library lists each page slot an image fills with "Retirer de cet
+  emplacement", so any orphan can be freed for `images.manage`. The home hero's logo is the
+  slot `home.hero`, showing the band's logo until a photo is placed.
 - An editor is one dialog, a bottom sheet on a phone, titled by the block's place
   ("Comité · contact"), built with `react-hook-form` from the parts in
   `web/src/content/editor/`. `BlockEditor` and `useSaveBlock` read and save through the
   block registry. The field parts only need a form around them: the translated field,
-  the plain field, the list with add, move and remove, the row fields, and the icon and
-  colour pickers. The booking form's editor (ADR 0032) is meant to move onto those.
+  the plain field, the list with add, move and remove, the row fields, the word picker,
+  and the icon and colour pickers. The icon picker offers about 40 icons with a search
+  that matches the French or German name and ignores accents. A cleared optional text
+  (a hero's intro or highlight) is stored as absent, so it can be emptied again. The
+  booking form's editor (ADR 0032) is meant to move onto those parts.
 - `content.manage` is a permission of its own, granted by migration to every role that
   held `images.manage`.
 
@@ -106,8 +133,8 @@ lose and reorder cards with nothing new on the server.
 - Bad, because the server cannot check what a block means, so a hand-made request can
   store a block that the SPA then refuses and replaces with the default.
 - Bad, because the band picks icons and colours from fixed sets and cannot invent a new
-  block type; the home page's destination cards, the logo, the theme colours and the set
-  of pages stay code.
+  block type or put a free block on a page; the home page's destination cards, the theme
+  colours and the set of pages stay code.
 - Bad, because the static shell (`index.html`, the PWA manifests) and the logo still name
   the Canetons, so another band would change those in code.
 
@@ -116,8 +143,9 @@ lose and reorder cards with nothing new on the server.
 `ContentBlockTest` pins the API and the shape limits. `registry.test.ts` checks that
 every default fits its type, and `BlocksProvider.test.tsx` that a stored block of the
 wrong shape shows the default. `EditMode.test.tsx` pins the pill and that photo controls
-follow it. `web/e2e/edit-blocks.spec.ts` stores the booking number from the contact card
-on `/committee` and checks the phone link.
+follow it, and `markTokens.test.ts` the word picker's tap rules. `web/e2e/edit-blocks.spec.ts` stores the booking number from the contact card
+on `/committee` and checks the phone link, and that no chip covers a heading,
+a card's arrows or another chip.
 
 ## Pros and Cons of the Options
 

@@ -155,7 +155,10 @@ export function RequiredLegend() {
  * `lang` tells the browser which language to spell-check. `grow` makes a
  * textarea follow its content from three rows up, where `rows` alone would fix
  * it at six. `controlRef` reaches the control itself, for a form library that
- * focuses the first field it refused.
+ * focuses the first field it refused. `action` is a button laid over the
+ * control's right edge, top right on a textarea, the way the password toggle
+ * sits: the content editors clear the German text with one. It is for the
+ * plain input and the textarea, not for a password.
  */
 export function FormField({
   id,
@@ -177,6 +180,7 @@ export function FormField({
   lang,
   grow = false,
   controlRef,
+  action,
 }: {
   id: string;
   label: string;
@@ -197,6 +201,7 @@ export function FormField({
   lang?: string;
   grow?: boolean;
   controlRef?: Ref<HTMLInputElement & HTMLTextAreaElement>;
+  action?: ReactNode;
 }) {
   const browser = useBrowserProblem(label);
   const shown = problem ?? browser.problem;
@@ -234,6 +239,25 @@ export function FormField({
     "aria-describedby": describedBy || undefined,
   };
 
+  // The wrapper exists only with an action, so the field's structure is
+  // otherwise unchanged.
+  const withAction = (control: ReactNode) =>
+    action ? (
+      <div className="relative">
+        {control}
+        <div
+          className={cn(
+            "absolute right-0",
+            as === "textarea" ? "top-0" : "top-1/2 -translate-y-1/2",
+          )}
+        >
+          {action}
+        </div>
+      </div>
+    ) : (
+      control
+    );
+
   const change = (next: string) => {
     browser.clear();
     onChange(next);
@@ -253,45 +277,53 @@ export function FormField({
           </>
         ) : null}
       </div>
-      {as === "textarea" ? (
-        <textarea
-          {...shared}
-          // Growing: a row per line typed, where the browser cannot size the
-          // box to its content itself; where it can, field-sizing also
-          // follows the lines a long paragraph wraps onto.
-          rows={grow ? Math.max(3, value.split("\n").length) : 6}
-          onChange={(event) => change(event.target.value)}
-          className={cn(
-            "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
-            shown || invalid ? "border-danger" : "border-line",
-            grow && "field-sizing-content min-h-[calc(3lh+1rem+2px)]",
-          )}
-        />
-      ) : type === "password" ? (
-        <div className="relative">
+      {withAction(
+        as === "textarea" ? (
+          <textarea
+            {...shared}
+            // Growing: a row per line typed, where the browser cannot size the
+            // box to its content itself; where it can, field-sizing also
+            // follows the lines a long paragraph wraps onto.
+            rows={grow ? Math.max(3, value.split("\n").length) : 6}
+            onChange={(event) => change(event.target.value)}
+            className={cn(
+              "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
+              action && "pr-12",
+              shown || invalid ? "border-danger" : "border-line",
+              grow && "field-sizing-content min-h-[calc(3lh+1rem+2px)]",
+            )}
+          />
+        ) : type === "password" ? (
+          <div className="relative">
+            <Input
+              {...shared}
+              type={revealed ? "text" : "password"}
+              onChange={(event) => change(event.target.value)}
+              // Room for the toggle, which sits over the input's right edge the
+              // way SearchField's clear button does.
+              className="pr-12"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute top-1/2 right-0 -translate-y-1/2"
+              aria-label={t("common.showPassword")}
+              aria-pressed={revealed}
+              aria-controls={id}
+              onClick={() => setRevealed((shown) => !shown)}
+            >
+              {revealed ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+            </Button>
+          </div>
+        ) : (
           <Input
             {...shared}
-            type={revealed ? "text" : "password"}
+            type={type}
             onChange={(event) => change(event.target.value)}
-            // Room for the toggle, which sits over the input's right edge the
-            // way SearchField's clear button does.
-            className="pr-12"
+            className={action ? "pr-12" : undefined}
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute top-1/2 right-0 -translate-y-1/2"
-            aria-label={t("common.showPassword")}
-            aria-pressed={revealed}
-            aria-controls={id}
-            onClick={() => setRevealed((shown) => !shown)}
-          >
-            {revealed ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-          </Button>
-        </div>
-      ) : (
-        <Input {...shared} type={type} onChange={(event) => change(event.target.value)} />
+        ),
       )}
       {hint ? (
         <div id={hintId} className="text-sm text-ink-muted">

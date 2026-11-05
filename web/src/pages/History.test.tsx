@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
+import { EDIT_MODE_KEY } from "../content/EditMode";
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
@@ -12,7 +13,10 @@ import { History } from "./History";
 async function renderHistory(
   locale: Locale = "fr",
   user: Parameters<typeof setMockUser>[0] = null,
+  // The controls show in edit mode only, so a signed-in editor edits by default.
+  editing = user !== null,
 ) {
+  if (editing) sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUser(user);
   await renderWithSession(<History />, { route: "/history", locale });
   return screen.findByTestId("history-timeline");
@@ -52,6 +56,13 @@ test("the importance is announced in the page's own punctuation", async () => {
 test("Ajouter says what it adds to", async () => {
   await renderHistory("fr", "demo.direction");
   expect(screen.getByRole("link", { name: "Ajouter à l’histoire" })).toHaveTextContent("Ajouter");
+});
+
+test("Ajouter leads with its plus, as every add control does", async () => {
+  await renderHistory("fr", "demo.direction");
+  const add = screen.getByRole("link", { name: "Ajouter à l’histoire" });
+  expect(add.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+  expect(add.lastElementChild).toHaveTextContent("Ajouter");
 });
 
 test("the delete dialog names the entry it deletes", async () => {
@@ -326,4 +337,11 @@ test("an entry saved without its photo says so where the editor lands", async ()
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "L’entrée est enregistrée, mais pas sa photo.",
   );
+});
+
+test("an editor outside edit mode sees the timeline and none of its controls", async () => {
+  await renderHistory("fr", "demo.direction", false);
+  expect(screen.queryByRole("link", { name: /Ajouter/ })).toBeNull();
+  expect(screen.queryByRole("link", { name: /^Modifier / })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^Supprimer / })).toBeNull();
 });

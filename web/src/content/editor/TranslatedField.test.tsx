@@ -82,3 +82,41 @@ test("a multiline field grows with its content", async () => {
   expect(french).toHaveAttribute("rows", "5");
   expect(screen.getByRole("dialog")).toBe(dialog);
 });
+
+test("an optional text emptied in both languages stays empty on screen and is not stored", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  const dialog = await renderBlockEditor("join.hero", () => (
+    <TranslatedField name="intro" label="Introduction" multiline />
+  ));
+
+  const french = within(dialog).getByRole("textbox", { name: "Introduction FR" });
+  expect(french).not.toHaveValue("");
+  await user.click(within(dialog).getByRole("button", { name: "Retirer l’allemand" }));
+  await user.clear(french);
+  // Not back to the value the form opened with.
+  expect(within(dialog).getByRole("textbox", { name: "Introduction FR" })).toHaveValue("");
+
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts.length).toBe(1);
+  expect(puts[0]?.body as { data: Record<string, unknown> }).not.toHaveProperty("data.intro");
+});
+
+test("Retirer l'allemand is a clear button inside the German field, and the only one", async () => {
+  const user = userEvent.setup();
+  const dialog = await renderBlockEditor("join.facts", () => (
+    <TranslatedField name="cards.0.title" label="Titre" />
+  ));
+
+  const german = within(dialog).getByRole("textbox", { name: "Titre DE" });
+  const clear = within(german.parentElement as HTMLElement).getByRole("button", {
+    name: "Retirer l’allemand",
+  });
+  // An icon, not a text button under the field.
+  expect(within(dialog).queryByText("Retirer l’allemand")).toBeNull();
+  expect(within(dialog).getAllByRole("button", { name: "Retirer l’allemand" })).toEqual([clear]);
+
+  await user.click(clear);
+  expect(within(dialog).queryByRole("textbox", { name: "Titre DE" })).toBeNull();
+});

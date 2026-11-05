@@ -2,7 +2,11 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { HttpResponse, delay, http } from "msw";
 import { expect, test } from "vitest";
 
+import userEvent from "@testing-library/user-event";
+import { EDIT_MODE_KEY } from "../content/EditMode";
+import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
+import { recordBlockPuts, storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
 import { Home } from "./Home";
 
@@ -127,8 +131,9 @@ test("points every destination card at a public page, in German", async () => {
 test("describes the band's badge in German", async () => {
   await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
 
+  // The badge waits for the photo slots, which the hero picture may replace it with.
   expect(
-    screen.getByRole("img", { name: "Das Logo der Canetons de Fribourg" }),
+    await screen.findByRole("img", { name: "Das Logo der Canetons de Fribourg" }),
   ).toBeInTheDocument();
 });
 
@@ -198,4 +203,170 @@ test("shows the placed concert photo and drops its placeholder", async () => {
   );
   expect(photo).toHaveAttribute("sizes", "(min-width: 704px) 672px, calc(100vw - 32px)");
   expect(container.querySelector('[data-photo-pending="concert"]')).toBeNull();
+});
+
+const heroPhoto = {
+  slot: "home.hero",
+  url: "/api/v1/images/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.jpg",
+  width: 1200,
+  height: 900,
+  srcset:
+    "/api/v1/images/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.jpg 1200w",
+};
+
+function placeHeroPhoto() {
+  server.use(
+    http.get("/api/v1/photo-slots", () =>
+      HttpResponse.json({ meta: { total: 1, limit: 500, offset: 0 }, data: [heroPhoto] }),
+    ),
+  );
+}
+
+const hero = (container: HTMLElement) => container.querySelector<HTMLElement>(".bg-poster")!;
+
+test("the hero's two buttons are the join and agenda pages, as shipped", async () => {
+  const { container } = await renderWithSession(<Home />, { route: "/" });
+
+  const [first, second] = within(hero(container)).getAllByRole("link");
+  expect(first).toHaveTextContent("Nous rejoindre");
+  expect(first).toHaveAttribute("href", "/join");
+  expect(second).toHaveTextContent("Où nous voir");
+  expect(second).toHaveAttribute("href", "/agenda");
+});
+
+test("the hero's buttons read the stored block, in German too", async () => {
+  storeBlock("home.hero", {
+    title: { fr: "Bonjour" },
+    actions: [{ label: { fr: "Photos", de: "Fotos" }, to: "https://www.flickr.com/canetons" }],
+  });
+  const { container } = await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
+
+  const links = within(hero(container)).getAllByRole("link");
+  expect(links).toHaveLength(1);
+  expect(links[0]).toHaveTextContent("Fotos");
+  expect(links[0]).toHaveAttribute("href", "https://www.flickr.com/canetons");
+});
+
+test("a hero emptied of buttons draws no row of them", async () => {
+  storeBlock("home.hero", { title: { fr: "Bonjour" }, actions: [] });
+  const { container } = await renderWithSession(<Home />, { route: "/" });
+
+  await screen.findByRole("heading", { level: 1, name: "Bonjour" });
+  expect(within(hero(container)).queryByRole("link")).toBeNull();
+});
+
+test("the badge stands beside the heading while no picture is placed", async () => {
+  await renderWithSession(<Home />, { route: "/" });
+
+  const logo = await screen.findByRole("img", { name: "Le logo des Canetons de Fribourg" });
+  expect(logo).toHaveAttribute("src", "/assets/img/Les_Canetons_Fribourg_logo_2.jpg");
+  expect(logo.className).toContain("rotate-[4deg]");
+  expect(logo.className).toContain("border-white");
+  expect(screen.queryByRole("button", { name: /Image de l’en-tête/ })).toBeNull();
+});
+
+test("a placed picture takes the badge's frame", async () => {
+  placeHeroPhoto();
+  await renderWithSession(<Home />, { route: "/" });
+
+  // The badge is drawn first and the photo replaces it once the slots answer.
+  const photo = await waitFor(() => {
+    const placed = document.querySelector<HTMLImageElement>(`img[src="${heroPhoto.url}"]`);
+    expect(placed).not.toBeNull();
+    return placed!;
+  });
+  expect(photo.className).toContain("rotate-[4deg]");
+  expect(photo.className).toContain("border-white");
+  expect(photo.className).toContain("w-48");
+  expect(document.querySelector('img[src$="Les_Canetons_Fribourg_logo_2.jpg"]')).toBeNull();
+  // A photograph of the band, not the logo it replaces.
+  expect(photo).toHaveAttribute("alt", "Les Canetons de Fribourg");
+  expect(screen.queryByRole("img", { name: "Le logo des Canetons de Fribourg" })).toBeNull();
+});
+
+test("an editor with edit mode on gets the picture's control, the badge still showing", async () => {
+  setMockUser("demo.direction");
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<Home />, { route: "/" });
+
+  expect(
+    await screen.findByRole("button", { name: "Ajouter une photo — Image de l’en-tête" }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("img", { name: "Le logo des Canetons de Fribourg" })).toHaveAttribute(
+    "src",
+    "/assets/img/Les_Canetons_Fribourg_logo_2.jpg",
+  );
+});
+
+test("the control offers to change a placed picture", async () => {
+  placeHeroPhoto();
+  setMockUser("demo.direction");
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<Home />, { route: "/" });
+
+  expect(
+    await screen.findByRole("button", { name: "Changer la photo — Image de l’en-tête" }),
+  ).toBeInTheDocument();
+});
+
+test("edit mode off, an editor sees the badge as a visitor does", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<Home />, { route: "/" });
+
+  await screen.findByRole("img", { name: "Le logo des Canetons de Fribourg" });
+  expect(screen.queryByRole("button", { name: /Image de l’en-tête/ })).toBeNull();
+});
+
+test("a hero stored before it had buttons keeps the shipped ones", async () => {
+  storeBlock("home.hero", { title: { fr: "Bonjour" } });
+  const { container } = await renderWithSession(<Home />, { route: "/" });
+
+  await screen.findByRole("heading", { level: 1, name: "Bonjour" });
+  const links = within(hero(container)).getAllByRole("link");
+  expect(links.map((link) => link.getAttribute("href"))).toEqual(["/join", "/agenda"]);
+});
+
+test("such a hero, opened in the editor and saved, keeps the shipped buttons", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  storeBlock("home.hero", { title: { fr: "Bonjour" } });
+  setMockUser("demo.direction");
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<Home />, { route: "/" });
+
+  await user.click(await screen.findByRole("button", { name: "Modifier : Accueil · en-tête" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(puts).toHaveLength(1));
+  const data = (puts[0]!.body as { data: { actions: unknown } }).data;
+  expect(data.actions).toEqual([
+    { label: { fr: "Nous rejoindre", de: "Mitmachen" }, to: "/join" },
+    { label: { fr: "Où nous voir", de: "Wo Sie uns sehen" }, to: "/agenda" },
+  ]);
+});
+
+test("the badge is drawn while the photo slots are still loading", async () => {
+  server.use(http.get("/api/v1/photo-slots", () => delay("infinite")));
+  await renderWithSession(<Home />, { route: "/" });
+
+  expect(screen.getByRole("img", { name: "Le logo des Canetons de Fribourg" })).toHaveAttribute(
+    "src",
+    "/assets/img/Les_Canetons_Fribourg_logo_2.jpg",
+  );
+});
+
+test("a placed picture is cropped to the badge's proportions", async () => {
+  placeHeroPhoto();
+  await renderWithSession(<Home />, { route: "/" });
+
+  // The badge is drawn first and the photo replaces it once the slots answer.
+  const photo = await waitFor(() => {
+    const placed = document.querySelector<HTMLImageElement>(`img[src="${heroPhoto.url}"]`);
+    expect(placed).not.toBeNull();
+    return placed!;
+  });
+  expect(photo.className).toContain("aspect-[237/174]");
+  expect(photo.className).toContain("object-cover");
+  expect(photo.className).not.toContain("h-auto");
 });
