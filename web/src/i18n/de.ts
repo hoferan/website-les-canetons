@@ -214,6 +214,15 @@ export const de: typeof fr = {
 
   fields: {
     data: "Inhalt",
+    format: "Dateiversion",
+    blocks: "Inhaltsblöcke",
+    key: "Name des Blocks",
+    slots: "Fotoplätze",
+    slot: "Fotoplatz",
+    sha256: "Foto",
+    photoSha256: "Foto",
+    registerName: "Register",
+    history: "Geschichte",
     date: "Datum",
     title: "Titel",
     startsAt: "Beginn",
@@ -349,6 +358,7 @@ export const de: typeof fr = {
   },
 
   nav: {
+    website: "Website",
     primary: "Hauptnavigation",
     skipToContent: "Zum Inhalt springen",
     menu: "Menü",
@@ -1361,6 +1371,64 @@ export const de: typeof fr = {
   notFound: {
     heading: "Seite nicht gefunden",
     body: "Hoppla! Die gesuchte Seite existiert nicht oder wurde verschoben.",
+  },
+
+  website: {
+    heading: "Website",
+    intro:
+      "Bereiten Sie die Website auf dem Testserver vor und übernehmen Sie sie dann unverändert auf die echte Website.",
+    exportHeading: "Website exportieren",
+    exportBody:
+      "Eine .zip-Datei mit dem Inhalt der Seiten, allen Fotos der Bibliothek, ihren Plätzen und der Geschichte. Keine Mitglieder, keine Anlässe, keine Anmeldungen.",
+    exportButton: "Website herunterladen",
+    exporting: "Datei wird vorbereitet: {{done}} / {{total}} Fotos",
+    exportFailed: "Die Website konnte nicht exportiert werden. Bitte erneut versuchen.",
+    importHeading: "Website importieren",
+    importBody:
+      "Ersetzt den Inhalt der Seiten, die Fotoplätze und die Geschichte dieser Website durch jene der Datei. Die Fotos kommen in die Bibliothek, wo nichts gelöscht wird.",
+    fileLabel: "Datei der Website",
+    chooseFile: ".zip-Datei auswählen…",
+    noFile: "Keine Datei ausgewählt",
+    summaryRegion: "Inhalt der Datei",
+    exportedFromOn: "Datei exportiert von {{host}} am {{date}}",
+    exportedOn: "Datei exportiert am {{date}}",
+    countBlocks_one: "{{count}} Inhaltsblock",
+    countBlocks_other: "{{count}} Inhaltsblöcke",
+    countPhotos_one: "{{count}} Foto",
+    countPhotos_other: "{{count}} Fotos",
+    countSlots_one: "{{count}} Fotoplatz",
+    countSlots_other: "{{count}} Fotoplätze",
+    countHistory_one: "{{count}} Eintrag der Geschichte",
+    countHistory_other: "{{count}} Einträge der Geschichte",
+    backupTip:
+      "Tipp: Laden Sie zuerst die aktuelle Website herunter, damit Sie zur bisherigen Fassung zurückkehren können.",
+    backupButton: "Aktuelle Website herunterladen",
+    replace: "Website ersetzen",
+    confirmTitle: "Die Website {{host}} ersetzen?",
+    confirmBody:
+      "Der Inhalt der Seiten, die Fotoplätze und die Geschichte hier werden durch jene der Datei ersetzt. Anlässe, Mitglieder und Anmeldungen bleiben unverändert.",
+    confirmPhrase: "ERSETZEN",
+    uploading: "Gesendete Fotos: {{done}} / {{total}}",
+    leaveWarning:
+      "Der Import läuft noch. Wenn Sie die Seite jetzt verlassen, wird die Website möglicherweise nicht ersetzt.",
+    done: "Website importiert",
+    doneBlocks_one: "{{count}} Inhaltsblock übernommen",
+    doneBlocks_other: "{{count}} Inhaltsblöcke übernommen",
+    donePhotos_one: "{{count}} Foto zur Bibliothek hinzugefügt",
+    donePhotos_other: "{{count}} Fotos zur Bibliothek hinzugefügt",
+    doneSlots_one: "{{count}} Fotoplatz übernommen",
+    doneSlots_other: "{{count}} Fotoplätze übernommen",
+    doneHistory_one: "{{count}} Eintrag der Geschichte übernommen",
+    doneHistory_other: "{{count}} Einträge der Geschichte übernommen",
+    viewSite: "Website ansehen",
+    skipped: "Ein Foto wurde nicht platziert: Hier gibt es kein Register «{{name}}».",
+    notABundle: "Diese Datei ist keine auf dieser Seite exportierte Website.",
+    unknownFormat:
+      "Diese Datei stammt aus einer anderen Version der Website und kann hier nicht gelesen werden.",
+    missingImage: "In dieser Datei fehlen Fotos. Bitte erneut exportieren.",
+    libraryFull:
+      "Die Bibliothek dieses Servers hat keinen Platz für die Fotos der Datei. Löschen Sie ungenutzte Fotos auf der Seite Medien und versuchen Sie es erneut.",
+    importFailed: "Der Import ist fehlgeschlagen. Die Website ist unverändert.",
   },
 
   blocks: {

@@ -1,9 +1,12 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test } from "vitest";
 
+import { t } from "../i18n";
 import { currentMockUser, setMockUser } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { AppRoutes } from "../routes";
 import { renderWithSession } from "../test/renderWithSession";
 import { EnvRibbon } from "./EnvRibbon";
@@ -147,6 +150,7 @@ test("the desktop menu names who is logged in, then the account, the committee's
     "Médias",
     "Pupitres",
     "Rôles",
+    "Site web",
     "Déconnexion",
   ]);
   // Not back at the login form: the member's own account.
@@ -199,7 +203,16 @@ test("the phone layer puts the member's screens first and the account last", asy
     within(mine)
       .getAllByRole("link")
       .map((link) => link.getAttribute("href")),
-  ).toEqual(["/events", "/event-tags", "/members", "/inbox", "/media", "/registers", "/roles"]);
+  ).toEqual([
+    "/events",
+    "/event-tags",
+    "/members",
+    "/inbox",
+    "/media",
+    "/registers",
+    "/roles",
+    "/website",
+  ]);
   const band = within(layer).getByRole("list", { name: "Le groupe" });
   expect(within(band).getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
 
@@ -207,6 +220,37 @@ test("the phone layer puts the member's screens first and the account last", asy
   const account = within(layer).getByRole("link", { name: "Mon compte" });
   expect(band.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(within(layer).getByRole("button", { name: "Déconnexion" })).toBeInTheDocument();
+});
+
+/**
+ * Both website routes need content.manage, images.manage and history.manage
+ * together, so a role holding only some of them gets neither the entry nor the
+ * page, whose every action would answer 403.
+ */
+test("Site web needs all three website permissions, in the menu and on the route", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  const direction = currentMockUser();
+  if (!direction) throw new Error("demo.direction is missing from the mock");
+  server.use(
+    http.get("/api/v1/me", () =>
+      HttpResponse.json({
+        ...direction,
+        permissions: direction.permissions.filter((one) => one !== "history.manage"),
+      }),
+    ),
+  );
+  await renderWithSession(<AppRoutes />, { route: "/website" });
+
+  expect(await screen.findByRole("heading", { name: t("guards.deniedHeading") })).toBeVisible();
+  await openPhoneMenu(user);
+  const mine = await screen.findByRole("list", { name: "Mon espace" });
+  expect(
+    within(mine)
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href")),
+  ).not.toContain("/website");
+  expect(within(mine).getByRole("link", { name: "Médias" })).toBeInTheDocument();
 });
 
 test("a player's card holds only Événements", async () => {

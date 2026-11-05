@@ -62,3 +62,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0036](0036-a-booking-form-shows-its-tables.md) | Let guests pick a table from the ones already booked, on the public form |
 | [0037](0037-flag-public-submissions-that-look-like-spam.md) | Flag public bookings and messages that carry a link or markup |
 | [0038](0038-public-pages-are-content-blocks-edited-in-place.md) | Edit the public pages block by block, over defaults the code ships |
+| [0039](0039-move-the-website-between-servers.md) | Move the public website between servers as one file, imported all at once |

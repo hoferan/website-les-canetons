@@ -32,6 +32,7 @@ import { Roles } from "./pages/Roles";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
 import { INBOX_PERMISSIONS } from "./lib/inboxPermissions";
+import { WEBSITE_PERMISSIONS } from "./lib/websitePermissions";
 
 // The library's two pages are a chunk of their own: only `images.manage` opens
 // them, and they bring the upload queue and the shrink step. A navigation here
@@ -40,6 +41,11 @@ import { INBOX_PERMISSIONS } from "./lib/inboxPermissions";
 const Media = lazy(() => import("./pages/Media").then((module) => ({ default: module.Media })));
 const MediaDetail = lazy(() =>
   import("./pages/MediaDetail").then((module) => ({ default: module.MediaDetail })),
+);
+// The website export and import pull in a zip library and the upload queue,
+// which only an administrator ever needs (#336).
+const Website = lazy(() =>
+  import("./pages/Website").then((module) => ({ default: module.Website })),
 );
 
 /**
@@ -183,6 +189,18 @@ export function AppRoutes() {
               element={
                 <Suspense fallback={null}>
                   <MediaDetail />
+                </Suspense>
+              }
+            />
+          </Route>
+
+          {/* The whole public site, carried between servers (#336). */}
+          <Route element={<RequirePermission permission={WEBSITE_PERMISSIONS} every />}>
+            <Route
+              path="/website"
+              element={
+                <Suspense fallback={null}>
+                  <Website />
                 </Suspense>
               }
             />

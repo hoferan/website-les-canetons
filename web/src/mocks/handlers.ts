@@ -700,6 +700,8 @@ const GENERATED_PASSWORD = "kanu-7rex-mp34";
 
 /** App\Models\Image's cap, from api.images.capacity. */
 const IMAGE_CAPACITY = 100;
+/** api.images.max_total_bytes. */
+const IMAGE_MAX_BYTES = 150 * 1024 * 1024;
 
 /** How many sizes one upload carries, from api.images.max_parts. */
 const IMAGE_MAX_PARTS = 3;
@@ -1097,6 +1099,12 @@ function refuseWithout(permission: string) {
 }
 
 const refuseWithoutMembersManage = () => refuseWithout("members.manage");
+
+/** The website routes ask for all three, as WebsiteController's middleware does. */
+const refuseWithoutWebsite = () =>
+  refuseWithout("content.manage") ??
+  refuseWithout("images.manage") ??
+  refuseWithout("history.manage");
 
 /** `exists:images,id`, which the real error map leaves on the generic reason. */
 function refuseUnknownImage(imageId: number | null | undefined) {
@@ -3396,6 +3404,157 @@ const overrides = [
     ),
   ),
 
+  // The website as one document, as WebsiteController::export writes it.
+  http.get("/api/v1/website/export", async ({ request }) => {
+    const refusal = refuseWithoutWebsite();
+    if (refusal) {
+      return refusal;
+    }
+    // On the server a size's name is the digest of its bytes. The fixtures'
+    // names are made up, and their file route serves a placeholder, so each
+    // size is named here by the digest of what that route answers; an import
+    // checks it.
+    const servedDigest = new Map<string, string>();
+    for (const image of images) {
+      for (const size of image.sizes) {
+        const bytes = size.data ?? new TextEncoder().encode(placeholderSvg(image, size));
+        servedDigest.set(size.sha256, await sha256Hex(bytes as Uint8Array<ArrayBuffer>));
+      }
+    }
+    const shaOf = (imageId: number) => images.find((image) => image.id === imageId)?.sha256 ?? "";
+    const registerOf = (slot: string) => {
+      const id = /^register-(\d+)$/.exec(slot)?.[1];
+      return id ? (sections.find((section) => section.id === Number(id))?.name ?? null) : null;
+    };
+    return HttpResponse.json({
+      format: 2,
+      exportedAt: new Date().toISOString(),
+      exportedFrom: new URL(request.url).hostname,
+      blocks: Object.keys(blocks)
+        .sort()
+        .map((key) => ({ key, data: blocks[key]!.data })),
+      images: images.map((image) => ({
+        sha256: image.sha256,
+        name: image.name,
+        sizes: [...image.sizes]
+          .sort((a, b) => b.width - a.width)
+          .map((size) => ({
+            width: size.width,
+            height: size.height,
+            sha256: servedDigest.get(size.sha256) ?? size.sha256,
+            url: `/api/v1/images/${size.sha256}.jpg`,
+          })),
+      })),
+      slots: Object.keys(photoSlots)
+        .filter((slot) => !/^(event|history)-\d+$/.test(slot))
+        .sort()
+        .map((slot) => ({
+          slot,
+          sha256: shaOf(photoSlots[slot]!.imageId),
+          label: photoSlots[slot]!.label,
+          path: photoSlots[slot]!.path,
+          registerName: registerOf(slot),
+        })),
+      history: historyEntries.map((entry) => {
+        const placed = photoSlots[`history-${entry.id}`];
+        return {
+          occurredOn: entry.occurredOn,
+          precision: entry.precision,
+          titleFr: entry.titleFr,
+          bodyFr: entry.bodyFr,
+          titleDe: entry.titleDe,
+          bodyDe: entry.bodyDe,
+          important: entry.important,
+          icon: entry.icon,
+          photoSha256: placed ? shaOf(placed.imageId) : null,
+        };
+      }),
+    });
+  }),
+
+  // Replaces the blocks, the slots but event posters, and the history, as
+  // WebsiteImport does. Every photo must already be in the library.
+  http.post("/api/v1/website/import", async ({ request }) => {
+    const refusal = refuseWithoutWebsite();
+    if (refusal) {
+      return refusal;
+    }
+    const body = (await request.json()) as {
+      format: number;
+      blocks: Array<{ key: string; data: unknown }>;
+      slots: Array<{
+        slot: string;
+        sha256: string;
+        label: string | null;
+        path: string | null;
+        registerName?: string | null;
+      }>;
+      history: Array<
+        Omit<HistoryEntryResource, "id" | "createdAt" | "updatedAt"> & {
+          photoSha256: string | null;
+        }
+      >;
+    };
+    if (body.format !== 2) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "format", reason: "invalid_value" },
+      ]);
+    }
+    for (const [index, block] of body.blocks.entries()) {
+      const reason = blockProblem(block.data);
+      if (reason) {
+        return problem(400, "validation_failed", "Invalid form submission", [
+          { field: `blocks.${index}.data`, reason },
+        ]);
+      }
+    }
+    const idOf = (sha256: string) => images.find((image) => image.sha256 === sha256)?.id;
+    const unknown = body.slots.findIndex((slot) => idOf(slot.sha256) === undefined);
+    if (unknown !== -1) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: `slots.${unknown}.sha256`, reason: "invalid_value" },
+      ]);
+    }
+    const skipped: Array<{ slot: string; registerName: string }> = [];
+    const kept = Object.fromEntries(
+      Object.entries(photoSlots).filter(([slot]) => /^event-\d+$/.test(slot)),
+    );
+    for (const slot of body.slots) {
+      let key = slot.slot;
+      if (slot.registerName != null) {
+        const register = sections.find((section) => section.name === slot.registerName);
+        if (!register) {
+          skipped.push({ slot: slot.slot, registerName: slot.registerName });
+          continue;
+        }
+        key = `register-${register.id}`;
+      }
+      kept[key] = { imageId: idOf(slot.sha256)!, label: slot.label, path: slot.path };
+    }
+    blocks = Object.fromEntries(
+      body.blocks.map((block) => [
+        block.key,
+        { data: block.data as Record<string, unknown>, updatedAt: new Date().toISOString() },
+      ]),
+    );
+    const now = new Date().toISOString();
+    historyEntries = body.history.map(({ photoSha256, ...row }) => {
+      const entry = { ...row, id: nextHistoryId++, createdAt: now, updatedAt: now };
+      const imageId = photoSha256 ? idOf(photoSha256) : undefined;
+      if (imageId !== undefined) {
+        kept[`history-${entry.id}`] = { imageId, label: null, path: "/history" };
+      }
+      return entry;
+    });
+    photoSlots = kept;
+    return HttpResponse.json({
+      blocks: body.blocks.length,
+      slots: body.slots.length - skipped.length,
+      history: body.history.length,
+      skipped,
+    });
+  }),
+
   // Public: every changed block, by key, as ContentBlockController lists them.
   http.get("/api/v1/blocks", ({ request }) =>
     collection(
@@ -4536,6 +4695,7 @@ const overrides = [
       count: images.length,
       capacity: IMAGE_CAPACITY,
       bytesTotal: images.reduce((total, image) => total + image.bytes, 0),
+      maxBytes: IMAGE_MAX_BYTES,
     });
   }),
 

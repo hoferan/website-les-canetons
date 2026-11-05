@@ -395,6 +395,7 @@ import type {
   ImageStore409,
   ImageStore507,
   ImageSummary200,
+  ImportWebsiteRequest,
   InboxIndex200,
   InboxIndexParams,
   InboxSummary200,
@@ -482,6 +483,8 @@ import type {
   UpdateImageRequest,
   UpdateMemberRequest,
   UpdateRegistrationRequest,
+  WebsiteExport200,
+  WebsiteImport200,
 } from "./model";
 
 import { customFetch } from "../http";
@@ -14889,6 +14892,336 @@ export const useBlockUpdate = <
   TContext
 > => {
   return useMutation(getBlockUpdateMutationOptions(options), queryClient);
+};
+
+export type websiteExportResponse200 = {
+  data: WebsiteExport200;
+  status: 200;
+};
+
+export type websiteExportResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type websiteExportResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type websiteExportResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type websiteExportResponseSuccess = websiteExportResponse200 & {
+  headers: Headers;
+};
+export type websiteExportResponseError = (
+  websiteExportResponse401 | websiteExportResponse403 | websiteExportResponse503
+) & {
+  headers: Headers;
+};
+
+export type websiteExportResponse = websiteExportResponseSuccess | websiteExportResponseError;
+
+export const getWebsiteExportUrl = () => {
+  return `/website/export`;
+};
+
+/**
+ * A photo travels as the URLs of its stored sizes, which the browser
+ * fetches one by one, so no single answer carries the whole library. A
+ * slot and a history entry name their photo by its SHA-256. An event's
+ * poster is not part of the website, and a history entry's photo comes
+ * with the entry. A register's photo carries the register's name, since
+ * ids differ from one server to the next.
+ *
+ * `exportedFrom` is the host the export was asked of, so the importing
+ * page can say which server a file comes from. A format 2 file written
+ * before it existed has none.
+ * @summary The website as one document. Requires `content.manage`, `images.manage`
+and `history.manage`
+ */
+export const websiteExport = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<websiteExportResponse> => {
+  return customFetch<websiteExportResponse>(getWebsiteExportUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getWebsiteExportQueryKey = () => {
+  return [`/website/export`] as const;
+};
+
+export const getWebsiteExportQueryOptions = <
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getWebsiteExportQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof websiteExport>>> = ({ signal }) =>
+    websiteExport({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof websiteExport>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type WebsiteExportQueryResult = NonNullable<Awaited<ReturnType<typeof websiteExport>>>;
+export type WebsiteExportQueryError = Problem401Response | Problem403Response | Problem503Response;
+
+export function useWebsiteExport<
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof websiteExport>>,
+          TError,
+          Awaited<ReturnType<typeof websiteExport>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useWebsiteExport<
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof websiteExport>>,
+          TError,
+          Awaited<ReturnType<typeof websiteExport>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useWebsiteExport<
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary The website as one document. Requires `content.manage`, `images.manage`
+and `history.manage`
+ */
+
+export function useWebsiteExport<
+  TData = Awaited<ReturnType<typeof websiteExport>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof websiteExport>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getWebsiteExportQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type websiteImportResponse200 = {
+  data: WebsiteImport200;
+  status: 200;
+};
+
+export type websiteImportResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type websiteImportResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type websiteImportResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type websiteImportResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type websiteImportResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type websiteImportResponseSuccess = websiteImportResponse200 & {
+  headers: Headers;
+};
+export type websiteImportResponseError = (
+  | websiteImportResponse400
+  | websiteImportResponse401
+  | websiteImportResponse403
+  | websiteImportResponse419
+  | websiteImportResponse503
+) & {
+  headers: Headers;
+};
+
+export type websiteImportResponse = websiteImportResponseSuccess | websiteImportResponseError;
+
+export const getWebsiteImportUrl = () => {
+  return `/website/import`;
+};
+
+/**
+ * Upload every photo to the library first (POST /images); a photo the
+ * library does not hold refuses the whole import. The content blocks,
+ * the photo slots and the history are replaced in one transaction, so a refused
+ * import changes nothing. No `If-Match`: replacing everything is the
+ * point, and the page asks for a typed confirmation before it sends this.
+ * @summary Replaces this server's website with the one sent. Requires
+`content.manage`, `images.manage` and `history.manage`
+ */
+export const websiteImport = async (
+  importWebsiteRequest: ImportWebsiteRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<websiteImportResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<websiteImportResponse>(getWebsiteImportUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(importWebsiteRequest),
+  });
+};
+
+export const getWebsiteImportMutationKey = () => ["websiteImport"] as const;
+
+export const getWebsiteImportMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof websiteImport>>,
+    TError,
+    WebsiteImportMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof websiteImport>>,
+  TError,
+  WebsiteImportMutationVariables,
+  TContext
+> => {
+  const mutationKey = getWebsiteImportMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof websiteImport>>,
+    WebsiteImportMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return websiteImport(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type WebsiteImportMutationResult = NonNullable<Awaited<ReturnType<typeof websiteImport>>>;
+export type WebsiteImportMutationBody = ImportWebsiteRequest;
+export type WebsiteImportMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem419Response
+  | Problem503Response;
+export type WebsiteImportMutationVariables = { data: ImportWebsiteRequest };
+
+/**
+ * @summary Replaces this server's website with the one sent. Requires
+`content.manage`, `images.manage` and `history.manage`
+ */
+export const useWebsiteImport = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof websiteImport>>,
+      TError,
+      WebsiteImportMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof websiteImport>>,
+  TError,
+  WebsiteImportMutationVariables,
+  TContext
+> => {
+  return useMutation(getWebsiteImportMutationOptions(options), queryClient);
 };
 
 export type configShowResponse200 = {

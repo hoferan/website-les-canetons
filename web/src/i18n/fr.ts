@@ -242,6 +242,17 @@ export const fr = {
   },
   fields: {
     data: "Contenu",
+    // A website bundle (POST /website/import). A refusal here means the file
+    // was made by something other than the export, or by another version.
+    format: "Version du fichier",
+    blocks: "Blocs de contenu",
+    key: "Nom du bloc",
+    slots: "Emplacements de photo",
+    slot: "Emplacement de photo",
+    sha256: "Photo",
+    photoSha256: "Photo",
+    registerName: "Registre",
+    history: "Historique",
     date: "Date",
     title: "Titre",
     startsAt: "Début",
@@ -437,6 +448,7 @@ export const fr = {
   },
 
   nav: {
+    website: "Site web",
     primary: "Navigation principale",
     // The first thing a Tab reaches on every page, hidden until focused.
     skipToContent: "Aller au contenu",
@@ -1951,6 +1963,64 @@ export const fr = {
     },
     // Between a row's label and its value: "Lieu : Werkhof".
     separator: " : ",
+  },
+
+  /** /website: the public site carried from one server to another (#336). */
+  website: {
+    heading: "Site web",
+    intro: "Préparez le site sur le serveur de test, puis reprenez-le tel quel sur le vrai site.",
+    exportHeading: "Exporter le site",
+    exportBody:
+      "Un fichier .zip avec le contenu des pages, toutes les photos de la bibliothèque, leurs emplacements et l’historique. Ni membres, ni événements, ni inscriptions.",
+    exportButton: "Télécharger le site",
+    exporting: "Préparation du fichier : {{done}} / {{total}} photos",
+    exportFailed: "Le site n’a pas pu être exporté. Réessayez.",
+    importHeading: "Importer un site",
+    importBody:
+      "Remplace le contenu des pages, les emplacements de photo et l’historique de ce site par ceux du fichier. Les photos s’ajoutent à la bibliothèque, où rien n’est supprimé.",
+    // The file input's own name; the button beside it opens it.
+    fileLabel: "Fichier du site",
+    chooseFile: "Choisir le fichier .zip…",
+    noFile: "Aucun fichier choisi",
+    summaryRegion: "Contenu du fichier",
+    exportedFromOn: "Fichier exporté de {{host}} le {{date}}",
+    // A file written before the export named its server.
+    exportedOn: "Fichier exporté le {{date}}",
+    countBlocks_one: "{{count}} bloc de contenu",
+    countBlocks_other: "{{count}} blocs de contenu",
+    countPhotos_one: "{{count}} photo",
+    countPhotos_other: "{{count}} photos",
+    countSlots_one: "{{count}} emplacement de photo",
+    countSlots_other: "{{count}} emplacements de photo",
+    countHistory_one: "{{count}} entrée d’historique",
+    countHistory_other: "{{count}} entrées d’historique",
+    backupTip: "Conseil : téléchargez d’abord le site actuel pour pouvoir revenir en arrière.",
+    backupButton: "Télécharger le site actuel",
+    replace: "Remplacer le site",
+    confirmTitle: "Remplacer le site {{host}} ?",
+    confirmBody:
+      "Le contenu des pages, les emplacements de photo et l’historique d’ici seront remplacés par ceux du fichier. Les événements, les membres et les inscriptions ne changent pas.",
+    confirmPhrase: "REMPLACER",
+    uploading: "Photos envoyées : {{done}} / {{total}}",
+    leaveWarning:
+      "L’import est en cours. Si vous quittez la page maintenant, le site risque de ne pas être remplacé.",
+    done: "Site importé",
+    doneBlocks_one: "{{count}} bloc de contenu repris",
+    doneBlocks_other: "{{count}} blocs de contenu repris",
+    donePhotos_one: "{{count}} photo ajoutée à la bibliothèque",
+    donePhotos_other: "{{count}} photos ajoutées à la bibliothèque",
+    doneSlots_one: "{{count}} emplacement de photo repris",
+    doneSlots_other: "{{count}} emplacements de photo repris",
+    doneHistory_one: "{{count}} entrée d’historique reprise",
+    doneHistory_other: "{{count}} entrées d’historique reprises",
+    viewSite: "Voir le site",
+    skipped: "Une photo n’a pas été placée : il n’y a pas de registre « {{name}} » ici.",
+    notABundle: "Ce fichier n’est pas un fichier de site exporté depuis cette page.",
+    unknownFormat: "Ce fichier vient d’une autre version du site et ne peut pas être lu ici.",
+    missingImage: "Il manque des photos dans ce fichier. Exportez-le à nouveau.",
+    libraryFull:
+      "La bibliothèque de ce serveur n’a pas la place pour les photos du fichier. Supprimez des photos inutilisées sur la page Médias, puis réessayez.",
+    importFailed: "L’import a échoué. Le site n’a pas changé.",
   },
 
   /**

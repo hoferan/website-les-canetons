@@ -379,6 +379,8 @@ import type {
   SectionIndex200,
   SectionReorder200,
   SectionResource,
+  WebsiteExport200,
+  WebsiteImport200,
 } from "./model";
 
 export const getAuthLoginResponseMock = (
@@ -2403,6 +2405,7 @@ export const getImageSummaryResponseMock = (
   count: faker.number.int({ min: 0 }),
   capacity: faker.number.int(),
   bytesTotal: faker.number.int(),
+  maxBytes: faker.number.int(),
   ...overrideResponse,
 });
 
@@ -2536,6 +2539,96 @@ export const getBlockUpdateResponseMock = (
     },
     null,
   ]),
+  ...overrideResponse,
+});
+
+export const getWebsiteExportResponseMock = (
+  overrideResponse: Partial<Extract<WebsiteExport200, object>> = {},
+): WebsiteExport200 => ({
+  format: 2,
+  exportedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  exportedFrom: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  blocks: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      data: {
+        [faker.string.alphanumeric(5)]: {},
+      },
+    }),
+  ),
+  images: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      sha256: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      sizes: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({
+          width: faker.number.int(),
+          height: faker.number.int(),
+          sha256: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        }),
+      ),
+    }),
+  ),
+  slots: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    slot: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    sha256: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    label: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    path: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    registerName: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+  })),
+  history: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      occurredOn: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      precision: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      titleFr: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      bodyFr: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      titleDe: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      bodyDe: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      important: faker.datatype.boolean(),
+      icon: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      photoSha256: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getWebsiteImportResponseMock = (
+  overrideResponse: Partial<Extract<WebsiteImport200, object>> = {},
+): WebsiteImport200 => ({
+  blocks: faker.number.int(),
+  slots: faker.number.int(),
+  history: faker.number.int(),
+  skipped: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      slot: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      registerName: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+    }),
+  ),
   ...overrideResponse,
 });
 
@@ -4671,6 +4764,54 @@ export const getBlockUpdateMockHandler = (
   );
 };
 
+export const getWebsiteExportMockHandler = (
+  overrideResponse?:
+    | WebsiteExport200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<WebsiteExport200> | WebsiteExport200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "/api/v1/website/export",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWebsiteExportResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWebsiteImportMockHandler = (
+  overrideResponse?:
+    | WebsiteImport200
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<WebsiteImport200> | WebsiteImport200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "/api/v1/website/import",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWebsiteImportResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getConfigShowMockHandler = (
   overrideResponse?:
     | ConfigShow200
@@ -4895,6 +5036,8 @@ export const getLesCanetonsAPIMock = () => [
   getImageReplaceMockHandler(),
   getBlockIndexMockHandler(),
   getBlockUpdateMockHandler(),
+  getWebsiteExportMockHandler(),
+  getWebsiteImportMockHandler(),
   getConfigShowMockHandler(),
   getPhotoSlotIndexMockHandler(),
   getPhotoSlotUpdateMockHandler(),

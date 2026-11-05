@@ -33,6 +33,10 @@ import { t, type TranslatedError } from "../i18n";
  * Issuing a new password can be done again, and an event deleted a minute
  * after creation costs a minute, so those only ask for a press.
  *
+ * Case does not count. The phrase is there to make someone read what they
+ * confirm, and a phone keyboard that starts the field in lower case should
+ * not get in the way; the field asks the keyboard for capitals anyway.
+ *
  * The action button is never `disabled`, which would blur focus to <body>
  * mid-submit. `aria-disabled` plus the early return prevents a double submit.
  */
@@ -57,7 +61,7 @@ export function ConfirmByTypingName({
    * (cancelling a booking, in French). Defaults to common.cancel.
    */
   dismissLabel?: string;
-  /** When given, the action stays inert until this exact text is typed. */
+  /** When given, the action stays inert until this text is typed, in any case. */
   confirmPhrase?: string;
   busy: boolean;
   error: TranslatedError | null;
@@ -66,7 +70,9 @@ export function ConfirmByTypingName({
 }) {
   const [typed, setTyped] = useState("");
 
-  const armed = confirmPhrase === undefined || typed.trim() === confirmPhrase;
+  const armed =
+    confirmPhrase === undefined ||
+    typed.trim().toLocaleLowerCase() === confirmPhrase.toLocaleLowerCase();
 
   function close() {
     // Never leave a typed value in state behind a closed dialog.
@@ -96,6 +102,7 @@ export function ConfirmByTypingName({
             value={typed}
             onChange={setTyped}
             autoComplete="off"
+            autoCapitalize="characters"
           />
         )}
 
