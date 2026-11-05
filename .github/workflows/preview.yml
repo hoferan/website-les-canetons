@@ -124,14 +124,78 @@ jobs:
             message="Preview PR #$PR at ${SHA::7}"
           fi
 
+          # The open PRs' titles and branches, for the index. Read once: the
+          # loop below may run several times, the list does not change.
+          prs="$PWD/../open-prs.json"
+          gh pr list --repo "$REPO" --state open --limit 200 \
+            --json number,title,headRefName,url > "$prs"
+
+          # index.html at the root lists every preview on the branch, newest
+          # PR first. Built from the pr-* directories actually there, so it
+          # cannot list a preview that is gone. Titles are whatever a PR's
+          # author typed, so @html escapes every value put into the page.
+          write_index() {
+            local numbers items
+            numbers=$(find . -maxdepth 1 -type d -name 'pr-*' | sed 's#^\./pr-##' \
+              | { grep -E '^[0-9]+$' || true; } | sort -rn | jq -R 'tonumber' | jq -s .)
+            items=$(jq -r --argjson numbers "$numbers" '
+              (map({key: (.number | tostring), value: .}) | from_entries) as $open
+              | $numbers[]
+              | ($open[tostring] // {number: ., title: "(closed)", headRefName: "", url: ""}) as $p
+              | @html "<li><a class=\"title\" href=\"pr-\(.)/\">\($p.title)</a><span class=\"meta\">#\(.) \($p.headRefName)</span><span class=\"links\"><a href=\"pr-\(.)/\">FR</a><a href=\"pr-\(.)/de/\">DE</a><a href=\"\($p.url)\">PR</a></span></li>"
+            ' "$prs")
+            if [ -z "$items" ]; then
+              items='<li class="none">No open previews.</li>'
+            fi
+            cat > index.html <<HTML
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <meta name="robots" content="noindex" />
+              <title>PR previews</title>
+              <style>
+                body { margin: 0; background: #0b0b14; color: #fff; font: 16px/1.5 system-ui, sans-serif; }
+                main { max-width: 44rem; margin: 0 auto; padding: 2.5rem 1rem; }
+                h1 { margin: 0; font-size: 1.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+                p { color: #b9b9c8; margin: .5rem 0 2rem; }
+                ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+                li { display: grid; gap: .25rem; padding: 1rem 1.25rem; border-radius: .75rem; background: #17172a; border-left: 4px solid #e0201a; }
+                li.none { border-left-color: #55556a; color: #b9b9c8; }
+                a { color: #fff; }
+                .title { font-weight: 700; font-size: 1.05rem; text-decoration: none; }
+                .title:hover { text-decoration: underline; }
+                .meta { color: #b9b9c8; font-size: .875rem; overflow-wrap: anywhere; }
+                .links { display: flex; gap: .5rem; margin-top: .25rem; }
+                .links a { padding: .125rem .625rem; border: 1px dashed #ffffffb0; border-radius: .375rem; font-size: .8rem; font-weight: 700; text-decoration: none; }
+                .links a:hover { background: #e0201a; border-style: solid; }
+              </style>
+            </head>
+            <body>
+              <main>
+                <h1>PR previews</h1>
+                <p>One running copy of the SPA per open pull request, against mocked data. Log in with any demo account, password <code>demo</code>.</p>
+                <ul>
+          ${items}
+                </ul>
+              </main>
+            </body>
+          </html>
+          HTML
+          }
+
           for attempt in 1 2 3 4 5; do
             # Exit code 2 is "no such branch": the first preview ever.
             status=0
             git ls-remote --exit-code origin gh-pages > /dev/null || status=$?
             if [ "$status" = 0 ]; then
               git fetch -q --depth 1 origin gh-pages
-              git checkout -q -B gh-pages FETCH_HEAD
-              git reset -q --hard FETCH_HEAD
+              # Forced and cleaned: after a lost race the tree still holds the
+              # failed attempt, index.html included, which a plain checkout
+              # refuses to overwrite.
+              git checkout -q -f -B gh-pages FETCH_HEAD
+              git clean -q -fdx
               lease="gh-pages:$(git rev-parse FETCH_HEAD)"
             elif [ "$status" = 2 ]; then
               git checkout -q --orphan gh-pages
@@ -149,6 +213,7 @@ jobs:
               # underscore, which a bundler's chunk names can.
               touch .nojekyll
             fi
+            write_index
 
             git add -A
             if git diff --cached --quiet; then
