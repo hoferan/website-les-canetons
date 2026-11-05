@@ -1,3 +1,5 @@
+import { defineConfig } from "vite";
+
 import base from "../../vite.config";
 
 /**
@@ -10,13 +12,16 @@ import base from "../../vite.config";
  * after saving one. Without a watcher Vite never hears of the edit, and the
  * run keeps serving the code it started with.
  *
- * The object is spread because mergeConfig skips null values: it would drop
- * `watch: null` and leave the watcher on.
+ * The root config is a function of the mode (its preview mode is the PR
+ * preview, #353), so it is called here with this run's mode and env, then
+ * the result is spread. Spread rather than merged because mergeConfig skips
+ * null values: it would drop `watch: null` and leave the watcher on.
  *
  * A server already listening on the port is reused instead
  * (playwright.config.ts), and that one still reloads.
  */
-export default {
-  ...base,
-  server: { ...base.server, watch: null },
-};
+export default defineConfig((env) => {
+  const config = base(env);
+
+  return { ...config, server: { ...config.server, watch: null } };
+});
