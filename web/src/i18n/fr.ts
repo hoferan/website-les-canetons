@@ -1890,8 +1890,8 @@ export const fr = {
       intro: "Introduction",
       photo: "Photo",
     },
-    // A hero's buttons: a page of the site, or any other address.
-    hero: {
+    // A block's buttons (a hero's, the footer's): a page of the site, or any other address.
+    actions: {
       buttons: "Boutons",
       addButton: "Ajouter un bouton",
       button: "Bouton {{n}}",

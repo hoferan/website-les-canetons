@@ -21,6 +21,7 @@ export function ButtonLink({
   children,
   external = false,
   variant = "primary",
+  surface = "page",
   className,
   ariaLabel,
   id,
@@ -29,6 +30,8 @@ export function ButtonLink({
   children: React.ReactNode;
   external?: boolean;
   variant?: React.ComponentProps<typeof Button>["variant"];
+  /** `stage` on the black: the footer's buttons. */
+  surface?: React.ComponentProps<typeof Button>["surface"];
   className?: string;
   /**
    * A fuller accessible name than the visible text, for a control repeated
@@ -41,7 +44,7 @@ export function ButtonLink({
   id?: string;
 }) {
   return (
-    <Button asChild variant={variant} className={className}>
+    <Button asChild variant={variant} surface={surface} className={className}>
       {external ? (
         <a id={id} href={to} target="_blank" rel="noreferrer" aria-label={ariaLabel}>
           {children}

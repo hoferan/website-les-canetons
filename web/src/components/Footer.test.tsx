@@ -116,7 +116,9 @@ test("an editor removes a network from the footer's site editor, and it leaves n
   expect(within(footer).getAllByRole("button", { name: /Modifier/ })).toHaveLength(1);
   await user.click(within(footer).getByRole("button", { name: "Modifier les infos du site" }));
   const dialog = await screen.findByRole("dialog", { name: "Infos du site" });
-  const instagram = within(dialog).getAllByRole("listitem")[0]!;
+  const instagram = within(within(dialog).getByRole("group", { name: "Réseaux" })).getAllByRole(
+    "listitem",
+  )[0]!;
   await user.click(within(instagram).getByRole("button", { name: "Supprimer" }));
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
@@ -147,18 +149,119 @@ test("edit mode stays off outside the public pages", async () => {
   expect(screen.queryByRole("button", { name: "Modifier les infos du site" })).toBeNull();
 });
 
-test("the footer's chip is the shared corner chip, over the footer and out of its flow", async () => {
+test("the footer's chip floats over the footer, out of its flow", async () => {
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/join" });
 
   const footer = screen.getByRole("contentinfo");
   const chip = within(footer).getByRole("button", { name: "Modifier les infos du site" });
-  expect(chip).toHaveClass("absolute");
   expect(chip).toHaveTextContent("Modifier les infos du site");
-  // The footer is the chip's positioning parent.
+  // Placed by a wrapper below the scallops, whose positioning parent is the footer.
+  expect(chip.parentElement).toHaveClass("absolute");
   expect(footer).toHaveClass("relative");
-  expect(chip.parentElement).toBe(footer);
+  expect(chip.parentElement?.parentElement).toBe(footer);
+});
+
+/** The footer's buttons: its links that are neither a network nor the logo. */
+function buttons() {
+  return within(screen.getByRole("contentinfo"))
+    .getAllByRole("link")
+    .filter((link) => link.hasAttribute("data-variant"));
+}
+
+test("the footer ships with its two buttons, to /join and /contact", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/agenda" });
+
+  expect(buttons().map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+    ["Nous rejoindre", "/join"],
+    ["Contact", "/contact"],
+  ]);
+});
+
+test("a site block stored before the footer had buttons keeps the shipped two", async () => {
+  const older: Partial<typeof shipped> = { ...shipped, name: "Les Petits Canards" };
+  delete older.actions;
+  storeBlock("site", older);
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+
+  const footer = screen.getByRole("contentinfo");
+  expect(within(footer).getByText("Les Petits Canards")).toBeInTheDocument();
+  expect(buttons().map((link) => link.textContent)).toEqual(["Nous rejoindre", "Contact"]);
+});
+
+test("the stored buttons replace the shipped ones, in German too", async () => {
+  storeBlock(
+    "site",
+    site({
+      actions: [
+        { label: { fr: "Notre agenda", de: "Unsere Agenda" }, to: "/agenda" },
+        { label: { fr: "Photos", de: "Fotos" }, to: "https://www.flickr.com/canetons" },
+      ],
+    }),
+  );
+  await renderWithSession(<AppRoutes />, { route: "/join", locale: "de-CH" });
+
+  const [agenda, photos] = buttons();
+  expect(buttons()).toHaveLength(2);
+  expect(agenda).toHaveTextContent("Unsere Agenda");
+  // The router adds the /de basename in the app; the test router has none.
+  expect(agenda).toHaveAttribute("href", "/agenda");
+  expect(agenda).not.toHaveAttribute("target");
+  // An address elsewhere opens a new tab and says so, as the networks do.
+  expect(photos).toHaveTextContent("Fotos");
+  expect(photos).toHaveAttribute("href", "https://www.flickr.com/canetons");
+  expect(photos).toHaveAttribute("target", "_blank");
+  expect(photos).toHaveAttribute("rel", "noreferrer");
+  expect(photos).toHaveAccessibleName("Fotos (neuer Tab)");
+});
+
+test("a footer emptied of buttons draws none, and a stored javascript: target never becomes a link", async () => {
+  storeBlock("site", site({ actions: [] }));
+  const { unmount } = await renderWithSession(<AppRoutes />, { route: "/join" });
+  expect(buttons()).toHaveLength(0);
+  unmount();
+
+  storeBlock("site", site({ actions: [{ label: { fr: "Piège" }, to: "javascript:alert(1)" }] }));
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+  expect(buttons()).toHaveLength(0);
+  expect(document.querySelector("a[href^='javascript:']")).toBeNull();
+});
+
+test("an editor changes a footer button, removes the other, and restores both", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+
+  const footer = screen.getByRole("contentinfo");
+  await user.click(within(footer).getByRole("button", { name: "Modifier les infos du site" }));
+  let dialog = await screen.findByRole("dialog", { name: "Infos du site" });
+  const buttonsField = within(dialog).getByRole("group", { name: "Boutons" });
+  const [first, second] = within(buttonsField).getAllByRole("listitem");
+  const label = within(first!).getByRole("textbox", { name: "Libellé FR" });
+  await user.clear(label);
+  await user.type(label, "Viens jouer");
+  await user.click(within(second!).getByRole("button", { name: "Supprimer" }));
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(buttons().map((link) => link.textContent)).toEqual(["Viens jouer"]));
+  expect(puts[0]?.body).toEqual({
+    data: {
+      ...shipped,
+      actions: [{ label: { ...shipped.actions![0]!.label, fr: "Viens jouer" }, to: "/join" }],
+    },
+  });
+
+  await user.click(within(footer).getByRole("button", { name: "Modifier les infos du site" }));
+  dialog = await screen.findByRole("dialog", { name: "Infos du site" });
+  await user.click(within(dialog).getByRole("button", { name: "Rétablir l’original" }));
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() =>
+    expect(buttons().map((link) => link.textContent)).toEqual(["Nous rejoindre", "Contact"]),
+  );
 });
 
 test("each network is a link named after it, with the icon the band picked", async () => {
