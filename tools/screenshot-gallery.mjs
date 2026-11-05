@@ -1,13 +1,13 @@
 // Writes dist/screenshots/index.html, one page showing every picture the
-// screenshot sweep (#42) took, so a reviewer who downloads the artifact opens
-// one file instead of clicking through a folder per width and login (#321).
+// screenshot sweep (#42) took, so you open one file instead of clicking
+// through a folder per width and login (#321). `npm run screenshots` runs it.
 //
 // Built from the files on disk, not from web/screenshots/pages.json: a sweep
-// that failed halfway uploads what it took, and the gallery must show exactly
-// that. The page list only supplies each picture's route and heading.
+// that failed halfway still leaves what it took, and the gallery must show
+// exactly that. The page list only supplies each picture's route and heading.
 //
 // Self-contained on purpose: relative links, inline CSS, no script, so it works
-// straight out of the unzipped artifact and offline.
+// straight from the folder and offline.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -203,8 +203,8 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
   const title = process.env.GALLERY_TITLE || "Screenshots";
 
   const groups = collect(dir, pages);
-  // Written even when the sweep took nothing, so the artifact still says so
-  // and the PR comment does not keep pointing at an older run's pictures.
+  // Written even when the sweep took nothing, so the page says so instead of
+  // still showing an older run's pictures.
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "index.html"), render(groups, { title }));
 

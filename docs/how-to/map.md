@@ -81,9 +81,10 @@ what it cannot, such as the ESLint access rule below.
 | `all-green` | `tools/all-green.mjs` | The only required check. Fails if any job is not green, so nothing merges past a red or cancelled job |
 | `deploy-test` | Checks the artifact's checksums, then deploys TEST | Files lost between the build and the upload, which the mirror would otherwise delete from TEST |
 
-A change that touches only `docs/` skips most jobs. `screenshots.yml` and
+A change that touches only `docs/` skips most jobs. `preview.yml` and
 `lighthouse.yml` run on pull requests too, but they only report and never
-block.
+block. `preview.yml` publishes the PR's SPA against the mocked backend on
+GitHub Pages and links it from a comment on the PR.
 
 ### Contract tests in the Laravel suite
 

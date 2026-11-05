@@ -112,9 +112,10 @@ npm run test:e2e  # Playwright, against the MSW-mocked backend; no Docker needed
 `npm run dev:mock` serves the SPA against that same mocked backend, with its own
 fixture accounts, when you want to click through without the stack.
 `npm run screenshots` photographs every route at desktop and phone width into
-`dist/screenshots/`, with an `index.html` that shows them all on one page. CI
-does the same on every pull request, uploads the folder as a
-`screenshots-pr-<number>` artifact and links it from a comment on the PR.
+`dist/screenshots/`, with an `index.html` that shows them all on one page.
+`npm run build:preview -- <number>` builds the same mocked SPA for GitHub
+Pages. CI publishes one for every pull request and links it from a comment on
+the PR, at `https://hoferan.github.io/website-les-canetons/pr-<number>/`.
 
 PHP commands run in the compose `php` service when the stack is up:
 `npm run artisan -- <command>`, `npm run composer -- <command>`,

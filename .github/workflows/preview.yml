@@ -17,7 +17,7 @@ name: Preview
 # rewrite rules: config/preview-pages/404.html.
 #
 # INFORMATIONAL, AND A WORKFLOW OF ITS OWN FOR THAT REASON, as
-# screenshots.yml is: ci.yml's all-green is the one required check on main
+# lighthouse.yml is: ci.yml's all-green is the one required check on main
 # and must need every job in that file.
 
 on:
@@ -166,8 +166,7 @@ jobs:
           echo "Could not push to gh-pages."
           exit 1
       # One comment per PR, found by the marker on its first line and edited
-      # in place, like the screenshots comment. Informational, so a failure to
-      # post leaves the run green.
+      # in place. Informational, so a failure to post leaves the run green.
       - name: Link the preview from the PR
         continue-on-error: true
         env:
