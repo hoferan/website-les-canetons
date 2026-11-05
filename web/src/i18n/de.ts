@@ -1456,7 +1456,13 @@ export const de: typeof fr = {
 
   blockEditor: {
     edit: "Bearbeiten: {{label}}",
-    managedIn: "Verwaltet unter {{page}}",
+    managedElsewhere: {
+      registerMembers: "Wer in welchem Register spielt, wird unter {{page}} verwaltet.",
+      registers: "Die Register, ihre Namen und ihre Reihenfolge werden unter {{page}} verwaltet.",
+      committeeSeats:
+        "Die Funktionen im Vorstand und wer sie innehat, werden unter {{page}} verwaltet.",
+      agendaDates: "Die Termine werden unter {{page}} verwaltet.",
+    },
     save: "Speichern",
     saving: "Wird gespeichert…",
     reset: "Original wiederherstellen",

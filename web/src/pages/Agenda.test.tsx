@@ -151,25 +151,24 @@ test("offers a booking link in German", async () => {
   expect(link).toHaveAttribute("href", "/events/7/book");
 });
 
-test("in edit mode, the list links to Événements, and not otherwise", async () => {
+test("in edit mode, a notice links to Événements, and not otherwise", async () => {
   setMockUser("demo.direction");
   const { unmount } = await renderWithSession(<Agenda />, { route: "/agenda" });
   await screen.findByRole("heading", { level: 1 });
-  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  expect(screen.queryByText(/se gèrent dans/)).toBeNull();
   unmount();
 
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   await renderWithSession(<Agenda />, { route: "/agenda" });
-  expect(await screen.findByRole("link", { name: "Géré dans Événements" })).toHaveAttribute(
-    "href",
-    "/events",
-  );
+  const line = await screen.findByText(/se gèrent dans/);
+  expect(line.textContent).toBe("Les dates se gèrent dans Événements.");
+  expect(within(line).getByRole("link", { name: "Événements" })).toHaveAttribute("href", "/events");
 });
 
-test("the Événements link needs events.manage", async () => {
+test("the Événements line needs events.manage", async () => {
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUserWithPermissions("demo.direction", ["content.manage"]);
   await renderWithSession(<Agenda />, { route: "/agenda" });
   await screen.findByRole("button", { name: /^Modifier : / });
-  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  expect(screen.queryByText(/se gèrent dans/)).toBeNull();
 });

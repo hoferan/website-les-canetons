@@ -10,8 +10,8 @@ import { useCommitteeIndex } from "../api/generated/endpoints";
 import type { CommitteeMemberResource } from "../api/generated/model";
 import { RAISED_CARD } from "../carnival/raised";
 import { CardsBlock } from "../content/blocks/CardsBlock";
-import { ManagedIn } from "../content/editor/ManagedIn";
 import { HeroBlock } from "../content/blocks/HeroBlock";
+import { ManagedElsewhere } from "../content/editor/ManagedElsewhere";
 import { t } from "../i18n";
 
 /**
@@ -38,6 +38,18 @@ export function Committee() {
       <HeroBlock blockKey="committee.hero" seed={19} />
 
       <PageSection>
+        <ManagedElsewhere
+          className="mb-block"
+          sources={[
+            {
+              sentence: "blockEditor.managedElsewhere.committeeSeats",
+              to: "/members",
+              page: t("nav.members"),
+              permission: "members.manage",
+            },
+          ]}
+        />
+
         {/* The link to the form is page code, between the card's heading and
             its booking line: the band has nothing to change there. */}
         <CardsBlock
@@ -56,14 +68,9 @@ export function Committee() {
           }}
         />
 
-        {/* The seats are the roster's, so in edit mode the block says where
-            they are changed instead of offering a pencil. */}
-        <ManagedIn
-          to="/members"
-          page={t("nav.members")}
-          permission="members.manage"
-          className="mt-block"
-        >
+        {/* The seats are the roster's, so they carry no pencil: the notice
+            above says where they are changed. */}
+        <div className="mt-block">
           {seats.length > 0 ? (
             <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {seats.map((seat) => (
@@ -88,7 +95,7 @@ export function Committee() {
               <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
             </p>
           )}
-        </ManagedIn>
+        </div>
       </PageSection>
     </>
   );

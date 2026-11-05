@@ -76,8 +76,9 @@ export function EditChip({
 
 /**
  * A chip that leads somewhere instead of opening an editor, in the same
- * look. By default it sits in the block's corner with its label always
- * visible: it says where a block's content is managed.
+ * look, such as History's "add" and "edit" chips, whose editors are pages of
+ * their own. By default it sits in the block's corner with its label always
+ * visible.
  *
  * `corner={false}` leaves the placing to the caller, for a chip in a row of
  * chips. `reveal` gives it the pencil's manners instead: an IconButton chip,

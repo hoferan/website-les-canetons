@@ -1833,8 +1833,15 @@ export const fr = {
   blockEditor: {
     // The chip's accessible name; its visible word is common.edit.
     edit: "Modifier : {{label}}",
-    // The link chip on a block that shows data: where that data is managed.
-    managedIn: "Géré dans {{page}}",
+    // The notice under a page's hero in edit mode, one line per kind of data
+    // the page shows but does not own. {{page}} becomes the link to the page
+    // that manages it.
+    managedElsewhere: {
+      registerMembers: "Les musiciens de chaque registre se gèrent dans {{page}}.",
+      registers: "Les registres, leurs noms et leur ordre se gèrent dans {{page}}.",
+      committeeSeats: "Les fonctions du comité et leurs titulaires se gèrent dans {{page}}.",
+      agendaDates: "Les dates se gèrent dans {{page}}.",
+    },
     save: "Enregistrer",
     saving: "Enregistrement…",
     reset: "Rétablir l’original",
