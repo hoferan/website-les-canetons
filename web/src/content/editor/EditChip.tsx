@@ -43,23 +43,33 @@ const REVEALED =
  *
  * `text`, when given, replaces both: it is the revealed words and the
  * accessible name, for a block whose chip says what it edits in full.
+ *
+ * `corner={false}` leaves the placing to the caller, for a pencil at the end
+ * of a row of chips: the row grows leftwards as the word shows, so the word
+ * pushes the other chips aside instead of covering them.
  */
 export function EditChip({
   label,
   text,
   onClick,
+  corner = true,
+  id,
 }: {
   label: string;
   text?: string;
   onClick: () => void;
+  corner?: boolean;
+  /** For a screen that moves focus here itself. */
+  id?: string;
 }) {
   return (
     <button
+      id={id}
       type="button"
       aria-label={text ?? t("blockEditor.edit", { label })}
       data-chip="button"
       onClick={onClick}
-      className={cn(buttonVariants({ variant: "raised" }), CHIP, CORNER)}
+      className={cn(buttonVariants({ variant: "raised" }), CHIP, corner && CORNER)}
     >
       <Pencil aria-hidden="true" className="size-5 shrink-0" />
       <span className={REVEALED}>{text ?? t("common.edit")}</span>
@@ -124,27 +134,35 @@ export function ChipLink({
  *
  * `narrowIcon` replaces `icon` below `sm`, for an arrow whose direction
  * follows a layout that stacks on a phone.
+ *
+ * `disabled` marks it with `aria-disabled` and ignores its clicks, rather than
+ * disabling it: a disabled button drops the keyboard's focus to the page,
+ * and a card's arrows are pressed again and again from the keyboard.
  */
 export function ChipButton({
   label,
   icon: Icon,
   narrowIcon: NarrowIcon,
   onClick,
-  disabled,
+  disabled = false,
+  id,
 }: {
   label: string;
   icon: LucideIcon;
   narrowIcon?: LucideIcon;
   onClick: () => void;
   disabled?: boolean;
+  /** For a screen that moves focus here itself. */
+  id?: string;
 }) {
   return (
     <button
+      id={id}
       type="button"
       aria-label={label}
+      aria-disabled={disabled || undefined}
       data-chip="button"
-      disabled={disabled}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       className={cn(buttonVariants({ variant: "raised" }), CHIP)}
     >
       {NarrowIcon ? (

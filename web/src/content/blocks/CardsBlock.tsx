@@ -58,8 +58,14 @@ type CardsData = BlockData<CardsKey>;
 /** Page code shown inside the card with that id, which the band does not edit. */
 export type CardSlot = { beforeRows?: ReactNode; afterRows?: ReactNode };
 
-/** The card the editor shows, by id so it stays the same card when it moves. */
+/**
+ * The card the editor shows, by id: a card being added has no place in the
+ * list until the editor appends it.
+ */
 type Opened = { id: string; adding: boolean };
+
+/** A card's chips, which a move puts focus back on. */
+type ChipPart = "before" | "after" | "edit";
 
 const LAYOUTS = {
   grid: "grid gap-5 sm:grid-cols-2 lg:grid-cols-3",
@@ -72,9 +78,10 @@ const LAYOUTS = {
  * its rows. In edit mode every card carries its own chip, and "Ajouter une
  * carte" sits above the grid, so a list saved empty can still be refilled.
  *
- * The editor shows one card but saves the whole list, since moving or
- * deleting a card changes its neighbours' places. "Rétablir l'original"
- * restores only the card on screen, and only a card the site ships with.
+ * The editor shows one card but saves the whole list, since deleting a card
+ * changes its neighbours' places. A card's arrows move it and save at once,
+ * with no dialog. "Rétablir l'original" restores only the card on screen,
+ * and only a card the site ships with.
  *
  * `slots` puts page code into a card by its id, before or after its rows: a
  * link to a page, or a line that depends on what the rows hold. A slot for a
@@ -99,6 +106,10 @@ export function CardsBlock({
   const fullId = useId();
   // Moving a card saves at once, with no dialog to close.
   const { save, pending, error } = useSaveBlock(blockKey, () => {});
+  const chipIds = useId();
+  const chipId = (cardId: string, part: ChipPart) => `${chipIds}-${cardId}-${part}`;
+  // The arrow a move was made with, to focus again on the moved card.
+  const refocus = useRef<{ id: string; part: ChipPart; to: number } | null>(null);
   const shipped = opened
     ? BLOCKS[blockKey].defaults().cards.find((card) => card.id === opened.id)
     : undefined;
@@ -109,8 +120,30 @@ export function CardsBlock({
   const shift = (from: number, to: number) => {
     const moved = [...cards];
     moved.splice(to, 0, ...moved.splice(from, 1));
+    refocus.current = { id: cards[from]!.id, part: to < from ? "before" : "after", to };
     save({ cards: moved } as CardsData);
   };
+
+  // Once the page shows the move, focus goes to the same arrow of the moved
+  // card, so the next key press moves it on, or to its pencil when that arrow
+  // is gone (the card is now first or last). The card's buttons can be moved
+  // or unmounted under the focus, which leaves it on the page. Focus the
+  // person has taken elsewhere meanwhile stays where it is.
+  useEffect(() => {
+    const target = refocus.current;
+    if (target === null || pending) return;
+    // The save can end a render before the page shows the new order; a
+    // refused one leaves the card where it was.
+    if (cards[target.to]?.id !== target.id && !error) return;
+    refocus.current = null;
+    const active = document.activeElement;
+    const lost = active === null || active === document.body || !active.isConnected;
+    if (!lost && !active.id.startsWith(chipIds)) return;
+    (
+      document.getElementById(`${chipIds}-${target.id}-${target.part}`) ??
+      document.getElementById(`${chipIds}-${target.id}-edit`)
+    )?.focus();
+  }, [pending, cards, error, chipIds]);
 
   const restore = (form: UseFormReturn<CardsData>) => {
     const index = form.getValues("cards").findIndex((card) => card.id === shipped?.id);
@@ -174,33 +207,37 @@ export function CardsBlock({
                 editing={editing}
               >
                 {editing ? (
-                  <>
-                    {/* Left of the chip, which is 44px wide and 8px inside. */}
-                    <div className="absolute top-2 right-[3.75rem] z-10 flex gap-2">
-                      {index > 0 ? (
-                        <ChipButton
-                          label={t("blockEditor.moveCardBefore", { title })}
-                          icon={several ? ArrowLeft : ArrowUp}
-                          narrowIcon={several ? ArrowUp : undefined}
-                          disabled={pending}
-                          onClick={() => shift(index, index - 1)}
-                        />
-                      ) : null}
-                      {index < cards.length - 1 ? (
-                        <ChipButton
-                          label={t("blockEditor.moveCardAfter", { title })}
-                          icon={several ? ArrowRight : ArrowDown}
-                          narrowIcon={several ? ArrowDown : undefined}
-                          disabled={pending}
-                          onClick={() => shift(index, index + 1)}
-                        />
-                      ) : null}
-                    </div>
+                  // One row in the card's corner, the pencil last: its word
+                  // shows on hover from sm and widens it leftwards, which
+                  // pushes the arrows along instead of covering them.
+                  <div className="absolute top-2 right-2 z-10 flex gap-2">
+                    {index > 0 ? (
+                      <ChipButton
+                        id={chipId(card.id, "before")}
+                        label={t("blockEditor.moveCardBefore", { title })}
+                        icon={several ? ArrowLeft : ArrowUp}
+                        narrowIcon={several ? ArrowUp : undefined}
+                        disabled={pending}
+                        onClick={() => shift(index, index - 1)}
+                      />
+                    ) : null}
+                    {index < cards.length - 1 ? (
+                      <ChipButton
+                        id={chipId(card.id, "after")}
+                        label={t("blockEditor.moveCardAfter", { title })}
+                        icon={several ? ArrowRight : ArrowDown}
+                        narrowIcon={several ? ArrowDown : undefined}
+                        disabled={pending}
+                        onClick={() => shift(index, index + 1)}
+                      />
+                    ) : null}
                     <EditChip
+                      id={chipId(card.id, "edit")}
                       label={title}
+                      corner={false}
                       onClick={() => setOpened({ id: card.id, adding: false })}
                     />
-                  </>
+                  </div>
                 ) : null}
               </CardView>
             );
@@ -244,7 +281,9 @@ function CardView({
   const Glyph = ICON_GLYPHS[card.icon];
 
   return (
-    <Card className={cn(RAISED_CARD, "relative gap-0 p-5", editing && CHIP_ROOM)}>
+    // The card is its chips' scope: edit-blocks.spec.ts checks them against
+    // its text, and against each other.
+    <Card data-chip-scope className={cn(RAISED_CARD, "relative gap-0 p-5", editing && CHIP_ROOM)}>
       {children}
       <div className="flex items-center gap-3">
         <span
@@ -299,16 +338,15 @@ function newCard(id: string): CardData {
 
 /**
  * The fields of the card being edited, inside the block's editor. It finds
- * its card by id, so it follows the card when it moves. Deleting the card
- * saves the list at once, through the editor's own submit, so its checks and
- * its error line apply.
+ * its card by id, so a card being added shows once the effect below has
+ * appended it. Deleting the card saves the list at once, through the
+ * editor's own submit, so its checks and its error line apply.
  */
 function CardEditor({ id, adding }: Opened) {
   const { control, getValues } = useFormContext<CardsData>();
   const { append, remove } = useFieldArray({ control, name: "cards" });
-  // Read from the form, which a move changes before the re-render it causes.
-  // useWatch would lag one render behind, and the fields left at the old
-  // path would write stale defaults into the card that moved there.
+  // Read from the form, which the append and the removal change before the
+  // re-render they cause; useWatch would lag one render behind.
   const cards = getValues("cards");
   const index = cards.findIndex((card) => card.id === id);
   const [confirming, setConfirming] = useState(false);
@@ -338,7 +376,7 @@ function CardEditor({ id, adding }: Opened) {
     <div ref={root} className="space-y-4">
       {shown ? (
         <>
-          {/* Keyed by place, so every field reads its new path after a move. */}
+          {/* Keyed by place, so the fields mount on the card's own path. */}
           <div key={index} className="space-y-4">
             <TranslatedField
               name={`cards.${index}.title`}

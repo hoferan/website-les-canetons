@@ -64,5 +64,12 @@ test("a chip button is icon only, named by its label, and clickable unless disab
   expect(onClick).toHaveBeenCalledTimes(1);
 
   rerender(<ChipButton label="Monter" icon={Plus} onClick={onClick} disabled />);
-  expect(screen.getByRole("button", { name: "Monter" })).toBeDisabled();
+  const waiting = screen.getByRole("button", { name: "Monter" });
+  // Marked rather than disabled, so it keeps the keyboard's focus.
+  expect(waiting).toHaveAttribute("aria-disabled", "true");
+  expect(waiting).toBeEnabled();
+  waiting.focus();
+  await userEvent.keyboard("{Enter}");
+  expect(waiting).toHaveFocus();
+  expect(onClick).toHaveBeenCalledTimes(1);
 });

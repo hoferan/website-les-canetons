@@ -79,6 +79,32 @@ function chipsOverText(page: Page) {
   );
 }
 
+/**
+ * Every pair of chips that overlap, in pixels: a row of chips must push its
+ * neighbours aside, never lie on them. Hidden chips (a phone's other arrow
+ * glyph, a closed menu) have no box and are left out.
+ */
+function chipsOverChips(page: Page) {
+  return page.evaluate(() => {
+    const chips = [...document.querySelectorAll("[data-chip]")].filter(
+      (chip) => chip.getBoundingClientRect().width > 0,
+    );
+    const hits: string[] = [];
+    chips.forEach((a, i) => {
+      for (const b of chips.slice(i + 1)) {
+        const r = a.getBoundingClientRect();
+        const q = b.getBoundingClientRect();
+        const x = Math.min(r.right, q.right) - Math.max(r.left, q.left);
+        const y = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
+        if (x > 0 && y > 0) {
+          hits.push(`${a.getAttribute("aria-label")} on ${b.getAttribute("aria-label")}`);
+        }
+      }
+    });
+    return hits;
+  });
+}
+
 test("no edit chip covers the text of its block, on a phone or a desktop", async ({ page }) => {
   // Measured before the fix: the home hero's chip covered "guggen d'enfants"
   // at 1280, the join hero's covered "Tu veux commencer" at 390, and the card
@@ -102,6 +128,58 @@ test("no edit chip covers the text of its block, on a phone or a desktop", async
       // nothing could not pass for "no overlap".
       expect(await page.locator("[data-chip]").count()).toBeGreaterThan(0);
       expect(await chipsOverText(page), `${path} at ${width}px`).toEqual([]);
+      expect(await chipsOverChips(page), `${path} at ${width}px`).toEqual([]);
     }
   }
+});
+
+test("a card's pencil shows its word beside the arrows, never over them", async ({ page }) => {
+  // Measured before the fix: at 1280 the arrows sat in a box of their own
+  // and the hovered pencil grew over the "après" arrow beside it.
+  await page.addInitScript(() => sessionStorage.setItem("canetons.editMode", "1"));
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await logIn(page, "demo.direction");
+  await page.locator('a[href="/join"]:visible').first().click();
+
+  const pencil = page.getByRole("button", { name: "Modifier : Horaires" });
+  await pencil.hover();
+  await expect(pencil.getByText("Modifier")).toBeVisible();
+  const after = await page
+    .getByRole("button", { name: "Déplacer « Horaires » après" })
+    .boundingBox();
+  const word = await pencil.boundingBox();
+  expect(after!.x + after!.width).toBeLessThanOrEqual(word!.x);
+  expect(await chipsOverChips(page)).toEqual([]);
+  expect(await chipsOverText(page)).toEqual([]);
+});
+
+test("moving a card from the keyboard keeps focus on that card's arrow", async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem("canetons.editMode", "1"));
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await logIn(page, "demo.direction");
+  await page.locator('a[href="/join"]:visible').first().click();
+  const headings = page.locator("[data-slot='card'] h2");
+  const after = page.getByRole("button", { name: "Déplacer « Instruments recherchés » après" });
+
+  await after.focus();
+  await page.keyboard.press("Enter");
+  await expect(headings.nth(1)).toHaveText("Instruments recherchés");
+  await expect(after).toBeFocused();
+
+  // The same key moves it on.
+  await page.keyboard.press("Enter");
+  await expect(headings.nth(2)).toHaveText("Instruments recherchés");
+  await expect(after).toBeFocused();
+
+  // Moved to the front, the card has no "avant" arrow left: its pencil takes the focus.
+  const before = page.getByRole("button", { name: "Déplacer « Instruments recherchés » avant" });
+  for (const index of [1, 0]) {
+    await before.focus();
+    await page.keyboard.press("Enter");
+    await expect(headings.nth(index)).toHaveText("Instruments recherchés");
+  }
+  await expect(before).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Modifier : Instruments recherchés" }),
+  ).toBeFocused();
 });

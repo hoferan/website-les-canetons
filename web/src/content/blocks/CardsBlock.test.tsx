@@ -184,16 +184,68 @@ test("a second move waits for the first save, then builds on its result", async 
   // page before it shows the first move: it would undo it.
   await user.click(screen.getByRole("button", after));
   await expect.poll(() => puts).toHaveLength(1);
-  expect(screen.getByRole("button", after)).toBeDisabled();
+  // Marked, not disabled: a disabled button would drop the keyboard's focus.
+  expect(screen.getByRole("button", after)).toHaveAttribute("aria-disabled", "true");
+  expect(screen.getByRole("button", after)).toBeEnabled();
   await user.click(screen.getByRole("button", after));
   expect(puts).toHaveLength(1);
   release();
-  await waitFor(() => expect(screen.getByRole("button", after)).toBeEnabled());
+  await waitFor(() =>
+    expect(screen.getByRole("button", after)).not.toHaveAttribute("aria-disabled", "true"),
+  );
 
   await user.click(screen.getByRole("button", after));
   await expect.poll(() => puts).toHaveLength(2);
   expect(puts[0]?.body).toEqual({ data: { cards: [schedule, instruments, age, ...rest] } });
   expect(puts[1]?.body).toEqual({ data: { cards: [schedule, age, instruments, ...rest] } });
+});
+
+test("a card moved from the keyboard keeps focus on the same arrow of the moved card", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const after = { name: "Déplacer « Instruments recherchés » après" };
+
+  screen.getByRole("button", after).focus();
+  await user.keyboard("{Enter}");
+
+  await expect.poll(() => puts).toHaveLength(1);
+  await waitFor(() =>
+    expect(screen.getAllByRole("heading", { level: 2 })[1]).toHaveTextContent(
+      "Instruments recherchés",
+    ),
+  );
+  await waitFor(() => expect(screen.getByRole("button", after)).toHaveFocus());
+
+  // So a second Enter carries on moving the same card.
+  await user.keyboard("{Enter}");
+  await expect.poll(() => puts).toHaveLength(2);
+  await waitFor(() =>
+    expect(screen.getAllByRole("heading", { level: 2 })[2]).toHaveTextContent(
+      "Instruments recherchés",
+    ),
+  );
+  await waitFor(() => expect(screen.getByRole("button", after)).toHaveFocus());
+});
+
+test("a card moved to the front, where its arrow is gone, hands focus to its pencil", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  screen.getByRole("button", { name: "Déplacer « Horaires » avant" }).focus();
+  await user.keyboard("{Enter}");
+
+  await expect.poll(() => puts).toHaveLength(1);
+  await waitFor(() =>
+    expect(screen.getAllByRole("heading", { level: 2 })[0]).toHaveTextContent("Horaires"),
+  );
+  expect(screen.queryByRole("button", { name: "Déplacer « Horaires » avant" })).toBeNull();
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Modifier : Horaires" })).toHaveFocus(),
+  );
 });
 
 test("the arrows follow the grid: left and right from sm, up and down on one column", async () => {
