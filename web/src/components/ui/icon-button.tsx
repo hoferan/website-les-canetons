@@ -145,25 +145,41 @@ function GrowingWord({ word, open }: { word: string; open: boolean }) {
 }
 
 /**
- * Radix opens a tooltip on any focus. A dialog or menu that hands focus back
- * to its opener after a click would then leave the tip hanging over it, so
- * only focus that follows a key press opens it, as with :focus-visible.
- * (jsdom never matches :focus-visible on a button, hence the tracking.)
+ * Radix opens a tooltip on any focus, but only focus the user moved with Tab
+ * or an arrow key opens it here.
+ *
+ * Focus that a dialog or menu moves itself would otherwise open one: onto the
+ * opener after a click, where the tip would hang, or onto a dialog's first
+ * control after Enter opened it. A tip there is a dismissable layer above the
+ * dialog, so the first Escape would close the tip and leave the dialog open.
+ * (jsdom never matches :focus-visible on a button, so it cannot decide this.)
  */
-let lastInputWasKeyboard = false;
+const FOCUS_KEYS = new Set(["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+
+const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta"]);
+
+let focusMovedByKey = false;
+
+const onKeyDown = (event: KeyboardEvent) => {
+  // Shift and the other modifiers come before the Tab they modify.
+  if (MODIFIERS.has(event.key)) return;
+  focusMovedByKey = FOCUS_KEYS.has(event.key);
+};
+const onPointerDown = () => {
+  focusMovedByKey = false;
+};
 
 if (typeof document !== "undefined") {
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      if (!event.metaKey && !event.altKey && !event.ctrlKey) lastInputWasKeyboard = true;
-    },
-    true,
-  );
-  document.addEventListener("pointerdown", () => (lastInputWasKeyboard = false), true);
+  document.addEventListener("keydown", onKeyDown, true);
+  document.addEventListener("pointerdown", onPointerDown, true);
+  // A hot reload runs this module again; drop the old listeners first.
+  import.meta.hot?.dispose(() => {
+    document.removeEventListener("keydown", onKeyDown, true);
+    document.removeEventListener("pointerdown", onPointerDown, true);
+  });
 }
 
 function keyboardFocusOnly(event: React.FocusEvent<HTMLButtonElement>) {
   // Radix skips its own handler once the event is marked prevented.
-  if (!lastInputWasKeyboard) event.preventDefault();
+  if (!focusMovedByKey) event.preventDefault();
 }

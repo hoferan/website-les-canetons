@@ -1,9 +1,11 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ArrowUp, Pencil } from "lucide-react";
+import { ArrowUp, Pencil, X } from "lucide-react";
+import { useState } from "react";
 import { MemoryRouter, Link } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "./dialog";
 import { IconButton } from "./icon-button";
 
 test("has its label as its name", () => {
@@ -52,6 +54,42 @@ test("focus handed back after a click shows no tip", async () => {
 
   expect(screen.getByRole("button", { name: "Monter Cloches" })).toHaveFocus();
   expect(screen.queryByRole("tooltip")).toBeNull();
+});
+
+function PickerLike() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Ouvrir
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogTitle>Bibliothèque</DialogTitle>
+          <DialogDescription>Choisissez une photo.</DialogDescription>
+          <DialogClose asChild>
+            <IconButton icon={X} label="Fermer la bibliothèque" />
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+test("one Escape closes a dialog opened from the keyboard onto an icon button", async () => {
+  render(<PickerLike />);
+
+  await userEvent.tab();
+  await userEvent.keyboard("{Enter}");
+  const dialog = await screen.findByRole("dialog", { name: "Bibliothèque" });
+  // The dialog put focus on its first control. No Tab moved it there, so no
+  // tip opens, and there is no tip layer to take the Escape.
+  expect(within(dialog).getByRole("button", { name: "Fermer la bibliothèque" })).toHaveFocus();
+  expect(screen.queryByRole("tooltip")).toBeNull();
+
+  await userEvent.keyboard("{Escape}");
+
+  expect(screen.queryByRole("dialog")).toBeNull();
 });
 
 test("the word defaults to the label", async () => {
