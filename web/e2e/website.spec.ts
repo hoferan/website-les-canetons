@@ -27,6 +27,8 @@ test("a site exported, then imported into an empty one, shows the same booking n
   const editor = page.getByRole("dialog", { name: "Comité · contact" });
   await editor.getByLabel("Numéro").fill("026 123 45 67");
   await editor.getByRole("button", { name: "Enregistrer" }).click();
+  // The editor closes once the save is answered and the blocks are read
+  // again (useSaveBlock), so the export below cannot overtake the save.
   await expect(editor).toBeHidden();
   await expect(page.getByRole("link", { name: "026 123 45 67" })).toBeVisible();
 
