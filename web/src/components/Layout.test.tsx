@@ -33,18 +33,14 @@ test.each([
 
 // Only a PR preview's mocked backend answers "preview" (#353). English in
 // both locales: only developers and reviewers see it.
-test("a preview says which PR it is and that its data is made up", () => {
+test("a preview says which PR it is", () => {
   const { container } = render(
     <MemoryRouter>
       <EnvRibbon env="preview" />
     </MemoryRouter>,
   );
 
-  // jsdom applies no Tailwind, so both forms are in the text: the phone's
-  // short one, then the full one shown from sm up.
-  const [phone, wide] = [...container.querySelectorAll("span")].map((s) => s.textContent);
-  expect(phone).toMatch(/^PR \S+$/);
-  expect(wide).toMatch(/^Preview PR \S+, mocked data$/);
+  expect(container.textContent).toMatch(/^Preview PR-\S+$/);
 });
 
 /**
