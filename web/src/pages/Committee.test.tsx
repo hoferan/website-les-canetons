@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 
 import { EDIT_MODE_KEY } from "../content/EditMode";
@@ -154,22 +154,23 @@ test("in edit mode the hero and the contact card carry a chip", async () => {
   ).toBeInTheDocument();
 });
 
-test("in edit mode, the seats link to Membres for whoever may manage members", async () => {
+test("in edit mode, a notice links the seats to Membres for whoever may manage members", async () => {
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUser("demo.direction");
   await renderWithSession(<Committee />, { route: "/committee" });
 
-  expect(await screen.findByRole("link", { name: "Géré dans Membres" })).toHaveAttribute(
-    "href",
-    "/members",
+  const line = await screen.findByText(/se gèrent dans/);
+  expect(line.textContent).toBe(
+    "Les fonctions du comité et leurs titulaires se gèrent dans Membres.",
   );
+  expect(within(line).getByRole("link", { name: "Membres" })).toHaveAttribute("href", "/members");
 });
 
-test("the Membres link is absent outside edit mode, and without members.manage", async () => {
+test("the Membres line is absent outside edit mode, and without members.manage", async () => {
   setMockUser("demo.direction");
   const { unmount } = await renderWithSession(<Committee />, { route: "/committee" });
   await screen.findByText("Responsable intendance");
-  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  expect(screen.queryByText(/se gèrent dans/)).toBeNull();
   unmount();
 
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
@@ -177,15 +178,17 @@ test("the Membres link is absent outside edit mode, and without members.manage",
   await renderWithSession(<Committee />, { route: "/committee" });
   await screen.findByText("Responsable intendance");
   expect(screen.getByRole("button", { name: "Modifier : Comité · en-tête" })).toBeInTheDocument();
-  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  expect(screen.queryByText(/se gèrent dans/)).toBeNull();
 });
 
-test("the link says Verwaltet unter Mitglieder on the German page", async () => {
+test("the line says Mitglieder on the German page", async () => {
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUser("demo.direction");
   await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
 
-  expect(
-    await screen.findByRole("link", { name: "Verwaltet unter Mitglieder" }),
-  ).toBeInTheDocument();
+  const line = await screen.findByText(/^Die Funktionen im Vorstand/);
+  expect(line.textContent).toBe(
+    "Die Funktionen im Vorstand und wer sie innehat, werden unter Mitglieder verwaltet.",
+  );
+  expect(within(line).getByRole("link", { name: "Mitglieder" })).toBeInTheDocument();
 });

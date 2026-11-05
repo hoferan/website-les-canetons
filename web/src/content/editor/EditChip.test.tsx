@@ -71,13 +71,13 @@ test("a chip sits inside its block's top right corner and calls onClick", async 
 test("a chip link shows its label and goes to its target", () => {
   render(
     <MemoryRouter>
-      <ChipLink label="Géré dans Membres" to="/members" />
+      <ChipLink label="Ajouter une entrée" to="/history/new" />
     </MemoryRouter>,
   );
 
-  const link = screen.getByRole("link", { name: "Géré dans Membres" });
-  expect(link).toHaveAttribute("href", "/members");
-  expect(link).toHaveTextContent("Géré dans Membres");
+  const link = screen.getByRole("link", { name: "Ajouter une entrée" });
+  expect(link).toHaveAttribute("href", "/history/new");
+  expect(link).toHaveTextContent("Ajouter une entrée");
   expect(link.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
 });
 

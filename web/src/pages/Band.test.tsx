@@ -300,27 +300,45 @@ test("an empty register's gap points at the members page, in both languages", as
   );
 });
 
-test("in edit mode, every register links to Membres, and not otherwise", async () => {
+test("in edit mode, one notice links to Membres and Pupitres, and not otherwise", async () => {
   setMockUser("demo.direction");
   const { unmount } = await renderWithSession(<Band />, { route: "/band" });
   await screen.findByRole("heading", { name: "Trombones" });
-  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  expect(screen.queryByText(/se gèrent dans/)).toBeNull();
   unmount();
 
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   await renderWithSession(<Band />, { route: "/band" });
   const register = (await screen.findByRole("heading", { name: "Trombones" })).closest("article")!;
-  expect(within(register).getByRole("link", { name: "Géré dans Membres" })).toHaveAttribute(
+  // Said once for the page, not per register (#345).
+  expect(within(register).queryByRole("link", { name: "Membres" })).toBeNull();
+  const members = screen.getByText(/^Les musiciens de chaque registre se gèrent dans/);
+  expect(members.textContent).toBe("Les musiciens de chaque registre se gèrent dans Membres.");
+  expect(within(members).getByRole("link", { name: "Membres" })).toHaveAttribute(
     "href",
     "/members",
   );
-  expect(screen.getAllByRole("link", { name: "Géré dans Membres" }).length).toBeGreaterThan(1);
+  const registers = screen.getByText(/^Les registres, leurs noms et leur ordre/);
+  expect(within(registers).getByRole("link", { name: "Pupitres" })).toHaveAttribute(
+    "href",
+    "/registers",
+  );
+  expect(screen.getAllByText(/se gèrent dans/)).toHaveLength(2);
 });
 
-test("a register shows no Membres link without members.manage", async () => {
+test("the band's notice is absent without members.manage", async () => {
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUserWithPermissions("demo.direction", ["content.manage"]);
   await renderWithSession(<Band />, { route: "/band" });
   await screen.findByRole("heading", { name: "Trombones" });
-  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  expect(screen.queryByText(/se gèrent dans/)).toBeNull();
+});
+
+test("the band's notice reads in German on the German page", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
+  const line = await screen.findByText(/^Wer in welchem Register spielt/);
+  expect(line.textContent).toBe("Wer in welchem Register spielt, wird unter Mitglieder verwaltet.");
+  expect(within(line).getByRole("link", { name: "Mitglieder" })).toBeInTheDocument();
 });
