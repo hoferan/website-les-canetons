@@ -31,6 +31,17 @@ test.each([
   expect(container.textContent).toBe(shown ? env.toUpperCase() : "");
 });
 
+// Only a PR preview's mocked backend answers "preview" (#353).
+test("a preview says which PR it is and that its data is made up", () => {
+  const { container } = render(
+    <MemoryRouter>
+      <EnvRibbon env="preview" />
+    </MemoryRouter>,
+  );
+
+  expect(container.textContent).toMatch(/^Aperçu PR .+, données fictives$/);
+});
+
 /**
  * The band's accounts elsewhere (#224): the gallery and the two networks in
  * the nav, and all three again in the footer. Each opens a new tab. The nav's

@@ -9,6 +9,7 @@ import path from 'node:path';
 
 import { includeInLaravelBuild } from './artifact-excludes.mjs';
 import { COMPOSER_ROOT_VERSION, findVcsStamps } from './artifact-vendor.mjs';
+import { assertNoMockLeaks } from './mock-leak.mjs';
 
 const mount = process.cwd().split('\\').join('/');
 
@@ -39,6 +40,10 @@ execFileSync(process.execPath, [viteBin, 'build'], { stdio: 'inherit' });
 // verbatim, and the worker is only ever registered when VITE_MOCK_API is set,
 // but a request interceptor has no business on a server at all — strip it.
 rmSync('dist/build/mockServiceWorker.js', { force: true });
+
+// And nothing else of the mocks either: no MSW, no handlers, no demo logins.
+// See tools/mock-leak.mjs for what it looks for and why.
+assertNoMockLeaks('dist/build');
 
 console.log('Built dist/build/ (SPA shell + assets) — ready to FTP upload.');
 

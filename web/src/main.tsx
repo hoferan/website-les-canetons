@@ -13,12 +13,26 @@ import "./styles.css";
 // import.meta.env.DEV as well, so the worker never starts in a built bundle
 // even if VITE_MOCK_API leaked into a production environment.
 //
+// The one built bundle that does start it is a PR preview, `vite build --mode
+// preview` (#353). MODE is a literal in a build, so in `npm run build` this
+// whole branch folds away and the mocks are never bundled.
+// tools/mock-leak.mjs fails the build if they are.
+//
 // Awaited before the first render, or the boot gate's GET /api/config races
 // it and sometimes reaches the network.
-if (import.meta.env.DEV && import.meta.env.VITE_MOCK_API === "1") {
+if (
+  (import.meta.env.DEV && import.meta.env.VITE_MOCK_API === "1") ||
+  import.meta.env.MODE === "preview"
+) {
   const { worker } = await import("./mocks/browser");
-  // bypass, because Vite's own module and HMR requests must pass through.
-  await worker.start({ onUnhandledRequest: "bypass" });
+  await worker.start({
+    // bypass, because Vite's own module and HMR requests must pass through.
+    onUnhandledRequest: "bypass",
+    // Under a preview's subpath, so it is that preview's own worker. Its
+    // scope is the directory it is served from: that PR's pages, and no
+    // other PR's.
+    serviceWorker: { url: `${import.meta.env.BASE_URL}mockServiceWorker.js` },
+  });
 }
 
 // The one place a stored preference is read, and only for the bare root;

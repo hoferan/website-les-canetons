@@ -1,4 +1,4 @@
-import { LOCALES, type Locale } from "./locale";
+import { APP_BASE, LOCALES, pathInApp, type Locale } from "./locale";
 
 export const LOCALE_STORAGE_KEY = "lescanetons.locale";
 
@@ -47,6 +47,10 @@ export function rememberLocale(locale: Locale): void {
  *
  * Only the bare root. Everywhere else the URL decides.
  */
-export function shouldRedirectToGerman(pathname: string, stored: Locale | null): boolean {
-  return pathname === "/" && stored === "de-CH";
+export function shouldRedirectToGerman(
+  pathname: string,
+  stored: Locale | null,
+  base: string = APP_BASE,
+): boolean {
+  return pathInApp(pathname, base) === "/" && stored === "de-CH";
 }

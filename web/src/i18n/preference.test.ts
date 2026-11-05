@@ -54,3 +54,10 @@ test("only the bare root redirects, and only for a stored German preference", ()
   expect(shouldRedirectToGerman("/de", "de-CH")).toBe(false);
   expect(shouldRedirectToGerman("/de/agenda", "de-CH")).toBe(false);
 });
+
+test("under a base path, only the base's root is the bare root", () => {
+  const base = "/website-les-canetons/pr-12";
+  expect(shouldRedirectToGerman(`${base}/`, "de-CH", base)).toBe(true);
+  expect(shouldRedirectToGerman(`${base}/agenda`, "de-CH", base)).toBe(false);
+  expect(shouldRedirectToGerman(`${base}/de`, "de-CH", base)).toBe(false);
+});

@@ -433,6 +433,11 @@ export const fr = {
       "La guggenmusik des enfants de Fribourg, fondée en 2002. De 7 à 18 ans, sans savoir lire la musique — répétitions en général le samedi matin.",
   },
 
+  /** The corner ribbon on a PR preview (#353), which runs on fixture data. */
+  envRibbon: {
+    preview: "Aperçu PR {{pr}}, données fictives",
+  },
+
   /**
    * The chrome: the nav, its accessible names, and the footer.
    *

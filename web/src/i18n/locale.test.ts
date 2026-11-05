@@ -53,6 +53,37 @@ describe("pathInLocale", () => {
   });
 });
 
+// A PR preview serves the SPA from a subpath of a shared origin (#353). The
+// prefix comes off before the locale is read and goes back on every path the
+// app hands the router or the browser.
+describe("under a base path", () => {
+  const base = "/website-les-canetons/pr-12";
+
+  test("the base root and anything under it are French, mounted at the base", () => {
+    expect(localeFromPath(`${base}/`, base)).toEqual({ locale: "fr", basename: base });
+    expect(localeFromPath(base, base)).toEqual({ locale: "fr", basename: base });
+    expect(localeFromPath(`${base}/agenda`, base)).toEqual({ locale: "fr", basename: base });
+  });
+
+  test("/de under the base is German, mounted at the base's /de", () => {
+    expect(localeFromPath(`${base}/de`, base)).toEqual({
+      locale: "de-CH",
+      basename: `${base}/de`,
+    });
+    expect(localeFromPath(`${base}/de/agenda`, base)).toEqual({
+      locale: "de-CH",
+      basename: `${base}/de`,
+    });
+  });
+
+  test("switching locale keeps the base", () => {
+    expect(pathInLocale(`${base}/agenda`, "de-CH", base)).toBe(`${base}/de/agenda`);
+    expect(pathInLocale(`${base}/`, "de-CH", base)).toBe(`${base}/de`);
+    expect(pathInLocale(`${base}/de/agenda`, "fr", base)).toBe(`${base}/agenda`);
+    expect(pathInLocale(`${base}/de`, "fr", base)).toBe(`${base}/`);
+  });
+});
+
 describe("htmlLang and intlTag", () => {
   test("html lang is the full tag, including for French", () => {
     expect(htmlLang("fr")).toBe("fr-CH");

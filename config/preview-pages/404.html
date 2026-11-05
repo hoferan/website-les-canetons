@@ -1,0 +1,38 @@
+<!doctype html>
+<!--
+  The root of the gh-pages branch, which serves every PR preview (#353).
+  .github/workflows/preview.yml copies this file there on every publish.
+
+  GitHub Pages has no rewrite rules and serves this one 404.html for every
+  missing path on the site, whatever directory it is in. A deep link into a
+  preview, say pr-12/de/agenda, has no file behind it and lands here. This
+  page sends it to pr-12/?__path=/de/agenda, the PR's own shell, which puts
+  the path back before the app boots (vite.config.ts, preview mode).
+
+  A path that is already a PR's root, or no PR's at all, is a real 404: a PR
+  closed and its preview removed. Forwarding it would only land here again.
+-->
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Aperçu introuvable</title>
+    <script>
+      (function () {
+        var m = location.pathname.match(/^(\/[^/]+\/pr-\d+)(\/.+)$/);
+        if (!m) return;
+        var q = new URLSearchParams(location.search);
+        if (q.has("__path")) return;
+        q.set("__path", m[2]);
+        location.replace(m[1] + "/?" + q.toString() + location.hash);
+      })();
+    </script>
+  </head>
+  <body style="font-family: system-ui, sans-serif; margin: 2rem">
+    <h1>Aperçu introuvable</h1>
+    <p>
+      Cet aperçu n’existe pas, ou plus : il est supprimé quand sa pull request est fermée.
+    </p>
+  </body>
+</html>

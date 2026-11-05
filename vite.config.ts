@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, mergeConfig, type Plugin, type UserConfig } from "vite";
 
 /**
  * The SPA build.
@@ -40,7 +40,50 @@ import { defineConfig } from "vite";
  */
 const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8090";
 
-export default defineConfig({
+/**
+ * A PR preview: `vite build --mode preview`, run by tools/build-preview.mjs
+ * and .github/workflows/preview.yml (#353).
+ *
+ * The SPA with the mocked backend bundled in, served from
+ * https://hoferan.github.io/website-les-canetons/pr-<n>/. That subpath is the
+ * base, so the hashed bundles resolve and BASE_URL tells the app where it is
+ * mounted. Built into dist/preview/ so it never touches the deploy artifact.
+ * And kept out of search engines: it is public, and its data is made up.
+ */
+function previewMode(): UserConfig {
+  const pr = process.env.VITE_PREVIEW_PR ?? "";
+  if (!/^[1-9]\d*$/.test(pr)) {
+    throw new Error(`--mode preview needs VITE_PREVIEW_PR set to a PR number, got "${pr}".`);
+  }
+
+  const shell: Plugin = {
+    name: "preview-shell",
+    transformIndexHtml: () => [
+      { tag: "meta", attrs: { name: "robots", content: "noindex" }, injectTo: "head" },
+      // Pages has no rewrite rules and serves 404.html from the site root
+      // only. That page, config/preview-pages/404.html, sends a deep link
+      // such as pr-<n>/de/agenda to pr-<n>/?__path=/de/agenda. This puts the
+      // path back before the app's module script reads it: a module script
+      // runs only once the document is parsed, this runs where it stands.
+      {
+        tag: "script",
+        children:
+          "(function(){var q=new URLSearchParams(location.search),p=q.get('__path');" +
+          "if(p===null)return;q.delete('__path');var s=q.toString();" +
+          "history.replaceState(null,'',location.pathname.replace(/\\/$/,'')+p+(s?'?'+s:'')+location.hash)})()",
+        injectTo: "head",
+      },
+    ],
+  };
+
+  return {
+    base: `/website-les-canetons/pr-${pr}/`,
+    plugins: [shell],
+    build: { outDir: "../dist/preview" },
+  };
+}
+
+const config: UserConfig = {
   root: "web",
   base: "/",
   plugins: [react(), tailwindcss()],
@@ -90,4 +133,8 @@ export default defineConfig({
     // docker-compose.yml turns it on for that container alone.
     watch: process.env.VITE_USE_POLLING === "1" ? { usePolling: true, interval: 300 } : undefined,
   },
-});
+};
+
+export default defineConfig(({ mode }) =>
+  mergeConfig(config, mode === "preview" ? previewMode() : {}),
+);

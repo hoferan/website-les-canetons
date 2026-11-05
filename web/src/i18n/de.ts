@@ -353,6 +353,10 @@ export const de: typeof fr = {
       "Die Kinder-Guggenmusik aus Freiburg, gegründet 2002. Von 7 bis 18 Jahren, ohne Notenkenntnisse — Proben in der Regel am Samstagvormittag.",
   },
 
+  envRibbon: {
+    preview: "Vorschau PR {{pr}}, Testdaten",
+  },
+
   site: {
     name: "Les Canetons de Fribourg",
     legalName: "Guggenmusik les canetons de Fribourg",

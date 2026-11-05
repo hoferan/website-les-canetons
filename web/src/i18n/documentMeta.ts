@@ -1,5 +1,6 @@
 import { t } from "./index";
 import { type Locale } from "./locale";
+import { publicUrl } from "../publicUrl";
 
 /**
  * The manifest each locale installs from.
@@ -12,8 +13,8 @@ import { type Locale } from "./locale";
  * language editions install as two separate apps.
  */
 const MANIFEST: Record<Locale, string> = {
-  fr: "/assets/icons/manifest.json",
-  "de-CH": "/assets/icons/manifest.de.json",
+  fr: publicUrl("assets/icons/manifest.json"),
+  "de-CH": publicUrl("assets/icons/manifest.de.json"),
 };
 
 /**
