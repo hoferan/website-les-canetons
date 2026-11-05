@@ -60,7 +60,9 @@ lose and reorder cards with nothing new on the server.
   `registry.ts`. The first set is `hero`, `cards` and `site`. A hero has a title, the words
   of it set on the highlight, an intro on some pages and up to two buttons, each with a label
   per language and a target that is a public page or an https address. A card has an icon, a
-  colour, a title and typed rows. `site` holds the band's name, its pitch, its legal name
+  colour, a title and typed rows. On a grid that offers links, the home page's yellow band
+  (#347), a card may also carry a target of the same kind as a button's, and the whole card
+  is then one link, its rows shown as text. `site` holds the band's name, its pitch, its legal name
   and its networks, read by the header and the footer. A network is a name, an https address
   and an icon chosen from the common brands or a generic link, so the band can add any page
   it keeps.
@@ -133,8 +135,8 @@ lose and reorder cards with nothing new on the server.
 - Bad, because the server cannot check what a block means, so a hand-made request can
   store a block that the SPA then refuses and replaces with the default.
 - Bad, because the band picks icons and colours from fixed sets and cannot invent a new
-  block type or put a free block on a page; the home page's destination cards, the theme
-  colours and the set of pages stay code.
+  block type or put a free block on a page; the theme colours and the set of pages stay
+  code.
 - Bad, because the static shell (`index.html`, the PWA manifests) and the logo still name
   the Canetons, so another band would change those in code.
 

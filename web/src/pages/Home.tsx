@@ -1,7 +1,5 @@
-import { Drum, type LucideIcon, MessageSquare, Music, Star } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
-import { DestinationCards } from "@/components/DestinationCards";
 import { BrandLogo } from "@/components/Logo";
 import { PageSection } from "@/components/PageSection";
 import { cn } from "@/lib/utils";
@@ -16,59 +14,14 @@ import { Photo } from "../images/Photo";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { SlotPicture } from "../images/SlotPicture";
 import { PublicAgenda } from "../events/PublicAgenda";
-import { type TranslationKey, t } from "../i18n";
+import { t } from "../i18n";
 import { useBlock } from "../content/BlocksProvider";
+import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroActions, HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor";
 import { BLOCKS } from "../content/registry";
 import { tr, trMark } from "../content/translated";
-
-/**
- * The four pages a stranger most likely wants, in that order.
- *
- * A curated subset of the nav (see DestinationCards.tsx): the nav lists what
- * exists, this lists what to read first.
- *
- * Each description says what the linked page shows as it ships, not a
- * promise about a finished version, and none asserts a fact about the band.
- */
-const DESTINATIONS: {
-  to: string;
-  titleKey: TranslationKey;
-  descriptionKey: TranslationKey;
-  icon: LucideIcon;
-  tint: string;
-}[] = [
-  {
-    to: "/join",
-    titleKey: "home.destinations.join.title",
-    descriptionKey: "home.destinations.join.description",
-    icon: Music,
-    tint: "bg-pink",
-  },
-  {
-    to: "/band",
-    titleKey: "home.destinations.band.title",
-    descriptionKey: "home.destinations.band.description",
-    icon: Drum,
-    tint: "bg-cyan",
-  },
-  {
-    to: "/history",
-    titleKey: "home.destinations.history.title",
-    descriptionKey: "home.destinations.history.description",
-    icon: Star,
-    tint: "bg-lime",
-  },
-  {
-    to: "/committee",
-    titleKey: "home.destinations.committee.title",
-    descriptionKey: "home.destinations.committee.description",
-    icon: MessageSquare,
-    tint: "bg-lilac",
-  },
-];
 
 /**
  * The badge's frame: the sticker look and the sizes, for the badge and for a
@@ -98,7 +51,7 @@ const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
  * No tutoiement. /join addresses children directly ("Tu veux commencer la
  * guggen ?"), but the front door is read by parents and children both.
  *
- * The agenda sits after the photograph slot and before the destinations: the
+ * The agenda sits after the photograph slot and before the band's cards: the
  * hero says what the band is, the agenda what it does next, and somebody
  * still reading wants to go somewhere. The agenda may render nothing.
  */
@@ -112,6 +65,7 @@ export function Home() {
   const editing = useBlockEditing();
   const [editingHero, setEditingHero] = useState(false);
   const intro = hero.intro ? tr(hero.intro) : "";
+  const discoverId = useId();
 
   return (
     <>
@@ -224,16 +178,20 @@ export function Home() {
         <div className="relative overflow-hidden bg-yellow">
           <Confetti seed={9} colours={BAND_CONFETTI} />
           <PageSection className="relative py-12 md:py-16">
-            <DestinationCards
-              label={t("home.discover")}
-              destinations={DESTINATIONS.map((destination) => ({
-                to: destination.to,
-                title: t(destination.titleKey),
-                description: t(destination.descriptionKey),
-                icon: destination.icon,
-                tint: destination.tint,
-              }))}
-            />
+            {/* A visible heading, so sighted visitors and screen-reader users
+                both meet the cards as their own section. */}
+            <section>
+              <h2
+                id={discoverId}
+                data-confetti-avoid
+                className="heading-wave w-fit font-display text-2xl md:text-3xl"
+              >
+                {t("home.discover")}
+              </h2>
+              <div className="mt-block">
+                <CardsBlock blockKey="home.cards" layout="band" links labelledBy={discoverId} />
+              </div>
+            </section>
           </PageSection>
         </div>
       )}

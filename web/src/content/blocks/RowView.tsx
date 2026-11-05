@@ -19,8 +19,12 @@ const LINK = "text-violet underline";
  * One row of a card, as a visitor reads it: a paragraph, or one per line of a
  * text row. Only what can safely be a link becomes one: a link row's URL must
  * be https, since a read lets any string through (see types.ts).
+ *
+ * `plain` shows every row as text, for a card that is a link itself: a link
+ * inside a link is invalid, and a click would not know which one it meant.
  */
-export function RowView({ row }: { row: Row }) {
+export function RowView({ row, plain = false }: { row: Row; plain?: boolean }) {
+  if (plain && row.type !== "text" && row.type !== "labelValue") return <PlainRow row={row} />;
   switch (row.type) {
     case "text":
       return lines(tr(row.text)).map((line, index) => (
@@ -89,6 +93,24 @@ export function RowView({ row }: { row: Row }) {
           )}
         </p>
       );
+  }
+}
+
+/** A row that would be a link, shown as its words alone. */
+function PlainRow({ row }: { row: Exclude<Row, { type: "text" | "labelValue" }> }) {
+  switch (row.type) {
+    case "phone":
+      return (
+        <Labelled label={tr(row.label)}>
+          {row.number.trim() === "" ? <Placeholder token={row.tbd} /> : row.number}
+        </Labelled>
+      );
+    case "email":
+      return <Labelled label={tr(row.label)}>{row.address}</Labelled>;
+    case "address":
+      return <p className="mt-tight">{(row.label ? tr(row.label) : "") || row.address}</p>;
+    case "link":
+      return <p className="mt-tight">{tr(row.label)}</p>;
   }
 }
 

@@ -68,6 +68,7 @@ export const ICONS = [
   "house",
   "school",
   "check",
+  "message",
 ] as const;
 
 /** The carnival colours a card's icon sits on. */
@@ -131,6 +132,7 @@ type Checks = {
   url: z.ZodType<string, string>;
   name: z.ZodType<string, string>;
   target: z.ZodType<string, string>;
+  cardTarget: z.ZodType<string | undefined, string>;
 };
 
 function schemas(checks: Checks) {
@@ -182,6 +184,9 @@ function schemas(checks: Checks) {
     rows: z.array(row),
     // A photo slot under the title, keyed by the block and this id (`cardSlot`).
     photo: z.boolean().optional(),
+    // Where the whole card leads, on a grid that offers links (the home
+    // page's band): a public page or an https address, as a button's target.
+    to: checks.cardTarget.optional(),
   });
 
   const cardsBlock = z.object({ cards: z.array(card) });
@@ -226,6 +231,7 @@ export const { row, card, cardsBlock, siteBlock, heroBlock } = schemas({
   url: z.string(),
   name: z.string(),
   target: z.string(),
+  cardTarget: z.string(),
 });
 
 /** The same blocks as an editor saves them: a number dials, a link is https. */
@@ -235,6 +241,12 @@ export const forEditor = schemas({
   // Spaces alone are no name: the page would drop the entry without a word.
   name: z.string().refine((value) => value.trim() !== ""),
   target: z.string().refine(isActionTarget),
+  // The editor holds a card without a link as "", since an undefined value
+  // would bring back the one the form opened with. It is saved as absent.
+  cardTarget: z.union([
+    z.literal("").transform(() => undefined),
+    z.string().refine(isActionTarget),
+  ]),
 });
 
 export type Row = z.infer<typeof row>;

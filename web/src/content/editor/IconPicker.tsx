@@ -22,6 +22,7 @@ import {
   Mail,
   MapPin,
   Megaphone,
+  MessageSquare,
   Mic,
   Music,
   Music2,
@@ -98,6 +99,7 @@ export const ICON_GLYPHS: Record<Icon, LucideIcon> = {
   house: House,
   school: School,
   check: Check,
+  message: MessageSquare,
 };
 
 /**

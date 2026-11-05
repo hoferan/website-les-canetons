@@ -1422,9 +1422,8 @@ export const fr = {
   /**
    * The front door (/).
    *
-   * `destinations` backs Home.tsx's DESTINATIONS array, which carries a
-   * titleKey/descriptionKey pair per card rather than a label — see the
-   * labelKey pattern on Layout.tsx's NAV.
+   * `destinations` is the shipped content of the yellow band's cards, the
+   * `home.cards` block (content/registry.ts), which the band may change.
    */
   home: {
     hero: "La guggen d’enfants de Fribourg, depuis 2002.",
@@ -1811,7 +1810,7 @@ export const fr = {
    */
   blocks: {
     site: "Infos du site",
-    home: { hero: "Accueil · en-tête" },
+    home: { hero: "Accueil · en-tête", cards: "Accueil · cartes" },
     join: { hero: "Nous rejoindre · en-tête", facts: "Nous rejoindre · cartes" },
     committee: { hero: "Comité · en-tête", contact: "Comité · contact" },
     band: { hero: "Les canetons · en-tête", godparents: "Les canetons · parrain et marraine" },
@@ -1896,6 +1895,8 @@ export const fr = {
       mark: "Mots surlignés",
       intro: "Introduction",
       photo: "Photo",
+      // The switch that makes a card of the home page's band one big link.
+      link: "Toute la carte est un lien",
     },
     // A block's buttons (a hero's, the footer's): a page of the site, or any other address.
     actions: {
@@ -1954,6 +1955,7 @@ export const fr = {
       house: "Maison",
       school: "École",
       check: "Coche",
+      message: "Message",
     },
     tints: {
       pink: "Rose",
