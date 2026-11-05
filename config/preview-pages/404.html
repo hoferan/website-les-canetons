@@ -12,12 +12,12 @@
   A path that is already a PR's root, or no PR's at all, is a real 404: a PR
   closed and its preview removed. Forwarding it would only land here again.
 -->
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
-    <title>Aperçu introuvable</title>
+    <title>No preview here</title>
     <script>
       (function () {
         var m = location.pathname.match(/^(\/[^/]+\/pr-\d+)(\/.+)$/);
@@ -30,9 +30,9 @@
     </script>
   </head>
   <body style="font-family: system-ui, sans-serif; margin: 2rem">
-    <h1>Aperçu introuvable</h1>
+    <h1>No preview here</h1>
     <p>
-      Cet aperçu n’existe pas, ou plus : il est supprimé quand sa pull request est fermée.
+      This preview does not exist, or no longer does: a preview is removed when its pull request closes.
     </p>
   </body>
 </html>
