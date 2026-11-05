@@ -279,6 +279,9 @@ test("a placed picture takes the badge's frame", async () => {
   expect(photo.className).toContain("border-white");
   expect(photo.className).toContain("w-48");
   expect(document.querySelector('img[src$="Les_Canetons_Fribourg_logo_2.jpg"]')).toBeNull();
+  // A photograph of the band, not the logo it replaces.
+  expect(photo).toHaveAttribute("alt", "Les Canetons de Fribourg");
+  expect(screen.queryByRole("img", { name: "Le logo des Canetons de Fribourg" })).toBeNull();
 });
 
 test("an editor with edit mode on gets the picture's control, the badge still showing", async () => {

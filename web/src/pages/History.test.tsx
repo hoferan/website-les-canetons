@@ -58,6 +58,13 @@ test("Ajouter says what it adds to", async () => {
   expect(screen.getByRole("link", { name: "Ajouter à l’histoire" })).toHaveTextContent("Ajouter");
 });
 
+test("Ajouter leads with its plus, as every add control does", async () => {
+  await renderHistory("fr", "demo.direction");
+  const add = screen.getByRole("link", { name: "Ajouter à l’histoire" });
+  expect(add.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+  expect(add.lastElementChild).toHaveTextContent("Ajouter");
+});
+
 test("the delete dialog names the entry it deletes", async () => {
   const user = userEvent.setup();
   await renderHistory("fr", "demo.direction");

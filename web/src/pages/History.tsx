@@ -98,6 +98,7 @@ export function History() {
               ariaLabel={t("history.addAria")}
               icon={Plus}
               corner={false}
+              iconFirst
               id={ADD_ID}
             />
           </div>

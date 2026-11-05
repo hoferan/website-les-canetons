@@ -52,7 +52,8 @@
   --color-lilac: #b9a8ff;
 
   /* What a raised button turns to on hover: solid, because a see-through hover
-     lets the page behind show through. Each is its colour, one step darker. */
+     lets the page behind show through. Each is its colour one step darker,
+     except ink: nothing on the site is darker, so it goes one step lighter. */
   --color-yellow-hover: #f2bd1f;
   --color-violet-hover: #3a21b5;
   --color-danger-hover: #c01712;

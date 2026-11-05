@@ -180,10 +180,12 @@ test("the Membres link is absent outside edit mode, and without members.manage",
   expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
 });
 
-test("the link says Verwaltet in Mitglieder on the German page", async () => {
+test("the link says Verwaltet unter Mitglieder on the German page", async () => {
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUser("demo.direction");
   await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
 
-  expect(await screen.findByRole("link", { name: "Verwaltet in Mitglieder" })).toBeInTheDocument();
+  expect(
+    await screen.findByRole("link", { name: "Verwaltet unter Mitglieder" }),
+  ).toBeInTheDocument();
 });

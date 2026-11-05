@@ -82,6 +82,9 @@ const BADGE_FRAME = "w-48 rotate-[4deg] border-4 border-white shadow-raised sm:w
 /** The `sizes` of that frame: its width at each breakpoint of BADGE_FRAME. */
 const BADGE_SIZES = "(min-width: 768px) 288px, (min-width: 640px) 256px, 192px";
 
+/** The alt of a photograph of the band: a proper noun, the same in both languages. */
+const BAND_NAME = "Les Canetons de Fribourg";
+
 /** On yellow, the colours that are not yellow. */
 const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
 
@@ -138,7 +141,11 @@ export function Home() {
               places there takes the same frame, and the badge returns when it
               is removed. The badge is drawn while the slots load, since it is
               the page's largest paint, and a placed picture is cropped to the
-              badge's proportions so that swapping it in moves nothing. */}
+              badge's proportions so that swapping it in moves nothing.
+
+              A placed picture is a photograph of the band, not the logo, so
+              it takes the band's name as its alt, as the concert photo
+              below does; the badge keeps the logo's. */}
           <div
             data-confetti-avoid
             className="flex flex-col items-center justify-self-center md:order-2"
@@ -146,12 +153,12 @@ export function Home() {
             <SlotPicture
               slot="home.hero"
               label={t("photos.slot.homeHero")}
-              alt={t("home.brandLogoAlt")}
+              alt={BAND_NAME}
               render={(photo) =>
                 photo ? (
                   <Photo
                     photo={photo}
-                    alt={t("home.brandLogoAlt")}
+                    alt={BAND_NAME}
                     sizes={BADGE_SIZES}
                     className={cn("aspect-[237/174] rounded-lg object-cover", BADGE_FRAME)}
                   />
@@ -199,14 +206,9 @@ export function Home() {
       ) : null}
 
       <PageSection>
-        {/* The band's name is a proper noun, so it is the same alt in both
-            languages. In the text column, which its `sizes` assumes. */}
+        {/* In the text column, which its `sizes` assumes. */}
         <div className="mx-auto max-w-text">
-          <SlotPhoto
-            slot="concert"
-            label={t("photos.slot.concert")}
-            alt="Les Canetons de Fribourg"
-          />
+          <SlotPhoto slot="concert" label={t("photos.slot.concert")} alt={BAND_NAME} />
         </div>
 
         <PublicAgenda />

@@ -1384,7 +1384,7 @@ export const de: typeof fr = {
 
   blockEditor: {
     edit: "Bearbeiten: {{label}}",
-    managedIn: "Verwaltet in {{page}}",
+    managedIn: "Verwaltet unter {{page}}",
     save: "Speichern",
     saving: "Wird gespeichert…",
     reset: "Original wiederherstellen",

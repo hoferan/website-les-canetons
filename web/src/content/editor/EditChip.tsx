@@ -84,8 +84,10 @@ export function EditChip({
  *
  * `corner={false}` leaves the placing to the caller, for a chip in a row of
  * chips. `reveal` gives it the pencil's manners instead: icon first, the word
- * only on hover or focus from sm up. `ariaLabel` is the fuller accessible
- * name of a chip that repeats once per row, beginning with the visible word.
+ * only on hover or focus from sm up. `iconFirst` keeps the word and puts the
+ * icon before it, for an "add" chip, whose plus leads as on every other add
+ * control. `ariaLabel` is the fuller accessible name of a chip that repeats
+ * once per row, beginning with the visible word.
  */
 export function ChipLink({
   label,
@@ -94,6 +96,7 @@ export function ChipLink({
   ariaLabel,
   corner = true,
   reveal = false,
+  iconFirst = false,
   id,
 }: {
   label: string;
@@ -102,6 +105,7 @@ export function ChipLink({
   ariaLabel?: string;
   corner?: boolean;
   reveal?: boolean;
+  iconFirst?: boolean;
   id?: string;
 }) {
   const icon = <Icon aria-hidden="true" className="size-5 shrink-0" />;
@@ -117,6 +121,11 @@ export function ChipLink({
         <>
           {icon}
           <span className={REVEALED}>{label}</span>
+        </>
+      ) : iconFirst ? (
+        <>
+          {icon}
+          <span className="text-sm font-medium">{label}</span>
         </>
       ) : (
         <>
