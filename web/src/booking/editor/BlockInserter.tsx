@@ -84,7 +84,6 @@ export function BlockInserter({
         type="button"
         variant="secondary"
         size="icon"
-        className="rounded-full"
         aria-label={label}
         onClick={() => setPicking(true)}
       >

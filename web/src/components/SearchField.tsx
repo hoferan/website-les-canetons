@@ -69,7 +69,7 @@ export function SearchField({
           type="button"
           variant="quiet"
           size="icon"
-          className="absolute top-1/2 right-0 -translate-y-1/2"
+          className="absolute inset-y-0 right-0 my-auto"
           aria-label={t("common.clearSearch")}
           onClick={() => onChange("")}
         >
