@@ -189,6 +189,10 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   `tools/image-budget.mjs` enforces only the edge and the size; the rest is on
   you. Band photographs belong in the image library.
   Never re-optimise already-optimised files.
+- **Code names a `web/public/` file through `publicUrl()`**, never as
+  `"/assets/…"`. Every PR gets a preview on GitHub Pages under
+  `/website-les-canetons/pr-<n>/` (`.github/workflows/preview.yml`), where a
+  root-absolute path 404s; `tools/public-url.test.mjs` fails on one.
 - **`web/src/api/generated/` is generated; never hand-edit it.** Change the
   controller, run `npm run openapi && npm run generate:api`, commit the result.
   CI's `openapi-drift` job fails if either is stale.
@@ -288,6 +292,7 @@ npm run test:web      # Vitest (web/src)
 npm run test:e2e      # Playwright (web/e2e), against the mocked backend
 npm run test:js       # node:test over tools/
 npm run screenshots   # every route at 1280 and 390px into dist/screenshots/, plus index.html
+npm run build:preview -- <pr>   # a PR's Pages preview, mocks bundled, into dist/preview/
 npm run lighthouse    # public pages vs. the performance budget (informational)
 npm run artisan -- route:list   # artisan, composer and php go through php-runner
 ```

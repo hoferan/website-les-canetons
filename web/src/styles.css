@@ -134,6 +134,17 @@
     }
   }
 
+  /* The env ribbon's corner sliding in from off screen when a page loads
+     (EnvRibbon), overshooting a little, so a tester sees where they are
+     before reading anything. Once only. */
+  --animate-ribbon-in: ribbon-in 700ms cubic-bezier(0.34, 1.56, 0.64, 1) 300ms both;
+
+  @keyframes ribbon-in {
+    from {
+      translate: 100% -100%;
+    }
+  }
+
   /* A confetto rocking in place (ConfettiPiece). It goes on an inner SVG
      group with no transform attribute of its own, since a CSS transform
      replaces the attribute rather than adding to it; the group's origin is

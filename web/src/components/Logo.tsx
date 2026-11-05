@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 import { useSite } from "../content/blocks/SiteBlock";
 import { t } from "../i18n";
+import { publicUrl } from "../publicUrl";
 
 /**
  * There are two logos. `Logo` is the header lockup: the duck mark beside the
@@ -34,7 +35,7 @@ export function Logo() {
           box (the CSS sizes it). Without them `w-auto` computes to 0 until the
           bytes arrive, and the wordmark jumps right when the image lands. */}
       <img
-        src="/assets/img/duck-white.png"
+        src={publicUrl("assets/img/duck-white.png")}
         alt=""
         width={139}
         height={172}
@@ -74,7 +75,7 @@ export function Logo() {
 export function BrandLogo({ className }: { className?: string }) {
   return (
     <img
-      src="/assets/img/Les_Canetons_Fribourg_logo_2.jpg"
+      src={publicUrl("assets/img/Les_Canetons_Fribourg_logo_2.jpg")}
       alt={t("home.brandLogoAlt")}
       width={237}
       height={174}

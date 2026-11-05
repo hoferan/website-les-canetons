@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { Confetti } from "../carnival/Confetti";
 import { useSite } from "../content/blocks/SiteBlock";
 import { t } from "../i18n";
+import { publicUrl } from "../publicUrl";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { useLogout } from "../session/logout";
 import { Avatar } from "./Avatar";
@@ -109,7 +110,7 @@ export function PhoneNav({
         >
           <Link to="/" onClick={close} aria-label={site.name} className="focus-ring-stage rounded">
             <img
-              src="/assets/img/duck-white.png"
+              src={publicUrl("assets/img/duck-white.png")}
               alt=""
               width={139}
               height={172}
