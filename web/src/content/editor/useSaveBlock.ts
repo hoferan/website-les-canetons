@@ -1,11 +1,21 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { toast } from "sonner";
 import type { z } from "zod";
 
-import { getBlockIndexQueryKey, useBlockUpdate } from "../../api/generated/endpoints";
+import {
+  getBlockIndexQueryKey,
+  getImageIndexQueryKey,
+  getPhotoSlotIndexQueryKey,
+  photoSlotUpdate,
+  useBlockUpdate,
+} from "../../api/generated/endpoints";
 import type { UpdateBlockRequestData } from "../../api/generated/model";
 import { useApiFormError } from "../../api/useApiFormError";
 import { t } from "../../i18n";
+import { cardSlot, usePhotoSlots } from "../../images/photoSlots";
+import { useSession } from "../../session/SessionProvider";
+import { useBlock } from "../BlocksProvider";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 
 /**
@@ -19,15 +29,39 @@ import { BLOCKS, type BlockData, type BlockKey } from "../registry";
  * On success the page's blocks are read again before `onSaved` runs, so the
  * dialog closes onto the new content. A refusal leaves the dialog open with
  * the server's reason, translated.
+ *
+ * A card that showed a placed photo and is deleted, or has its photo switched
+ * off, gets its slot emptied once the block is saved. Nothing would show that
+ * slot any more, yet the server counts it as a use, so the library could not
+ * delete the photo and would link to a page with no control left for it. An
+ * editor without `images.manage` cannot empty a slot; the library's "Retirer
+ * de cet emplacement" is there for whoever can.
  */
 export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
   const queryClient = useQueryClient();
   const { error, setFromThrown, clear, messageFor } = useApiFormError(t("blockEditor.saveFailed"));
+  const current = useBlock(key);
+  const { can } = useSession();
+  const { photoOf } = usePhotoSlots();
+  // Set by the save and read once it succeeds; a ref, since the dialog that
+  // saved may close before the answer comes back.
+  const orphans = useRef<string[]>([]);
 
   const update = useBlockUpdate({
     mutation: {
       onSuccess: async () => {
-        await queryClient.invalidateQueries({ queryKey: getBlockIndexQueryKey() });
+        const emptied = orphans.current;
+        orphans.current = [];
+        await emptySlots(emptied);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getBlockIndexQueryKey() }),
+          ...(emptied.length > 0
+            ? [
+                queryClient.invalidateQueries({ queryKey: getPhotoSlotIndexQueryKey() }),
+                queryClient.invalidateQueries({ queryKey: getImageIndexQueryKey() }),
+              ]
+            : []),
+        ]);
         onSaved();
         toast(t("blockEditor.saved"));
       },
@@ -40,6 +74,10 @@ export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
     clear();
     const defaults = BLOCKS[key].defaults();
     const data = withoutBlankTexts(BLOCKS[key].schema, withoutIdleActions(typed, defaults));
+    const kept = new Set(cardPhotoSlots(key, data));
+    orphans.current = can("images.manage")
+      ? cardPhotoSlots(key, current).filter((slot) => !kept.has(slot) && photoOf(slot) !== null)
+      : [];
     const original = sameData(data, defaults);
     update.mutate({
       key,
@@ -53,6 +91,22 @@ export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
   const shown = error && dataProblem ? { ...error, message: dataProblem } : error;
 
   return { save, pending: update.isPending, error: shown };
+}
+
+/** The photo slots of a block's cards that show one; none for a block without cards. */
+function cardPhotoSlots(key: BlockKey, data: unknown): string[] {
+  const cards = (data as { cards?: Array<{ id: string; photo?: boolean }> }).cards ?? [];
+  return cards.filter((card) => card.photo === true).map((card) => cardSlot(key, card.id));
+}
+
+/**
+ * Empties each slot. A slot that fails stays placed and listed in the library,
+ * where it can be taken off by hand, so the block's save still counts.
+ */
+async function emptySlots(slots: string[]) {
+  await Promise.all(
+    slots.map((slot) => photoSlotUpdate(slot, { imageId: null }).catch(() => undefined)),
+  );
 }
 
 /**

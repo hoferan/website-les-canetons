@@ -856,6 +856,20 @@ export function addUnusedMockImage(name = `Photo inutilisée ${nextImageId}`): n
   return id;
 }
 
+/**
+ * Test seam: put a photo in a slot, or empty it with null, as a placement on
+ * the page would, so a test can start from a slot nothing on screen placed.
+ */
+export function setMockPhotoSlot(slot: string, placement: PhotoSlot | null): void {
+  const others = Object.entries(photoSlots).filter(([name]) => name !== slot);
+  photoSlots = Object.fromEntries(placement ? [...others, [slot, placement]] : others);
+}
+
+/** Test seam: what a slot holds now, or null when it is empty. */
+export function mockPhotoSlot(slot: string): PhotoSlot | null {
+  return photoSlots[slot] ?? null;
+}
+
 function resetImages(): void {
   images = initialImages();
   nextImageId = 3;

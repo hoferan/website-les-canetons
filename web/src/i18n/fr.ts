@@ -1583,6 +1583,12 @@ export const fr = {
       deleteInUseTitle: "Cette photo est encore affichée",
       deleteInUse: "Retirez-la d’abord de chacune de ces pages, puis supprimez-la.",
       close: "Fermer",
+      // Beside a place under "Utilisée sur": empties that slot from here, for
+      // a place whose page no longer draws it.
+      removeUsage: "Retirer de cet emplacement",
+      removeUsageNamed: "Retirer de cet emplacement\u00a0: {{place}}",
+      removedUsage: "Photo retirée de « {{place}} ».",
+      removeUsageFailed: "La photo n’a pas pu être retirée.",
     },
   },
 

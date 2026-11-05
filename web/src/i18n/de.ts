@@ -1198,6 +1198,10 @@ export const de: typeof fr = {
       deleteInUseTitle: "Dieses Foto wird noch angezeigt",
       deleteInUse: "Entfernen Sie es zuerst von jeder dieser Seiten und löschen Sie es dann.",
       close: "Schliessen",
+      removeUsage: "Von diesem Platz entfernen",
+      removeUsageNamed: "Von diesem Platz entfernen: {{place}}",
+      removedUsage: "Foto von „{{place}}“ entfernt.",
+      removeUsageFailed: "Das Foto konnte nicht entfernt werden.",
     },
   },
 

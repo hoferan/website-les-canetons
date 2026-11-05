@@ -5,7 +5,12 @@ import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 
 import { Toaster } from "../../components/ui/sonner";
 import { t } from "../../i18n";
-import { setMockUser } from "../../mocks/handlers";
+import {
+  mockPhotoSlot,
+  setMockPhotoSlot,
+  setMockUser,
+  setMockUserWithPermissions,
+} from "../../mocks/handlers";
 import { server } from "../../mocks/node";
 import { recordBlockPuts, storeBlock } from "../../test/renderBlockEditor";
 import { renderWithSession } from "../../test/renderWithSession";
@@ -458,6 +463,104 @@ test("deleting a card that carries a photo leaves the page rendering", async () 
   await waitFor(() => expect(screen.queryByRole("heading", { name: "Horaires" })).toBeNull());
   expect(screen.getByRole("heading", { name: "Lieu" })).toBeInTheDocument();
   expect(document.querySelector("[data-photo-pending='join.facts.schedule']")).toBeNull();
+});
+
+/** Every write the page sends, blocks and photo slots alike, in the order sent. */
+function recordWrites() {
+  const writes: Array<{ path: string; body: unknown }> = [];
+  server.events.on("request:start", async ({ request }) => {
+    const path = new URL(request.url).pathname;
+    if (request.method === "PUT") writes.push({ path, body: await request.clone().json() });
+  });
+  return writes;
+}
+
+const SCHEDULE_SLOT = cardSlot("join.facts", "schedule");
+
+/** The join cards as stored with a photo on the schedule card, and a photo placed in its slot. */
+function scheduleWithPhoto() {
+  storeBlock("join.facts", {
+    cards: BLOCKS["join.facts"]
+      .defaults()
+      .cards.map((card) => (card.id === "schedule" ? { ...card, photo: true } : card)),
+  });
+  setMockPhotoSlot(SCHEDULE_SLOT, { imageId: 1, label: "Horaires", path: "/join" });
+}
+
+test("deleting a card whose photo is placed empties its slot once the list is saved", async () => {
+  const user = userEvent.setup();
+  editing();
+  scheduleWithPhoto();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const writes = recordWrites();
+
+  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  const confirm = await screen.findByRole("alertdialog");
+  await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
+
+  // Otherwise the photo stays placed where nothing shows it, and the library
+  // can neither delete it nor offer a page to take it off.
+  await expect.poll(() => writes).toHaveLength(2);
+  expect(writes[0]?.path).toBe("/api/v1/blocks/join.facts");
+  expect(writes[1]).toEqual({
+    path: `/api/v1/photo-slots/${SCHEDULE_SLOT}`,
+    body: { imageId: null },
+  });
+  await waitFor(() => expect(mockPhotoSlot(SCHEDULE_SLOT)).toBeNull());
+});
+
+test("switching a card's photo off empties its slot", async () => {
+  const user = userEvent.setup();
+  editing();
+  scheduleWithPhoto();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const writes = recordWrites();
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("switch", { name: "Photo" }));
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => writes).toHaveLength(2);
+  expect(writes[1]?.path).toBe(`/api/v1/photo-slots/${SCHEDULE_SLOT}`);
+  await waitFor(() => expect(mockPhotoSlot(SCHEDULE_SLOT)).toBeNull());
+});
+
+test("a save that keeps a card's photo leaves its slot alone", async () => {
+  const user = userEvent.setup();
+  editing();
+  scheduleWithPhoto();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const writes = recordWrites();
+
+  await user.click(screen.getByRole("button", { name: "Déplacer « Horaires » avant" }));
+
+  await expect.poll(() => writes).toHaveLength(1);
+  // Long enough for a slot write to have followed the block's.
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(writes.map((write) => write.path)).toEqual(["/api/v1/blocks/join.facts"]);
+  expect(mockPhotoSlot(SCHEDULE_SLOT)).not.toBeNull();
+});
+
+test("an editor who cannot manage photos deletes the card and leaves the slot to the library", async () => {
+  const user = userEvent.setup();
+  setMockUserWithPermissions("demo.direction", ["content.manage", "events.view", "account.manage"]);
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  scheduleWithPhoto();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const writes = recordWrites();
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  const confirm = await screen.findByRole("alertdialog");
+  await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
+
+  await expect.poll(() => writes).toHaveLength(1);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(writes.map((write) => write.path)).toEqual(["/api/v1/blocks/join.facts"]);
 });
 
 test("a slot key built from an added card's id is a valid slot name", () => {
