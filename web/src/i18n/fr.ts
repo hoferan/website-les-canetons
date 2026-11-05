@@ -81,6 +81,10 @@ export const fr = {
       label: "Gérer les photos",
       hint: "Ajoute et supprime des photos, et choisit celles du site.",
     },
+    content_manage: {
+      label: "Modifier les textes du site",
+      hint: "Change les textes et les coordonnées des pages publiques, là où ils s’affichent.",
+    },
     roles_manage: {
       label: "Gérer les rôles",
       hint: "Crée les rôles et choisit ce que chacun permet.",
@@ -228,8 +232,16 @@ export const fr = {
     image_set_too_heavy: "est trop lourd dans son ensemble",
     image_set_widths_repeated: "contient deux fois la même taille",
     image_set_aspect_mismatch: "mélange des tailles qui n'ont pas les mêmes proportions",
+    // BlockShape: the limits on a content block's data.
+    block_not_an_object: "doit être un ensemble de champs, pas une liste",
+    block_too_deep: "est imbriqué sur trop de niveaux",
+    block_too_long: "contient un texte trop long (maximum 2000 caractères)",
+    block_too_many: "contient une liste trop longue (maximum 24 éléments)",
+    block_bad_key: "contient un nom de champ qui n'est pas valable",
+    block_too_large: "est trop volumineux",
   },
   fields: {
+    data: "Contenu",
     date: "Date",
     title: "Titre",
     startsAt: "Début",
@@ -411,6 +423,19 @@ export const fr = {
    * than a label, since a module-level `label: t(...)` would be frozen in the
    * locale active at import (./index.ts).
    */
+  /**
+   * The band itself: its name and its accounts elsewhere, the same in both
+   * languages. Texts like any other, so the band changes them in place
+   * (#106), and another band could run this site under its own.
+   */
+  site: {
+    name: "Les Canetons de Fribourg",
+    legalName: "Guggenmusik les canetons de Fribourg",
+    instagramUrl: "https://www.instagram.com/guggen_lescanetons/",
+    facebookUrl: "https://www.facebook.com/p/Guggenmusik-Les-Canetons-de-Fribourg-100063571537707",
+    flickrUrl: "https://www.flickr.com/photos/201962767@N02/collections",
+  },
+
   nav: {
     primary: "Navigation principale",
     // The first thing a Tab reaches on every page, hidden until focused.
@@ -434,11 +459,9 @@ export const fr = {
     // The external links' whole names. Each says it opens a new tab and
     // begins with the words on screen, so voice control still finds it. The
     // networks' names are brands and stay untranslated.
-    galleryLabel: "Galerie sur Flickr (nouvel onglet)",
-    instagramLabel: "Instagram des Canetons (nouvel onglet)",
-    facebookLabel: "Facebook des Canetons (nouvel onglet)",
-    // The footer's Flickr link, which reads "Flickr" on screen.
-    flickrLabel: "Flickr, la galerie des Canetons (nouvel onglet)",
+    galleryName: "Galerie sur Flickr",
+    // Every external link says it opens a new tab: {{name}} is its name.
+    newTab: "{{name}} (nouvel onglet)",
     followUs: "Suivez-nous",
     footerPitch:
       "La guggen d’enfants de Fribourg, depuis 2002. De 7 à 18 ans, pas besoin de connaître la musique.",
@@ -1472,7 +1495,8 @@ export const fr = {
     slot: {
       band: "Photo du groupe",
       concert: "Photo en concert",
-      godparents: "Parrain et marraine",
+      // The picture beside the home page's heading, where the badge stands until one is placed.
+      homeHero: "Image de l’en-tête",
       history: "Histoire\u00a0: {{title}}",
       // Also the poster's alternative text, wherever the event shows it.
       event: "Affiche\u00a0: {{title}}",
@@ -1559,6 +1583,12 @@ export const fr = {
       deleteInUseTitle: "Cette photo est encore affichée",
       deleteInUse: "Retirez-la d’abord de chacune de ces pages, puis supprimez-la.",
       close: "Fermer",
+      // Beside a place under "Utilisée sur": empties that slot from here, for
+      // a place whose page no longer draws it.
+      removeUsage: "Retirer de cet emplacement",
+      removeUsageNamed: "Retirer de cet emplacement\u00a0: {{place}}",
+      removedUsage: "Photo retirée de « {{place}} ».",
+      removeUsageFailed: "La photo n’a pas pu être retirée.",
     },
   },
 
@@ -1683,7 +1713,6 @@ export const fr = {
     instructors: "Moniteurs :",
     registersNav: "Registres",
     patronsHeading: "Le parrain et la marraine",
-    patronsAlt: "Le parrain et la marraine des Canetons",
     // The names are content; the "et" between them is not, so the whole
     // line is catalogue copy.
     patrons: "Richard Hertig et Annick Bürgisser",
@@ -1707,10 +1736,8 @@ export const fr = {
     facts: {
       instruments: {
         heading: "Instruments recherchés",
-        trumpet: "Trompette",
-        trombone: "Trombone",
-        sousaphone: "Sousaphone",
-        euphonium: "Euphonium",
+        // One instrument per line; the band edits the list on the page.
+        list: "Trompette\nTrombone\nSousaphone\nEuphonium",
       },
       schedule: {
         heading: "Horaires",
@@ -1723,6 +1750,10 @@ export const fr = {
       },
     },
     location: "Lieu",
+    // The place and its street address, the same in both languages. The map
+    // link searches for the two together.
+    locationPlace: "Werkhof",
+    locationAddress: "Planche-Inférieure 14, 1700 Fribourg",
     locationArea: "Basse-Ville de Fribourg",
     contacts: "Contacts",
     contactMeanwhile: "En attendant, écrivez-nous depuis la",
@@ -1757,6 +1788,172 @@ export const fr = {
   },
 
   /**
+   * A content block's place on the site, the title of its editor. Nested as
+   * the block keys are, so `blocks.join.facts` names `join.facts`.
+   */
+  blocks: {
+    site: "Infos du site",
+    home: { hero: "Accueil · en-tête" },
+    join: { hero: "Nous rejoindre · en-tête", facts: "Nous rejoindre · cartes" },
+    committee: { hero: "Comité · en-tête", contact: "Comité · contact" },
+    band: { hero: "Les canetons · en-tête", godparents: "Les canetons · parrain et marraine" },
+    history: { hero: "Histoire · en-tête" },
+    contact: { hero: "Contact · en-tête" },
+    agenda: { hero: "Où nous voir · en-tête" },
+  },
+
+  /** The floating pill that turns edit mode on and off on a public page (#106). */
+  editMode: {
+    start: "Modifier la page",
+    done: "Terminer la modification",
+    announceOn:
+      "Mode édition activé : chaque bloc a un bouton Modifier. Les visiteurs ne le voient pas.",
+    announceOff: "Mode édition désactivé.",
+  },
+
+  /** The dialog that changes one content block, and the fields inside it (#106). */
+  blockEditor: {
+    // The chip's accessible name; its visible word is common.edit.
+    edit: "Modifier : {{label}}",
+    // The link chip on a block that shows data: where that data is managed.
+    managedIn: "Géré dans {{page}}",
+    save: "Enregistrer",
+    saving: "Enregistrement…",
+    reset: "Rétablir l’original",
+    saved: "Modifié",
+    saveFailed: "Le bloc n’a pas pu être enregistré. Réessayez.",
+    invalid: "Une valeur n’est pas acceptée. Corrigez-la avant d’enregistrer.",
+    // A card editor shows one card; the refused value sits in another one.
+    otherCardInvalid:
+      "La carte {{title}} contient un numéro ou un lien refusé. Ouvrez-la pour le corriger, puis réessayez.",
+    // The language badges beside a field's label, the same on both pages.
+    french: "FR",
+    german: "DE",
+    addGerman: "+ Deutsch",
+    removeGerman: "Retirer l’allemand",
+    // Clears the words picked on the title for the highlight.
+    markNone: "Aucun",
+    up: "Monter",
+    down: "Descendre",
+    remove: "Supprimer",
+    addRow: "Ajouter une ligne",
+    addCard: "Ajouter une carte",
+    // Beside the add button once a grid holds as many cards as the server takes.
+    cardsFull: "{{max}} cartes au plus. Supprimez-en une pour en ajouter une autre.",
+    removeCard: "Supprimer la carte",
+    removeCardTitle: "Supprimer cette carte ?",
+    removeCardBody: "La carte et ses lignes disparaissent de la page.",
+    removeCardConfirm: "Supprimer",
+    // The arrows beside a card's chip in edit mode, which reorder the grid.
+    moveCardBefore: "Déplacer « {{title}} » avant",
+    moveCardAfter: "Déplacer « {{title}} » après",
+    rowType: {
+      text: "Texte",
+      labelValue: "Libellé + valeur",
+      phone: "Téléphone",
+      email: "E-mail",
+      address: "Adresse",
+      link: "Lien",
+    },
+    field: {
+      text: "Texte",
+      label: "Libellé",
+      value: "Valeur",
+      number: "Numéro",
+      email: "Adresse e-mail",
+      place: "Lieu",
+      address: "Adresse",
+      url: "Adresse du lien",
+      title: "Titre",
+      mark: "Mots surlignés",
+      intro: "Introduction",
+      photo: "Photo",
+    },
+    // A hero's buttons: a page of the site, or any other address.
+    hero: {
+      buttons: "Boutons",
+      addButton: "Ajouter un bouton",
+      button: "Bouton {{n}}",
+      destination: "Destination",
+      otherLink: "Autre lien (https)",
+    },
+    httpsExpected: "Une adresse complète est attendue, commençant par https://.",
+    phoneInvalid: "Un numéro de téléphone est attendu, par exemple 026 123 45 67.",
+    icon: "Icône",
+    tint: "Couleur",
+    iconSearch: "Chercher une icône",
+    noIcon: "Aucune icône ne correspond.",
+    icons: {
+      music: "Musique",
+      clock: "Horloge",
+      cake: "Gâteau",
+      "map-pin": "Lieu",
+      phone: "Téléphone",
+      users: "Groupe",
+      calendar: "Calendrier",
+      star: "Étoile",
+      info: "Information",
+      mail: "Courrier",
+      drum: "Tambour",
+      notes: "Notes",
+      piano: "Piano",
+      mic: "Micro",
+      megaphone: "Mégaphone",
+      "party-popper": "Fête",
+      sparkles: "Étincelles",
+      ticket: "Billet",
+      shirt: "Costume",
+      bus: "Bus",
+      car: "Voiture",
+      train: "Train",
+      utensils: "Repas",
+      beer: "Bière",
+      coffee: "Café",
+      gift: "Cadeau",
+      heart: "Cœur",
+      smile: "Sourire",
+      baby: "Enfant",
+      camera: "Appareil photo",
+      image: "Image",
+      video: "Vidéo",
+      globe: "Globe",
+      link: "Lien",
+      euro: "Argent",
+      trophy: "Trophée",
+      flag: "Drapeau",
+      sun: "Soleil",
+      snowflake: "Neige",
+      house: "Maison",
+      school: "École",
+      check: "Coche",
+    },
+    tints: {
+      pink: "Rose",
+      cyan: "Turquoise",
+      lime: "Vert",
+      yellow: "Jaune",
+      lilac: "Lilas",
+    },
+    // The site editor, opened from the footer.
+    site: {
+      edit: "Modifier les infos du site",
+      name: "Nom du groupe",
+      pitch: "Phrase sous le nom",
+      legalName: "Nom officiel",
+      networks: "Réseaux",
+      network: "Réseau",
+      networkUrl: "Adresse de la page",
+      addNetwork: "Ajouter un réseau",
+      networkName: "Nom du réseau",
+      networkNameExpected: "Un nom est attendu.",
+      networkIcon: "Icône",
+      networkLink: "Lien",
+    },
+    // Between a row's label and its value: "Lieu : Werkhof".
+    separator: " : ",
+  },
+
+  /**
    * The two shared placeholder components, PhotoPending and Tbd.
    *
    * PhotoPending shows one sentence for every photo slot, so no French
@@ -1769,6 +1966,8 @@ export const fr = {
     // A whole string, punctuation included: French puts a space before a
     // colon and German does not.
     tbdWhat: "••• à compléter : {{what}}",
+    // For what is filled in on the members page rather than in place.
+    tbdOnMembersPage: "••• à compléter sur la page Membres : {{what}}",
     photoPending: "Photo à venir",
     registerFirstNames: "prénoms du registre",
     bookingNumber: "numéro pour les prestations",

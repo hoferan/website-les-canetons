@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { Confetti } from "../carnival/Confetti";
+import { useSite } from "../content/blocks/SiteBlock";
 import { t } from "../i18n";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { useLogout } from "../session/logout";
@@ -76,6 +77,7 @@ export function PhoneNav({
   showAccount: boolean;
 }) {
   const close = () => onOpenChange(false);
+  const site = useSite();
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -105,12 +107,7 @@ export function PhoneNav({
           data-confetti-avoid
           className="relative flex items-center justify-between py-2 pr-2 pl-4"
         >
-          <Link
-            to="/"
-            onClick={close}
-            aria-label="Les Canetons de Fribourg"
-            className="focus-ring-stage rounded"
-          >
+          <Link to="/" onClick={close} aria-label={site.name} className="focus-ring-stage rounded">
             <img
               src="/assets/img/duck-white.png"
               alt=""

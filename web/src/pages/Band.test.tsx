@@ -3,9 +3,16 @@ import { expect, test } from "vitest";
 
 import { HttpResponse, delay, http } from "msw";
 
-import { setMemberVisibility, setSectionNameDe } from "../mocks/handlers";
+import {
+  setMemberVisibility,
+  setMockUser,
+  setMockUserWithPermissions,
+  setSectionNameDe,
+} from "../mocks/handlers";
 import { server } from "../mocks/node";
+import { storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
+import { EDIT_MODE_KEY } from "../content/EditMode";
 import { Band } from "./Band";
 
 /**
@@ -101,7 +108,7 @@ test("renders the heading, the register index and a placeholder gap in German", 
 
   // Lyre is the empty one in the seeded roster (see the French test above).
   const lyre = await screen.findByRole("article", { name: "Lyre" });
-  expect(within(lyre).getByText(/noch zu ergänzen/)).toBeInTheDocument();
+  expect(within(lyre).getByText(/zu ergänzen/)).toBeInTheDocument();
 });
 
 test("names a register in German where it has a German name, and in French where not", async () => {
@@ -216,4 +223,104 @@ test("shows the godparents card when the roster cannot be read", async () => {
   expect(
     await screen.findByRole("heading", { name: "Le parrain et la marraine" }),
   ).toBeInTheDocument();
+});
+
+test("in edit mode the hero and the godparents' card carry a chip", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  await renderWithSession(<Band />, { route: "/band" });
+
+  expect(
+    await screen.findByRole("button", { name: "Modifier : Le parrain et la marraine" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Modifier : Les canetons · en-tête" }),
+  ).toBeInTheDocument();
+});
+
+test("the godparents' card is a card with its title, photo slot and names", async () => {
+  await renderWithSession(<Band />, { route: "/band" });
+
+  const heading = await screen.findByRole("heading", { name: "Le parrain et la marraine" });
+  const card = heading.closest("[data-slot='card']")!;
+  expect(
+    within(card as HTMLElement).getByText("Richard Hertig et Annick Bürgisser"),
+  ).toBeInTheDocument();
+  await waitFor(() =>
+    expect(card.querySelector("[data-photo-pending='band.godparents.godparents']")).not.toBeNull(),
+  );
+});
+
+test("the godparents' card shows the stored title and names", async () => {
+  storeBlock("band.godparents", {
+    cards: [
+      {
+        id: "godparents",
+        icon: "heart",
+        tint: "pink",
+        title: { fr: "Nos parrains" },
+        rows: [{ type: "text", text: { fr: "Jean Dupont et Marie Rossier" } }],
+        photo: true,
+      },
+    ],
+  });
+  await renderWithSession(<Band />, { route: "/band" });
+
+  expect(await screen.findByRole("heading", { name: "Nos parrains" })).toBeInTheDocument();
+  expect(screen.getByText("Jean Dupont et Marie Rossier")).toBeInTheDocument();
+});
+
+test("a godparents block stored in the old fields shape falls back to the default card", async () => {
+  storeBlock("band.godparents", {
+    heading: { fr: "Nos parrains" },
+    names: { fr: "Jean Dupont et Marie Rossier" },
+  });
+  await renderWithSession(<Band />, { route: "/band" });
+
+  expect(
+    await screen.findByRole("heading", { name: "Le parrain et la marraine" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByText("Jean Dupont et Marie Rossier")).toBeNull();
+});
+
+/** The first names come from the roster, so the gap says where to fill it. */
+test("an empty register's gap points at the members page, in both languages", async () => {
+  const { unmount } = await renderWithSession(<Band />, { route: "/band" });
+
+  const lyre = await screen.findByRole("article", { name: "Lyre" });
+  expect(lyre.querySelector("[data-tbd='register-first-names']")?.textContent).toBe(
+    "••• à compléter sur la page Membres : prénoms du registre",
+  );
+  unmount();
+
+  await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
+  const leier = await screen.findByRole("article", { name: "Lyre" });
+  expect(leier.querySelector("[data-tbd='register-first-names']")?.textContent).toBe(
+    "••• auf der Seite Mitglieder zu ergänzen: Vornamen des Registers",
+  );
+});
+
+test("in edit mode, every register links to Membres, and not otherwise", async () => {
+  setMockUser("demo.direction");
+  const { unmount } = await renderWithSession(<Band />, { route: "/band" });
+  await screen.findByRole("heading", { name: "Trombones" });
+  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
+  unmount();
+
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<Band />, { route: "/band" });
+  const register = (await screen.findByRole("heading", { name: "Trombones" })).closest("article")!;
+  expect(within(register).getByRole("link", { name: "Géré dans Membres" })).toHaveAttribute(
+    "href",
+    "/members",
+  );
+  expect(screen.getAllByRole("link", { name: "Géré dans Membres" }).length).toBeGreaterThan(1);
+});
+
+test("a register shows no Membres link without members.manage", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
+  await renderWithSession(<Band />, { route: "/band" });
+  await screen.findByRole("heading", { name: "Trombones" });
+  expect(screen.queryByRole("link", { name: /Géré dans/ })).toBeNull();
 });

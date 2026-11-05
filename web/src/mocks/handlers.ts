@@ -98,6 +98,7 @@ const USERS = {
       "messages.manage",
       "history.manage",
       "images.manage",
+      "content.manage",
       "roles.manage",
       "events.view",
       "account.manage",
@@ -143,6 +144,7 @@ const USERS = {
       "messages.manage",
       "history.manage",
       "images.manage",
+      "content.manage",
       "roles.manage",
       "events.view",
       "account.manage",
@@ -353,6 +355,17 @@ export function setMockUser(username: keyof typeof USERS | null): void {
   setCurrentUser(username ? (USERS[username] ?? null) : null);
 }
 
+/**
+ * Test seam: a copy of a seeded account holding exactly `permissions`, for the
+ * screens whose controls depend on one permission among the Direction's many.
+ */
+export function setMockUserWithPermissions(
+  username: keyof typeof USERS,
+  permissions: string[],
+): void {
+  setCurrentUser({ ...USERS[username], permissions } as MockUser);
+}
+
 /** A valid ULID, so anything that validates the shape of one still passes. */
 export const MOCK_REQUEST_ID = "01JB3K7QW8ZXMOCKMOCKMOCK00";
 
@@ -492,6 +505,7 @@ function initialRoles(): RoleResource[] {
         "messages.manage",
         "history.manage",
         "images.manage",
+        "content.manage",
         "roles.manage",
       ],
     },
@@ -840,6 +854,20 @@ export function addUnusedMockImage(name = `Photo inutilisée ${nextImageId}`): n
     },
   ];
   return id;
+}
+
+/**
+ * Test seam: put a photo in a slot, or empty it with null, as a placement on
+ * the page would, so a test can start from a slot nothing on screen placed.
+ */
+export function setMockPhotoSlot(slot: string, placement: PhotoSlot | null): void {
+  const others = Object.entries(photoSlots).filter(([name]) => name !== slot);
+  photoSlots = Object.fromEntries(placement ? [...others, [slot, placement]] : others);
+}
+
+/** Test seam: what a slot holds now, or null when it is empty. */
+export function mockPhotoSlot(slot: string): PhotoSlot | null {
+  return photoSlots[slot] ?? null;
 }
 
 function resetImages(): void {
@@ -3027,6 +3055,46 @@ export function resetMockState(): void {
   resetAnswers();
   resetRegistrations();
   resetContactMessages();
+  blocks = {};
+}
+
+/**
+ * The content blocks the band has changed, by key, as content_blocks holds
+ * them. Empty: every page shows its shipped content.
+ */
+let blocks: Record<string, { data: Record<string, unknown>; updatedAt: string }> = {};
+
+/** The reason a block's data breaks BlockShape's limits, or null. */
+function blockProblem(data: unknown): string | null {
+  const walk = (value: unknown, depth: number): string | null => {
+    if (typeof value === "string") {
+      return value.length > 2000 ? "block_too_long" : null;
+    }
+    if (typeof value !== "object" || value === null) {
+      return null;
+    }
+    if (depth > 6) {
+      return "block_too_deep";
+    }
+    if (Array.isArray(value)) {
+      if (value.length > 24) {
+        return "block_too_many";
+      }
+    } else if (Object.keys(value).some((key) => !/^[A-Za-z][A-Za-z0-9]{0,31}$/.test(key))) {
+      return "block_bad_key";
+    }
+    for (const item of Object.values(value)) {
+      const problem = walk(item, depth + 1);
+      if (problem) {
+        return problem;
+      }
+    }
+    return null;
+  };
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    return "block_not_an_object";
+  }
+  return walk(data, 1) ?? (JSON.stringify(data).length > 65536 ? "block_too_large" : null);
 }
 
 /** Typed by the model, so a field rename in ContactRequest is a compile error here. */
@@ -3327,6 +3395,50 @@ const overrides = [
       request,
     ),
   ),
+
+  // Public: every changed block, by key, as ContentBlockController lists them.
+  http.get("/api/v1/blocks", ({ request }) =>
+    collection(
+      Object.keys(blocks)
+        .sort()
+        .map((key) => ({ key, ...blocks[key]! })),
+      request,
+    ),
+  ),
+
+  // One block per write with no If-Match, as ContentBlockController does it.
+  // Null data puts the default back and deletes the row.
+  http.put("/api/v1/blocks/:key", async ({ request, params }) => {
+    const refusal = refuseWithout("content.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const key = String(params.key);
+    if (key.length > 64 || !/^[a-z][a-z0-9-]*(?:\.[a-z0-9-]+){0,3}$/.test(key)) {
+      return notFound();
+    }
+    const body = (await request.json()) as { data?: unknown };
+    if (body.data === undefined) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "data", reason: "required" },
+      ]);
+    }
+    if (body.data === null) {
+      blocks = Object.fromEntries(Object.entries(blocks).filter(([name]) => name !== key));
+      return HttpResponse.json({ block: null });
+    }
+    const reason = blockProblem(body.data);
+    if (reason) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "data", reason },
+      ]);
+    }
+    blocks = {
+      ...blocks,
+      [key]: { data: body.data as Record<string, unknown>, updatedAt: new Date().toISOString() },
+    };
+    return HttpResponse.json({ block: { key, ...blocks[key]! } });
+  }),
 
   // By rank, then by name, mirroring CommitteeController, whose ordering is
   // the feature. Several people hold "Membre" at once, so the name tie-break

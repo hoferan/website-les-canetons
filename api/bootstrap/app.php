@@ -72,6 +72,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // whatever the Accept header says.
         $middleware->redirectGuestsTo(fn () => null);
 
+        // A content block keeps its empty strings: a phone row with no number
+        // yet is "", and the SPA shows its placeholder for it (ADR 0038).
+        // Everywhere else a blank field still arrives as null.
+        $middleware->convertEmptyStringsToNull(except: [
+            fn (Request $request): bool => $request->is('api/v1/blocks/*'),
+        ]);
+
         // Self-healing schema: CI cannot reach POST /api/migrate through the
         // host's firewall, so the request path is a deployed server's only
         // migration trigger (App\Http\Middleware\RunPendingMigrations, ADR 0008).

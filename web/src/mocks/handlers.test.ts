@@ -92,6 +92,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
       "messages.manage",
       "history.manage",
       "images.manage",
+      "content.manage",
       "roles.manage",
       "events.view",
       "account.manage",

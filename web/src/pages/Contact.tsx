@@ -13,6 +13,7 @@ import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
+import { HeroBlock } from "../content/blocks/HeroBlock";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { Notice } from "../components/Notice";
 import { type TranslationKey, t } from "../i18n";
@@ -139,17 +140,15 @@ export function Contact() {
 
   return (
     <>
-      <PageHero title={t("contact.heading")} seed={23} width="text">
-        <p>{t("contact.intro")}</p>
-      </PageHero>
+      <HeroBlock blockKey="contact.hero" seed={23} width="text" />
 
       <PageSection width="text">
         {/* A member is told, not stopped. Most can reach the committee faster
-            on WhatsApp, but the site publishes no direct contact detail (the
-            /join contacts are placeholders, see JOINING_CONTACTS in Join.tsx),
-            so a member without the number has only this form. Hiding the form
-            behind a reveal would cost everybody a click and save nobody a
-            keystroke: /api/v1/me carries no e-mail address to prefill. */}
+            on WhatsApp, and a member without the number may find the joining
+            contacts on /join only once the band has typed them there, so the
+            form stays. Hiding it behind a reveal would cost everybody a click
+            and save nobody a keystroke: /api/v1/me carries no e-mail address
+            to prefill. */}
         {user ? <Notice className="mb-related">{t("contact.memberNotice")}</Notice> : null}
 
         <FormError error={error} />

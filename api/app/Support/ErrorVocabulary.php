@@ -289,6 +289,8 @@ final class ErrorVocabulary
         // What ReceivesImageSizes::after() adds against `files.N` and `files`.
         ...JpegInspector::PROBLEMS,
         ...ImageSet::PROBLEMS,
+        // What BlockShape::check() adds against `data`.
+        ...BlockShape::PROBLEMS,
     ];
 
     /**

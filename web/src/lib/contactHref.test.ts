@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { mailtoHref, telHref } from "./contactHref";
+import { mailtoHref, swissTelHref, telHref } from "./contactHref";
 
 /**
  * Hostile inputs, as in `returnTo.test.ts`. Both invariant tests below map
@@ -111,6 +111,28 @@ test("every link telHref can produce is a scheme, an optional plus and digits", 
   for (const href of linked) {
     expect(href).toMatch(/^tel:\+?[0-9]{3,15}$/);
   }
+});
+
+test("every link swissTelHref can produce is international", () => {
+  const linked = HOSTILE.map(swissTelHref).filter((href) => href !== null);
+
+  expect(linked.length).toBeGreaterThan(0);
+
+  for (const href of linked) {
+    expect(href).toMatch(/^tel:\+[1-9][0-9]{8,14}$/);
+  }
+});
+
+test("swissTelHref refuses a number with no prefix rather than dial abroad", () => {
+  expect(swissTelHref("79 123 45 67")).toBeNull();
+  expect(swissTelHref("+41 (0)79 123 45 67")).toBe("tel:+41791234567");
+});
+
+test("swissTelHref drops a Swiss trunk 0 written without brackets", () => {
+  expect(swissTelHref("+41 026 123 45 67")).toBe("tel:+41261234567");
+  expect(swissTelHref("0041 079 123 45 67")).toBe("tel:+41791234567");
+  // Only after +41: Italy dials its 0, so +39 06 is Rome as written.
+  expect(swissTelHref("+39 06 1234 5678")).toBe("tel:+390612345678");
 });
 
 test("an ordinary address becomes a mailto", () => {

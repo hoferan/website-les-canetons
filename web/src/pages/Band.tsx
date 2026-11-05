@@ -1,14 +1,13 @@
 import { PageSection } from "@/components/PageSection";
 import { RegisterIndex } from "@/components/RegisterIndex";
 import { Tbd } from "@/components/Tbd";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useBandIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
-import { PageHero } from "../carnival/PageHero";
-import { RAISED_CARD } from "../carnival/raised";
+import { ManagedIn } from "../content/editor/ManagedIn";
+import { CardsBlock } from "../content/blocks/CardsBlock";
+import { HeroBlock } from "../content/blocks/HeroBlock";
 import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { registerName, t } from "../i18n";
@@ -34,31 +33,42 @@ function Register({ register }: { register: PublicSectionResource }) {
       aria-labelledby={`${anchorOf(register)}-heading`}
       className="scroll-mt-6"
     >
-      <h2 id={`${anchorOf(register)}-heading`} className="heading-wave w-fit font-display text-2xl">
-        {registerName(register.name, register.nameDe)}
-      </h2>
-      {/* The library lists the slot under the French name, as the band
+      {/* One chip per register, for its heading and names: the photo has its
+          own control. The article keeps the scroll anchor. */}
+      <ManagedIn to="/members" page={t("nav.members")} permission="members.manage">
+        <h2
+          id={`${anchorOf(register)}-heading`}
+          className="heading-wave w-fit font-display text-2xl"
+        >
+          {registerName(register.name, register.nameDe)}
+        </h2>
+        {/* The library lists the slot under the French name, as the band
           types it; what a visitor reads is the page's own. */}
-      <SlotPhoto
-        slot={registerSlot(register.id)}
-        label={register.name}
-        alt={registerName(register.name, register.nameDe)}
-      />
+        <SlotPhoto
+          slot={registerSlot(register.id)}
+          label={register.name}
+          alt={registerName(register.name, register.nameDe)}
+        />
 
-      <p className="mt-tight text-ink-muted">
-        {register.members.length > 0 ? (
-          register.members.map((member) => member.firstName).join(", ")
-        ) : (
-          <Tbd what={t("placeholders.registerFirstNames")} token="register-first-names" />
-        )}
-      </p>
-
-      {register.instructors.length > 0 ? (
-        <p className="mt-tight text-sm text-ink-muted">
-          {t("band.instructors")}{" "}
-          {register.instructors.map((instructor) => instructor.firstName).join(", ")}
+        <p className="mt-tight text-ink-muted">
+          {register.members.length > 0 ? (
+            register.members.map((member) => member.firstName).join(", ")
+          ) : (
+            <Tbd
+              what={t("placeholders.registerFirstNames")}
+              token="register-first-names"
+              onMembersPage
+            />
+          )}
         </p>
-      ) : null}
+
+        {register.instructors.length > 0 ? (
+          <p className="mt-tight text-sm text-ink-muted">
+            {t("band.instructors")}{" "}
+            {register.instructors.map((instructor) => instructor.firstName).join(", ")}
+          </p>
+        ) : null}
+      </ManagedIn>
     </article>
   );
 }
@@ -84,7 +94,7 @@ export function Band() {
 
   return (
     <>
-      <PageHero title={t("band.heading")} mark={t("band.headingHighlight")} seed={7} width="text" />
+      <HeroBlock blockKey="band.hero" seed={7} width="text" />
 
       <PageSection width="text">
         <SlotPhoto slot="band" label={t("photos.slot.band")} alt="Les Canetons de Fribourg" />
@@ -105,9 +115,9 @@ export function Band() {
         {/* Set apart from the registers: a parrain and a marraine do not
             play, and listing them among the registers implies they do.
 
-            Authored copy, the one thing on this page that is. `members` is
-            the roster, and every row in it has an account and answers
-            events, so there is no row for them.
+            Their names are a content block (`band.godparents`), typed by
+            the band. `members` is the roster, and every row in it has an
+            account and answers events, so there is no row for them.
 
             Held until the roster has answered, whatever the answer: the
             registers are far taller than a screen, and a card rendered while
@@ -116,15 +126,9 @@ export function Band() {
           <>
             <hr className="mt-section border-line" />
 
-            <Card className={cn(RAISED_CARD, "mt-block gap-0 p-5")}>
-              <h2 className="font-display text-2xl">{t("band.patronsHeading")}</h2>
-              <SlotPhoto
-                slot="godparents"
-                label={t("photos.slot.godparents")}
-                alt={t("band.patronsAlt")}
-              />
-              <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
-            </Card>
+            <div className="mt-block">
+              <CardsBlock blockKey="band.godparents" layout="wide" />
+            </div>
           </>
         )}
       </PageSection>

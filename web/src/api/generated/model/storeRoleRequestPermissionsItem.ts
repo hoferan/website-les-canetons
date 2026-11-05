@@ -324,6 +324,7 @@ export const StoreRoleRequestPermissionsItem = {
   messagesmanage: "messages.manage",
   historymanage: "history.manage",
   imagesmanage: "images.manage",
+  contentmanage: "content.manage",
   rolesmanage: "roles.manage",
   eventsview: "events.view",
   attendancerespond: "attendance.respond",

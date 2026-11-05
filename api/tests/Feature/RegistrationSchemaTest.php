@@ -202,6 +202,7 @@ class RegistrationSchemaTest extends TestCase
         $this->assertNotContains(Permission::MessagesManage->value, $permissions);
         $this->assertNotContains(Permission::HistoryManage->value, $permissions);
         $this->assertNotContains(Permission::ImagesManage->value, $permissions);
+        $this->assertNotContains(Permission::ContentManage->value, $permissions);
         $this->assertNotContains(Permission::RolesManage->value, $permissions);
     }
 

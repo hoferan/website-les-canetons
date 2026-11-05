@@ -8,8 +8,10 @@ import { cn } from "@/lib/utils";
 import { rowsOf } from "../api/collection";
 import { useCommitteeIndex } from "../api/generated/endpoints";
 import type { CommitteeMemberResource } from "../api/generated/model";
-import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
+import { CardsBlock } from "../content/blocks/CardsBlock";
+import { ManagedIn } from "../content/editor/ManagedIn";
+import { HeroBlock } from "../content/blocks/HeroBlock";
 import { t } from "../i18n";
 
 /**
@@ -23,8 +25,9 @@ import { t } from "../i18n";
  * the two cannot disagree.
  *
  * No email address is published: the contact form stores the message for the
- * committee and cannot be harvested. The booking number stays a placeholder,
- * because a wrong number sends a caller to a stranger.
+ * committee and cannot be harvested. The contact card is the band's to change
+ * (`committee.contact`); its booking number ships as a placeholder, because a
+ * guessed number sends a caller to a stranger.
  */
 export function Committee() {
   const committee = useCommitteeIndex();
@@ -32,49 +35,60 @@ export function Committee() {
 
   return (
     <>
-      <PageHero title={t("committee.heading")} mark={t("committee.headingHighlight")} seed={19} />
+      <HeroBlock blockKey="committee.hero" seed={19} />
 
       <PageSection>
-        {/* On yellow, because it is what most visitors came for: how to reach
-            the committee. On it the violet link is 5.5:1 and the muted
-            placeholder 4.9:1. */}
-        <Card className={cn(RAISED_CARD, "gap-0 bg-yellow p-5")}>
-          <h2 className="font-display text-xl">{t("committee.contactHeading")}</h2>
-          <p className="mt-tight">
-            <Link to="/contact" className="text-violet underline">
-              {t("committee.writeToCommittee")}
-            </Link>
-          </p>
-          <p className="mt-tight">
-            {t("committee.booking")}{" "}
-            <Tbd what={t("placeholders.bookingNumber")} token="booking-number" />
-          </p>
-        </Card>
+        {/* The link to the form is page code, between the card's heading and
+            its booking line: the band has nothing to change there. */}
+        <CardsBlock
+          blockKey="committee.contact"
+          layout="wide"
+          slots={{
+            contact: {
+              beforeRows: (
+                <p className="mt-tight">
+                  <Link to="/contact" className="text-violet underline">
+                    {t("committee.writeToCommittee")}
+                  </Link>
+                </p>
+              ),
+            },
+          }}
+        />
 
-        {seats.length > 0 ? (
-          <ul className="mt-block grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {seats.map((seat) => (
-              <Card key={seat.id} asChild className={cn(RAISED_CARD, "gap-0 p-4")}>
-                <li>
-                  {/* The seat, then the person: a visitor looks for "the
+        {/* The seats are the roster's, so in edit mode the block says where
+            they are changed instead of offering a pencil. */}
+        <ManagedIn
+          to="/members"
+          page={t("nav.members")}
+          permission="members.manage"
+          className="mt-block"
+        >
+          {seats.length > 0 ? (
+            <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {seats.map((seat) => (
+                <Card key={seat.id} asChild className={cn(RAISED_CARD, "gap-0 p-4")}>
+                  <li>
+                    {/* The seat, then the person: a visitor looks for "the
                       person who handles costumes", not a name they know. */}
-                  <p className="text-xs font-semibold tracking-wide text-violet uppercase">
-                    {seat.function}
-                  </p>
-                  <p className="mt-tight">
-                    {seat.firstName} {seat.lastName}
-                  </p>
-                </li>
-              </Card>
-            ))}
-          </ul>
-        ) : (
-          // A gap, in the voice of every other gap on the public site.
-          // "Aucun membre du comité" would be a false claim about the band.
-          <p className="mt-block">
-            <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
-          </p>
-        )}
+                    <p className="text-xs font-semibold tracking-wide text-violet uppercase">
+                      {seat.function}
+                    </p>
+                    <p className="mt-tight">
+                      {seat.firstName} {seat.lastName}
+                    </p>
+                  </li>
+                </Card>
+              ))}
+            </ul>
+          ) : (
+            // A gap, in the voice of every other gap on the public site.
+            // "Aucun membre du comité" would be a false claim about the band.
+            <p>
+              <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
+            </p>
+          )}
+        </ManagedIn>
       </PageSection>
     </>
   );

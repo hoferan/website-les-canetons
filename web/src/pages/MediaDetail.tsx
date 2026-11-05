@@ -9,9 +9,10 @@ import {
   getImageSummaryQueryKey,
   imageDestroy,
   imageUpdate,
+  photoSlotUpdate,
   useImageShow,
 } from "../api/generated/endpoints";
-import type { ImageResource } from "../api/generated/model";
+import type { ImageResource, ImageResourceUsagesItem } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
@@ -35,7 +36,7 @@ import { downloadName, MAX_NAME_LENGTH } from "../images/photoName";
 import { rotatePhoto, type Turn } from "../images/rotate";
 import { shrink, ShrinkError } from "../images/shrink";
 import type { ShrinkFn } from "../images/uploadQueue";
-import { UsageLinks } from "../images/usages";
+import { UsageLinks, usageLabel } from "../images/usages";
 import { type ReplaceFn, replaceViaApi } from "../images/useUploadQueue";
 import { formatDay } from "../lib/date";
 
@@ -101,10 +102,12 @@ export function MediaDetail({
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const [removing, setRemoving] = useState(false);
+  const usedOn = useRef<HTMLElement>(null);
 
   // An open rename form holds the tag it was opened with, so nothing else
   // may change the photo underneath it until it is saved or cancelled.
-  const busy = work !== null || savingName || renaming !== null;
+  const busy = work !== null || savingName || renaming !== null || removing;
 
   // A name typed and not yet saved would be dropped by leaving the page.
   useLeaveGuard(
@@ -161,6 +164,44 @@ export function MediaDetail({
 
   function replaceWith(file: File) {
     void sendSizes(() => shrinker(file), "preparing", t("photos.detail.replaced"));
+  }
+
+  /**
+   * Empties one slot the photo is placed in, from here. The photo's own read
+   * is fetched again too, since its list of places is what changed. Focus
+   * goes to the list, as the button it was on leaves with its place.
+   */
+  async function removeUsage(usage: ImageResourceUsagesItem) {
+    if (busy) return;
+    setRemoving(true);
+    setOutcome(null);
+    try {
+      await photoSlotUpdate(usage.slot, { imageId: null });
+      await queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return (
+            typeof key === "string" &&
+            PHOTO_READS.some((read) => key === read || key.startsWith(`${read}/`))
+          );
+        },
+      });
+      setOutcome({
+        ok: true,
+        message: t("photos.detail.removedUsage", { place: usageLabel(usage) }),
+      });
+      usedOn.current?.focus();
+    } catch (thrown) {
+      setOutcome({
+        ok: false,
+        message:
+          thrown instanceof ApiError
+            ? translateApiError(thrown).message
+            : t("photos.detail.removeUsageFailed"),
+      });
+    } finally {
+      setRemoving(false);
+    }
   }
 
   async function saveName() {
@@ -403,9 +444,13 @@ export function MediaDetail({
         </div>
         <div>
           <dt className="font-medium">{t("photos.detail.usedOnHeading")}</dt>
-          <dd>
+          <dd ref={usedOn} tabIndex={-1} className="outline-none">
             {inUse ? (
-              <UsageLinks usages={image.usages} />
+              <UsageLinks
+                usages={image.usages}
+                busy={busy}
+                onRemove={(usage) => void removeUsage(usage)}
+              />
             ) : (
               <p className="text-ink-muted">{t("photos.unused")}</p>
             )}

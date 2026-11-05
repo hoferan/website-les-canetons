@@ -341,4 +341,10 @@ export const Problem400ResponseErrorsItemReason = {
   image_set_too_heavy: "image_set_too_heavy",
   image_set_widths_repeated: "image_set_widths_repeated",
   image_set_aspect_mismatch: "image_set_aspect_mismatch",
+  block_not_an_object: "block_not_an_object",
+  block_too_deep: "block_too_deep",
+  block_too_long: "block_too_long",
+  block_too_many: "block_too_many",
+  block_bad_key: "block_bad_key",
+  block_too_large: "block_too_large",
 } as const;

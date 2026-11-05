@@ -1,19 +1,28 @@
 import { Drum, type LucideIcon, MessageSquare, Music, Star } from "lucide-react";
+import { useState } from "react";
 
-import { ButtonLink } from "@/components/ButtonLink";
 import { DestinationCards } from "@/components/DestinationCards";
 import { BrandLogo } from "@/components/Logo";
 import { PageSection } from "@/components/PageSection";
+import { cn } from "@/lib/utils";
 
 import { useAgendaIndex } from "../api/generated/endpoints";
 import { Confetti } from "../carnival/Confetti";
 import { useFooterEdge } from "../carnival/footerEdge";
 import { Highlighted } from "../carnival/Highlighted";
 import { POSTER_CONFETTI } from "../carnival/PageHero";
-import { Scallop } from "../carnival/Scallop";
+import { SCALLOP_CLIP, Scallop } from "../carnival/Scallop";
+import { Photo } from "../images/Photo";
 import { SlotPhoto } from "../images/SlotPhoto";
+import { SlotPicture } from "../images/SlotPicture";
 import { PublicAgenda } from "../events/PublicAgenda";
 import { type TranslationKey, t } from "../i18n";
+import { useBlock } from "../content/BlocksProvider";
+import { HeroActions, HeroEditor } from "../content/blocks/HeroBlock";
+import { useBlockEditing } from "../content/blocks/useBlockEditing";
+import { EditChip } from "../content/editor";
+import { BLOCKS } from "../content/registry";
+import { tr, trMark } from "../content/translated";
 
 /**
  * The four pages a stranger most likely wants, in that order.
@@ -61,6 +70,21 @@ const DESTINATIONS: {
   },
 ];
 
+/**
+ * The badge's frame: the sticker look and the sizes, for the badge and for a
+ * picture the band places in its stead.
+ *
+ * Narrower below `sm`, which saves about 47px of hero height at 390px, since
+ * the image keeps its aspect ratio.
+ */
+const BADGE_FRAME = "w-48 rotate-[4deg] border-4 border-white shadow-raised sm:w-64 md:w-72";
+
+/** The `sizes` of that frame: its width at each breakpoint of BADGE_FRAME. */
+const BADGE_SIZES = "(min-width: 768px) 288px, (min-width: 640px) 256px, 192px";
+
+/** The alt of a photograph of the band: a proper noun, the same in both languages. */
+const BAND_NAME = "Les Canetons de Fribourg";
+
 /** On yellow, the colours that are not yellow. */
 const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
 
@@ -84,15 +108,28 @@ export function Home() {
   // The yellow band is the page's last surface once it renders, and the
   // footer's scalloped edge is drawn in its colour.
   useFooterEdge(agenda.isPending ? null : "var(--color-yellow)");
+  const hero = useBlock("home.hero");
+  const editing = useBlockEditing();
+  const [editingHero, setEditingHero] = useState(false);
+  const intro = hero.intro ? tr(hero.intro) : "";
 
   return (
     <>
       {/* The poster hero (ADR 0029). Full width, so it sits outside
           PageSection, with the shell width inside it. `pb-14` and up leave
           the Scallop room to draw over the bottom edge. */}
-      <div className="relative overflow-hidden bg-poster text-white">
+      <div className={cn("relative bg-poster text-white", SCALLOP_CLIP)}>
         <Confetti seed={11} colours={POSTER_CONFETTI} wobble />
-        <div className="relative mx-auto grid max-w-shell gap-block px-4 pt-8 pb-14 md:grid-cols-[1.4fr_1fr] md:items-center md:pt-16 md:pb-24">
+        {/* In the header's own corner; the grid below makes room for it. */}
+        {editing ? (
+          <EditChip label={t(BLOCKS["home.hero"].label)} onClick={() => setEditingHero(true)} />
+        ) : null}
+        <div
+          className={cn(
+            "relative mx-auto grid max-w-shell gap-block px-4 pt-8 pb-14 md:grid-cols-[1.4fr_1fr] md:items-center md:pt-16 md:pb-24",
+            editing && "pt-14 md:pt-16",
+          )}
+        >
           {/* The band's badge, the mark people know from the flyers and
               costumes, stuck on like a sticker. The header carries the duck
               beside a live-text wordmark instead; see Logo.tsx.
@@ -100,10 +137,36 @@ export function Home() {
               This is the badge's only placement: in the chrome of every page
               it would become wallpaper.
 
-              Narrower below `sm`, which saves about 47px of hero height at
-              390px, since the image keeps its aspect ratio. */}
-          <div data-confetti-avoid className="justify-self-center md:order-2">
-            <BrandLogo className="w-48 rotate-[4deg] border-4 border-white shadow-raised sm:w-64 md:w-72" />
+              It is the `home.hero` photo slot's fallback: a picture the band
+              places there takes the same frame, and the badge returns when it
+              is removed. The badge is drawn while the slots load, since it is
+              the page's largest paint, and a placed picture is cropped to the
+              badge's proportions so that swapping it in moves nothing.
+
+              A placed picture is a photograph of the band, not the logo, so
+              it takes the band's name as its alt, as the concert photo
+              below does; the badge keeps the logo's. */}
+          <div
+            data-confetti-avoid
+            className="flex flex-col items-center justify-self-center md:order-2"
+          >
+            <SlotPicture
+              slot="home.hero"
+              label={t("photos.slot.homeHero")}
+              alt={BAND_NAME}
+              render={(photo) =>
+                photo ? (
+                  <Photo
+                    photo={photo}
+                    alt={BAND_NAME}
+                    sizes={BADGE_SIZES}
+                    className={cn("aspect-[237/174] rounded-lg object-cover", BADGE_FRAME)}
+                  />
+                ) : (
+                  <BrandLogo className={BADGE_FRAME} />
+                )
+              }
+            />
           </div>
 
           <div>
@@ -117,7 +180,7 @@ export function Home() {
               data-confetti-avoid
               className="font-display text-3xl leading-[1.18] sm:text-4xl md:text-5xl"
             >
-              <Highlighted text={t("home.hero")} mark={t("home.heroHighlight")} />
+              <Highlighted text={tr(hero.title)} mark={trMark(hero.title, hero.mark)} />
             </h1>
 
             {/* One sentence with the practical facts somebody deciding
@@ -125,34 +188,27 @@ export function Home() {
                 needed. White here is 5.3:1 at its worst (top right at 390px,
                 where the poster is pinkest); the gradient in styles.css runs
                 the way it does to keep that above 4.5:1. */}
-            <p data-confetti-avoid className="mt-related max-w-text text-lg">
-              {t("home.heroSub")}
-            </p>
+            {intro !== "" ? (
+              <div data-confetti-avoid className="mt-related max-w-text text-lg">
+                <p className="whitespace-pre-line">{intro}</p>
+              </div>
+            ) : null}
 
-            {/* The two things a visitor most often comes to do, as the nav
-                names them. */}
-            <div data-confetti-avoid className="mt-block flex w-fit flex-wrap gap-3">
-              <ButtonLink to="/join" variant="raised" className="h-12 px-5 text-base">
-                {t("nav.join")}
-              </ButtonLink>
-              <ButtonLink to="/agenda" variant="raised-light" className="h-12 px-5 text-base">
-                {t("nav.agenda")}
-              </ButtonLink>
-            </div>
+            {/* What a visitor most often comes to do: join and see the
+                agenda as shipped, and whatever the band has put there since. */}
+            <HeroActions actions={hero.actions ?? []} />
           </div>
         </div>
         <Scallop into="var(--color-ground)" />
       </div>
+      {editing ? (
+        <HeroEditor blockKey="home.hero" open={editingHero} onClose={() => setEditingHero(false)} />
+      ) : null}
 
       <PageSection>
-        {/* The band's name is a proper noun, so it is the same alt in both
-            languages. In the text column, which its `sizes` assumes. */}
+        {/* In the text column, which its `sizes` assumes. */}
         <div className="mx-auto max-w-text">
-          <SlotPhoto
-            slot="concert"
-            label={t("photos.slot.concert")}
-            alt="Les Canetons de Fribourg"
-          />
+          <SlotPhoto slot="concert" label={t("photos.slot.concert")} alt={BAND_NAME} />
         </div>
 
         <PublicAgenda />

@@ -17,6 +17,10 @@ const PHOTO = "web/e2e/fixtures/sample-photo.jpg";
  * by clicking rather than with page.goto, which would reload it empty.
  */
 async function logIn(page: Page, username: string) {
+  // The slot controls show only in edit mode, which the app reads from the
+  // tab's storage when it boots. Set before the first page, since the spec
+  // moves on by clicking and the app never boots again.
+  await page.addInitScript(() => sessionStorage.setItem("canetons.editMode", "1"));
   await page.goto("/login");
   await page.getByLabel("Identifiant").fill(username);
   await page.getByLabel("Mot de passe", { exact: true }).fill("demo");

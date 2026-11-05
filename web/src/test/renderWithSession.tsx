@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 
 import { LeaveGuardProvider } from "../components/LeaveGuard";
+import { BlocksGate, BlocksProvider } from "../content/BlocksProvider";
 import { setLocale } from "../i18n";
 import { type Locale } from "../i18n/locale";
 import { SessionProvider } from "../session/SessionProvider";
+import { EditModeProvider } from "../content/EditMode";
 
 /**
  * Renders a node behind the real providers and waits for the boot gate.
@@ -43,11 +45,17 @@ export async function renderWithSession(
         path: "*",
         element: (
           <QueryClientProvider client={queryClient}>
-            <SessionProvider>
-              <LeaveGuardProvider>
-                <div data-testid="booted">{ui}</div>
-              </LeaveGuardProvider>
-            </SessionProvider>
+            <BlocksProvider>
+              <SessionProvider>
+                <BlocksGate>
+                  <EditModeProvider>
+                    <LeaveGuardProvider>
+                      <div data-testid="booted">{ui}</div>
+                    </LeaveGuardProvider>
+                  </EditModeProvider>
+                </BlocksGate>
+              </SessionProvider>
+            </BlocksProvider>
           </QueryClientProvider>
         ),
       },

@@ -325,6 +325,8 @@ import type {
   AuthLogout200,
   AuthMe200,
   BandIndex200,
+  BlockIndex200,
+  BlockUpdate200,
   BookingReadResource,
   CommitteeFunctionIndex200,
   CommitteeIndex200,
@@ -2507,6 +2509,36 @@ export const getImageReplaceResponseMock = (
   ...overrideResponse,
 });
 
+export const getBlockIndexResponseMock = (
+  overrideResponse: Partial<Extract<BlockIndex200, object>> = {},
+): BlockIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    data: {
+      [faker.string.alphanumeric(5)]: {},
+    },
+    updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getBlockUpdateResponseMock = (
+  overrideResponse: Partial<Extract<BlockUpdate200, object>> = {},
+): BlockUpdate200 => ({
+  block: faker.helpers.arrayElement([
+    {
+      key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      data: {
+        [faker.string.alphanumeric(5)]: {},
+      },
+      updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    },
+    null,
+  ]),
+  ...overrideResponse,
+});
+
 export const getConfigShowResponseMock = (
   overrideResponse: Partial<Extract<ConfigShow200, object>> = {},
 ): ConfigShow200 => ({
@@ -4591,6 +4623,54 @@ export const getImageReplaceMockHandler = (
   );
 };
 
+export const getBlockIndexMockHandler = (
+  overrideResponse?:
+    | BlockIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<BlockIndex200> | BlockIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "/api/v1/blocks",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getBlockIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getBlockUpdateMockHandler = (
+  overrideResponse?:
+    | BlockUpdate200
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<BlockUpdate200> | BlockUpdate200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "/api/v1/blocks/:key",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getBlockUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getConfigShowMockHandler = (
   overrideResponse?:
     | ConfigShow200
@@ -4813,6 +4893,8 @@ export const getLesCanetonsAPIMock = () => [
   getImageUpdateMockHandler(),
   getImageDestroyMockHandler(),
   getImageReplaceMockHandler(),
+  getBlockIndexMockHandler(),
+  getBlockUpdateMockHandler(),
   getConfigShowMockHandler(),
   getPhotoSlotIndexMockHandler(),
   getPhotoSlotUpdateMockHandler(),

@@ -17,6 +17,20 @@ export const historySlot = (entryId: number) => `history-${entryId}`;
 export const eventSlot = (eventId: number) => `event-${eventId}`;
 
 /**
+ * Whether a slot belongs to a history entry or an event, whose own editor
+ * places and removes its photo, rather than to a place on a page.
+ */
+export const isRecordSlot = (slot: string) => /^(history|event)-\d+$/.test(slot);
+
+/**
+ * A card's photo, named by its block and its own id so no two cards share one.
+ * An added card's id is a UUID, which keeps the key inside a slot name's 64
+ * characters and its allowed set. Deleting the card, or switching its photo
+ * off, empties the slot once the block is saved (`useSaveBlock`).
+ */
+export const cardSlot = (blockKey: string, cardId: string) => `${blockKey}.${cardId}`;
+
+/**
  * Every placed photo slot, read once however many slots a page shows: each
  * caller shares the one query. A slot with nothing placed is absent, and
  * `photoOf` answers null for it.

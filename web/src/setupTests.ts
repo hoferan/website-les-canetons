@@ -39,6 +39,9 @@ afterEach(async () => {
   server.resetHandlers();
   resetMockState();
 
+  // Edit mode is remembered per tab, and jsdom keeps one tab for a file.
+  if (typeof sessionStorage !== "undefined") sessionStorage.removeItem("canetons.editMode");
+
   // A test that rendered in German would otherwise leak the locale into the
   // next one. Awaited, or it can settle after the next test's first render.
   await setLocale("fr");

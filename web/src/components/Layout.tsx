@@ -26,39 +26,23 @@ import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
-import {
-  FACEBOOK_URL,
-  FacebookMark,
-  FlickrMark,
-  GALLERY_URL,
-  INSTAGRAM_URL,
-  InstagramMark,
-} from "./social";
+import { NETWORK_MARKS, networksOf } from "./social";
 import { buttonVariants } from "./ui/button";
 import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 
+import { EditModePill, useEditPillShown } from "../content/EditMode";
+import { PUBLIC_NAV } from "../content/publicPages";
+import { useSite } from "../content/blocks/SiteBlock";
+
 /**
- * The public nav in order of importance, left to right. The desktop bar folds
- * from the right into "Plus" when it runs out of room, so this is also the
- * order in which entries disappear (#99).
- *
- * "Nous rejoindre" is first because recruiting is what this site is for: the
- * band takes players from 7 to 18, so the visitor worth optimising for is a
- * parent deciding whether to turn up on Saturday. The pages a parent needs
- * least come last, then the external sites, which fold first.
- *
- * Every entry must be a route that exists.
+ * Where toasts stand while the edit pill is shown: above it, not on it. The
+ * pill sits 1rem (or the safe-area inset) from the bottom and is 44px tall,
+ * so 4rem more clears it with a gap. Over the pill, a toast took the click
+ * that ends edit mode for as long as the pointer rested on it.
  */
-const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
-  { to: "/join", labelKey: "nav.join" },
-  { to: "/agenda", labelKey: "nav.agenda" },
-  { to: "/band", labelKey: "nav.band" },
-  { to: "/contact", labelKey: "nav.contact" },
-  { to: "/committee", labelKey: "nav.committee" },
-  { to: "/history", labelKey: "nav.history" },
-];
+const ABOVE_THE_PILL = { bottom: "calc(max(1rem, env(safe-area-inset-bottom)) + 4rem)" };
 
 /**
  * The committee's screens, each gated by the permission that gates the API
@@ -86,7 +70,9 @@ const TOOLS: Array<{
 
 export function Layout() {
   const { config, user, can } = useSession();
+  const site = useSite();
   const { pathname } = useLocation();
+  const pillShown = useEditPillShown();
   const [open, setOpen] = useState(false);
   // The colour the page ends on, for the footer's scalloped edge. Null is the
   // cream; see carnival/footerEdge.ts.
@@ -107,33 +93,41 @@ export function Layout() {
     inboxSummary.data && inboxSummary.data.status === 200 ? inboxSummary.data.data.total : 0;
 
   // Built in one place so the desktop bar and the phone list cannot disagree
-  // about what exists.
+  // about what exists. A network the band has no address for is left out.
+  const networks = networksOf(site.networks);
+  // The first Flickr entry is the gallery and keeps its word beside the mark
+  // (#224); every other network is its mark alone, named for screen readers.
+  const galleryAt = networks.findIndex((network) => network.icon === "flickr");
   const publicEntries: NavEntry[] = [
     ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
-    {
-      key: "gallery",
-      href: GALLERY_URL,
-      label: t("nav.gallery"),
-      ariaLabel: t("nav.galleryLabel"),
-      icon: FlickrMark,
-    },
-    {
-      key: "instagram",
-      href: INSTAGRAM_URL,
-      label: "Instagram",
-      ariaLabel: t("nav.instagramLabel"),
-      icon: InstagramMark,
-      iconOnly: true,
-    },
-    {
-      key: "facebook",
-      href: FACEBOOK_URL,
-      label: "Facebook",
-      ariaLabel: t("nav.facebookLabel"),
-      icon: FacebookMark,
-      iconOnly: true,
-    },
   ];
+  // The gallery leads, as it always has, so the bar folds the same entries
+  // first whatever order the band keeps its networks in.
+  const ordered =
+    galleryAt < 0
+      ? networks
+      : [networks[galleryAt]!, ...networks.filter((_, i) => i !== galleryAt)];
+  ordered.forEach(({ label, href, icon }, index) => {
+    const mark = NETWORK_MARKS[icon];
+    publicEntries.push(
+      index === 0 && galleryAt >= 0
+        ? {
+            key: "gallery",
+            href,
+            label: t("nav.gallery"),
+            ariaLabel: t("nav.newTab", { name: t("nav.galleryName") }),
+            icon: mark,
+          }
+        : {
+            key: `network-${index}`,
+            href,
+            label,
+            ariaLabel: t("nav.newTab", { name: label }),
+            icon: mark,
+            iconOnly: true,
+          },
+    );
+  });
   // The planning comes first when logged in: everybody in the band reads it
   // every week, so it is the last thing to fold. Shown on `events.view`, the
   // permission its route asks for; the account link answers to
@@ -283,6 +277,7 @@ export function Layout() {
           pushed down when a page's data arrives (a layout shift, #236). The
           cost is a footer one scroll away on a page shorter than the screen. */}
       <main id="main" tabIndex={-1} className="min-h-dvh outline-none">
+        <EditModePill />
         <FooterEdgeContext.Provider value={setFooterEdge}>
           <Outlet />
         </FooterEdgeContext.Provider>
@@ -292,7 +287,10 @@ export function Layout() {
 
       {/* Mounted once here, so a toast raised by a mutation survives the
           redirect that follows it. */}
-      <Toaster />
+      <Toaster
+        offset={pillShown ? ABOVE_THE_PILL : undefined}
+        mobileOffset={pillShown ? ABOVE_THE_PILL : undefined}
+      />
     </>
   );
 }
