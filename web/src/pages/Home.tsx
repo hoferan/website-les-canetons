@@ -11,7 +11,7 @@ import { Confetti } from "../carnival/Confetti";
 import { useFooterEdge } from "../carnival/footerEdge";
 import { Highlighted } from "../carnival/Highlighted";
 import { POSTER_CONFETTI } from "../carnival/PageHero";
-import { Scallop } from "../carnival/Scallop";
+import { SCALLOP_CLIP, Scallop } from "../carnival/Scallop";
 import { Photo } from "../images/Photo";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { SlotPicture } from "../images/SlotPicture";
@@ -115,7 +115,7 @@ export function Home() {
       {/* The poster hero (ADR 0029). Full width, so it sits outside
           PageSection, with the shell width inside it. `pb-14` and up leave
           the Scallop room to draw over the bottom edge. */}
-      <div className="relative overflow-hidden bg-poster text-white">
+      <div className={cn("relative bg-poster text-white", SCALLOP_CLIP)}>
         <Confetti seed={11} colours={POSTER_CONFETTI} wobble />
         {/* In the header's own corner; the grid below makes room for it. */}
         {editing ? (

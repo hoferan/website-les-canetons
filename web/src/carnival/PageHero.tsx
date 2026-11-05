@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 import { Confetti } from "./Confetti";
 import { Highlighted } from "./Highlighted";
-import { Scallop } from "./Scallop";
+import { SCALLOP_CLIP, Scallop } from "./Scallop";
 
 /** Bright on the violet-to-pink poster; white reads there, ink would not. */
 export const POSTER_CONFETTI = [
@@ -58,7 +58,7 @@ export function PageHero({
   children?: ReactNode;
 }) {
   return (
-    <div className="relative overflow-hidden bg-poster text-white">
+    <div className={cn("relative bg-poster text-white", SCALLOP_CLIP)}>
       <Confetti seed={seed} colours={POSTER_CONFETTI} wobble />
       {/* The chip sits in the header's own corner, not the text column's. */}
       {edit}
