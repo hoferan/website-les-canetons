@@ -13,6 +13,10 @@ type Language = "fr" | "de";
  * for German. The block stores the picked text as the mark, as it always did,
  * so the page needs no change; a mark the edited title no longer holds is
  * dropped, as the page would stop highlighting it anyway.
+ *
+ * The German row shows the German mark alone, and the German page reads
+ * nothing else while the title has a German wording (`trMark`), so the row
+ * and the page agree and "Aucun" there leaves the German page plain.
  */
 export function MarkPicker({ titleName, markName }: { titleName: string; markName: string }) {
   const { control, setValue, getValues } = useFormContext<FieldValues>();

@@ -22,7 +22,7 @@ import { HeroActions, HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor";
 import { BLOCKS } from "../content/registry";
-import { tr } from "../content/translated";
+import { tr, trMark } from "../content/translated";
 
 /**
  * The four pages a stranger most likely wants, in that order.
@@ -173,7 +173,7 @@ export function Home() {
               data-confetti-avoid
               className="font-display text-3xl leading-[1.18] sm:text-4xl md:text-5xl"
             >
-              <Highlighted text={tr(hero.title)} mark={hero.mark ? tr(hero.mark) : ""} />
+              <Highlighted text={tr(hero.title)} mark={trMark(hero.title, hero.mark)} />
             </h1>
 
             {/* One sentence with the practical facts somebody deciding

@@ -16,7 +16,7 @@ import {
 } from "../editor";
 import { PUBLIC_NAV, isPublicPage } from "../publicPages";
 import { BLOCKS, type BlockKey } from "../registry";
-import { tr } from "../translated";
+import { tr, trMark } from "../translated";
 import { isActionTarget, type HeroAction, type heroBlock } from "../types";
 import { useBlockEditing } from "./useBlockEditing";
 
@@ -54,7 +54,7 @@ export function HeroBlock({
     <>
       <PageHero
         title={tr(hero.title)}
-        mark={hero.mark ? tr(hero.mark) : ""}
+        mark={trMark(hero.title, hero.mark)}
         seed={seed}
         {...(width ? { width } : {})}
         edit={
@@ -81,7 +81,8 @@ export function HeroBlock({
 /**
  * A hero's buttons, the first the raised yellow one and the second the light
  * one. A public page keeps the visitor in their language through the router's
- * basename; an https address opens in a new tab, as every outbound link does.
+ * basename; an https address opens in a new tab and says so in its name, as
+ * every outbound link does.
  *
  * A read lets any string through, so a target that is neither is dropped here:
  * an imported `javascript:` address must never become an href.
@@ -92,17 +93,22 @@ export function HeroActions({ actions }: { actions: readonly HeroAction[] }) {
 
   return (
     <div data-confetti-avoid className="mt-block flex w-fit flex-wrap gap-3">
-      {shown.map((action, index) => (
-        <ButtonLink
-          key={`${action.to}-${index}`}
-          to={action.to}
-          external={!isPublicPage(action.to)}
-          variant={index === 0 ? "raised" : "raised-light"}
-          className="h-12 px-5 text-base"
-        >
-          {tr(action.label)}
-        </ButtonLink>
-      ))}
+      {shown.map((action, index) => {
+        const external = !isPublicPage(action.to);
+        const label = tr(action.label);
+        return (
+          <ButtonLink
+            key={`${action.to}-${index}`}
+            to={action.to}
+            external={external}
+            {...(external ? { ariaLabel: t("nav.newTab", { name: label }) } : {})}
+            variant={index === 0 ? "raised" : "raised-light"}
+            className="h-12 px-5 text-base"
+          >
+            {label}
+          </ButtonLink>
+        );
+      })}
     </div>
   );
 }

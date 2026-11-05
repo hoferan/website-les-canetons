@@ -69,6 +69,18 @@ test("every hero with a highlight on its page ships it, and contact has none", (
   expect(BLOCKS["contact.hero"].defaults().mark).toBeUndefined();
 });
 
+test("every hero with a German title ships its German highlight explicitly", () => {
+  // The German page takes its highlight from the German mark alone once the
+  // title has a German wording, so a German mark the same as the French one
+  // must still be stored, or "Canetons" goes dark on /de/band.
+  for (const key of Object.keys(BLOCKS) as BlockKey[]) {
+    const hero = BLOCKS[key].defaults() as { title?: { de?: string }; mark?: { de?: string } };
+    if (hero.title?.de === undefined || hero.mark === undefined) continue;
+    expect(hero.mark.de, key).toBeTruthy();
+  }
+  expect(BLOCKS["band.hero"].defaults().mark).toEqual({ fr: "Canetons", de: "Canetons" });
+});
+
 test("the joining contacts ship as two empty phone rows", () => {
   const contacts = BLOCKS["join.facts"].defaults().cards.find((card) => card.id === "contacts");
 

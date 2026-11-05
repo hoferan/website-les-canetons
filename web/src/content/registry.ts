@@ -1,8 +1,8 @@
 import type { z } from "zod";
 
 import type { TranslationKey } from "../i18n";
-import { catalogueString } from "../i18n/catalogueText";
-import { fromCatalogue } from "./translated";
+import { catalogueString, catalogueValue } from "../i18n/catalogueText";
+import { fromCatalogue, type Translated } from "./translated";
 import { cardsBlock, forEditor, heroBlock, siteBlock } from "./types";
 
 /**
@@ -33,6 +33,10 @@ function block<S extends z.ZodType>(definition: BlockDefinition<S>): BlockDefini
 /**
  * A hero from its catalogue keys. `mark` and `intro` are left out where the
  * page has no highlight or no paragraph under its heading.
+ *
+ * A title with a German wording gets its German highlight stored even when it
+ * reads the same as the French one ("Canetons"): the German page then reads
+ * the German mark alone (see `trMark`).
  */
 function hero(
   keys: {
@@ -49,7 +53,7 @@ function hero(
     editSchema: forEditor.heroBlock,
     defaults: () => ({
       title: fromCatalogue(keys.title),
-      ...(keys.mark ? { mark: fromCatalogue(keys.mark) } : {}),
+      ...(keys.mark ? { mark: markOf(keys.title, keys.mark) } : {}),
       ...(keys.intro ? { intro: fromCatalogue(keys.intro) } : {}),
       ...(keys.actions
         ? {
@@ -62,6 +66,12 @@ function hero(
     }),
     label,
   });
+}
+
+function markOf(title: TranslationKey, mark: TranslationKey): Translated {
+  const shipped = fromCatalogue(mark);
+  if (fromCatalogue(title).de === undefined) return shipped;
+  return { fr: shipped.fr, de: catalogueValue("de-CH", mark) ?? shipped.fr };
 }
 
 export const BLOCKS = {

@@ -27,3 +27,17 @@ export function tr(value: Translated): string {
   }
   return value.fr;
 }
+
+/**
+ * A hero's highlighted words for the page being rendered. A German page whose
+ * title has a German wording takes them from the German mark alone, never
+ * from the French one: the editor's German row shows that mark only, and
+ * "Aucun" there must leave the German page plain. Without a German title, the
+ * German page shows the French title and so the French mark.
+ */
+export function trMark(title: Translated, mark: Translated | undefined): string {
+  if (currentLocale() === "de-CH" && title.de !== undefined && title.de.trim() !== "") {
+    return mark?.de ?? "";
+  }
+  return mark?.fr ?? "";
+}

@@ -19,6 +19,10 @@ const shipped = BLOCKS["join.hero"].defaults();
 
 const highlight = () => document.querySelector("h1 .bg-highlight");
 
+/** Whether a paragraph on the page reads the shipped intro, wherever the hero puts it. */
+const introShown = () =>
+  [...document.querySelectorAll("p")].some((p) => p.textContent === shipped.intro!.fr);
+
 test("the default hero renders the heading, its highlight and the intro", async () => {
   await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
 
@@ -34,6 +38,72 @@ test("a stored title that no longer holds the highlighted words renders plain", 
 
   expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Rejoins-nous");
   expect(highlight()).toBeNull();
+});
+
+test("the German band page lights its shipped highlight", async () => {
+  await renderWithSession(<HeroBlock blockKey="band.hero" seed={5} />, {
+    route: "/de/band",
+    locale: "de-CH",
+  });
+
+  expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Unsere Canetons");
+  expect(highlight()?.textContent).toBe("Canetons");
+});
+
+test("a German title takes its highlight from the German mark only", async () => {
+  // The French word is in the German title too, but the band never picked it
+  // for German: the German page must not light it, as the picker shows nothing.
+  storeBlock("band.hero", {
+    title: { fr: "Nos Canetons", de: "Unsere Canetons" },
+    mark: { fr: "Canetons" },
+  });
+  await renderWithSession(<HeroBlock blockKey="band.hero" seed={5} />, {
+    route: "/de/band",
+    locale: "de-CH",
+  });
+
+  expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Unsere Canetons");
+  expect(highlight()).toBeNull();
+});
+
+test("without a German title the German page shows the French title and mark", async () => {
+  storeBlock("band.hero", { title: { fr: "Nos Canetons" }, mark: { fr: "Canetons" } });
+  await renderWithSession(<HeroBlock blockKey="band.hero" seed={5} />, {
+    route: "/de/band",
+    locale: "de-CH",
+  });
+
+  expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Nos Canetons");
+  expect(highlight()?.textContent).toBe("Canetons");
+});
+
+test("Aucun on the German row clears the German highlight and keeps the French one", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  setMockUser("demo.direction");
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  await renderWithSession(<HeroBlock blockKey="band.hero" seed={5} />, { route: "/band" });
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Les canetons · en-tête" }));
+  const dialog = await screen.findByRole("dialog");
+  const german = within(dialog).getByRole("group", { name: "Mots surlignés DE" });
+  expect(within(german).getByRole("button", { name: "Canetons" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await user.click(within(german).getByRole("button", { name: "Aucun" }));
+  expect(within(german).getByRole("button", { name: "Canetons" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const data = (puts[0]!.body as { data: { mark?: unknown } }).data;
+  expect(data.mark).toEqual({ fr: "Canetons" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  // The French page keeps its own highlight.
+  expect(highlight()?.textContent).toBe("Canetons");
 });
 
 test("the hero chip edits title and intro together", async () => {
@@ -83,6 +153,8 @@ test("clearing a saved intro removes it", async () => {
   setMockUser("demo.direction");
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
+  // The page shows it first, so the check after saving can fail.
+  expect(introShown()).toBe(true);
 
   await user.click(screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }));
   const dialog = await screen.findByRole("dialog");
@@ -107,7 +179,7 @@ test("clearing a saved intro removes it", async () => {
   expect(data).not.toHaveProperty("intro");
   expect(data).not.toHaveProperty("mark");
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(document.querySelector("h1 + div p")).toBeNull();
+  expect(introShown()).toBe(false);
 });
 
 const buttons = [
@@ -159,7 +231,9 @@ test("an https button opens in a new tab without a referrer, and any other targe
     </MemoryRouter>,
   );
 
-  const link = screen.getByRole("link", { name: "Flickr" });
+  // The new tab is announced, as every outbound link on the site does.
+  const link = screen.getByRole("link", { name: "Flickr (nouvel onglet)" });
+  expect(link).toHaveTextContent("Flickr");
   expect(link).toHaveAttribute("href", "https://www.flickr.com/photos/canetons");
   expect(link).toHaveAttribute("target", "_blank");
   expect(link).toHaveAttribute("rel", "noreferrer");
