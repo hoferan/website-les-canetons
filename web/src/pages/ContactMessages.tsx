@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -527,15 +528,14 @@ function MessagePanel({
         </div>
         {/* Icon-only, so the label moves to the accessible name: this is the
             only way out of the panel. */}
-        <Button
+        <IconButton
           type="button"
           variant="quiet"
-          size="icon-sm"
+          size="sm"
+          icon={X}
           onClick={onClose}
-          aria-label={t("contactMessages.close")}
-        >
-          <X aria-hidden="true" />
-        </Button>
+          label={t("contactMessages.close")}
+        />
       </div>
 
       {message.suspectFields.length > 0 ? (

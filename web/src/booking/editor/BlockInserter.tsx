@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 
 import type { OptionKind } from "../../api/generated/model";
@@ -80,15 +81,13 @@ export function BlockInserter({
 
   return (
     <div className="flex justify-center">
-      <Button
+      <IconButton
         type="button"
         variant="secondary"
-        size="icon"
-        aria-label={label}
+        icon={Plus}
+        label={label}
         onClick={() => setPicking(true)}
-      >
-        <Plus aria-hidden="true" />
-      </Button>
+      />
     </div>
   );
 }

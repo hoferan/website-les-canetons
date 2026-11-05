@@ -13,13 +13,41 @@ test("a chip names the block it opens and shows 'Modifier' only on hover or focu
   expect(chip).toHaveTextContent("Modifier");
   expect(chip.textContent).not.toContain(":");
 
-  const word = screen.getByText("Modifier");
-  expect(word).toHaveClass(
-    "hidden",
-    "sm:group-hover/chip:inline",
-    "sm:group-focus-visible/chip:inline",
+  // Closed to nothing, and opened from sm by hover or keyboard focus only.
+  const wrapper = screen.getByText("Modifier").parentElement;
+  expect(wrapper).toHaveClass(
+    "max-w-0",
+    "sm:group-hover/icon:max-w-56",
+    "sm:group-focus-visible/icon:max-w-56",
   );
   expect(chip.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+});
+
+test("a chip grows in place rather than showing a tip", () => {
+  render(<EditChip label="Texte d'accueil" onClick={() => {}} />);
+
+  expect(screen.getByRole("button")).toHaveAttribute("data-mode", "grow");
+});
+
+test("a reveal chip link is an icon-only link chip that grows", () => {
+  render(
+    <MemoryRouter>
+      <ChipLink
+        to="/history/1/edit"
+        label="Modifier"
+        ariaLabel="Modifier Carnaval 1990"
+        icon={Plus}
+        corner={false}
+        reveal
+      />
+    </MemoryRouter>,
+  );
+
+  const link = screen.getByRole("link", { name: "Modifier Carnaval 1990" });
+  expect(link).toHaveAttribute("href", "/history/1/edit");
+  expect(link).toHaveAttribute("data-mode", "grow");
+  expect(link).toHaveAttribute("data-chip", "link");
+  expect(link).not.toHaveClass("absolute");
 });
 
 test("the text prop is both the visible text and the accessible name", () => {
@@ -55,10 +83,14 @@ test("a chip link shows its label and goes to its target", () => {
 
 test("a chip button is icon only, named by its label, and clickable unless disabled", async () => {
   const onClick = vi.fn();
-  const { rerender } = render(<ChipButton label="Monter" icon={Plus} onClick={onClick} />);
+  const { rerender } = render(
+    <ChipButton label="Déplacer « Cloches » avant" word="Avant" icon={Plus} onClick={onClick} />,
+  );
 
-  const button = screen.getByRole("button", { name: "Monter" });
-  expect(button.textContent).toBe("");
+  const button = screen.getByRole("button", { name: "Déplacer « Cloches » avant" });
+  // Only the short word, which grows out on hover or focus.
+  expect(button.textContent).toBe("Avant");
+  expect(button).toHaveAttribute("data-mode", "grow");
   expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   await userEvent.click(button);
   expect(onClick).toHaveBeenCalledTimes(1);

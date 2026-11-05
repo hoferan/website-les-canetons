@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,14 +91,13 @@ export function RowActions({
       {inMenu.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
+            <IconButton
               type="button"
               variant="secondary"
-              size="icon"
-              aria-label={t("common.moreActionsAria", { name: rowName })}
-            >
-              <Ellipsis aria-hidden="true" />
-            </Button>
+              icon={Ellipsis}
+              label={t("common.moreActionsAria", { name: rowName })}
+              word={t("common.moreActions")}
+            />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {inMenu.map((a, i) => (

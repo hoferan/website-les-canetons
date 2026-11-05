@@ -79,6 +79,12 @@ export default [
           message:
             'Decide access with can(permission) from useSession(), never by a role key. Roles group permissions and are editable data (ADR 0014).',
         })),
+        // An icon-only Button would have no visible name; IconButton shows one
+        // on hover and keyboard focus.
+        {
+          selector: 'JSXAttribute[name.name="size"][value.value=/^icon/]',
+          message: 'Use IconButton for an icon-only button (ADR 0040)',
+        },
       ],
     },
   },

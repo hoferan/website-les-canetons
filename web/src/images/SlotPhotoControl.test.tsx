@@ -219,14 +219,15 @@ test("a placed photo carries an icon-only pencil, and nothing sits under it", as
   const trumpets = await screen.findByRole("article", { name: "Trompettes" });
   await within(trumpets).findByRole("img", { name: "Trompettes" });
   const pencil = within(trumpets).getByRole("button", { name: "Changer la photo — Trompettes" });
-  // Icon only on a phone. From sm up, hovering the photo or focusing the pencil
-  // shows the word beside it; the 44px floor holds either way.
+  // Icon only on a phone. From sm up, hovering or focusing the pencil grows
+  // the word out of it; the 44px floor holds either way.
   expect(pencil).toHaveClass("h-11", "min-w-11");
+  expect(pencil).toHaveAttribute("data-mode", "grow");
   const word = within(pencil).getByText("Changer");
-  expect(word).toHaveClass(
-    "hidden",
-    "sm:group-hover/frame:inline",
-    "sm:group-focus-visible/pencil:inline",
+  expect(word.parentElement).toHaveClass(
+    "max-w-0",
+    "sm:group-hover/icon:max-w-56",
+    "sm:group-focus-visible/icon:max-w-56",
   );
   // The pencil shares an ancestor with the photo: it is part of the image.
   expect(pencil.closest("[data-photo-frame]")?.querySelector("img")).not.toBeNull();

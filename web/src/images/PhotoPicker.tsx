@@ -5,6 +5,7 @@ import { rowsOf } from "../api/collection";
 import { useImageIndex } from "../api/generated/endpoints";
 import type { ImageResource } from "../api/generated/model";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import {
   Dialog,
   DialogClose,
@@ -81,9 +82,7 @@ export function PhotoPicker({ open, onOpenChange, onPick, onRemove, upload, shri
           <div className="flex items-start justify-between gap-2">
             <DialogTitle>{t("photos.pickerTitle")}</DialogTitle>
             <DialogClose asChild>
-              <Button type="button" variant="quiet" size="icon" aria-label={t("photos.close")}>
-                <X />
-              </Button>
+              <IconButton type="button" variant="quiet" icon={X} label={t("photos.close")} />
             </DialogClose>
           </div>
           <DialogDescription>{t("photos.pickerDescription")}</DialogDescription>

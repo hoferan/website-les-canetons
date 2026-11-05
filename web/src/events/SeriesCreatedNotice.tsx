@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 
 import { Notice } from "../components/Notice";
 import { t } from "../i18n";
@@ -62,15 +62,13 @@ export function SeriesCreatedNotice() {
           >
             {t("seriesForm.another")}
           </Link>
-          <Button
+          <IconButton
             type="button"
             variant="quiet"
-            size="icon"
-            aria-label={t("seriesForm.dismissCreated")}
+            icon={X}
+            label={t("seriesForm.dismissCreated")}
             onClick={() => setCount(null)}
-          >
-            <X aria-hidden="true" />
-          </Button>
+          />
         </Notice>
       ) : null}
     </div>

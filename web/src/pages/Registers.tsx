@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -223,32 +224,30 @@ function RegisterRow({
               takes aria-disabled and an early return while a write runs,
               never `disabled`: see rule 2 in ui/button.tsx. */}
           <div className="flex flex-wrap items-center gap-tight">
-            <Button
+            <IconButton
               type="button"
               variant="secondary"
-              size="icon"
-              aria-label={t("registers.moveUpAria", { label })}
+              icon={ArrowUp}
+              label={t("registers.moveUpAria", { label })}
+              word={t("common.moveUp")}
               aria-disabled={first || moving}
               onClick={() => {
                 if (first || moving) return;
                 onMove(-1);
               }}
-            >
-              <ArrowUp aria-hidden="true" />
-            </Button>
-            <Button
+            />
+            <IconButton
               type="button"
               variant="secondary"
-              size="icon"
-              aria-label={t("registers.moveDownAria", { label })}
+              icon={ArrowDown}
+              label={t("registers.moveDownAria", { label })}
+              word={t("common.moveDown")}
               aria-disabled={last || moving}
               onClick={() => {
                 if (last || moving) return;
                 onMove(1);
               }}
-            >
-              <ArrowDown aria-hidden="true" />
-            </Button>
+            />
             <Button
               type="button"
               variant="secondary"

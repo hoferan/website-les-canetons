@@ -74,7 +74,10 @@ function chipsOverText(page: Page) {
       const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
       const hits: string[] = [];
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        if (chip.contains(node) || node.textContent!.trim() === "") continue;
+        // A chip's own word is not the block's text. A closed one still has
+        // boxes, clipped away inside its chip, and chipsOverChips covers the
+        // chips themselves.
+        if (node.parentElement!.closest("[data-chip]") || node.textContent!.trim() === "") continue;
         const range = document.createRange();
         range.selectNodeContents(node);
         for (const line of range.getClientRects()) {

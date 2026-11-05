@@ -1,8 +1,9 @@
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Trash2, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { useFieldArray, useFormContext, type FieldValues } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -95,24 +96,21 @@ export function ListField<T extends FieldValues>(props: Props<T>) {
                 label={t("blockEditor.up")}
                 disabled={index === 0}
                 onClick={() => shift(index, index - 1, "up")}
-              >
-                <ArrowUp aria-hidden="true" />
-              </ItemButton>
+                icon={ArrowUp}
+              />
               <ItemButton
                 action="down"
                 label={t("blockEditor.down")}
                 disabled={index === fields.length - 1}
                 onClick={() => shift(index, index + 1, "down")}
-              >
-                <ArrowDown aria-hidden="true" />
-              </ItemButton>
+                icon={ArrowDown}
+              />
               <ItemButton
                 action="remove"
                 label={t("blockEditor.remove")}
                 onClick={() => drop(index)}
-              >
-                <Trash2 aria-hidden="true" />
-              </ItemButton>
+                icon={Trash2}
+              />
             </div>
             {renderItem(index)}
           </li>
@@ -161,25 +159,23 @@ function ItemButton({
   label,
   disabled = false,
   onClick,
-  children,
+  icon,
 }: {
   action: Action;
   label: string;
   disabled?: boolean;
   onClick: () => void;
-  children: ReactNode;
+  icon: LucideIcon;
 }) {
   return (
-    <Button
+    <IconButton
       type="button"
       variant="quiet"
-      size="icon"
+      icon={icon}
+      label={label}
       data-action={action}
-      aria-label={label}
       aria-disabled={disabled || undefined}
       onClick={disabled ? undefined : onClick}
-    >
-      {children}
-    </Button>
+    />
   );
 }

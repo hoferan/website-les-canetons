@@ -215,6 +215,7 @@ export function CardsBlock({
                       <ChipButton
                         id={chipId(card.id, "before")}
                         label={t("blockEditor.moveCardBefore", { title })}
+                        word={t("blockEditor.before")}
                         icon={several ? ArrowLeft : ArrowUp}
                         narrowIcon={several ? ArrowUp : undefined}
                         disabled={pending}
@@ -225,6 +226,7 @@ export function CardsBlock({
                       <ChipButton
                         id={chipId(card.id, "after")}
                         label={t("blockEditor.moveCardAfter", { title })}
+                        word={t("blockEditor.after")}
                         icon={several ? ArrowRight : ArrowDown}
                         narrowIcon={several ? ArrowDown : undefined}
                         disabled={pending}
