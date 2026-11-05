@@ -106,3 +106,6 @@ vendored one. The issues of milestone R11 each close with screenshots at 390px a
 
 Issue #244 has the feedback and the breakdown into milestone R11. ADR 0022 is the
 record this one partly supersedes.
+
+ADR 0040 amends this record: it names what each button variant is for and sets the
+corners and the press of the raised buttons.

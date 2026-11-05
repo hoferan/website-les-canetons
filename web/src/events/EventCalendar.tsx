@@ -1,6 +1,8 @@
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+import { IconButton } from "@/components/ui/icon-button";
 
 import type { EventResource } from "../api/generated/model";
 import { currentLocale, t } from "../i18n";
@@ -116,29 +118,27 @@ export function EventCalendar({
   return (
     <div data-testid="event-calendar" className={`${OUTLINED_CARD} p-4`}>
       <div className="flex items-center justify-between gap-related">
-        <Button
+        <IconButton
           type="button"
-          variant="raised-light"
+          icon={ChevronLeft}
+          label={t("events.calendarGrid.previousMonth")}
+          mode="tip"
           size="sm"
-          aria-label={t("events.calendarGrid.previousMonth")}
           onClick={() => setMonth(shiftMonth(month, -1))}
-        >
-          ←
-        </Button>
+        />
 
         <h3 data-testid="calendar-month" className="font-display text-lg">
           {formatter("month").format(firstOfMonth)}
         </h3>
 
-        <Button
+        <IconButton
           type="button"
-          variant="raised-light"
+          icon={ChevronRight}
+          label={t("events.calendarGrid.nextMonth")}
+          mode="tip"
           size="sm"
-          aria-label={t("events.calendarGrid.nextMonth")}
           onClick={() => setMonth(shiftMonth(month, 1))}
-        >
-          →
-        </Button>
+        />
       </div>
 
       <div className="mt-related grid grid-cols-7 gap-1 text-center text-xs text-ink-muted">

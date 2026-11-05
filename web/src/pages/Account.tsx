@@ -39,7 +39,7 @@ export function Account() {
             ••••••••
           </p>
         </div>
-        <ButtonLink to="/account/password" variant="raised-light">
+        <ButtonLink to="/account/password" variant="secondary">
           <KeyRound aria-hidden="true" />
           {t("account.change")}
         </ButtonLink>

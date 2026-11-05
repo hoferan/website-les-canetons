@@ -754,6 +754,25 @@ test("the calendar is absent unless the server turns it on", async () => {
   expect(screen.queryByRole("button", { name: "Calendrier" })).toBeNull();
 });
 
+test("the calendar's month buttons are icon buttons that walk the month", async () => {
+  await renderPlanning();
+
+  await userEvent.click(screen.getByRole("button", { name: "Calendrier" }));
+  const calendar = await screen.findByTestId("event-calendar");
+  const month = screen.getByTestId("calendar-month");
+  const before = month.textContent;
+
+  const next = within(calendar).getByRole("button", { name: "Mois suivant" });
+  expect(next).toHaveAttribute("data-slot", "icon-button");
+  expect(within(calendar).getByRole("button", { name: "Mois précédent" })).toHaveAttribute(
+    "data-slot",
+    "icon-button",
+  );
+
+  await userEvent.click(next);
+  expect(month.textContent).not.toBe(before);
+});
+
 test("the calendar filters the list instead of navigating to a day", async () => {
   await renderPlanning();
 

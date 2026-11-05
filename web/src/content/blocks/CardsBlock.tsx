@@ -169,7 +169,7 @@ export function CardsBlock({
         <div className="mb-related flex flex-wrap items-center gap-x-3 gap-y-1">
           <Button
             type="button"
-            variant="raised"
+            variant="accent"
             size="sm"
             className="px-3"
             // The server refuses a list longer than MAX_ITEMS. Disabled
@@ -215,6 +215,7 @@ export function CardsBlock({
                       <ChipButton
                         id={chipId(card.id, "before")}
                         label={t("blockEditor.moveCardBefore", { title })}
+                        word={t("blockEditor.before")}
                         icon={several ? ArrowLeft : ArrowUp}
                         narrowIcon={several ? ArrowUp : undefined}
                         disabled={pending}
@@ -225,6 +226,7 @@ export function CardsBlock({
                       <ChipButton
                         id={chipId(card.id, "after")}
                         label={t("blockEditor.moveCardAfter", { title })}
+                        word={t("blockEditor.after")}
                         icon={several ? ArrowRight : ArrowDown}
                         narrowIcon={several ? ArrowDown : undefined}
                         disabled={pending}
@@ -392,7 +394,7 @@ function CardEditor({ id, adding }: Opened) {
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              variant="raised-danger"
+              variant="secondary"
               size="sm"
               className="sm:ml-auto"
               onClick={() => setConfirming(true)}
@@ -411,10 +413,9 @@ function CardEditor({ id, adding }: Opened) {
             <AlertDialogDescription>{t("blockEditor.removeCardBody")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <Button
               type="button"
-              variant="raised-danger"
+              variant="danger"
               onClick={() => {
                 setConfirming(false);
                 remove(index);
@@ -423,6 +424,7 @@ function CardEditor({ id, adding }: Opened) {
             >
               {t("blockEditor.removeCardConfirm")}
             </Button>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

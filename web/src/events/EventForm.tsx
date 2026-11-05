@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 
 import type { EventResource, StoreEventRequest } from "../api/generated/model";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
@@ -290,7 +291,7 @@ export function EventForm({
 
       <FormError error={error} />
 
-      <div className="flex flex-wrap gap-related">
+      <FormActions>
         {isDraftMode ? (
           <>
             <Button type="submit" aria-disabled={busy} onClick={() => (intent.current = "save")}>
@@ -300,7 +301,7 @@ export function EventForm({
                 outlined: Enter never reaches for it. */}
             <Button
               type="submit"
-              variant="raised-light"
+              variant="secondary"
               aria-disabled={busy}
               onClick={() => (intent.current = "publish")}
             >
@@ -312,10 +313,10 @@ export function EventForm({
             {busy ? t("eventForm.saving") : t("common.save")}
           </Button>
         )}
-        <Button type="button" variant="raised-light" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

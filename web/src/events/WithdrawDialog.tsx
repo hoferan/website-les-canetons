@@ -94,10 +94,9 @@ export function WithdrawDialog({
         <FormError error={error} />
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={close}>{t("common.cancel")}</AlertDialogCancel>
           <Button
             type="button"
-            variant="raised-danger"
+            variant="danger"
             aria-disabled={busy || !armed}
             onClick={() => {
               if (busy || !armed) {
@@ -108,6 +107,7 @@ export function WithdrawDialog({
           >
             {busy ? t("common.busy") : t("attendance.withdrawConfirm")}
           </Button>
+          <AlertDialogCancel onClick={close}>{t("common.cancel")}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

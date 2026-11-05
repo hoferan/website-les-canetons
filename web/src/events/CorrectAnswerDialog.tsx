@@ -91,7 +91,7 @@ export function CorrectAnswerDialog({
         <div className="flex flex-wrap gap-tight">
           <Button
             type="button"
-            variant={status === "yes" ? "raised-violet" : "raised-light"}
+            variant={status === "yes" ? "primary" : "secondary"}
             aria-pressed={status === "yes"}
             onClick={() => choose("yes")}
           >
@@ -99,7 +99,7 @@ export function CorrectAnswerDialog({
           </Button>
           <Button
             type="button"
-            variant={status === "no" ? "raised-danger" : "raised-light"}
+            variant={status === "no" ? "danger" : "secondary"}
             aria-pressed={status === "no"}
             onClick={() => choose("no")}
           >
@@ -119,7 +119,6 @@ export function CorrectAnswerDialog({
         <FormError error={error} />
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>{t("common.cancel")}</AlertDialogCancel>
           <Button
             type="button"
             aria-disabled={busy}
@@ -132,6 +131,7 @@ export function CorrectAnswerDialog({
           >
             {busy ? t("common.busy") : t("common.save")}
           </Button>
+          <AlertDialogCancel onClick={onCancel}>{t("common.cancel")}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

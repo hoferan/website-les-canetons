@@ -338,6 +338,10 @@ export const de: typeof fr = {
     // fits an event, and this string also names a person.
     moreActionsAria: "Weitere Aktionen für {{name}}",
     showPassword: "Passwort anzeigen",
+    moveUp: "Nach oben",
+    moveDown: "Nach unten",
+    remove: "Entfernen",
+    moreActions: "Weitere Aktionen",
   },
 
   meta: {
@@ -1478,6 +1482,8 @@ export const de: typeof fr = {
     removeCardConfirm: "Löschen",
     moveCardBefore: "„{{title}}“ nach vorn verschieben",
     moveCardAfter: "„{{title}}“ nach hinten verschieben",
+    before: "Nach vorn",
+    after: "Nach hinten",
     rowType: {
       text: "Text",
       labelValue: "Bezeichnung + Wert",

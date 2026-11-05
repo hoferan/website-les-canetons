@@ -192,7 +192,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
               key={key}
               type="button"
               size="sm"
-              variant={filter === key ? "raised-violet" : "raised-light"}
+              variant={filter === key ? "primary" : "secondary"}
               aria-pressed={filter === key}
               onClick={() => setFilter(key)}
             >
@@ -203,7 +203,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
         {filter === "used" ? null : (
           <Button
             type="button"
-            variant="raised-light"
+            variant="secondary"
             className="ml-auto"
             disabled={chosen.length === 0}
             onClick={() => void openConfirm()}
@@ -349,21 +349,26 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
             ))}
           </ul>
           <AlertDialogFooter>
-            {/* The deletes keep running once the dialog is gone, so cancelling
-                mid-batch would hide an outcome the person is waiting for. */}
-            <AlertDialogCancel disabled={deleting} onClick={closeConfirm}>
-              {t("common.cancel")}
-            </AlertDialogCancel>
             {/* A plain Button, not AlertDialogAction, which would close the
                 dialog before the deletes have run. */}
             <Button
               type="button"
-              variant="raised-danger"
+              variant="danger"
               aria-disabled={tags === null || deleting}
               onClick={() => void confirmDelete()}
             >
               {tags === null || deleting ? t("common.busy") : t("photos.deleteConfirm")}
             </Button>
+            {/* The deletes keep running once the dialog is gone, so cancelling
+                mid-batch would hide an outcome the person is waiting for. */}
+            <AlertDialogCancel
+              aria-disabled={deleting}
+              onClick={() => {
+                if (!deleting) closeConfirm();
+              }}
+            >
+              {t("common.cancel")}
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

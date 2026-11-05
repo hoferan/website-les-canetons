@@ -4,6 +4,7 @@ import { flushSync } from "react-dom";
 
 import { PageSection } from "@/components/PageSection";
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -198,14 +199,16 @@ export function Contact() {
 
             {/* aria-disabled, not disabled: see components/ui/button.tsx. The
                 submit handler's early return is the real guard. */}
-            <Button
-              type="submit"
-              variant="raised-violet"
-              className="h-12 px-5 text-base"
-              aria-disabled={send.isPending}
-            >
-              {t("contact.submit")}
-            </Button>
+            <FormActions>
+              <Button
+                type="submit"
+                variant="primary"
+                className="h-12 px-5 text-base"
+                aria-disabled={send.isPending}
+              >
+                {t("contact.submit")}
+              </Button>
+            </FormActions>
           </form>
         </Card>
       </PageSection>

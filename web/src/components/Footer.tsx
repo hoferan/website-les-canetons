@@ -13,8 +13,7 @@ import { tr } from "../content/translated";
 import { buttonVariants } from "./ui/button";
 import { NetworkMark, networksOf } from "./social";
 
-/** Raised, as everything a visitor can press is, with the stage's pink shadow. */
-const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
+const ACTION = "px-5";
 
 /**
  * The foot of every page: who the band is, the two things a parent who has
@@ -73,12 +72,15 @@ export function Footer({ above }: { above: string | null }) {
             <p className="font-display text-lg">{site.name}</p>
             <p className="mt-2 max-w-md whitespace-pre-line text-white/70">{tr(site.pitch)}</p>
             <div className="mt-5 grid grid-cols-2 gap-3 sm:flex">
-              <Link to="/join" className={cn(buttonVariants({ variant: "raised" }), ACTION)}>
+              <Link
+                to="/join"
+                className={cn(buttonVariants({ variant: "accent", surface: "stage" }), ACTION)}
+              >
                 {t("nav.join")}
               </Link>
               <Link
                 to="/contact"
-                className={cn(buttonVariants({ variant: "raised-light" }), ACTION)}
+                className={cn(buttonVariants({ variant: "secondary", surface: "stage" }), ACTION)}
               >
                 {t("nav.contact")}
               </Link>

@@ -11,7 +11,13 @@ import {
 } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { FormError, formIsValid } from "../../components/FormField";
 import { t } from "../../i18n";
@@ -120,22 +126,20 @@ function EditorForm<K extends BlockKey>({
 
         <FormError error={error ?? (invalid ? { message: invalid, fields: [] } : null)} />
 
-        {/* In the order a phone stacks them, the save first. From sm up they
-            line up from the right, and Rétablir moves to the far left. */}
-        <div className="flex flex-col gap-2 sm:flex-row-reverse sm:flex-wrap">
-          <Button type="submit" variant="raised" aria-disabled={pending}>
+        <DialogFooter>
+          <Button type="submit" aria-disabled={pending}>
             {pending ? t("blockEditor.saving") : t("blockEditor.save")}
           </Button>
-          <Button type="button" variant="raised-light" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             {t("common.cancel")}
           </Button>
           {onReset === false ? null : (
-            <Button type="button" variant="ghost" onClick={reset} className="sm:mr-auto">
+            <Button type="button" variant="quiet" onClick={reset}>
               <RotateCcw aria-hidden="true" />
               {t("blockEditor.reset")}
             </Button>
           )}
-        </div>
+        </DialogFooter>
       </form>
     </FormProvider>
   );

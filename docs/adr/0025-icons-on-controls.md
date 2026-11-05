@@ -83,3 +83,8 @@ name that carries its option, and checks that it has no visible text. Removing a
 - Good, because nothing changes.
 - Bad, because "Monter", "Descendre" and "Retirer" take 234px to say what three familiar
   symbols say in 132px.
+
+## More Information
+
+ADR 0040 amends this record: every icon-only button is an `IconButton`, which shows its
+name on hover and on keyboard focus.

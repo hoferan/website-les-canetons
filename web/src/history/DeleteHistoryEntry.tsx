@@ -143,15 +143,15 @@ export function DeleteHistoryEntry({
         ) : null}
 
         <AlertDialogFooter>
-          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           <Button
             type="button"
-            variant="raised-danger"
+            variant="danger"
             aria-disabled={busy}
             onClick={() => void confirm()}
           >
             {t("common.delete")}
           </Button>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

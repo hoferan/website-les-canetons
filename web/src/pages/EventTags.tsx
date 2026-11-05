@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { Switch } from "@/components/ui/switch";
 
 import { rowsOf } from "../api/collection";
@@ -231,7 +232,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
           <div className="flex flex-wrap items-center gap-tight">
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               aria-label={t("eventTags.editAria", { label: tagLabel(tag) })}
               aria-disabled={busy}
               onClick={() => {
@@ -243,7 +244,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             </Button>
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               aria-label={t("eventTags.deleteAria", { label: tagLabel(tag) })}
               aria-disabled={busy}
               onClick={() => {
@@ -288,14 +289,14 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             problemFor={saving.messageFor}
           />
           <FormError error={saving.error} />
-          <div className="flex flex-wrap gap-tight">
+          <FormActions>
             <Button type="submit" aria-disabled={busy}>
               {t("common.save")}
             </Button>
-            <Button type="button" variant="raised-light" onClick={() => setEditing(null)}>
+            <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
               {t("common.cancel")}
             </Button>
-          </div>
+          </FormActions>
         </form>
       )}
 
@@ -325,10 +326,9 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             ) : null}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel aria-disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
             <Button
               type="button"
-              variant="raised-danger"
+              variant="danger"
               aria-disabled={busy}
               onClick={() => {
                 if (busy) return;
@@ -337,6 +337,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             >
               {t("common.delete")}
             </Button>
+            <AlertDialogCancel aria-disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -380,11 +381,11 @@ function NewTag({ onCreated }: { onCreated: () => Promise<void> }) {
         problemFor={creating.messageFor}
       />
       <FormError error={creating.error} />
-      <div>
+      <FormActions>
         <Button type="submit" aria-disabled={busy}>
           {t("eventTags.add")}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

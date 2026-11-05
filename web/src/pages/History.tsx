@@ -237,6 +237,7 @@ function TimelineEntry({
           />
           <ChipButton
             label={t("history.deleteAria", { name: rowName })}
+            word={t("history.delete")}
             icon={Trash2}
             onClick={onDelete}
           />

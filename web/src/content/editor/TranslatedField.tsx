@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useController, useFormContext, type FieldValues, type Path } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 
 import { FormField } from "../../components/FormField";
 import { t } from "../../i18n";
@@ -111,19 +112,17 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
               germanRef.current = element;
             }}
             action={
-              <Button
+              <IconButton
                 type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={t("blockEditor.removeGerman")}
+                variant="quiet"
+                icon={X}
+                label={t("blockEditor.removeGerman")}
                 onClick={() => {
                   focusNext.current = "add";
                   setRevealed(false);
                   write(value?.fr ?? "", undefined);
                 }}
-              >
-                <X aria-hidden="true" />
-              </Button>
+              />
             }
           />
         </>
@@ -131,7 +130,7 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
         <Button
           ref={addRef}
           type="button"
-          variant="ghost"
+          variant="quiet"
           size="sm"
           className="self-start font-bold text-violet"
           onClick={() => {

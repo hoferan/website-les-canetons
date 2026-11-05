@@ -66,6 +66,10 @@
   --shadow-raised-sm: 3px 3px 0 var(--color-ink);
   --shadow-raised-stage: 4px 4px 0 var(--color-pink);
 
+  /* What the shadow shrinks to while a button is pressed in. */
+  --shadow-raised-pressed: 1px 1px 0 var(--color-ink);
+  --shadow-raised-stage-pressed: 1px 1px 0 var(--color-pink);
+
   /* Event tag chips: a tint and an ink per name in App\Support\TagColour.
      Each ink is at least 7:1 on its tint. None is the brand violet or the
      error red at full strength, so a tag never reads as a link or a fault. */
@@ -116,6 +120,17 @@
     from {
       opacity: 0;
       translate: 0 -0.25rem;
+    }
+  }
+
+  /* An icon button's tip (IconButton) rising 6px into place as it fades in.
+     Closing snaps, like the reveal above. */
+  --animate-roll-up: roll-up 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @keyframes roll-up {
+    from {
+      opacity: 0;
+      translate: 0 6px;
     }
   }
 
@@ -216,6 +231,16 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Tailwind 4 resets buttons to the arrow cursor. Give every enabled button the
+   hand, including the raw ones that do not use buttonVariants. A control that
+   is aria-disabled keeps the arrow. */
+@layer base {
+  button:not(:disabled, [aria-disabled="true"]),
+  [role="button"]:not(:disabled, [aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
 /* The page's own ground and default face. Everything else is a utility class. */
 body {
   background-color: var(--color-ground);
@@ -274,6 +299,63 @@ h2 {
   &:focus-visible {
     outline: 2px solid #fff;
     outline-offset: 2px;
+  }
+}
+
+/* The quiet button's press (ADR 0040). A framed button presses onto its
+   shadow; a quiet one has none, so its line plays the shadow: the word drops
+   3px onto it while the line and the grey patch stay where they are.
+
+   Both live on ::before, which moves back up by as much as the button moves
+   down. The line is the first background layer, sized to the content box so
+   it spans the word and not the padding; the second, empty layer only gives
+   the patch colour a padding-box clip. An icon-only button keeps the patch
+   and the drop and loses the line. The button must be positioned: the cva
+   variant adds `relative`, a field's icon button is `absolute`. */
+@utility press-quiet {
+  isolation: isolate;
+
+  --quiet-patch: transparent;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    padding: inherit;
+    border-radius: inherit;
+    background-color: var(--quiet-patch);
+    background-image: linear-gradient(var(--color-ink), var(--color-ink)), none;
+    background-repeat: no-repeat;
+    background-origin: content-box, padding-box;
+    background-clip: content-box, padding-box;
+    background-size:
+      100% 2px,
+      auto;
+    background-position:
+      0 calc(50% + 0.85em),
+      0 0;
+    transition: inherit;
+  }
+
+  &[data-slot="icon-button"]::before {
+    background-image: none;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      --quiet-patch: color-mix(in srgb, var(--color-ink) 5%, transparent);
+    }
+  }
+
+  &:active {
+    --quiet-patch: color-mix(in srgb, var(--color-ink) 11%, transparent);
+
+    translate: 0 3px;
+  }
+
+  &:active::before {
+    translate: 0 -3px;
   }
 }
 

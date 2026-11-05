@@ -1,3 +1,6 @@
+import { cn } from "@/lib/utils";
+
+import { buttonVariants } from "./ui/button";
 import { t } from "../i18n";
 
 /**
@@ -25,7 +28,7 @@ export function RegisterIndex({ entries }: { entries: { id: string; label: strin
             */}
             <a
               href={`#${entry.id}`}
-              className="focus-ring flex min-h-touch items-center rounded-full border-3 border-ink bg-panel px-4 text-sm font-bold text-ink shadow-raised-sm transition-colors hover:bg-yellow"
+              className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "focus-ring")}
             >
               {entry.label}
             </a>

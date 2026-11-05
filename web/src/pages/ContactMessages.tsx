@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -277,7 +278,7 @@ export function ContactMessages() {
         <Button
           type="button"
           size="sm"
-          variant={filter === "all" ? "raised-violet" : "raised-light"}
+          variant={filter === "all" ? "primary" : "secondary"}
           aria-pressed={filter === "all"}
           onClick={() => setFilter("all")}
         >
@@ -286,7 +287,7 @@ export function ContactMessages() {
         <Button
           type="button"
           size="sm"
-          variant={filter === "open" ? "raised-violet" : "raised-light"}
+          variant={filter === "open" ? "primary" : "secondary"}
           aria-pressed={filter === "open"}
           onClick={() => setFilter("open")}
         >
@@ -295,7 +296,7 @@ export function ContactMessages() {
         <Button
           type="button"
           size="sm"
-          variant={filter === "handled" ? "raised-violet" : "raised-light"}
+          variant={filter === "handled" ? "primary" : "secondary"}
           aria-pressed={filter === "handled"}
           onClick={() => setFilter("handled")}
         >
@@ -381,19 +382,11 @@ export function ContactMessages() {
           ) : null}
 
           <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                action.clear();
-                setDeleting(null);
-              }}
-            >
-              {t("common.cancel")}
-            </AlertDialogCancel>
             {/* A plain Button, not AlertDialogAction, which closes the dialog
                 on click: a 412 has to be readable where it happened. */}
             <Button
               type="button"
-              variant="raised-danger"
+              variant="danger"
               aria-disabled={destroy.isPending}
               onClick={() => {
                 if (destroy.isPending) return;
@@ -402,6 +395,14 @@ export function ContactMessages() {
             >
               {destroy.isPending ? t("common.busy") : t("contactMessages.delete")}
             </Button>
+            <AlertDialogCancel
+              onClick={() => {
+                action.clear();
+                setDeleting(null);
+              }}
+            >
+              {t("common.cancel")}
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -443,7 +444,7 @@ function MessageSummary({
       <div className="mt-related">
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           size="sm"
           aria-disabled={busy}
           onClick={() => {
@@ -527,15 +528,14 @@ function MessagePanel({
         </div>
         {/* Icon-only, so the label moves to the accessible name: this is the
             only way out of the panel. */}
-        <Button
+        <IconButton
           type="button"
-          variant="ghost"
-          size="icon-sm"
+          variant="quiet"
+          size="sm"
+          icon={X}
           onClick={onClose}
-          aria-label={t("contactMessages.close")}
-        >
-          <X aria-hidden="true" />
-        </Button>
+          label={t("contactMessages.close")}
+        />
       </div>
 
       {message.suspectFields.length > 0 ? (
@@ -546,7 +546,7 @@ function MessagePanel({
             <Button
               type="button"
               size="sm"
-              variant="raised-light"
+              variant="secondary"
               aria-disabled={busy}
               onClick={() => {
                 if (busy) return;
@@ -597,7 +597,7 @@ function MessagePanel({
           </div>
           <Button
             type="button"
-            variant="raised-danger"
+            variant="secondary"
             size="sm"
             aria-disabled={busy}
             onClick={onDelete}

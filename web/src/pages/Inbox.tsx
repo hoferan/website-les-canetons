@@ -173,7 +173,7 @@ function BookingsRow({
       <Button
         type="button"
         size="sm"
-        variant="raised-light"
+        variant="secondary"
         className="mt-related"
         aria-disabled={saving}
         onClick={() => void markRead()}

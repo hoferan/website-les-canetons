@@ -229,7 +229,7 @@ export function AttendanceControls({
       <div className="flex flex-wrap gap-tight">
         <Button
           type="button"
-          variant={answer?.status === "yes" ? "raised-violet" : "raised-light"}
+          variant={answer?.status === "yes" ? "primary" : "secondary"}
           aria-pressed={answer?.status === "yes"}
           aria-label={t("attendance.comingToAria", { title: event.title })}
           aria-disabled={busy}
@@ -245,7 +245,7 @@ export function AttendanceControls({
 
         <Button
           type="button"
-          variant={answer?.status === "no" ? "raised-danger" : "raised-light"}
+          variant={answer?.status === "no" ? "danger" : "secondary"}
           aria-pressed={answer?.status === "no"}
           aria-label={t("attendance.notComingToAria", { title: event.title })}
           aria-disabled={busy}

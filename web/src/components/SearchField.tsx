@@ -1,7 +1,7 @@
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 
 import { t } from "../i18n";
@@ -65,16 +65,14 @@ export function SearchField({
         autoComplete="off"
       />
       {value === "" ? null : (
-        <Button
+        <IconButton
           type="button"
-          variant="ghost"
-          size="icon"
-          className="absolute top-1/2 right-0 -translate-y-1/2"
-          aria-label={t("common.clearSearch")}
+          variant="quiet"
+          icon={X}
+          className="absolute inset-y-0 right-0 h-auto"
+          label={t("common.clearSearch")}
           onClick={() => onChange("")}
-        >
-          <X aria-hidden="true" />
-        </Button>
+        />
       )}
     </div>
   );

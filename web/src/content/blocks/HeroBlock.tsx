@@ -102,7 +102,7 @@ export function HeroActions({ actions }: { actions: readonly HeroAction[] }) {
             to={action.to}
             external={external}
             {...(external ? { ariaLabel: t("nav.newTab", { name: label }) } : {})}
-            variant={index === 0 ? "raised" : "raised-light"}
+            variant={index === 0 ? "accent" : "secondary"}
             className="h-12 px-5 text-base"
           >
             {label}

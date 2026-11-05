@@ -279,3 +279,10 @@ test("invalid marks a textarea red, like an input", () => {
   render(<FormField id="demo-body" label="Texte" as="textarea" value="" onChange={noop} invalid />);
   expect(screen.getByLabelText("Texte")).toHaveClass("border-danger");
 });
+
+test("the reveal button is centred without a translate, which its press would override", () => {
+  render(<FormField id="demo-pw" label="Mot de passe" type="password" value="x" onChange={noop} />);
+  const toggle = screen.getByRole("button", { name: "Afficher le mot de passe" });
+  expect(toggle.className).toContain("h-auto");
+  expect(toggle.className).not.toMatch(/(^| )-?translate-/);
+});

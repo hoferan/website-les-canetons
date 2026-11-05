@@ -5,6 +5,7 @@ import { expect, test } from "vitest";
 
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -28,6 +29,7 @@ function Harness() {
             <AlertDialogDescription>Pour de bon.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
+            <AlertDialogAction variant="danger">Supprimer pour de bon</AlertDialogAction>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -60,4 +62,16 @@ test("Escape gives focus back too", async () => {
   await user.keyboard("{Escape}");
 
   expect(screen.getByRole("button", { name: "Supprimer" })).toHaveFocus();
+});
+
+test("the footer is a form-actions row with the action before Cancel", async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+
+  await user.click(screen.getByRole("button", { name: "Supprimer" }));
+  const action = await screen.findByRole("button", { name: "Supprimer pour de bon" });
+  const cancel = screen.getByRole("button", { name: "Annuler" });
+
+  expect(action.parentElement).toHaveAttribute("data-slot", "form-actions");
+  expect(action.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });

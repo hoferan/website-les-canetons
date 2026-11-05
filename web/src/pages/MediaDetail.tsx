@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 import { t, translateApiError } from "../i18n";
 import { kilobytes } from "../images/kilobytes";
 import { Photo, PHOTO_SIZES } from "../images/Photo";
@@ -304,13 +305,13 @@ export function MediaDetail({
               {nameError.error.message}
             </p>
           ) : null}
-          <div className="flex flex-wrap gap-tight">
+          <FormActions>
             <Button type="submit" aria-disabled={savingName}>
               {savingName ? t("common.busy") : t("common.save")}
             </Button>
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               onClick={() => {
                 nameError.clear();
                 setRenaming(null);
@@ -318,7 +319,7 @@ export function MediaDetail({
             >
               {t("common.cancel")}
             </Button>
-          </div>
+          </FormActions>
         </form>
       ) : null}
 
@@ -354,7 +355,7 @@ export function MediaDetail({
       >
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           disabled={busy || etag === null}
           onClick={() => {
             if (etag === null) return;
@@ -368,7 +369,7 @@ export function MediaDetail({
         </Button>
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           disabled={busy || etag === null}
           onClick={() => turn("left")}
         >
@@ -377,7 +378,7 @@ export function MediaDetail({
         </Button>
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           disabled={busy || etag === null}
           onClick={() => turn("right")}
         >
@@ -386,14 +387,14 @@ export function MediaDetail({
         </Button>
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           disabled={busy || etag === null}
           onClick={() => input.current?.click()}
         >
           <Upload aria-hidden="true" />
           {t("photos.detail.replace")}
         </Button>
-        <Button asChild variant="raised-light">
+        <Button asChild variant="secondary">
           <a href={image.url} download={downloadName(image.name)}>
             <Download aria-hidden="true" />
             {t("photos.detail.download")}
@@ -401,7 +402,7 @@ export function MediaDetail({
         </Button>
         <Button
           type="button"
-          variant="raised-light"
+          variant="secondary"
           disabled={busy || etag === null}
           onClick={() => {
             if (etag === null) return;
@@ -478,19 +479,19 @@ export function MediaDetail({
             {deleteError ? <p className="text-danger">{deleteError}</p> : null}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteBusy}>
-              {inUse ? t("photos.detail.close") : t("common.cancel")}
-            </AlertDialogCancel>
             {inUse ? null : (
               <Button
                 type="button"
-                variant="raised-danger"
+                variant="danger"
                 aria-disabled={deleteBusy}
                 onClick={() => void confirmDelete()}
               >
                 {deleteBusy ? t("common.busy") : t("photos.deleteConfirm")}
               </Button>
             )}
+            <AlertDialogCancel aria-disabled={deleteBusy}>
+              {inUse ? t("photos.detail.close") : t("common.cancel")}
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

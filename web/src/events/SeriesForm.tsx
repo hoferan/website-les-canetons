@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
 
 import type { StoreEventSeriesRequest } from "../api/generated/model";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
@@ -334,7 +335,7 @@ export function SeriesForm({
 
       <FormError error={error} />
 
-      <div className="flex flex-wrap gap-related">
+      <FormActions>
         {/* Present from the start, inert until there is something to create:
             with "Annuler" as the only action the form reads as broken. With
             no count to name, it says what it will do. */}
@@ -349,10 +350,10 @@ export function SeriesForm({
               ? t("seriesForm.create", { count: chosen.length })
               : t("seriesForm.createNone")}
         </Button>
-        <Button type="button" variant="raised-light" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

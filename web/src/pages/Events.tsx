@@ -484,7 +484,7 @@ export function Events() {
         {calendarEnabled ? (
           <Button
             type="button"
-            variant="raised-light"
+            variant="secondary"
             className="hidden md:inline-flex"
             aria-pressed={showingCalendar}
             onClick={() => {
@@ -514,7 +514,7 @@ export function Events() {
           <span data-testid="day-filter" className="text-ink-muted">
             {t("events.dayFiltered")}
           </span>
-          <Button type="button" variant="raised-light" size="sm" onClick={() => setDay(null)}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setDay(null)}>
             {t("events.showAll")}
           </Button>
         </p>

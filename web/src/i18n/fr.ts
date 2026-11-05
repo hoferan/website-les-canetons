@@ -405,6 +405,12 @@ export const fr = {
     // aria-pressed carrying the state: a toggle that renames itself announces
     // as a different control each time it is pressed.
     showPassword: "Afficher le mot de passe",
+    // The short words an icon-only row control shows on hover (IconButton).
+    // Its accessible name, which says which row, stays per screen.
+    moveUp: "Monter",
+    moveDown: "Descendre",
+    remove: "Retirer",
+    moreActions: "Autres actions",
   },
 
   /**
@@ -1859,6 +1865,9 @@ export const fr = {
     // The arrows beside a card's chip in edit mode, which reorder the grid.
     moveCardBefore: "Déplacer « {{title}} » avant",
     moveCardAfter: "Déplacer « {{title}} » après",
+    // Their short words, shown on hover.
+    before: "Avant",
+    after: "Après",
     rowType: {
       text: "Texte",
       labelValue: "Libellé + valeur",

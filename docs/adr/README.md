@@ -48,11 +48,11 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0022](0022-one-light-theme-and-vendored-components.md)             | Use one light theme, "Scène", with vendored components that alias it          |
 | [0023](0023-locale-in-the-path-text-in-typed-catalogues.md)         | Put the locale in the URL and every string in two typed catalogues            |
 | [0024](0024-lay-out-every-list-as-cards.md)                         | Lay out every list as cards, at every width                                   |
-| [0025](0025-icons-on-controls.md)                                   | Give a control an icon only where the icon says one thing                     |
+| [0025](0025-icons-on-controls.md)                                   | Give a control an icon only where the icon says one thing (amended by ADR 0040)                     |
 | [0026](0026-user-typed-content-carries-its-own-translations.md)     | Store user-typed content in both languages, and fall back per entry           |
 | [0027](0027-draft-events.md)                                        | Write events as drafts and publish them as a separate act                     |
 | [0028](0028-photos-live-in-the-database-in-sizes-made-by-the-browser.md) | Keep photos in the database, in three sizes the browser makes |
-| [0029](0029-the-carnival-look.md) | Give the public pages a carnival look: poster heroes, scalloped edges and raised cards |
+| [0029](0029-the-carnival-look.md) | Give the public pages a carnival look: poster heroes, scalloped edges and raised cards (amended by ADR 0040) |
 | [0030](0030-auto-migrate-off-keeps-serving.md) | Keep serving when AUTO_MIGRATE is off, because it is the outage switch |
 | [0031](0031-cap-an-option-under-a-lock.md) | Cap how many of an option can be booked, counting under a lock on the event |
 | [0032](0032-compose-a-booking-form-from-blocks.md) | Compose an event's booking form from blocks the committee assembles |
@@ -63,3 +63,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0037](0037-flag-public-submissions-that-look-like-spam.md) | Flag public bookings and messages that carry a link or markup |
 | [0038](0038-public-pages-are-content-blocks-edited-in-place.md) | Edit the public pages block by block, over defaults the code ships |
 | [0039](0039-move-the-website-between-servers.md) | Move the public website between servers as one file, imported all at once |
+| [0040](0040-one-button-system.md) | Build every button from one system of role variants and three components |

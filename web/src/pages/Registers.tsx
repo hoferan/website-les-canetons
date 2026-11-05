@@ -12,6 +12,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { FormActions } from "@/components/ui/form-actions";
+import { IconButton } from "@/components/ui/icon-button";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -223,35 +225,33 @@ function RegisterRow({
               takes aria-disabled and an early return while a write runs,
               never `disabled`: see rule 2 in ui/button.tsx. */}
           <div className="flex flex-wrap items-center gap-tight">
-            <Button
+            <IconButton
               type="button"
-              variant="raised-light"
-              size="icon"
-              aria-label={t("registers.moveUpAria", { label })}
+              variant="secondary"
+              icon={ArrowUp}
+              label={t("registers.moveUpAria", { label })}
+              word={t("common.moveUp")}
               aria-disabled={first || moving}
               onClick={() => {
                 if (first || moving) return;
                 onMove(-1);
               }}
-            >
-              <ArrowUp aria-hidden="true" />
-            </Button>
-            <Button
+            />
+            <IconButton
               type="button"
-              variant="raised-light"
-              size="icon"
-              aria-label={t("registers.moveDownAria", { label })}
+              variant="secondary"
+              icon={ArrowDown}
+              label={t("registers.moveDownAria", { label })}
+              word={t("common.moveDown")}
               aria-disabled={last || moving}
               onClick={() => {
                 if (last || moving) return;
                 onMove(1);
               }}
-            >
-              <ArrowDown aria-hidden="true" />
-            </Button>
+            />
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               aria-label={t("registers.editAria", { label })}
               aria-disabled={busy}
               onClick={() => {
@@ -263,7 +263,7 @@ function RegisterRow({
             </Button>
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               aria-label={t("registers.deleteAria", { label })}
               aria-disabled={busy}
               onClick={() => {
@@ -299,14 +299,14 @@ function RegisterRow({
             problemFor={saving.messageFor}
           />
           <FormError error={saving.error} />
-          <div className="flex flex-wrap gap-tight">
+          <FormActions>
             <Button type="submit" aria-disabled={busy}>
               {t("common.save")}
             </Button>
-            <Button type="button" variant="raised-light" onClick={() => setEditing(null)}>
+            <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
               {t("common.cancel")}
             </Button>
-          </div>
+          </FormActions>
         </form>
       )}
 
@@ -338,13 +338,10 @@ function RegisterRow({
           <AlertDialogFooter>
             {/* A register somebody is in cannot go, and the server refuses
                 it anyway; offering the button would only earn a 409. */}
-            <AlertDialogCancel aria-disabled={busy}>
-              {inUse ? t("registers.close") : t("common.cancel")}
-            </AlertDialogCancel>
             {inUse ? null : (
               <Button
                 type="button"
-                variant="raised-danger"
+                variant="danger"
                 aria-disabled={busy}
                 onClick={() => {
                   if (busy) return;
@@ -354,6 +351,9 @@ function RegisterRow({
                 {t("common.delete")}
               </Button>
             )}
+            <AlertDialogCancel aria-disabled={busy}>
+              {inUse ? t("registers.close") : t("common.cancel")}
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -397,11 +397,11 @@ function NewRegister({ onCreated }: { onCreated: () => Promise<void> }) {
         problemFor={creating.messageFor}
       />
       <FormError error={creating.error} />
-      <div>
+      <FormActions>
         <Button type="submit" aria-disabled={busy}>
           {t("registers.add")}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

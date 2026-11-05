@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
@@ -138,29 +139,27 @@ export function EditableBlock({
               reader hears which one moves. Remove sits at the far end, away
               from the arrows (ADR 0025). */}
           <div className="flex flex-wrap items-center gap-tight">
-            <Button
+            <IconButton
               type="button"
-              variant="raised-light"
-              size="icon"
-              aria-label={t("registrationOptions.moveUp", { option: name })}
+              variant="secondary"
+              icon={ArrowUp}
+              label={t("registrationOptions.moveUp", { option: name })}
+              word={t("common.moveUp")}
               aria-disabled={first}
               onClick={() => !first && onMove(-1)}
-            >
-              <ArrowUp aria-hidden="true" />
-            </Button>
-            <Button
+            />
+            <IconButton
               type="button"
-              variant="raised-light"
-              size="icon"
-              aria-label={t("registrationOptions.moveDown", { option: name })}
+              variant="secondary"
+              icon={ArrowDown}
+              label={t("registrationOptions.moveDown", { option: name })}
+              word={t("common.moveDown")}
               aria-disabled={last}
               onClick={() => !last && onMove(1)}
-            >
-              <ArrowDown aria-hidden="true" />
-            </Button>
+            />
             <Button
               type="button"
-              variant="raised-light"
+              variant="secondary"
               onClick={() => {
                 closedByDone.current = true;
                 onClose();
@@ -173,7 +172,7 @@ export function EditableBlock({
             {row.answered ? null : (
               <Button
                 type="button"
-                variant="raised-light"
+                variant="secondary"
                 className="ml-auto text-danger"
                 onClick={onRemove}
               >
@@ -381,15 +380,14 @@ function AnswersEditor({
             // Keeps the column, so the fields line up with their neighbours.
             <span className="size-11" />
           ) : (
-            <Button
+            <IconButton
               type="button"
-              variant="raised-light"
-              size="icon"
-              aria-label={t("registrationOptions.removeAnswer", { n: n + 1 })}
+              variant="secondary"
+              icon={Trash2}
+              label={t("registrationOptions.removeAnswer", { n: n + 1 })}
+              word={t("common.remove")}
               onClick={() => onChange(row.answers.filter((other) => other.key !== answer.key))}
-            >
-              <Trash2 aria-hidden="true" />
-            </Button>
+            />
           )}
         </div>
       ))}
@@ -400,7 +398,7 @@ function AnswersEditor({
       ) : null}
       <Button
         type="button"
-        variant="raised-light"
+        variant="secondary"
         className="w-fit"
         // Twenty is the API's cap.
         aria-disabled={row.answers.length >= 20}

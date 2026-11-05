@@ -1,7 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState, type FormEvent, type HTMLAttributes, type ReactNode, type Ref } from "react";
 
-import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -303,18 +303,16 @@ export function FormField({
               // way SearchField's clear button does.
               className="pr-12"
             />
-            <Button
+            <IconButton
               type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute top-1/2 right-0 -translate-y-1/2"
-              aria-label={t("common.showPassword")}
+              variant="quiet"
+              icon={revealed ? EyeOff : Eye}
+              className="absolute inset-y-0 right-0 h-auto"
+              label={t("common.showPassword")}
               aria-pressed={revealed}
               aria-controls={id}
               onClick={() => setRevealed((shown) => !shown)}
-            >
-              {revealed ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-            </Button>
+            />
           </div>
         ) : (
           <Input

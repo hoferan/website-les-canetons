@@ -12,6 +12,7 @@ import {
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError } from "../components/FormField";
 import { buttonVariants } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
@@ -243,7 +244,7 @@ export function SlotPhotoControl({
   return (
     <div className="mt-related">
       <div
-        className="group/frame relative"
+        className="relative"
         {...(photo ? { "data-photo-frame": "" } : { "data-photo-pending": slot })}
         {...getRootProps({
           // Every drag is accepted, so a link or text dropped here gets a
@@ -264,7 +265,7 @@ export function SlotPhotoControl({
             aria-label={name}
             aria-disabled={busy}
             onClick={open}
-            className={cn(buttonVariants({ variant: "raised" }), "h-11 px-3")}
+            className={cn(buttonVariants({ variant: "accent" }), "h-11 px-3")}
           >
             {photo ? (
               <Pencil aria-hidden="true" className="size-5 shrink-0" />
@@ -282,27 +283,22 @@ export function SlotPhotoControl({
               className="block h-auto w-full rounded-lg"
             />
             {/* Icon only on a phone (ADR 0025): the pencil means one thing and
-                the name says which slot. From sm up, hovering the photo or
-                focusing the pencil shows the word too. The raised yellow chip
-                of every block's "Modifier" (EditChip), whose ink outline reads
-                on a dark or a light photograph; h-11 and min-w-11 keep the
-                44px touch target. */}
-            <button
+                the name says which slot. From sm up, hovering or focusing the
+                pencil rolls the word out. The raised yellow chip of every
+                block's "Modifier" (EditChip), whose ink outline reads on a
+                dark or a light photograph. */}
+            <IconButton
               ref={control}
               type="button"
-              aria-label={name}
+              icon={Pencil}
+              label={name}
+              word={t("photos.change")}
+              mode="grow"
+              variant="accent"
               aria-disabled={busy}
               onClick={open}
-              className={cn(
-                buttonVariants({ variant: "raised" }),
-                "group/pencil absolute right-2 bottom-2 h-11 min-w-11 px-3",
-              )}
-            >
-              <Pencil aria-hidden="true" className="size-5 shrink-0" />
-              <span className="hidden pr-1 text-sm font-medium sm:group-hover/frame:inline sm:group-focus-visible/pencil:inline">
-                {t("photos.change")}
-              </span>
-            </button>
+              className="absolute right-2 bottom-2"
+            />
           </>
         ) : (
           // Shaped like the photo it waits for, 3:2 at the column's width,
@@ -320,7 +316,7 @@ export function SlotPhotoControl({
                 change in edit mode. A span, not a button: one control. */}
             <span
               className={cn(
-                buttonVariants({ variant: "raised" }),
+                buttonVariants({ variant: "accent" }),
                 "px-4 group-hover/add:bg-yellow/85",
               )}
             >

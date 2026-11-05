@@ -75,7 +75,7 @@ export function AgendaEntry({
         {event.registrationOpen ? (
           <ButtonLink
             to={`/events/${event.id}/book`}
-            variant="raised-violet"
+            variant="primary"
             className="mt-related"
             ariaLabel={t("agenda.registerFor", { title: event.title })}
           >
@@ -142,7 +142,7 @@ export function PublicAgenda() {
       {/* Only when there is more to see; under a list that already holds
           every date it would lead to a page the reader has just read. */}
       {all.length > SHOWN ? (
-        <ButtonLink to="/agenda" variant="raised-light" className="mt-block">
+        <ButtonLink to="/agenda" variant="secondary" className="mt-block">
           {t("agenda.seeAll")}
         </ButtonLink>
       ) : null}
