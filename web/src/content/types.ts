@@ -133,6 +133,7 @@ type Checks = {
   name: z.ZodType<string, string>;
   target: z.ZodType<string, string>;
   cardTarget: z.ZodType<string | undefined, string>;
+  cardIcon: z.ZodType<Icon | undefined, string>;
 };
 
 function schemas(checks: Checks) {
@@ -178,7 +179,10 @@ function schemas(checks: Checks) {
   // replaced can be told apart from a card the band added.
   const card = z.object({
     id: z.string(),
-    icon: z.enum(ICONS),
+    // A card may go without a picture: the title already says what it is
+    // about. The colour stays stored while there is none, since it tints
+    // only the picture's tile, so choosing one again brings it back.
+    icon: checks.cardIcon.optional(),
     tint: z.enum(TINTS),
     title: translated,
     rows: z.array(row),
@@ -232,6 +236,7 @@ export const { row, card, cardsBlock, siteBlock, heroBlock } = schemas({
   name: z.string(),
   target: z.string(),
   cardTarget: z.string(),
+  cardIcon: z.enum(ICONS),
 });
 
 /** The same blocks as an editor saves them: a number dials, a link is https. */
@@ -247,6 +252,8 @@ export const forEditor = schemas({
     z.literal("").transform(() => undefined),
     z.string().refine(isActionTarget),
   ]),
+  // Likewise a card without a picture, held as "" by the icon picker.
+  cardIcon: z.union([z.literal("").transform(() => undefined), z.enum(ICONS)]),
 });
 
 export type Row = z.infer<typeof row>;

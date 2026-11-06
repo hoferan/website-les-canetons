@@ -1525,6 +1525,7 @@ export const de: typeof fr = {
     icon: "Symbol",
     tint: "Farbe",
     iconSearch: "Symbol suchen",
+    iconNone: "Kein Symbol",
     noIcon: "Kein Symbol passt.",
     icons: {
       music: "Musik",

@@ -352,6 +352,83 @@ test("Rétablir in a card's editor restores that card alone", async () => {
   expect(puts[0]?.body).toEqual({ data: { cards: [older, instruments, schedule, ...rest] } });
 });
 
+test("a card without an icon shows its title alone, with no tile", async () => {
+  storeBlock("committee.contact", {
+    cards: [{ id: "contact", tint: "yellow", title: { fr: "Nous joindre" }, rows: [] }],
+  });
+  await renderWithSession(<CardsBlock blockKey="committee.contact" />, { route: "/committee" });
+
+  const heading = await screen.findByRole("heading", { name: "Nous joindre" });
+  const card = heading.parentElement!;
+  // The heading is the card's own child, so it starts at the card's edge.
+  expect(card).toHaveAttribute("data-chip-scope");
+  expect(card.querySelector("svg")).toBeNull();
+  expect(card.querySelector(".bg-yellow")).toBeNull();
+});
+
+test("a card goes without an icon and gets one back, its colour kept", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="committee.contact" />, { route: "/committee" });
+  const [shipped] = BLOCKS["committee.contact"].defaults().cards;
+
+  await user.click(await screen.findByRole("button", { name: "Modifier : Contact des Canetons" }));
+  let dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("radio", { name: "Aucune icône" }));
+  // The colour tints only the icon's tile, so it is not offered without one.
+  expect(within(dialog).queryByRole("radiogroup", { name: "Couleur" })).toBeNull();
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const withoutIcon = { ...shipped!, icon: undefined };
+  expect(puts[0]?.body).toEqual({ data: { cards: [withoutIcon] } });
+  expect(puts[0]?.body).not.toHaveProperty("data.cards.0.icon");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  // Out of the row it shared with the tile: the card's own child.
+  await waitFor(() =>
+    expect(
+      screen.getByRole("heading", { name: "Contact des Canetons" }).parentElement,
+    ).toHaveAttribute("data-chip-scope"),
+  );
+
+  await user.click(screen.getByRole("button", { name: "Modifier : Contact des Canetons" }));
+  dialog = await screen.findByRole("dialog");
+  expect(within(dialog).getByRole("radio", { name: "Aucune icône" })).toBeChecked();
+  await user.click(within(dialog).getByRole("radio", { name: "Étoile" }));
+  expect(within(dialog).getByRole("radio", { name: "Jaune" })).toBeChecked();
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(2);
+  expect(puts[1]?.body).toEqual({ data: { cards: [{ ...withoutIcon, icon: "star" }] } });
+});
+
+test("Rétablir brings back a shipped card without an icon as none", async () => {
+  const user = userEvent.setup();
+  const puts = recordBlockPuts();
+  const [godparents] = BLOCKS["band.godparents"].defaults().cards;
+  expect(godparents).not.toHaveProperty("icon");
+  storeBlock("band.godparents", { cards: [{ ...godparents!, icon: "star" }] });
+  editing();
+  await renderWithSession(<CardsBlock blockKey="band.godparents" layout="wide" />, {
+    route: "/band",
+  });
+
+  await user.click(
+    await screen.findByRole("button", { name: "Modifier : Le parrain et la marraine" }),
+  );
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).getByRole("radio", { name: "Étoile" })).toBeChecked();
+  await user.click(within(dialog).getByRole("button", { name: "Rétablir l’original" }));
+  expect(within(dialog).getByRole("radio", { name: "Aucune icône" })).toBeChecked();
+  expect(within(dialog).queryByRole("radiogroup", { name: "Couleur" })).toBeNull();
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  // Back to the shipped block, which is saved as no stored block at all.
+  await expect.poll(() => puts).toHaveLength(1);
+  expect(puts[0]?.body).toEqual({ data: null });
+});
+
 test("a card the band added offers no Rétablir", async () => {
   const user = userEvent.setup();
   const extra = {

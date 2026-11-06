@@ -4,6 +4,7 @@ import {
   Controller,
   useFieldArray,
   useFormContext,
+  useWatch,
   type FieldErrors,
   type UseFormReturn,
 } from "react-hook-form";
@@ -173,7 +174,10 @@ export function CardsBlock({
   const restore = (form: UseFormReturn<CardsData>) => {
     const index = form.getValues("cards").findIndex((card) => card.id === shipped?.id);
     if (!shipped || index === -1) return;
-    form.setValue(`cards.${index}`, shipped, { shouldDirty: true });
+    // A shipped card without an icon restores as the picker's "": an absent
+    // value would show the icon the editor was opened with.
+    const restored = { ...shipped, icon: shipped.icon ?? "" } as CardData;
+    form.setValue(`cards.${index}`, restored, { shouldDirty: true });
     setResets((count) => count + 1);
   };
 
@@ -298,7 +302,8 @@ export function CardsBlock({
 
 /**
  * One card. The icon is decoration: the heading already says what the card is
- * about.
+ * about, so a card may go without one, and its title then starts at the
+ * card's edge.
  *
  * A card with a target is the link itself, through `Card asChild`: one
  * element carrying both class strings, a target far larger than 44px on a
@@ -330,7 +335,7 @@ function CardView({
   links: boolean;
   children: ReactNode;
 }) {
-  const Glyph = ICON_GLYPHS[card.icon];
+  const Glyph = card.icon === undefined ? undefined : ICON_GLYPHS[card.icon];
   // A read lets any string through, so an imported `javascript:` target must
   // never become an href.
   const target = links && card.to !== undefined && isActionTarget(card.to) ? card.to : undefined;
@@ -344,17 +349,19 @@ function CardView({
     <>
       {band ? (
         <>
-          <span
-            className={cn(
-              "grid size-13 place-items-center rounded-[14px] border-3 border-ink",
-              TINT_BACKGROUNDS[card.tint],
-            )}
-          >
-            <Glyph aria-hidden="true" className="size-7" strokeWidth={2.25} />
-          </span>
+          {Glyph ? (
+            <span
+              className={cn(
+                "grid size-13 place-items-center rounded-[14px] border-3 border-ink",
+                TINT_BACKGROUNDS[card.tint],
+              )}
+            >
+              <Glyph aria-hidden="true" className="size-7" strokeWidth={2.25} />
+            </span>
+          ) : null}
           <h3 className="font-display text-xl text-ink uppercase">{title}</h3>
         </>
-      ) : (
+      ) : Glyph ? (
         <div className="flex items-center gap-3">
           <span
             className={cn(
@@ -366,6 +373,8 @@ function CardView({
           </span>
           <h2 className="font-display text-xl">{title}</h2>
         </div>
+      ) : (
+        <h2 className="font-display text-xl">{title}</h2>
       )}
       {/* The slot shows a placeholder to a visitor while empty, like every
           other slot, and carries its own pencil for an editor. */}
@@ -472,6 +481,17 @@ function PhotoSwitch({ name }: { name: `cards.${number}.photo` }) {
   );
 }
 
+/**
+ * The colour of the card's picture, offered only while it has one: the colour
+ * tints nothing else. Hidden, it stays in the form, so picking an icon again
+ * brings it back.
+ */
+function CardTint({ index }: { index: number }) {
+  const icon = useWatch<CardsData, `cards.${number}.icon`>({ name: `cards.${index}.icon` });
+  // "" is the picker's "no icon"; absent, a card stored without one.
+  return icon ? <TintPicker name={`cards.${index}.tint`} /> : null;
+}
+
 function newCard(id: string): CardData {
   return { id, icon: "star", tint: "yellow", title: { fr: "" }, rows: [] };
 }
@@ -524,7 +544,7 @@ function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
               required
             />
             <IconPicker name={`cards.${index}.icon`} />
-            <TintPicker name={`cards.${index}.tint`} />
+            <CardTint index={index} />
             {links ? <LinkFields name={`cards.${index}.to`} /> : null}
             <PhotoSwitch name={`cards.${index}.photo`} />
             <RowFields name={`cards.${index}.rows`} />

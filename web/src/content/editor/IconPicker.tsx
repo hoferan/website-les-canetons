@@ -55,6 +55,9 @@ import { catalogueValue } from "../../i18n/catalogueText";
 import { matchesName } from "../../images/librarySearch";
 import { ICONS, type Icon } from "../types";
 
+const SWATCH =
+  "size-11 rounded-xl border-2 border-ink bg-white px-0 text-ink data-[state=checked]:bg-yellow data-[state=checked]:text-ink data-[state=checked]:shadow-raised-sm";
+
 /** Each card picture's glyph, for the picker and for the card that shows it. */
 export const ICON_GLYPHS: Record<Icon, LucideIcon> = {
   music: Music,
@@ -114,12 +117,19 @@ function iconMatches(icon: Icon, query: string): boolean {
 }
 
 /**
- * A card's picture, one swatch per icon. A radio group, so the arrow keys
+ * The radio value of "no picture". The form holds it as "", which the
+ * editor's schema saves as absent; a radio's own value must not be empty.
+ */
+const NONE = "none";
+
+/**
+ * A card's picture, one swatch per icon, after one for no picture at all. A radio group, so the arrow keys
  * move the choice and a screen reader hears which one is picked.
  *
  * About forty icons are a lot to scan on a phone, so a search box narrows
  * them. The picked icon always stays in the grid, filtered out or not, so an
- * editor never loses sight of what the card shows now.
+ * editor never loses sight of what the card shows now. "No picture" is no
+ * icon to search for, so it stays first whatever is typed.
  */
 export function IconPicker({ name }: { name: string }) {
   const { control } = useFormContext();
@@ -152,10 +162,19 @@ export function IconPicker({ name }: { name: string }) {
             <>
               <RadioGroup
                 aria-labelledby={labelId}
-                value={field.value as string}
-                onValueChange={field.onChange}
+                // Absent on a card stored without one, "" once picked here.
+                value={(field.value as string | undefined) || NONE}
+                onValueChange={(value) => field.onChange(value === NONE ? "" : value)}
                 className="flex flex-wrap gap-2 border-0 bg-transparent p-0"
               >
+                <ToggleOption
+                  value={NONE}
+                  aria-label={t("blockEditor.iconNone")}
+                  className={SWATCH}
+                >
+                  {/* The dot the history form shows for an entry without an icon. */}
+                  <span aria-hidden="true" className="size-2 rounded-full bg-current" />
+                </ToggleOption>
                 {shown.map((icon) => {
                   const Glyph = ICON_GLYPHS[icon];
                   return (
@@ -163,7 +182,7 @@ export function IconPicker({ name }: { name: string }) {
                       key={icon}
                       value={icon}
                       aria-label={t(`blockEditor.icons.${icon}`)}
-                      className="size-11 rounded-xl border-2 border-ink bg-white px-0 text-ink data-[state=checked]:bg-yellow data-[state=checked]:text-ink data-[state=checked]:shadow-raised-sm"
+                      className={SWATCH}
                     >
                       <Glyph aria-hidden="true" className="size-5" />
                     </ToggleOption>
