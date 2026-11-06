@@ -246,8 +246,8 @@ export const BLOCKS = {
     defaults: () => ({
       cards: [
         {
+          // No icon: none fits, and the photo carries the card.
           id: "godparents",
-          icon: "heart" as const,
           tint: "pink" as const,
           title: fromCatalogue("band.patronsHeading"),
           rows: [{ type: "text" as const, text: fromCatalogue("band.patrons") }],

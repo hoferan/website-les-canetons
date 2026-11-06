@@ -120,16 +120,20 @@ function iconMatches(icon: Icon, query: string): boolean {
  * About forty icons are a lot to scan on a phone, so a search box narrows
  * them. The picked icon always stays in the grid, filtered out or not, so an
  * editor never loses sight of what the card shows now.
+ *
+ * `labelledBy` names the grid by a label already on screen, such as the
+ * switch that turns the icon on, which then stands in for the picker's own.
  */
-export function IconPicker({ name }: { name: string }) {
+export function IconPicker({ name, labelledBy }: { name: string; labelledBy?: string }) {
   const { control } = useFormContext();
-  const labelId = useId();
+  const ownLabelId = useId();
+  const labelId = labelledBy ?? ownLabelId;
   const searchId = useId();
   const [query, setQuery] = useState("");
 
   return (
     <div className="flex flex-col gap-2">
-      <span id={labelId}>{t("blockEditor.icon")}</span>
+      {labelledBy ? null : <span id={labelId}>{t("blockEditor.icon")}</span>}
       {/* Enter in the box would submit the dialog's form: it only filters. */}
       <div
         onKeyDown={(event) => {

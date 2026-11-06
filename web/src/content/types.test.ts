@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { forEditor, heroBlock, isPhoneNumber } from "./types";
+import { card, forEditor, heroBlock, isPhoneNumber } from "./types";
 
 test.each(["+41 (0)26 123 45 67", "026 123 45 67", "0041 26 123 45 67", "+41 26 123 45 67", ""])(
   "the editor accepts %j",
@@ -59,4 +59,22 @@ test("a hero carries at most two buttons, and none by default", () => {
   expect(
     heroBlock.safeParse({ title: { fr: "Titre" }, actions: [action, action, action] }).success,
   ).toBe(false);
+});
+
+const plainCard = { id: "c", tint: "pink", title: { fr: "Parrains" }, rows: [] };
+
+test("a card reads with or without an icon, and refuses an unknown one", () => {
+  expect(card.parse(plainCard)).not.toHaveProperty("icon");
+  expect(card.parse({ ...plainCard, icon: "star" })).toHaveProperty("icon", "star");
+  expect(card.safeParse({ ...plainCard, icon: "dragon" }).success).toBe(false);
+});
+
+test("the editor saves the picker's 'no icon' as an absent icon, keeping the colour", () => {
+  const saved = forEditor.card.parse({ ...plainCard, icon: "" });
+
+  // Undefined, so the saved JSON carries no icon at all.
+  expect(saved.icon).toBeUndefined();
+  expect(JSON.parse(JSON.stringify(saved))).not.toHaveProperty("icon");
+  expect(saved).toHaveProperty("tint", "pink");
+  expect(forEditor.card.parse({ ...plainCard, icon: "star" })).toHaveProperty("icon", "star");
 });

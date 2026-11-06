@@ -4,6 +4,7 @@ import {
   Controller,
   useFieldArray,
   useFormContext,
+  useWatch,
   type FieldErrors,
   type UseFormReturn,
 } from "react-hook-form";
@@ -47,7 +48,7 @@ import {
 } from "../editor";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 import { tr } from "../translated";
-import { isActionTarget, type Card as CardData, type cardsBlock } from "../types";
+import { isActionTarget, type Card as CardData, type cardsBlock, type Icon } from "../types";
 import { RowView } from "./RowView";
 import { useBlockEditing } from "./useBlockEditing";
 
@@ -298,7 +299,8 @@ export function CardsBlock({
 
 /**
  * One card. The icon is decoration: the heading already says what the card is
- * about.
+ * about, so a card may go without one, and its title then starts at the
+ * card's edge.
  *
  * A card with a target is the link itself, through `Card asChild`: one
  * element carrying both class strings, a target far larger than 44px on a
@@ -330,7 +332,7 @@ function CardView({
   links: boolean;
   children: ReactNode;
 }) {
-  const Glyph = ICON_GLYPHS[card.icon];
+  const Glyph = card.icon === undefined ? undefined : ICON_GLYPHS[card.icon];
   // A read lets any string through, so an imported `javascript:` target must
   // never become an href.
   const target = links && card.to !== undefined && isActionTarget(card.to) ? card.to : undefined;
@@ -344,17 +346,19 @@ function CardView({
     <>
       {band ? (
         <>
-          <span
-            className={cn(
-              "grid size-13 place-items-center rounded-[14px] border-3 border-ink",
-              TINT_BACKGROUNDS[card.tint],
-            )}
-          >
-            <Glyph aria-hidden="true" className="size-7" strokeWidth={2.25} />
-          </span>
+          {Glyph ? (
+            <span
+              className={cn(
+                "grid size-13 place-items-center rounded-[14px] border-3 border-ink",
+                TINT_BACKGROUNDS[card.tint],
+              )}
+            >
+              <Glyph aria-hidden="true" className="size-7" strokeWidth={2.25} />
+            </span>
+          ) : null}
           <h3 className="font-display text-xl text-ink uppercase">{title}</h3>
         </>
-      ) : (
+      ) : Glyph ? (
         <div className="flex items-center gap-3">
           <span
             className={cn(
@@ -366,6 +370,8 @@ function CardView({
           </span>
           <h2 className="font-display text-xl">{title}</h2>
         </div>
+      ) : (
+        <h2 className="font-display text-xl">{title}</h2>
       )}
       {/* The slot shows a placeholder to a visitor while empty, like every
           other slot, and carries its own pencil for an editor. */}
@@ -472,6 +478,46 @@ function PhotoSwitch({ name }: { name: `cards.${number}.photo` }) {
   );
 }
 
+/**
+ * Whether the card wears an icon, and which one in which colour. Off, the
+ * icon is held as "" and saved as absent (see `forEditor`); the colour tints
+ * only the icon's tile, so it hides too but stays in the form. On again, the
+ * card gets back the icon it last had, or a star.
+ */
+function IconFields({ index }: { index: number }) {
+  const { getValues, setValue } = useFormContext<CardsData>();
+  const name = `cards.${index}.icon` as const;
+  // Absent on a card stored without one, "" once switched off here.
+  const icon = useWatch<CardsData, typeof name>({ name }) as Icon | "" | undefined;
+  // The icon to bring back, taken when the switch goes off.
+  const last = useRef<Icon>(icon || "star");
+  const id = useId();
+  const labelId = useId();
+  return (
+    <>
+      <div className="flex min-h-touch items-center justify-between gap-2">
+        <label id={labelId} htmlFor={id}>
+          {t("blockEditor.icon")}
+        </label>
+        <Switch
+          id={id}
+          checked={Boolean(icon)}
+          onCheckedChange={(on) => {
+            if (!on) last.current = getValues(name) || last.current;
+            setValue(name, (on ? last.current : "") as Icon, { shouldDirty: true });
+          }}
+        />
+      </div>
+      {icon ? (
+        <>
+          <IconPicker name={name} labelledBy={labelId} />
+          <TintPicker name={`cards.${index}.tint`} />
+        </>
+      ) : null}
+    </>
+  );
+}
+
 function newCard(id: string): CardData {
   return { id, icon: "star", tint: "yellow", title: { fr: "" }, rows: [] };
 }
@@ -523,8 +569,7 @@ function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
               label={t("blockEditor.field.title")}
               required
             />
-            <IconPicker name={`cards.${index}.icon`} />
-            <TintPicker name={`cards.${index}.tint`} />
+            <IconFields index={index} />
             {links ? <LinkFields name={`cards.${index}.to`} /> : null}
             <PhotoSwitch name={`cards.${index}.photo`} />
             <RowFields name={`cards.${index}.rows`} />
