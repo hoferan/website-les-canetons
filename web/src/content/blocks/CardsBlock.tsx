@@ -48,7 +48,7 @@ import {
 } from "../editor";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 import { tr } from "../translated";
-import { isActionTarget, type Card as CardData, type cardsBlock } from "../types";
+import { isActionTarget, type Card as CardData, type cardsBlock, type Icon } from "../types";
 import { RowView } from "./RowView";
 import { useBlockEditing } from "./useBlockEditing";
 
@@ -174,10 +174,7 @@ export function CardsBlock({
   const restore = (form: UseFormReturn<CardsData>) => {
     const index = form.getValues("cards").findIndex((card) => card.id === shipped?.id);
     if (!shipped || index === -1) return;
-    // A shipped card without an icon restores as the picker's "": an absent
-    // value would show the icon the editor was opened with.
-    const restored = { ...shipped, icon: shipped.icon ?? "" } as CardData;
-    form.setValue(`cards.${index}`, restored, { shouldDirty: true });
+    form.setValue(`cards.${index}`, shipped, { shouldDirty: true });
     setResets((count) => count + 1);
   };
 
@@ -482,14 +479,43 @@ function PhotoSwitch({ name }: { name: `cards.${number}.photo` }) {
 }
 
 /**
- * The colour of the card's picture, offered only while it has one: the colour
- * tints nothing else. Hidden, it stays in the form, so picking an icon again
- * brings it back.
+ * Whether the card wears an icon, and which one in which colour. Off, the
+ * icon is held as "" and saved as absent (see `forEditor`); the colour tints
+ * only the icon's tile, so it hides too but stays in the form. On again, the
+ * card gets back the icon it last had, or a star.
  */
-function CardTint({ index }: { index: number }) {
-  const icon = useWatch<CardsData, `cards.${number}.icon`>({ name: `cards.${index}.icon` });
-  // "" is the picker's "no icon"; absent, a card stored without one.
-  return icon ? <TintPicker name={`cards.${index}.tint`} /> : null;
+function IconFields({ index }: { index: number }) {
+  const { getValues, setValue } = useFormContext<CardsData>();
+  const name = `cards.${index}.icon` as const;
+  // Absent on a card stored without one, "" once switched off here.
+  const icon = useWatch<CardsData, typeof name>({ name }) as Icon | "" | undefined;
+  // The icon to bring back, taken when the switch goes off.
+  const last = useRef<Icon>(icon || "star");
+  const id = useId();
+  const labelId = useId();
+  return (
+    <>
+      <div className="flex min-h-touch items-center justify-between gap-2">
+        <label id={labelId} htmlFor={id}>
+          {t("blockEditor.icon")}
+        </label>
+        <Switch
+          id={id}
+          checked={Boolean(icon)}
+          onCheckedChange={(on) => {
+            if (!on) last.current = getValues(name) || last.current;
+            setValue(name, (on ? last.current : "") as Icon, { shouldDirty: true });
+          }}
+        />
+      </div>
+      {icon ? (
+        <>
+          <IconPicker name={name} labelledBy={labelId} />
+          <TintPicker name={`cards.${index}.tint`} />
+        </>
+      ) : null}
+    </>
+  );
 }
 
 function newCard(id: string): CardData {
@@ -543,8 +569,7 @@ function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
               label={t("blockEditor.field.title")}
               required
             />
-            <IconPicker name={`cards.${index}.icon`} />
-            <CardTint index={index} />
+            <IconFields index={index} />
             {links ? <LinkFields name={`cards.${index}.to`} /> : null}
             <PhotoSwitch name={`cards.${index}.photo`} />
             <RowFields name={`cards.${index}.rows`} />

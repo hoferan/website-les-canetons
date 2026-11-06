@@ -375,9 +375,16 @@ test("a card goes without an icon and gets one back, its colour kept", async () 
 
   await user.click(await screen.findByRole("button", { name: "Modifier : Contact des Canetons" }));
   let dialog = await screen.findByRole("dialog");
-  await user.click(within(dialog).getByRole("radio", { name: "Aucune icône" }));
-  // The colour tints only the icon's tile, so it is not offered without one.
+  const iconSwitch = within(dialog).getByRole("switch", { name: "Icône" });
+  expect(iconSwitch).toBeChecked();
+  await user.click(iconSwitch);
+  // The colour tints only the icon's tile, so it goes with the icons.
+  expect(within(dialog).queryByRole("radiogroup", { name: "Icône" })).toBeNull();
   expect(within(dialog).queryByRole("radiogroup", { name: "Couleur" })).toBeNull();
+  // On again, the card gets back the icon it had.
+  await user.click(iconSwitch);
+  expect(within(dialog).getByRole("radio", { name: "Téléphone" })).toBeChecked();
+  await user.click(iconSwitch);
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
   await expect.poll(() => puts).toHaveLength(1);
@@ -394,8 +401,10 @@ test("a card goes without an icon and gets one back, its colour kept", async () 
 
   await user.click(screen.getByRole("button", { name: "Modifier : Contact des Canetons" }));
   dialog = await screen.findByRole("dialog");
-  expect(within(dialog).getByRole("radio", { name: "Aucune icône" })).toBeChecked();
-  await user.click(within(dialog).getByRole("radio", { name: "Étoile" }));
+  expect(within(dialog).getByRole("switch", { name: "Icône" })).not.toBeChecked();
+  await user.click(within(dialog).getByRole("switch", { name: "Icône" }));
+  // A card opened without an icon starts from the star, as a new card does.
+  expect(within(dialog).getByRole("radio", { name: "Étoile" })).toBeChecked();
   expect(within(dialog).getByRole("radio", { name: "Jaune" })).toBeChecked();
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
@@ -420,7 +429,8 @@ test("Rétablir brings back a shipped card without an icon as none", async () =>
   const dialog = await screen.findByRole("dialog");
   expect(within(dialog).getByRole("radio", { name: "Étoile" })).toBeChecked();
   await user.click(within(dialog).getByRole("button", { name: "Rétablir l’original" }));
-  expect(within(dialog).getByRole("radio", { name: "Aucune icône" })).toBeChecked();
+  expect(within(dialog).getByRole("switch", { name: "Icône" })).not.toBeChecked();
+  expect(within(dialog).queryByRole("radiogroup", { name: "Icône" })).toBeNull();
   expect(within(dialog).queryByRole("radiogroup", { name: "Couleur" })).toBeNull();
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 

@@ -252,7 +252,7 @@ export const forEditor = schemas({
     z.literal("").transform(() => undefined),
     z.string().refine(isActionTarget),
   ]),
-  // Likewise a card without a picture, held as "" by the icon picker.
+  // Likewise a card without a picture, held as "" by the editor's icon switch.
   cardIcon: z.union([z.literal("").transform(() => undefined), z.enum(ICONS)]),
 });
 

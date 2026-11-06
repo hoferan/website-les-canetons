@@ -1911,7 +1911,6 @@ export const fr = {
     icon: "Icône",
     tint: "Couleur",
     iconSearch: "Chercher une icône",
-    iconNone: "Aucune icône",
     noIcon: "Aucune icône ne correspond.",
     icons: {
       music: "Musique",

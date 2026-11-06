@@ -20,9 +20,8 @@ beforeAll(() => {
 });
 afterAll(() => vi.unstubAllGlobals());
 
-function Harness({ value = "star" }: { value?: string | null }) {
-  // null stands for a card stored without an icon, which the form holds as absent.
-  const form = useForm({ defaultValues: { icon: value ?? undefined } });
+function Harness({ value = "star" }: { value?: string }) {
+  const form = useForm({ defaultValues: { icon: value } });
   return (
     <FormProvider {...form}>
       <IconPicker name="icon" />
@@ -54,41 +53,10 @@ test("the ten original icons keep their names, so a stored card keeps its pictur
   ]);
 });
 
-test("every icon is offered when the search is empty, after 'Aucune icône'", () => {
+test("every icon is offered when the search is empty", () => {
   render(<Harness />);
 
-  const radios = screen.getAllByRole("radio");
-  expect(radios).toHaveLength(ICONS.length + 1);
-  expect(radios[0]).toHaveAccessibleName("Aucune icône");
-});
-
-test("a card stored without an icon shows 'Aucune icône' as picked", () => {
-  render(<Harness value={null} />);
-
-  expect(swatch("Aucune icône")).toBeChecked();
-  expect(screen.getAllByRole("radio", { checked: true })).toHaveLength(1);
-});
-
-test("'Aucune icône' holds the icon as '', and an icon can be picked again", async () => {
-  const user = userEvent.setup();
-  render(<Harness value="star" />);
-
-  await user.click(swatch("Aucune icône")!);
-  expect(swatch("Aucune icône")).toBeChecked();
-  expect(screen.getByTestId("value")).toBeEmptyDOMElement();
-
-  await user.click(swatch("Étoile")!);
-  expect(swatch("Étoile")).toBeChecked();
-  expect(screen.getByTestId("value")).toHaveTextContent("star");
-});
-
-test("'Aucune icône' stays offered whatever the search", async () => {
-  const user = userEvent.setup();
-  render(<Harness />);
-
-  await user.type(screen.getByRole("searchbox", { name: "Chercher une icône" }), "zzz");
-
-  expect(swatch("Aucune icône")).toBeInTheDocument();
+  expect(screen.getAllByRole("radio")).toHaveLength(ICONS.length);
 });
 
 test("searching 'tel' finds the telephone and hides the rest", async () => {
