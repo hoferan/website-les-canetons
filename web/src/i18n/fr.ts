@@ -1845,6 +1845,9 @@ export const fr = {
     saving: "Enregistrement…",
     reset: "Rétablir l’original",
     saved: "Modifié",
+    // Undo from the toast put the block back, and the photo of a card it
+    // brought back could not be placed again.
+    undoPhotoFailed: "Le contenu est rétabli, mais pas sa photo. Placez-la à nouveau.",
     saveFailed: "Le bloc n’a pas pu être enregistré. Réessayez.",
     invalid: "Une valeur n’est pas acceptée. Corrigez-la avant d’enregistrer.",
     // A card editor shows one card; the refused value sits in another one.

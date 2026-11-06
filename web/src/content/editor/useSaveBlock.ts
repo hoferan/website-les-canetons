@@ -1,22 +1,51 @@
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  MutationObserver,
+  useIsMutating,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { useRef } from "react";
 import { toast } from "sonner";
 import type { z } from "zod";
 
+import { rowsOf } from "../../api/collection";
 import {
+  blockUpdate,
   getBlockIndexQueryKey,
   getImageIndexQueryKey,
   getPhotoSlotIndexQueryKey,
+  imageIndex,
   photoSlotUpdate,
   useBlockUpdate,
 } from "../../api/generated/endpoints";
-import type { UpdateBlockRequestData } from "../../api/generated/model";
+import type {
+  ImageResource,
+  PlacePhotoRequest,
+  UpdateBlockRequestData,
+} from "../../api/generated/model";
+import { ApiError } from "../../api/http";
 import { useApiFormError } from "../../api/useApiFormError";
-import { t } from "../../i18n";
+import { t, translateApiError } from "../../i18n";
 import { cardSlot, usePhotoSlots } from "../../images/photoSlots";
 import { useSession } from "../../session/SessionProvider";
-import { useBlock } from "../BlocksProvider";
+import { useBlock, useStoredBlock } from "../BlocksProvider";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
+
+/** How long the saved toast, and with it the undo, stays up. */
+const UNDO_MS = 10_000;
+
+/**
+ * Every block save shows its toast under this one id, so a new save replaces
+ * the toast of the one before. Only the latest save can be undone: an older
+ * toast's undo would write back a block that a later save has since changed.
+ */
+const SAVED_TOAST = "block-saved";
+
+/** A photo a save took out of its slot, as the slot held it. */
+type Placement = { slot: string } & Required<PlacePhotoRequest>;
+
+/** What the save on its way will need once it succeeds. */
+type Pending = { before: unknown; orphans: string[] };
 
 /**
  * Saves one block from its editor.
@@ -30,54 +59,71 @@ import { BLOCKS, type BlockData, type BlockKey } from "../registry";
  * dialog closes onto the new content. A refusal leaves the dialog open with
  * the server's reason, translated.
  *
+ * The toast that says so carries an undo for ten seconds (#354), which writes
+ * back the block as it was before: its stored data, or null when the page
+ * showed the shipped content. The card grid's arrows save through here with
+ * no dialog, and get the same undo.
+ *
  * A card that showed a placed photo and is deleted, or has its photo switched
  * off, gets its slot emptied once the block is saved. Nothing would show that
  * slot any more, yet the server counts it as a use, so the library could not
- * delete the photo and would link to a page with no control left for it. An
- * editor without `images.manage` cannot empty a slot; the library's "Retirer
- * de cet emplacement" is there for whoever can.
+ * delete the photo and would link to a page with no control left for it. The
+ * undo places the same photo back. An editor without `images.manage` cannot
+ * empty a slot; the library's "Retirer de cet emplacement" is there for
+ * whoever can.
  */
 export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
   const queryClient = useQueryClient();
   const { error, setFromThrown, clear, messageFor } = useApiFormError(t("blockEditor.saveFailed"));
   const current = useBlock(key);
+  const stored = useStoredBlock(key);
   const { can } = useSession();
   const { photoOf } = usePhotoSlots();
+  const undoing = useIsMutating({ mutationKey: undoKey(key) }) > 0;
   // Set by the save and read once it succeeds; a ref, since the dialog that
   // saved may close before the answer comes back.
-  const orphans = useRef<string[]>([]);
+  const pending = useRef<Pending>({ before: null, orphans: [] });
 
   const update = useBlockUpdate({
     mutation: {
       onSuccess: async () => {
-        const emptied = orphans.current;
-        orphans.current = [];
-        await emptySlots(emptied);
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: getBlockIndexQueryKey() }),
-          ...(emptied.length > 0
-            ? [
-                queryClient.invalidateQueries({ queryKey: getPhotoSlotIndexQueryKey() }),
-                queryClient.invalidateQueries({ queryKey: getImageIndexQueryKey() }),
-              ]
-            : []),
-        ]);
+        const { before, orphans } = pending.current;
+        pending.current = { before: null, orphans: [] };
+        // Read before the slots are emptied: once they are, nothing says
+        // which photo each one held.
+        const placed = await placementsOf(orphans);
+        await emptySlots(orphans);
+        await refresh(queryClient, orphans.length > 0);
         onSaved();
-        toast(t("blockEditor.saved"));
+        toast(t("blockEditor.saved"), {
+          id: SAVED_TOAST,
+          duration: UNDO_MS,
+          action: {
+            // attendance.undo, never common.cancel: both are "Annuler" in
+            // French, but German says "Rückgängig" for this one.
+            label: t("attendance.undo"),
+            onClick: () => void undo(queryClient, key, before, placed),
+          },
+        });
       },
       onError: setFromThrown,
     },
   });
 
+  const busy = update.isPending || undoing;
+
   const save = (typed: BlockData<K>) => {
-    if (update.isPending) return;
+    if (busy) return;
     clear();
     const defaults = BLOCKS[key].defaults();
     const data = withoutBlankTexts(BLOCKS[key].schema, withoutIdleActions(typed, defaults));
     const kept = new Set(cardPhotoSlots(key, data));
-    orphans.current = can("images.manage")
-      ? cardPhotoSlots(key, current).filter((slot) => !kept.has(slot) && photoOf(slot) !== null)
-      : [];
+    pending.current = {
+      before: stored ?? null,
+      orphans: can("images.manage")
+        ? cardPhotoSlots(key, current).filter((slot) => !kept.has(slot) && photoOf(slot) !== null)
+        : [],
+    };
     const original = sameData(data, defaults);
     update.mutate({
       key,
@@ -90,13 +136,84 @@ export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
   const dataProblem = messageFor("data");
   const shown = error && dataProblem ? { ...error, message: dataProblem } : error;
 
-  return { save, pending: update.isPending, error: shown };
+  // An undo on its way counts as a save: the card grid's arrows wait for it,
+  // or a move would start from the list the undo is replacing.
+  return { save, pending: busy, error: shown };
+}
+
+const undoKey = (key: BlockKey) => ["blocks", key, "undo"] as const;
+
+/**
+ * Writes the block back as it was before the save, then places the photos the
+ * save took out. It runs outside any component, since the dialog that saved
+ * has closed by the time the toast is clicked; the mutation key lets the
+ * block's arrows see it.
+ *
+ * A refused block write changes nothing, so the page stays as the save left
+ * it. A photo that cannot be placed again leaves its slot empty, and a toast
+ * says so.
+ */
+async function undo(queryClient: QueryClient, key: BlockKey, before: unknown, placed: Placement[]) {
+  const observer = new MutationObserver(queryClient, {
+    mutationKey: undoKey(key),
+    mutationFn: async () => {
+      await blockUpdate(key, { data: before as UpdateBlockRequestData | null });
+      const results = await Promise.allSettled(
+        placed.map(({ slot, ...placement }) => photoSlotUpdate(slot, placement)),
+      );
+      await refresh(queryClient, placed.length > 0);
+      return results.every((result) => result.status === "fulfilled");
+    },
+  });
+  try {
+    const allPlaced = await observer.mutate();
+    if (!allPlaced) toast.error(t("blockEditor.undoPhotoFailed"));
+  } catch (thrown) {
+    toast.error(
+      thrown instanceof ApiError ? translateApiError(thrown).message : t("attendance.undoFailed"),
+    );
+  }
+}
+
+/** Reads the blocks again, and the photos with them when a slot changed. */
+async function refresh(queryClient: QueryClient, photos: boolean) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: getBlockIndexQueryKey() }),
+    ...(photos
+      ? [
+          queryClient.invalidateQueries({ queryKey: getPhotoSlotIndexQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getImageIndexQueryKey() }),
+        ]
+      : []),
+  ]);
 }
 
 /** The photo slots of a block's cards that show one; none for a block without cards. */
 function cardPhotoSlots(key: BlockKey, data: unknown): string[] {
   const cards = (data as { cards?: Array<{ id: string; photo?: boolean }> }).cards ?? [];
   return cards.filter((card) => card.photo === true).map((card) => cardSlot(key, card.id));
+}
+
+/**
+ * The photo each slot holds, with the name and page the library shows for it.
+ * The public slot list does not say which image a slot shows, so this asks
+ * the library, which the editor emptying slots may read. A slot it cannot
+ * account for is left out, and the undo brings the card back without it.
+ */
+async function placementsOf(slots: string[]): Promise<Placement[]> {
+  if (slots.length === 0) return [];
+  try {
+    const images = rowsOf<ImageResource>(await imageIndex());
+    return slots.flatMap((slot) =>
+      images.flatMap((image) =>
+        image.usages
+          .filter((usage) => usage.slot === slot)
+          .map((usage) => ({ slot, imageId: image.id, label: usage.label, path: usage.path })),
+      ),
+    );
+  } catch {
+    return [];
+  }
 }
 
 /**

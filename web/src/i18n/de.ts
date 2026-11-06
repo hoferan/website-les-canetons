@@ -1467,6 +1467,8 @@ export const de: typeof fr = {
     saving: "Wird gespeichert…",
     reset: "Original wiederherstellen",
     saved: "Gespeichert",
+    undoPhotoFailed:
+      "Der Inhalt ist wiederhergestellt, das Foto aber nicht. Bitte erneut einsetzen.",
     saveFailed: "Der Block konnte nicht gespeichert werden. Bitte erneut versuchen.",
     invalid: "Ein Wert wird nicht angenommen. Bitte vor dem Speichern korrigieren.",
     otherCardInvalid:
