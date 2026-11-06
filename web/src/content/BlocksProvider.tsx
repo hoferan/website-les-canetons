@@ -112,6 +112,14 @@ export function useBlock<K extends BlockKey>(key: K): BlockData<K> {
   }, [key, stored]);
 }
 
+/**
+ * The block as the server sent it, unparsed, or undefined while the page shows
+ * the shipped one: what an undo writes back.
+ */
+export function useStoredBlock(key: BlockKey): unknown {
+  return use(StoredBlocks).get(key);
+}
+
 /** Whether the band has stored this block, so "Rétablir" has something to undo. */
 export function useBlockStored(key: BlockKey): boolean {
   return use(StoredBlocks).has(key);

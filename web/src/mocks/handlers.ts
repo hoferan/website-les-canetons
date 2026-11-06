@@ -3077,6 +3077,15 @@ export function resetMockState(): void {
  */
 let blocks: Record<string, { data: Record<string, unknown>; updatedAt: string }> = {};
 
+/**
+ * Test seam: store a block as the band's, so a test starts from content that
+ * a later write can change and the page then reads back. `storeBlock` in the
+ * tests answers the read with a fixed list instead, which no write moves.
+ */
+export function setMockBlock(key: string, data: Record<string, unknown>): void {
+  blocks = { ...blocks, [key]: { data, updatedAt: "2026-11-03T10:00:00+00:00" } };
+}
+
 /** The reason a block's data breaks BlockShape's limits, or null. */
 function blockProblem(data: unknown): string | null {
   const walk = (value: unknown, depth: number): string | null => {
