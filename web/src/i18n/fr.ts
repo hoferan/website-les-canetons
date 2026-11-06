@@ -1850,6 +1850,13 @@ export const fr = {
     // A card editor shows one card; the refused value sits in another one.
     otherCardInvalid:
       "La carte {{title}} contient un numéro ou un lien refusé. Ouvrez-la pour le corriger, puis réessayez.",
+    // Asked when an editor with changes is closed without saving (#355).
+    discardTitle: "Abandonner les modifications ?",
+    discardBody: "Ce que vous avez changé dans ce bloc ne sera pas enregistré.",
+    discardKeep: "Continuer la modification",
+    discardConfirm: "Abandonner",
+    // The browser's confirm when a link or Back would leave an editor with changes.
+    discardLeave: "Le bloc a des modifications non enregistrées. Quitter quand même ?",
     // The language badges beside a field's label, the same on both pages.
     french: "FR",
     german: "DE",

@@ -73,7 +73,7 @@ export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
     if (update.isPending) return;
     clear();
     const defaults = BLOCKS[key].defaults();
-    const data = withoutBlankTexts(BLOCKS[key].schema, withoutIdleActions(typed, defaults));
+    const data = asSaved(key, typed);
     const kept = new Set(cardPhotoSlots(key, data));
     orphans.current = can("images.manage")
       ? cardPhotoSlots(key, current).filter((slot) => !kept.has(slot) && photoOf(slot) !== null)
@@ -91,6 +91,14 @@ export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
   const shown = error && dataProblem ? { ...error, message: dataProblem } : error;
 
   return { save, pending: update.isPending, error: shown };
+}
+
+/**
+ * A block's form values as a save sends them, without what the editor's
+ * fields add on their own (a blank text, a hero's empty list of buttons).
+ */
+export function asSaved<K extends BlockKey>(key: K, typed: BlockData<K>): BlockData<K> {
+  return withoutBlankTexts(BLOCKS[key].schema, withoutIdleActions(typed, BLOCKS[key].defaults()));
 }
 
 /** The photo slots of a block's cards that show one; none for a block without cards. */

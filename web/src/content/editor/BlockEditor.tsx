@@ -1,6 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RotateCcw } from "lucide-react";
-import { useState, type FormEvent, type ReactNode } from "react";
+import {
+  useImperativeHandle,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import {
   FormProvider,
   useForm,
@@ -23,6 +30,7 @@ import { FormError, formIsValid } from "../../components/FormField";
 import { t } from "../../i18n";
 import { useBlock } from "../BlocksProvider";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
+import { useBlockChanged, useDiscardGuard } from "./DiscardGuard";
 import { useSaveBlock } from "./useSaveBlock";
 
 type Props<K extends BlockKey> = {
@@ -66,16 +74,27 @@ const SHEET = [
  *
  * The form is mounted with the dialog's content, so every opening starts from
  * the page's current content rather than from an earlier, abandoned edit.
+ *
+ * Closing without saving ("Annuler", Escape, a tap outside) asks first once
+ * the form holds a change; see `useDiscardGuard`. Radix reports each of them
+ * as `onOpenChange(false)`, so a close button added later is covered too.
  */
 export function BlockEditor<K extends BlockKey>({ open, ...props }: Props<K>) {
+  // The form's way out, which knows whether there is anything to lose. The
+  // form lives inside the content, so it hands this up.
+  const editor = useRef<EditorHandle>(null);
+  const close = () => (editor.current ? editor.current.requestClose() : props.onClose());
+
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? null : props.onClose())}>
+    <Dialog open={open} onOpenChange={(next) => (next ? null : close())}>
       <DialogContent aria-describedby={undefined} className={SHEET}>
-        <EditorForm {...props} />
+        <EditorForm {...props} ref={editor} />
       </DialogContent>
     </Dialog>
   );
 }
+
+type EditorHandle = { requestClose: () => void };
 
 function EditorForm<K extends BlockKey>({
   blockKey,
@@ -83,7 +102,8 @@ function EditorForm<K extends BlockKey>({
   children,
   onReset,
   invalidMessage,
-}: Omit<Props<K>, "open">) {
+  ref,
+}: Omit<Props<K>, "open"> & { ref: Ref<EditorHandle> }) {
   const definition = BLOCKS[blockKey];
   const current = useBlock(blockKey);
   const form = useForm<BlockData<K>>({
@@ -93,6 +113,9 @@ function EditorForm<K extends BlockKey>({
     defaultValues: current as DefaultValues<BlockData<K>>,
   });
   const { save, pending, error } = useSaveBlock(blockKey, onClose);
+  const { changed, restored } = useBlockChanged(blockKey, form);
+  const { requestClose, question } = useDiscardGuard(changed, onClose);
+  useImperativeHandle(ref, () => ({ requestClose }), [requestClose]);
   // A refusal by the block's type. The field that holds the value says so
   // too, when it is on screen; this line covers the one that is not.
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -111,6 +134,7 @@ function EditorForm<K extends BlockKey>({
 
   const reset = () => {
     setInvalid(null);
+    restored();
     if (onReset) onReset(form);
     else form.reset(definition.defaults() as BlockData<K>);
   };
@@ -130,7 +154,7 @@ function EditorForm<K extends BlockKey>({
           <Button type="submit" aria-disabled={pending}>
             {pending ? t("blockEditor.saving") : t("blockEditor.save")}
           </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={requestClose}>
             {t("common.cancel")}
           </Button>
           {onReset === false ? null : (
@@ -141,6 +165,7 @@ function EditorForm<K extends BlockKey>({
           )}
         </DialogFooter>
       </form>
+      {question}
     </FormProvider>
   );
 }
