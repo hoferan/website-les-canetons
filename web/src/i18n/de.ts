@@ -1473,6 +1473,11 @@ export const de: typeof fr = {
     invalid: "Ein Wert wird nicht angenommen. Bitte vor dem Speichern korrigieren.",
     otherCardInvalid:
       "Die Karte {{title}} enthält eine abgelehnte Nummer oder einen abgelehnten Link. Bitte die Karte öffnen, den Wert korrigieren und erneut versuchen.",
+    discardTitle: "Änderungen verwerfen?",
+    discardBody: "Was in diesem Block geändert wurde, wird nicht gespeichert.",
+    discardKeep: "Weiter bearbeiten",
+    discardConfirm: "Verwerfen",
+    discardLeave: "Der Block hat ungespeicherte Änderungen. Trotzdem verlassen?",
     french: "FR",
     german: "DE",
     addGerman: "+ Deutsch",

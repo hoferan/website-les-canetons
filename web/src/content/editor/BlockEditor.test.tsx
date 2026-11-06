@@ -141,16 +141,167 @@ test("a block the server finds too large says so in French", async () => {
   expect(alert.textContent).toBe("Contenu est trop volumineux");
 });
 
-test("Annuler closes without saving", async () => {
+type User = ReturnType<typeof userEvent.setup>;
+
+/** The ways out of an editor that do not save, each as the editor does it. */
+const CLOSE_PATHS: [string, (user: User, dialog: HTMLElement) => Promise<void>][] = [
+  [
+    "Annuler",
+    (user, dialog) => user.click(within(dialog).getByRole("button", { name: "Annuler" })),
+  ],
+  ["Escape", (user) => user.keyboard("{Escape}")],
+  [
+    "a tap outside",
+    async (user) => {
+      const overlay = document.querySelector('[data-slot="dialog-overlay"]');
+      if (!(overlay instanceof HTMLElement)) throw new Error("no dialog overlay");
+      await user.pointer({ keys: "[MouseLeft]", target: overlay });
+    },
+  ],
+];
+
+/** Whether a reload now would raise the browser's warning. */
+function reloadWarns(): boolean {
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+}
+
+const discardTitle = t("blockEditor.discardTitle");
+
+test.each(CLOSE_PATHS)("%s closes an untouched editor at once", async (_path, close) => {
+  const user = userEvent.setup({ pointerEventsCheck: 0 });
+  const puts = recordBlockPuts();
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+
+  await close(user, dialog);
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(puts).toEqual([]);
+});
+
+test.each(CLOSE_PATHS)("%s asks before throwing typed changes away", async (_path, close) => {
+  const user = userEvent.setup({ pointerEventsCheck: 0 });
+  const puts = recordBlockPuts();
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+  const french = within(dialog).getByRole("textbox", { name: "Titre FR" });
+  await user.type(french, " !");
+
+  await close(user, dialog);
+  const question = await screen.findByRole("alertdialog", { name: discardTitle });
+
+  // Keep editing: the question goes, the editor stays with what was typed.
+  await user.click(within(question).getByRole("button", { name: "Continuer la modification" }));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect(screen.getByRole("dialog")).toBe(dialog);
+  expect(french).toHaveValue(`${shipped.title.fr} !`);
+
+  // Asked again, and this time thrown away.
+  await close(user, dialog);
+  const again = await screen.findByRole("alertdialog", { name: discardTitle });
+  await user.click(within(again).getByRole("button", { name: "Abandonner" }));
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(puts).toEqual([]);
+
+  // The next opening starts from the page again, not from the abandoned edit.
+  await user.click(screen.getByRole("button", { name: "Ouvrir" }));
+  const reopened = await screen.findByRole("dialog");
+  expect(within(reopened).getByRole("textbox", { name: "Titre FR" })).toHaveValue(shipped.title.fr);
+});
+
+test("Escape on the question keeps the editor open", async () => {
+  const user = userEvent.setup();
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+  await user.type(within(dialog).getByRole("textbox", { name: "Titre FR" }), " !");
+
+  await user.keyboard("{Escape}");
+  await screen.findByRole("alertdialog", { name: discardTitle });
+  await user.keyboard("{Escape}");
+
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect(screen.getByRole("dialog")).toBe(dialog);
+});
+
+test("the question's safe answer has the focus, and the confirm comes first", async () => {
+  const user = userEvent.setup();
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+  await user.type(within(dialog).getByRole("textbox", { name: "Titre FR" }), " !");
+
+  await user.click(within(dialog).getByRole("button", { name: "Annuler" }));
+  const question = await screen.findByRole("alertdialog", { name: discardTitle });
+
+  const buttons = within(question).getAllByRole("button");
+  expect(buttons.map((button) => button.textContent)).toEqual([
+    "Abandonner",
+    "Continuer la modification",
+  ]);
+  expect(buttons[1]).toHaveFocus();
+});
+
+test("typing a change and taking it back closes at once", async () => {
+  const user = userEvent.setup();
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+  const french = within(dialog).getByRole("textbox", { name: "Titre FR" });
+
+  await user.type(french, " !");
+  await user.type(french, "{Backspace}{Backspace}");
+  await user.click(within(dialog).getByRole("button", { name: "Annuler" }));
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+});
+
+test("Rétablir l'original counts as a change", async () => {
+  const user = userEvent.setup();
+  storeBlock("home.hero", { title: { fr: "Bonjour", de: "Hallo" } });
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+
+  await user.click(within(dialog).getByRole("button", { name: "Rétablir l’original" }));
+  await user.click(within(dialog).getByRole("button", { name: "Annuler" }));
+
+  expect(await screen.findByRole("alertdialog", { name: discardTitle })).toBeInTheDocument();
+});
+
+test("Rétablir counts even where the page already shows the original", async () => {
+  // Saving it would still delete a stored copy, so it is not nothing.
+  const user = userEvent.setup();
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+
+  await user.click(within(dialog).getByRole("button", { name: "Rétablir l’original" }));
+  await user.keyboard("{Escape}");
+
+  expect(await screen.findByRole("alertdialog", { name: discardTitle })).toBeInTheDocument();
+});
+
+test("a reload warns only while the editor holds changes", async () => {
+  const user = userEvent.setup();
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+  expect(reloadWarns()).toBe(false);
+
+  await user.type(within(dialog).getByRole("textbox", { name: "Titre FR" }), " !");
+  expect(reloadWarns()).toBe(true);
+
+  await user.click(within(dialog).getByRole("button", { name: "Annuler" }));
+  const question = await screen.findByRole("alertdialog", { name: discardTitle });
+  await user.click(within(question).getByRole("button", { name: "Abandonner" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(reloadWarns()).toBe(false);
+});
+
+test("a saved edit closes without asking and stops the reload warning", async () => {
   const user = userEvent.setup();
   const puts = recordBlockPuts();
   const dialog = await renderBlockEditor("home.hero", heroFields);
 
   await user.type(within(dialog).getByRole("textbox", { name: "Titre FR" }), " !");
-  await user.click(within(dialog).getByRole("button", { name: "Annuler" }));
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  expect(puts).toEqual([]);
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(puts).toHaveLength(1);
+  expect(reloadWarns()).toBe(false);
 });
 
 test("a non-https link is refused", async () => {
