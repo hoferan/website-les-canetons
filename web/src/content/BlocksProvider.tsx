@@ -1,4 +1,12 @@
-import { createContext, use, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { rowsOf } from "../api/collection";
 import { useBlockIndex } from "../api/generated/endpoints";
@@ -25,6 +33,23 @@ const BLOCKS_WAIT_MS = 1500;
  * never waits.
  */
 const BlocksReady = createContext(true);
+
+/**
+ * What an open editor shows on the page before it saves (#357), by block key,
+ * already checked against the block's type. It lives in this browser only;
+ * nothing reaches the server until the save.
+ */
+type Preview = {
+  shown: ReadonlyMap<string, unknown>;
+  show: (key: BlockKey, data: unknown) => void;
+  stop: (key: BlockKey) => void;
+};
+
+const PreviewBlocks = createContext<Preview>({
+  shown: new Map(),
+  show: () => {},
+  stop: () => {},
+});
 
 /**
  * The band's content blocks, read once at boot.
@@ -59,9 +84,29 @@ export function BlocksProvider({ children }: { children: ReactNode }) {
 
   const ready = !blocks.isPending || waitedEnough;
 
+  const [shown, setShown] = useState<ReadonlyMap<string, unknown>>(new Map());
+  // Stable, so an editor can call them from its effects.
+  const show = useCallback<Preview["show"]>(
+    (key, data) => setShown((before) => new Map(before).set(key, data)),
+    [],
+  );
+  const stop = useCallback<Preview["stop"]>(
+    (key) =>
+      setShown((before) => {
+        if (!before.has(key)) return before;
+        const after = new Map(before);
+        after.delete(key);
+        return after;
+      }),
+    [],
+  );
+  const preview = useMemo<Preview>(() => ({ shown, show, stop }), [shown, show, stop]);
+
   return (
     <StoredBlocks value={stored}>
-      <BlocksReady value={ready}>{children}</BlocksReady>
+      <PreviewBlocks value={preview}>
+        <BlocksReady value={ready}>{children}</BlocksReady>
+      </PreviewBlocks>
     </StoredBlocks>
   );
 }
@@ -77,13 +122,25 @@ export function BlocksGate({ children }: { children: ReactNode }) {
 }
 
 /**
- * A block's content: the band's, or the default when nothing is stored.
+ * A block's content as the page shows it: what its open editor holds, if one
+ * is open, else the band's, else the default.
+ */
+export function useBlock<K extends BlockKey>(key: K): BlockData<K> {
+  const saved = useSavedBlock(key);
+  const previewed = use(PreviewBlocks).shown.get(key);
+  return previewed === undefined ? saved : (previewed as BlockData<K>);
+}
+
+/**
+ * A block's content as saved: the band's, or the default when nothing is
+ * stored. What an editor opens on and a save compares against, never the
+ * preview.
  *
  * A stored block its type does not accept (saved by a newer build, or under a
  * type since changed) shows the default too, and says so on the console, so
  * the page keeps working with the shipped content.
  */
-export function useBlock<K extends BlockKey>(key: K): BlockData<K> {
+export function useSavedBlock<K extends BlockKey>(key: K): BlockData<K> {
   const stored = use(StoredBlocks).get(key);
 
   return useMemo(() => {
@@ -123,4 +180,21 @@ export function useStoredBlock(key: BlockKey): unknown {
 /** Whether the band has stored this block, so "Rétablir" has something to undo. */
 export function useBlockStored(key: BlockKey): boolean {
   return use(StoredBlocks).has(key);
+}
+
+/**
+ * Whether an editor is open on this page. The page then hides its edit chips:
+ * it is the editor's preview, and shows what a visitor would see.
+ */
+export function useBlockPreviewing(): boolean {
+  return use(PreviewBlocks).shown.size > 0;
+}
+
+/**
+ * Puts a block's editor values on the page, or takes them off. `show` takes
+ * data the block's type has accepted.
+ */
+export function useBlockPreview(): Pick<Preview, "show" | "stop"> {
+  const { show, stop } = use(PreviewBlocks);
+  return { show, stop };
 }

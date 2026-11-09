@@ -29,11 +29,13 @@ async function toastSaying(sentence: string): Promise<HTMLElement> {
   return toast;
 }
 
-test("the editor is titled by the block's place and opens on what the page shows", async () => {
+test("the editor is named by the block's place and opens on what the page shows", async () => {
   storeBlock("home.hero", { title: { fr: "Bonjour", de: "Hallo" } });
   const dialog = await renderBlockEditor("home.hero", heroFields);
 
-  expect(within(dialog).getByRole("heading", { name: t("blocks.home.hero") })).toBeInTheDocument();
+  // Named by the whole place; shown as the page above the block itself.
+  expect(dialog).toHaveAccessibleName(t("blocks.home.hero"));
+  expect(within(dialog).getByRole("heading", { name: "En-tête" })).toBeInTheDocument();
   expect(within(dialog).getByRole("textbox", { name: "Titre FR" })).toHaveValue("Bonjour");
   expect(within(dialog).getByRole("textbox", { name: "Titre DE" })).toHaveValue("Hallo");
 });
@@ -150,15 +152,22 @@ const CLOSE_PATHS: [string, (user: User, dialog: HTMLElement) => Promise<void>][
     (user, dialog) => user.click(within(dialog).getByRole("button", { name: "Annuler" })),
   ],
   ["Escape", (user) => user.keyboard("{Escape}")],
-  [
-    "a tap outside",
-    async (user) => {
-      const overlay = document.querySelector('[data-slot="dialog-overlay"]');
-      if (!(overlay instanceof HTMLElement)) throw new Error("no dialog overlay");
-      await user.pointer({ keys: "[MouseLeft]", target: overlay });
-    },
-  ],
 ];
+
+test("a tap on the page beside the editor leaves it open with what was typed", async () => {
+  // The page is the editor's preview (#357): looking at it closes nothing.
+  const user = userEvent.setup({ pointerEventsCheck: 0 });
+  const dialog = await renderBlockEditor("home.hero", heroFields);
+  await user.type(within(dialog).getByRole("textbox", { name: "Titre FR" }), " là");
+
+  await user.click(screen.getByRole("button", { name: "Ouvrir" }));
+
+  expect(screen.getByRole("dialog")).toBe(dialog);
+  expect(within(dialog).getByRole("textbox", { name: "Titre FR" })).toHaveValue(
+    `${shipped.title.fr} là`,
+  );
+  expect(screen.queryByText(t("blockEditor.discardTitle"))).toBeNull();
+});
 
 /** Whether a reload now would raise the browser's warning. */
 function reloadWarns(): boolean {

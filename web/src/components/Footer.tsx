@@ -65,6 +65,7 @@ export function Footer({ above }: { above: string | null }) {
 
   return (
     <footer
+      data-edit-block
       className={cn(
         "relative bg-stage text-white",
         above === null && "mt-16",
@@ -82,8 +83,10 @@ export function Footer({ above }: { above: string | null }) {
               onClick={() => setEditingSite(true)}
             />
           </div>
-          <SiteEditor open={editingSite} onClose={() => setEditingSite(false)} />
         </>
+      ) : null}
+      {editing || editingSite ? (
+        <SiteEditor open={editingSite} onClose={() => setEditingSite(false)} />
       ) : null}
       <div className={cn("mx-auto max-w-shell px-4", editing ? CHIP_ROOM_BELOW : "pt-14")}>
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-start">

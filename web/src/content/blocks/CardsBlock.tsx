@@ -139,6 +139,8 @@ export function CardsBlock({
   const shipped = opened
     ? BLOCKS[blockKey].defaults().cards.find((card) => card.id === opened.id)
     : undefined;
+  const openedCard = opened ? cards.find((card) => card.id === opened.id) : undefined;
+  const openedTitle = openedCard ? tr(openedCard.title).trim() || undefined : undefined;
 
   // The arrows are disabled while a save is on its way, so a move never starts
   // from a list that lacks the one before it. Blocks are written without an
@@ -282,9 +284,11 @@ export function CardsBlock({
         </List>
       ) : null}
 
-      {editing ? (
+      {editing || opened !== null ? (
         <BlockEditor
           blockKey={blockKey}
+          // The card itself, live as its title is typed; a new one has none yet.
+          title={openedTitle}
           open={opened !== null}
           onClose={() => setOpened(null)}
           onReset={shipped ? restore : false}
@@ -421,7 +425,7 @@ function CardView({
   return (
     // The card is its chips' scope: edit-blocks.spec.ts checks them against
     // its text, and against each other.
-    <Card data-chip-scope className={cn(look, "relative", editing && CHIP_ROOM)}>
+    <Card data-chip-scope data-edit-block className={cn(look, "relative", editing && CHIP_ROOM)}>
       {children}
       {body}
     </Card>

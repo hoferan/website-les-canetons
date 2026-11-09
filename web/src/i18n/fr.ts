@@ -1843,6 +1843,8 @@ export const fr = {
     },
     save: "Enregistrer",
     saving: "Enregistrement…",
+    // Lowers the editor to a bar to look at the page it changes (#357).
+    preview: "Aperçu",
     reset: "Rétablir l’original",
     saved: "Modifié",
     // Undo from the toast put the block back, and the photo of a card it

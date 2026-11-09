@@ -61,7 +61,7 @@ export function HeroBlock({
           </>
         ) : null}
       </PageHero>
-      {editing ? (
+      {editing || open ? (
         <HeroEditor blockKey={blockKey} open={open} onClose={() => setOpen(false)} />
       ) : null}
     </>

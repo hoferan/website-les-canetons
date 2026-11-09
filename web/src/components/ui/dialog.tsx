@@ -41,13 +41,17 @@ function DialogContent({
   className,
   onOpenAutoFocus,
   onCloseAutoFocus,
+  overlay = true,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  /** False for a non-modal dialog that leaves the page in view, as the block editor does. */
+  overlay?: boolean;
+}) {
   const openerRef = React.useRef<HTMLElement | null>(null);
 
   return (
     <DialogPrimitive.Portal data-slot="dialog-portal">
-      <DialogOverlay />
+      {overlay ? <DialogOverlay /> : null}
       <DialogPrimitive.Content
         onOpenAutoFocus={(event) => {
           // Still the element the dialog was opened from: Radix moves focus

@@ -58,7 +58,8 @@ export function PageHero({
   children?: ReactNode;
 }) {
   return (
-    <div className={cn("relative bg-poster text-white", SCALLOP_CLIP)}>
+    // data-edit-block: what stays clear of the fade while its editor is open.
+    <div data-edit-block className={cn("relative bg-poster text-white", SCALLOP_CLIP)}>
       <Confetti seed={seed} colours={POSTER_CONFETTI} wobble />
       {/* The chip sits in the header's own corner, not the text column's. */}
       {edit}

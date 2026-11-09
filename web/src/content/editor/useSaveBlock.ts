@@ -28,7 +28,7 @@ import { useApiFormError } from "../../api/useApiFormError";
 import { t, translateApiError } from "../../i18n";
 import { cardSlot, usePhotoSlots } from "../../images/photoSlots";
 import { useSession } from "../../session/SessionProvider";
-import { useBlock, useStoredBlock } from "../BlocksProvider";
+import { useSavedBlock, useStoredBlock } from "../BlocksProvider";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 
 /** How long the saved toast, and with it the undo, stays up. */
@@ -75,7 +75,8 @@ type Pending = { before: unknown; orphans: string[] };
 export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
   const queryClient = useQueryClient();
   const { error, setFromThrown, clear, messageFor } = useApiFormError(t("blockEditor.saveFailed"));
-  const current = useBlock(key);
+  // As saved, not as previewed: the photos a save takes out are the saved ones.
+  const current = useSavedBlock(key);
   const stored = useStoredBlock(key);
   const { can } = useSession();
   const { photoOf } = usePhotoSlots();

@@ -1465,6 +1465,7 @@ export const de: typeof fr = {
     },
     save: "Speichern",
     saving: "Wird gespeichert…",
+    preview: "Vorschau",
     reset: "Original wiederherstellen",
     saved: "Gespeichert",
     undoPhotoFailed:
