@@ -57,6 +57,16 @@ export function usePanelWidth() {
 /** The page's own root, which the editor makes inert and moves aside. */
 const pageRoot = () => document.getElementById("root");
 
+/**
+ * Moves the page aside as far as the docked panel is wide; nothing where the
+ * editor is a sheet. Written to the page's root directly, so a drag can call
+ * it every frame without React rendering anything.
+ */
+export function movePageAside(panelWidth: number) {
+  const root = pageRoot();
+  if (root && window.innerWidth >= DOCKED_PX) root.style.marginRight = `${panelWidth}px`;
+}
+
 /** The page's sticky bar on a phone ("Menu"), which covers the top of the page. */
 function stickyBarHeight(): number {
   const bar = document.querySelector<HTMLElement>(".sticky.top-0");
@@ -109,11 +119,10 @@ export function usePageBeside(
     };
   }, [open, target]);
 
-  // The page moves aside as far as the docked panel is wide, as it is dragged.
+  // The page moves aside as far as the docked panel is wide; PanelHandle
+  // moves it too while the panel is dragged.
   useLayoutEffect(() => {
-    const root = pageRoot();
-    if (!open || !root || window.innerWidth < DOCKED_PX) return;
-    root.style.marginRight = `${panelWidth}px`;
+    if (open) movePageAside(panelWidth);
   }, [open, panelWidth]);
 
   useEffect(() => {

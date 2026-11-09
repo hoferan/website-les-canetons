@@ -208,11 +208,16 @@ test("the docked panel's width changes from its handle and is kept for next time
   );
 });
 
-test("dragging the panel's edge moves only the panel, and keeps the width on release", async () => {
-  // Re-rendering the form and reflowing the page on every pointer move made
-  // the drag lag; both wait for the release.
+test("dragging the panel's edge moves the panel and the page, and keeps the width on release", async () => {
+  // Re-rendering the form on every pointer move made the drag lag: the drag
+  // moves the panel and the page itself, and the width is set on release.
   localStorage.removeItem("blockEditor.panelWidth");
+  const wide = vi.spyOn(window, "innerWidth", "get").mockReturnValue(1440);
+  const root = document.body.appendChild(
+    Object.assign(document.createElement("div"), { id: "root" }),
+  );
   const { dialog } = await openHeroEditor();
+  expect(root.style.marginRight).toBe("400px");
   const handle = within(dialog).getByRole("separator", { name: "Largeur du panneau" });
 
   // jsdom has no PointerEvent: a mouse event under the pointer event's name
@@ -224,6 +229,7 @@ test("dragging the panel's edge moves only the panel, and keeps the width on rel
   await new Promise((resolve) => requestAnimationFrame(resolve));
 
   expect(dialog.style.getPropertyValue("--panel-w")).toBe("520px");
+  expect(root.style.marginRight).toBe("520px");
   expect(handle).toHaveAttribute("aria-valuenow", "400");
   expect(localStorage.getItem("blockEditor.panelWidth")).toBeNull();
 
@@ -231,4 +237,6 @@ test("dragging the panel's edge moves only the panel, and keeps the width on rel
 
   expect(handle).toHaveAttribute("aria-valuenow", "520");
   expect(localStorage.getItem("blockEditor.panelWidth")).toBe("520");
+  root.remove();
+  wide.mockRestore();
 });

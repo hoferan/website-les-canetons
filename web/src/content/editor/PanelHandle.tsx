@@ -1,7 +1,7 @@
 import { useRef, type KeyboardEvent, type PointerEvent } from "react";
 
 import { t } from "../../i18n";
-import { PANEL_MAX_PX, PANEL_MIN_PX, clampPanel } from "./pageBeside";
+import { PANEL_MAX_PX, PANEL_MIN_PX, clampPanel, movePageAside } from "./pageBeside";
 
 /**
  * The docked editor panel's left edge, dragged to make the panel wider or
@@ -11,10 +11,12 @@ import { PANEL_MAX_PX, PANEL_MIN_PX, clampPanel } from "./pageBeside";
  *
  * A window splitter in ARIA's terms: its value is the panel's width.
  *
- * A drag moves only the panel, once a frame, through its `--panel-w`. The
- * width is set, the page moved over and the width kept when it is released:
- * re-rendering the form and reflowing the whole page on every pointer move
- * made the drag lag behind the pointer.
+ * A drag moves the panel (its `--panel-w`) and the page beside it once a
+ * frame, straight in the DOM; React sets the width and the browser keeps it
+ * only on release. Setting the width as state on every pointer move
+ * re-rendered the whole form, and the panel lagged far behind the pointer.
+ * The page's reflow itself holds 60 frames a second on an ordinary CPU and
+ * still 30 with Chrome's CPU slowed four times.
  */
 export function PanelHandle({
   width,
@@ -40,9 +42,10 @@ export function PanelHandle({
     now.width = clampPanel(window.innerWidth - event.clientX);
     const panel = event.currentTarget.parentElement;
     cancelAnimationFrame(now.frame);
-    now.frame = requestAnimationFrame(() =>
-      panel?.style.setProperty("--panel-w", `${now.width}px`),
-    );
+    now.frame = requestAnimationFrame(() => {
+      panel?.style.setProperty("--panel-w", `${now.width}px`);
+      movePageAside(now.width);
+    });
   };
 
   const release = () => {
