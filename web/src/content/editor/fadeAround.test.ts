@@ -100,3 +100,22 @@ test("a block that is not on the page yet is picked up once it is", async () => 
 
   expect(document.querySelector("[data-edit-fade] svg[data-scallop]")).not.toBeNull();
 });
+
+test("an edge's copy covers only the part inside the block, or that part fades twice", () => {
+  // The footer's edge reaches a pixel above the footer to close a hairline.
+  // That pixel is outside the hole and already faded with the page.
+  const block = scallopedBlock();
+  document.body.appendChild(block);
+  const rect = (top: number, height: number) =>
+    ({ top, bottom: top + height, left: 0, right: 400, width: 400, height }) as DOMRect;
+  block.getBoundingClientRect = () => rect(100, 300);
+  block.querySelector("svg")!.getBoundingClientRect = () => rect(99, 23);
+
+  fadeAround(
+    () => block,
+    () => false,
+  );
+
+  const copy = document.querySelector<SVGSVGElement>("[data-edit-fade] svg[data-scallop]")!;
+  expect(copy.style.clipPath).toBe("inset(1px 0px 0px)");
+});

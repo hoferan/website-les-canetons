@@ -1845,6 +1845,8 @@ export const fr = {
     saving: "Enregistrement…",
     // Lowers the editor to a bar to look at the page it changes (#357).
     preview: "Aperçu",
+    // The handle on the docked editor panel's left edge, which changes its width.
+    panelWidth: "Largeur du panneau",
     reset: "Rétablir l’original",
     saved: "Modifié",
     // Undo from the toast put the block back, and the photo of a card it

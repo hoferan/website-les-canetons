@@ -180,3 +180,30 @@ test("a card being added is findable for the fade once it shows", async () => {
     shippedCards.length + 1,
   );
 });
+
+test("the docked panel's width changes from its handle and is kept for next time", async () => {
+  localStorage.removeItem("blockEditor.panelWidth");
+  const { user, dialog } = await openHeroEditor();
+  const handle = within(dialog).getByRole("separator", { name: "Largeur du panneau" });
+  expect(handle).toHaveAttribute("aria-valuenow", "400");
+
+  handle.focus();
+  await user.keyboard("{ArrowLeft}");
+  expect(handle).toHaveAttribute("aria-valuenow", "424");
+  await user.keyboard("{End}");
+  expect(handle).toHaveAttribute("aria-valuenow", "640");
+  await user.keyboard("{Home}");
+  await user.keyboard("{ArrowRight}");
+  expect(handle).toHaveAttribute("aria-valuenow", "360");
+
+  await user.keyboard("{ArrowLeft}{ArrowLeft}");
+  await user.click(within(dialog).getByRole("button", { name: "Annuler" }));
+  await user.click(
+    await screen.findByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }),
+  );
+  const again = await screen.findByRole("dialog");
+  expect(within(again).getByRole("separator", { name: "Largeur du panneau" })).toHaveAttribute(
+    "aria-valuenow",
+    "408",
+  );
+});

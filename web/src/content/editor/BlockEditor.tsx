@@ -7,6 +7,7 @@ import {
   useImperativeHandle,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
   type ReactNode,
   type Ref,
@@ -31,7 +32,8 @@ import { t } from "../../i18n";
 import { useBlockPreview, useSavedBlock } from "../BlocksProvider";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 import { useBlockChanged, useDiscardGuard } from "./DiscardGuard";
-import { useKeyboardRoom, usePageBeside } from "./pageBeside";
+import { PanelHandle } from "./PanelHandle";
+import { useKeyboardRoom, usePageBeside, usePanelWidth } from "./pageBeside";
 import { useSaveBlock } from "./useSaveBlock";
 
 type Props<K extends BlockKey> = {
@@ -72,7 +74,7 @@ type Props<K extends BlockKey> = {
  */
 const SHELL = [
   "gap-0 border-ink bg-panel p-0 sm:p-0",
-  "xl:top-0 xl:right-0 xl:left-auto xl:h-dvh xl:max-h-dvh xl:w-[400px] xl:max-w-[400px] xl:translate-x-0 xl:translate-y-0",
+  "xl:top-0 xl:right-0 xl:left-auto xl:h-dvh xl:max-h-dvh xl:w-(--panel-w) xl:max-w-(--panel-w) xl:translate-x-0 xl:translate-y-0",
   "xl:rounded-none xl:border-0 xl:border-l-3 xl:content-start xl:data-[state=open]:zoom-in-100",
   "max-xl:top-auto max-xl:bottom-0 max-xl:left-0 max-xl:max-w-full max-xl:translate-x-0 max-xl:translate-y-0 sm:max-w-full",
   "md:max-xl:left-1/2 md:max-xl:max-w-[680px] md:max-xl:-translate-x-1/2",
@@ -123,11 +125,13 @@ export function BlockEditor<K extends BlockKey>({ open, title, target, ...props 
   const place = t(BLOCKS[props.blockKey].label);
   const heading = titled(place, title);
 
+  const panel = usePanelWidth();
   usePageBeside(
     open,
     lowered,
     target ?? props.blockKey,
     useCallback(() => shell.current, []),
+    panel.width,
   );
   const keyboard = useKeyboardRoom(open, lowered);
 
@@ -154,12 +158,13 @@ export function BlockEditor<K extends BlockKey>({ open, title, target, ...props 
         aria-labelledby={placeId}
         aria-describedby={undefined}
         className={cn(SHELL, lowered ? "max-xl:max-h-none" : "max-xl:max-h-[90dvh]")}
-        style={keyboard}
+        style={{ ...keyboard, "--panel-w": `${panel.width}px` } as CSSProperties}
         onInteractOutside={(event) => event.preventDefault()}
       >
         <span id={placeId} className="sr-only">
           {place}
         </span>
+        <PanelHandle {...panel} />
         {lowered ? (
           <div
             role="group"

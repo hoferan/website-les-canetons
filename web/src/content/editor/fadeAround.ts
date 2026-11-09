@@ -89,10 +89,16 @@ export function fadeAround(find: () => HTMLElement | null, preview: () => boolea
       });
       for (const { edge, copy } of edges) {
         const strip = edge.getBoundingClientRect();
+        // An edge reaches a pixel past its block to close a hairline. That
+        // pixel is outside the hole and faded already; covered again, it
+        // shows as a pale line.
+        const above = Math.max(0, box.top - strip.top);
+        const below = Math.max(0, strip.bottom - box.bottom);
         Object.assign(copy.style, {
           left: `${strip.left}px`,
           top: `${strip.top}px`,
           width: `${strip.width}px`,
+          clipPath: `inset(${above}px 0px ${below}px)`,
         });
       }
     } else {
