@@ -24,7 +24,7 @@ export function ActionsField({ name }: { name: string }) {
         max={MAX_ACTIONS}
         addLabel={t("blockEditor.actions.addButton")}
         newItem={() => ({ label: { fr: "" }, to: PUBLIC_NAV[0]!.to })}
-        itemTitle={(index) => t("blockEditor.actions.button", { n: String(index + 1) })}
+        itemTitle={(index) => <ActionName path={`${name}.${index}`} index={index} />}
         renderItem={(index) => (
           <>
             <TranslatedField
@@ -38,6 +38,15 @@ export function ActionsField({ name }: { name: string }) {
       />
     </fieldset>
   );
+}
+
+/**
+ * A button's title in the list: its own French label once it has one, as the
+ * page shows it, else its place ("Bouton 1").
+ */
+function ActionName({ path, index }: { path: string; index: number }) {
+  const label = (useWatch({ name: `${path}.label.fr` }) as string | undefined)?.trim() ?? "";
+  return label === "" ? t("blockEditor.actions.button", { n: String(index + 1) }) : label;
 }
 
 /** The select's value for "any other address": the target is then typed. */

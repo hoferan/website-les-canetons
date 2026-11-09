@@ -72,7 +72,10 @@ export function Home() {
       {/* The poster hero (ADR 0029). Full width, so it sits outside
           PageSection, with the shell width inside it. `pb-14` and up leave
           the Scallop room to draw over the bottom edge. */}
-      <div className={cn("relative bg-poster text-white", SCALLOP_CLIP)}>
+      <div
+        data-edit-block="home.hero"
+        className={cn("relative bg-poster text-white", SCALLOP_CLIP)}
+      >
         <Confetti seed={11} colours={POSTER_CONFETTI} wobble />
         {/* In the header's own corner; the grid below makes room for it. */}
         {editing ? (
@@ -155,7 +158,7 @@ export function Home() {
         </div>
         <Scallop into="var(--color-ground)" />
       </div>
-      {editing ? (
+      {editing || editingHero ? (
         <HeroEditor blockKey="home.hero" open={editingHero} onClose={() => setEditingHero(false)} />
       ) : null}
 

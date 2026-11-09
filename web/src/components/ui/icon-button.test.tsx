@@ -156,3 +156,24 @@ test("a click hides the tip rather than leaving it over the next row", async () 
   expect(onClick).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole("tooltip")).toBeNull();
 });
+
+test("stays an icon button inside a dialog's close, so a quiet one has no underline", () => {
+  // DialogClose passes its own data-slot down. styles.css keys the quiet
+  // underline's removal on data-slot="icon-button", so it must survive.
+  render(
+    <Dialog open>
+      <DialogContent>
+        <DialogTitle>Choisir une photo</DialogTitle>
+        <DialogDescription>Une photo</DialogDescription>
+        <DialogClose asChild>
+          <IconButton type="button" variant="quiet" icon={X} label="Fermer" />
+        </DialogClose>
+      </DialogContent>
+    </Dialog>,
+  );
+
+  expect(screen.getByRole("button", { name: "Fermer" })).toHaveAttribute(
+    "data-slot",
+    "icon-button",
+  );
+});

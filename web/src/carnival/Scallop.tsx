@@ -64,6 +64,8 @@ export function Scallop(props: { into: string } | { from: string }) {
   return (
     <svg
       aria-hidden="true"
+      // The fade around a block being edited covers its bumps (fadeAround).
+      data-scallop
       className={`pointer-events-none absolute left-0 block w-full ${top ? "-top-px" : "-bottom-px"}`}
       height={height}
     >

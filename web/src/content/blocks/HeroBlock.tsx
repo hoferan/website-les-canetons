@@ -43,6 +43,7 @@ export function HeroBlock({
   return (
     <>
       <PageHero
+        editBlock={blockKey}
         title={tr(hero.title)}
         mark={trMark(hero.title, hero.mark)}
         seed={seed}
@@ -61,7 +62,7 @@ export function HeroBlock({
           </>
         ) : null}
       </PageHero>
-      {editing ? (
+      {editing || open ? (
         <HeroEditor blockKey={blockKey} open={open} onClose={() => setOpen(false)} />
       ) : null}
     </>

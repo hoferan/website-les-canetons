@@ -64,7 +64,6 @@ export function IconButton({
 
   const button = (
     <Comp
-      data-slot="icon-button"
       data-mode={mode}
       aria-label={label}
       className={cn(
@@ -76,6 +75,10 @@ export function IconButton({
         className,
       )}
       {...props}
+      // After the spread: a wrapper's own slot (DialogClose passes
+      // "dialog-close") would otherwise replace it, and styles.css keys the
+      // quiet variant's missing underline on this one.
+      data-slot="icon-button"
       // The tip repeats the name, so it is not announced again as a
       // description.
       aria-describedby={props["aria-describedby"]}
