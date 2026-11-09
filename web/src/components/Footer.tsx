@@ -65,7 +65,7 @@ export function Footer({ above }: { above: string | null }) {
 
   return (
     <footer
-      data-edit-block
+      data-edit-block="site"
       className={cn(
         "relative bg-stage text-white",
         above === null && "mt-16",

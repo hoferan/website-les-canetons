@@ -58,6 +58,11 @@ type Props<K extends BlockKey> = {
    * place's last part ("En-tête") is the title, and the page above it.
    */
   title?: string;
+  /**
+   * The `data-edit-block` of what stays clear of the fade, for an editor of
+   * one part of its block: `blockKey` by default.
+   */
+  target?: string;
 };
 
 /**
@@ -105,7 +110,7 @@ function titled(place: string, title: string | undefined): { above: string; titl
  * `onOpenChange(false)`, so a close button added later is covered too. A tap
  * on the faded page does not close it: the editor may only be looking.
  */
-export function BlockEditor<K extends BlockKey>({ open, title, ...props }: Props<K>) {
+export function BlockEditor<K extends BlockKey>({ open, title, target, ...props }: Props<K>) {
   // The form's way out, which knows whether there is anything to lose. The
   // form lives inside the content, so it hands this up.
   const editor = useRef<EditorHandle>(null);
@@ -121,6 +126,7 @@ export function BlockEditor<K extends BlockKey>({ open, title, ...props }: Props
   usePageBeside(
     open,
     lowered,
+    target ?? props.blockKey,
     useCallback(() => shell.current, []),
   );
   const keyboard = useKeyboardRoom(open, lowered);
@@ -203,7 +209,7 @@ function EditorForm<K extends BlockKey>({
   formId,
   heading,
   onLower,
-}: Omit<Props<K>, "open" | "title"> & {
+}: Omit<Props<K>, "open" | "title" | "target"> & {
   ref: Ref<EditorHandle>;
   formId: string;
   heading: { above: string; title: string };

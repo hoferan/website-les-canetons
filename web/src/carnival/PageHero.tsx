@@ -36,6 +36,7 @@ export function PageHero({
   width = "shell",
   headingRef,
   edit,
+  editBlock,
   children,
 }: {
   title: string;
@@ -54,12 +55,13 @@ export function PageHero({
   headingRef?: Ref<HTMLHeadingElement>;
   /** The edit chip, in edit mode; the hero adds room above the heading for it. */
   edit?: ReactNode;
+  /** The block this hero shows, which stays clear of the fade while edited. */
+  editBlock?: string;
   /** A line or two under the heading, already translated. */
   children?: ReactNode;
 }) {
   return (
-    // data-edit-block: what stays clear of the fade while its editor is open.
-    <div data-edit-block className={cn("relative bg-poster text-white", SCALLOP_CLIP)}>
+    <div data-edit-block={editBlock} className={cn("relative bg-poster text-white", SCALLOP_CLIP)}>
       <Confetti seed={seed} colours={POSTER_CONFETTI} wobble />
       {/* The chip sits in the header's own corner, not the text column's. */}
       {edit}

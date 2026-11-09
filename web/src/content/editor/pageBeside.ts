@@ -34,55 +34,70 @@ function stickyBarHeight(): number {
  * - On a phone the page gets room under its last block, as tall as what
  *   covers it, so the footer can rise above the sheet.
  *
- * The block is the one the editor was opened from: the nearest
- * `[data-edit-block]` around the focused chip. None found, the page is only
- * made inert.
+ * The block is the element marked `data-edit-block={target}`, looked up
+ * whenever it is needed rather than kept: a card that is a link renders as
+ * another element once the chips go, and a new card appears only once the
+ * editor has put it on the page.
  *
  * `sheet` is the editor's own element, measured for the room under the page.
  */
-export function usePageBeside(open: boolean, lowered: boolean, sheet: () => HTMLElement | null) {
-  const block = useRef<HTMLElement | null>(null);
+export function usePageBeside(
+  open: boolean,
+  lowered: boolean,
+  target: string,
+  sheet: () => HTMLElement | null,
+) {
   const loweredNow = useRef(lowered);
   loweredNow.current = lowered;
 
   useLayoutEffect(() => {
     const root = pageRoot();
     if (!open || !root) return;
-    // Still the chip the editor was opened from: Radix moves focus in later.
-    block.current = document.activeElement?.closest<HTMLElement>("[data-edit-block]") ?? null;
     root.inert = true;
     if (window.innerWidth >= DOCKED_PX) root.style.marginRight = `${PANEL_PX}px`;
-    const unfade = block.current ? fadeAround(block.current, () => loweredNow.current) : () => {};
+    const unfade = fadeAround(
+      () => findBlock(target),
+      () => loweredNow.current,
+    );
     return () => {
       unfade();
       root.inert = false;
       root.style.marginRight = "";
       root.style.paddingBottom = "";
-      block.current = null;
     };
-  }, [open]);
+  }, [open, target]);
 
   useEffect(() => {
     if (!open) return;
-    // A frame later: the page drops its edit chips once the editor opens,
-    // which moves the block up.
-    const frame = requestAnimationFrame(() => {
-      const target = block.current;
+    // From the next frame on: the page drops its edit chips once the editor
+    // opens, which moves the block, and a new card is not there yet.
+    let tries = 0;
+    let frame = requestAnimationFrame(function place() {
+      const block = findBlock(target);
       const root = pageRoot();
-      if (!target || !root) return;
+      if (!root) return;
+      if (!block) {
+        if (++tries < 30) frame = requestAnimationFrame(place);
+        return;
+      }
       const docked = window.innerWidth >= DOCKED_PX;
       if (!docked) {
         const height = sheet()?.offsetHeight ?? 0;
         root.style.paddingBottom = lowered ? `${height}px` : "90dvh";
       }
-      const top = target.getBoundingClientRect().top + window.scrollY;
+      const top = block.getBoundingClientRect().top + window.scrollY;
       const y = docked
-        ? top - Math.max(16, (window.innerHeight - target.offsetHeight) / 2)
+        ? top - Math.max(16, (window.innerHeight - block.offsetHeight) / 2)
         : top - stickyBarHeight();
       window.scrollTo({ top: Math.max(0, y), behavior: "instant" });
     });
     return () => cancelAnimationFrame(frame);
-  }, [open, lowered, sheet]);
+  }, [open, lowered, target, sheet]);
+}
+
+/** The block an editor changes, as the page renders it now. */
+function findBlock(target: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`[data-edit-block="${CSS.escape(target)}"]`);
 }
 
 /**

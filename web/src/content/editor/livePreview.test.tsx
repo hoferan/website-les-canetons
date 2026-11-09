@@ -150,3 +150,33 @@ test("a button in the list is titled by its own label once it has one", async ()
 
   expect(item.firstElementChild).toHaveTextContent("Rejoins-nous");
 });
+
+test("a card that is a link stays findable for the fade while its editor is open", async () => {
+  // Without its chips the card renders as a link, a new element: the fade
+  // must find that one, or every card fades.
+  const user = userEvent.setup();
+  const card = BLOCKS["home.cards"].defaults().cards[0]!;
+  await renderWithSession(<CardsBlock blockKey="home.cards" layout="band" links />, {
+    route: "/",
+  });
+
+  await user.click(screen.getByRole("button", { name: `Modifier : ${card.title.fr}` }));
+  await screen.findByRole("dialog");
+
+  const marked = document.querySelector(`[data-edit-block="home.cards/${card.id}"]`);
+  expect(marked).not.toBeNull();
+  expect(marked).toHaveTextContent(card.title.fr);
+});
+
+test("a card being added is findable for the fade once it shows", async () => {
+  const user = userEvent.setup();
+  const shippedCards = BLOCKS["join.facts"].defaults().cards;
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  await user.click(screen.getByRole("button", { name: "Ajouter une carte" }));
+  await screen.findByRole("dialog");
+
+  expect(document.querySelectorAll('[data-edit-block^="join.facts/"]')).toHaveLength(
+    shippedCards.length + 1,
+  );
+});

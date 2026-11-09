@@ -43,6 +43,7 @@ export function HeroBlock({
   return (
     <>
       <PageHero
+        editBlock={blockKey}
         title={tr(hero.title)}
         mark={trMark(hero.title, hero.mark)}
         seed={seed}

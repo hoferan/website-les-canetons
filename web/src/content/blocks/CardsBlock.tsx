@@ -289,6 +289,7 @@ export function CardsBlock({
           blockKey={blockKey}
           // The card itself, live as its title is typed; a new one has none yet.
           title={openedTitle}
+          target={opened ? cardEditTarget(blockKey, opened.id) : undefined}
           open={opened !== null}
           onClose={() => setOpened(null)}
           onReset={shipped ? restore : false}
@@ -397,18 +398,22 @@ function CardView({
     </>
   );
 
+  // On every element the card renders as: a card that is a link becomes one
+  // once its editor opens and the page drops its edit chips.
+  const editBlock = cardEditTarget(blockKey, card.id);
+
   if (target !== undefined && !editing) {
     const className = cn(look, "transition-transform hover:-translate-y-0.5");
     return isPublicPage(target) ? (
       // The router's basename keeps a visitor in their language.
-      <Card asChild className={className}>
+      <Card asChild data-edit-block={editBlock} className={className}>
         <Link to={target} className="focus-ring">
           {body}
         </Link>
       </Card>
     ) : (
       // Another site opens in a new tab and says so, as every outbound link does.
-      <Card asChild className={className}>
+      <Card asChild data-edit-block={editBlock} className={className}>
         <a
           href={target}
           target="_blank"
@@ -425,12 +430,19 @@ function CardView({
   return (
     // The card is its chips' scope: edit-blocks.spec.ts checks them against
     // its text, and against each other.
-    <Card data-chip-scope data-edit-block className={cn(look, "relative", editing && CHIP_ROOM)}>
+    <Card
+      data-chip-scope
+      data-edit-block={editBlock}
+      className={cn(look, "relative", editing && CHIP_ROOM)}
+    >
       {children}
       {body}
     </Card>
   );
 }
+
+/** What a card is found by while its editor is open (`BlockEditor`'s `target`). */
+const cardEditTarget = (blockKey: CardsKey, cardId: string) => `${blockKey}/${cardId}`;
 
 /** A card's rows; as text alone inside a card that is a link. */
 function Rows({ rows, plain }: { rows: CardData["rows"]; plain: boolean }) {
