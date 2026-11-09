@@ -56,6 +56,15 @@ test("THE SWITCH ROUND-TRIPS, AND KEEPS THE PAGE", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Où nous voir");
 });
 
+test("/fr opens the French page, under its address without the prefix", async ({ page }) => {
+  await page.goto("/fr/agenda");
+
+  await expect(page).toHaveURL(/\/agenda$/);
+  await expect(page).not.toHaveURL(/\/fr\//);
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr-CH");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Où nous voir");
+});
+
 test("the switch does not reload the page, and keeps what was typed", async ({ page }) => {
   await page.goto("/contact");
   await page.getByLabel("Prénom").fill("Anna");

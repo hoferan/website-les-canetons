@@ -32,6 +32,8 @@ App links add the prefix themselves. `Link`, `Navigate` and `useNavigate` come f
 
 The leave guard compares paths without the German segment, and `ScrollToTop` sees them that way too, so a switch neither asks before leaving nor scrolls to the top.
 
+French URLs keep no prefix, but `/fr/...` opens the French page of the rest of the path, for someone who types it by analogy with `/de/`. `LocaleFromUrl` then replaces the address with the one without `/fr`, so every page still has one URL and Back does not return to the alias.
+
 This replaces the full page navigation and the per-language `basename` of ADR 0023. The rest of 0023 stands.
 
 ### Consequences

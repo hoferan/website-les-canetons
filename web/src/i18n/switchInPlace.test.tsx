@@ -60,6 +60,18 @@ test("an open block editor keeps what was typed across a change of language", as
   expect(within(dialog).getByRole("button", { name: "Speichern" })).toBeInTheDocument();
 });
 
+test("a /fr URL opens the French page, under its address without the prefix", async () => {
+  const { router } = await renderWithSession(<AppRoutes />, { route: "/fr/join?x=1" });
+
+  expect(
+    await screen.findByRole("heading", { level: 1, name: /commencer la guggen/ }),
+  ).toBeInTheDocument();
+  expect(router.state.location.pathname).toBe("/join");
+  expect(router.state.location.search).toBe("?x=1");
+  // Replaced, not pushed: Back does not land on the alias again.
+  expect(router.state.historyAction).toBe("REPLACE");
+});
+
 test("a German URL renders the page in German, and its links stay German", async () => {
   await renderWithSession(<AppRoutes />, { route: "/de/join" });
 

@@ -25,7 +25,14 @@ import {
 
 import { applyDocumentMeta } from "./documentMeta";
 import { currentLocale, followLocale } from "./index";
-import { DEFAULT_LOCALE, htmlLang, localizePath, splitLocale, type Locale } from "./locale";
+import {
+  DEFAULT_LOCALE,
+  htmlLang,
+  isFrenchAlias,
+  localizePath,
+  splitLocale,
+  type Locale,
+} from "./locale";
 
 /**
  * The app's links and navigations, which keep the page's language (#369).
@@ -85,7 +92,7 @@ const LocaleContext = createContext<Locale>(DEFAULT_LOCALE);
 
 /**
  * The language from the URL, for everything under it, and the location
- * without the German segment, so `/join` and `/de/join` render the same
+ * without the language segment, so `/join` and `/de/join` render the same
  * components and a change of language keeps them mounted, with what was
  * typed in them.
  *
@@ -114,6 +121,13 @@ export function LocaleFromUrl({ children }: { children: ReactNode }) {
   }, [locale]);
 
   const bare: Location = useMemo(() => ({ ...location, pathname: path }), [location, path]);
+
+  // `/fr/join` is `/join`: replaced, so the address bar shows the page's one
+  // URL and Back does not come back to the alias.
+  if (isFrenchAlias(location.pathname)) {
+    const { pathname, search, hash, state } = bare;
+    return <RouterNavigate to={{ pathname, search, hash }} state={state} replace />;
+  }
 
   return (
     <LocaleContext value={locale}>

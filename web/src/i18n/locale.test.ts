@@ -25,6 +25,13 @@ describe("splitLocale", () => {
     expect(splitLocale("/")).toEqual({ locale: "fr", path: "/" });
     expect(splitLocale("/design")).toEqual({ locale: "fr", path: "/design" });
   });
+
+  test("takes /fr off too, as the French page it names", () => {
+    expect(splitLocale("/fr/agenda")).toEqual({ locale: "fr", path: "/agenda" });
+    expect(splitLocale("/fr")).toEqual({ locale: "fr", path: "/" });
+    expect(splitLocale("/fr/")).toEqual({ locale: "fr", path: "/" });
+    expect(splitLocale("/frites")).toEqual({ locale: "fr", path: "/frites" });
+  });
 });
 
 describe("localizePath", () => {

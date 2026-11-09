@@ -25,6 +25,18 @@ export const GERMAN_SEGMENT = "de";
 const GERMAN_PATH = new RegExp(`^/${GERMAN_SEGMENT}(?=/|$)`);
 
 /**
+ * `/fr`, which opens the French page of the rest of the path. French URLs
+ * have no prefix, so the address bar then drops it (`LocaleFromUrl`): one URL
+ * per page, as search engines want, while a hand-typed `/fr/join` still works.
+ */
+const FRENCH_ALIAS = /^\/fr(?=\/|$)/;
+
+/** Whether a path inside the app starts with the `/fr` alias. */
+export function isFrenchAlias(path: string): boolean {
+  return FRENCH_ALIAS.test(path);
+}
+
+/**
  * Where the SPA is mounted, with no trailing slash.
  *
  * Empty on every server, which serve it from the document root. A PR preview
@@ -51,12 +63,13 @@ export function localeFromPath(pathname: string, base: string = APP_BASE): Local
  * A path inside the app, as its locale and the path the route table matches:
  * `/de/agenda` is German `/agenda`, and `/de` is German `/`. The router is
  * mounted once for both languages (#369), so the route table never sees the
- * German segment.
+ * language segment. The `/fr` alias comes off the same way.
  */
 export function splitLocale(path: string): { locale: Locale; path: string } {
-  return GERMAN_PATH.test(path)
-    ? { locale: "de-CH", path: path.replace(GERMAN_PATH, "") || "/" }
-    : { locale: DEFAULT_LOCALE, path };
+  if (GERMAN_PATH.test(path)) {
+    return { locale: "de-CH", path: path.replace(GERMAN_PATH, "") || "/" };
+  }
+  return { locale: DEFAULT_LOCALE, path: path.replace(FRENCH_ALIAS, "") || "/" };
 }
 
 /** A path the route table matches, as the app's path in `locale`: `splitLocale` undone. */
