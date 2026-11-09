@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 
 import { rowsOf } from "../api/collection";
 import { getEventIndexQueryKey, useEventSeries } from "../api/generated/endpoints";
@@ -9,6 +8,7 @@ import { PageSection } from "../components/PageSection";
 import { type SeriesCreatedState } from "../events/SeriesCreatedNotice";
 import { SeriesForm } from "../events/SeriesForm";
 import { t } from "../i18n";
+import { useNavigate } from "../i18n/routing";
 
 /**
  * A whole season in one request.

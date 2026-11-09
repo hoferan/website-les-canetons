@@ -17,7 +17,7 @@ import { DEFAULT_LOCALE, type Locale, localeFromPath } from "./locale";
  * "http://localhost/", so tests start French.
  */
 const initial =
-  typeof window === "undefined" ? DEFAULT_LOCALE : localeFromPath(window.location.pathname).locale;
+  typeof window === "undefined" ? DEFAULT_LOCALE : localeFromPath(window.location.pathname);
 
 i18next.init({
   lng: initial,
@@ -44,11 +44,20 @@ export function currentLocale(): Locale {
 /**
  * Switch locale.
  *
- * For tests only. In the browser a person changes language by navigating
- * (see pathInLocale), because `basename` is fixed when the router mounts.
+ * For tests only. In the browser the URL decides: `LocaleFromUrl` in
+ * routing.tsx calls `followLocale` on every navigation.
  */
 export async function setLocale(locale: Locale): Promise<void> {
   await i18next.changeLanguage(locale);
+}
+
+/**
+ * Puts the app in `locale` at once. Both catalogues are in memory from the
+ * start, so i18next changes language synchronously, and the render that calls
+ * this already reads the new language. No-op in the current one.
+ */
+export function followLocale(locale: Locale): void {
+  if (i18next.language !== locale) void i18next.changeLanguage(locale);
 }
 
 /**
@@ -92,9 +101,12 @@ export type TranslationKey = Leaves<typeof fr>;
 /**
  * One translated string.
  *
- * A plain function rather than a hook: locale is constant for a page's
- * lifetime, so there is nothing to re-render, and react-i18next stays out of
- * the dependencies.
+ * A plain function rather than a hook. A change of language is a navigation
+ * that renders the route table again, and with it every page, with the new
+ * language already set (see `LocaleFromUrl`). So no screen has to subscribe,
+ * and react-i18next stays out of the dependencies. A translated text is
+ * therefore computed while rendering, never kept in state or in a memo that
+ * the next render does not recompute.
  */
 export function t(key: TranslationKey, params?: Record<string, unknown>): string {
   return i18next.t(key, params ?? {}) as string;

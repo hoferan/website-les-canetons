@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Download, Pencil, RotateCcw, RotateCw, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import {
   getImageIndexQueryKey,
@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FormActions } from "@/components/ui/form-actions";
 import { t, translateApiError } from "../i18n";
+import { Link, useNavigate } from "../i18n/routing";
 import { kilobytes } from "../images/kilobytes";
 import { Photo, PHOTO_SIZES } from "../images/Photo";
 import { downloadName, MAX_NAME_LENGTH } from "../images/photoName";

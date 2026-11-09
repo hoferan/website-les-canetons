@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { render } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 
-import { setLocale } from "../../i18n";
 import { setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";
 import { recordBlockPuts, storeBlock } from "../../test/renderBlockEditor";
@@ -207,12 +206,7 @@ test("a hero with no button draws no row of buttons", async () => {
 });
 
 test("an internal button keeps the visitor in German under /de, in German words", async () => {
-  await setLocale("de-CH");
-  render(
-    <MemoryRouter basename="/de" initialEntries={["/de"]}>
-      <HeroActions actions={buttons} />
-    </MemoryRouter>,
-  );
+  await renderWithSession(<HeroActions actions={buttons} />, { locale: "de-CH" });
 
   expect(screen.getByRole("link", { name: "Mitmachen" })).toHaveAttribute("href", "/de/join");
   // No German wording: the French one stands in.

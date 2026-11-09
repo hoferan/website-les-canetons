@@ -1,7 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
 
 import {
   getImageIndexQueryKey,
@@ -24,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SearchField } from "../components/SearchField";
 import { currentLocale, t, translateApiError } from "../i18n";
+import { Link } from "../i18n/routing";
 import { intlTag } from "../i18n/locale";
 import { formatDay } from "../lib/date";
 import { kilobytes } from "./kilobytes";

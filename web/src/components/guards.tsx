@@ -1,8 +1,9 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import { ButtonLink } from "./ButtonLink";
 import { PageSection } from "./PageSection";
 import { t } from "../i18n";
+import { Navigate } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
 
 /**

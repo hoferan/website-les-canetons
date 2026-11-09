@@ -43,6 +43,9 @@ The URL is the only authority on the language. A stored preference is read in on
 place, a visit to the bare `/`, which then redirects to `/de`. The browser's language
 is never consulted. Switching language is a full page navigation.
 
+[ADR-0041](0041-switch-language-in-place.md) replaced the `basename` and the full page
+navigation: one router serves both languages, and switching keeps the page mounted.
+
 All user-facing text lives in `web/src/i18n/fr.ts` and `de.ts`. Components call a
 typed `t()` exported from `web/src/i18n/index.ts`. There is no `react-i18next`, no
 provider and no hook, because the language never changes during a page's life.

@@ -17,8 +17,8 @@ export function shownActions(actions: readonly Action[] | undefined): Action[] {
 /**
  * One button of a hero or of the footer, the first the raised yellow one and
  * the second the light one. A public page keeps the visitor in their language
- * through the router's basename; an https address opens in a new tab and says
- * so in its name, as every outbound link does.
+ * (i18n/routing.tsx); an https address opens in a new tab and says so in its
+ * name, as every outbound link does.
  *
  * Pass only what {@link shownActions} kept.
  */

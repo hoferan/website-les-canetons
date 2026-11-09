@@ -1,5 +1,6 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
+import { Navigate } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
 
 const PASSWORD_PAGE = "/account/password";

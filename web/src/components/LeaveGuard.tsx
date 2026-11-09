@@ -10,6 +10,8 @@ import {
 } from "react";
 import { type BlockerFunction, useBlocker } from "react-router-dom";
 
+import { splitLocale } from "../i18n/locale";
+
 type Register = (message: string) => () => void;
 
 const LeaveGuardContext = createContext<Register | null>(null);
@@ -60,10 +62,12 @@ export function LeaveGuardProvider({ children }: { children: ReactNode }) {
 }
 
 function Blocker({ messages }: { messages: RefObject<Map<symbol, string>> }) {
+  // The paths without the German segment: the same page in the other language
+  // keeps what is typed in it (#369), so switching is not leaving.
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
       messages.current.size > 0 &&
-      (currentLocation.pathname !== nextLocation.pathname ||
+      (splitLocale(currentLocation.pathname).path !== splitLocale(nextLocation.pathname).path ||
         currentLocation.search !== nextLocation.search),
     [messages],
   );

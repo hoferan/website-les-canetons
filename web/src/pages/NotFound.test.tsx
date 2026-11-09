@@ -15,5 +15,8 @@ test("shows the soft 404 in German", async () => {
   await renderWithSession(<NotFound />, { route: "/nope", locale: "de-CH" });
 
   expect(screen.getByRole("heading", { name: "Seite nicht gefunden" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Zurück zur Startseite" })).toHaveAttribute("href", "/");
+  expect(screen.getByRole("link", { name: "Zurück zur Startseite" })).toHaveAttribute(
+    "href",
+    "/de",
+  );
 });

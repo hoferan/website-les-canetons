@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { FormActions } from "@/components/ui/form-actions";
@@ -14,6 +14,7 @@ import { RAISED_CARD } from "../carnival/raised";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
+import { useNavigate } from "../i18n/routing";
 import { safeReturnTo } from "../lib/returnTo";
 
 /**

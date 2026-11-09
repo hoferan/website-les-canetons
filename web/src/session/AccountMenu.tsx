@@ -1,5 +1,4 @@
 import { type LucideIcon, LogOut, User } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import { Avatar } from "../components/Avatar";
 import {
@@ -10,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { useLogout } from "./logout";
 
 type Member = { username: string; firstName: string; lastName: string };

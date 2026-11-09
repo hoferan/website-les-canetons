@@ -106,5 +106,8 @@ test("refuses in German, with the same heading, alert and way out", async () => 
     "Diese Seite ist anderen Mitgliedern vorbehalten.",
   );
   // common.backHome, shared with NotFound.
-  expect(screen.getByRole("link", { name: "Zurück zur Startseite" })).toHaveAttribute("href", "/");
+  expect(screen.getByRole("link", { name: "Zurück zur Startseite" })).toHaveAttribute(
+    "href",
+    "/de",
+  );
 });

@@ -3,11 +3,10 @@ import { expect, test } from "@playwright/test";
 /**
  * The German mount, in a real browser (#159).
  *
- * THIS IS THE ONLY PLACE THE SWITCH IS PROVEN END TO END. Changing locale is a
- * full page load, and jsdom implements no navigation — `window.location` is
- * non-configurable in that setup, so the component suite can assert the
- * destination and the stored preference but never the arrival. Everything
- * below is the half only a browser can see.
+ * Changing locale is a navigation inside the app (#369), which the component
+ * suite proves in switchInPlace.test.tsx. What only a browser shows is below:
+ * a German URL loaded cold, the document's metadata, the stored preference
+ * meeting main.tsx's redirect on the next visit, and the absence of a reload.
  *
  * The existing French specs are untouched and keep using bare paths, which is
  * also the regression this must not cause: `playwright.config.ts` sets a
@@ -50,33 +49,48 @@ test("THE SWITCH ROUND-TRIPS, AND KEEPS THE PAGE", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("lang", "de-CH");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Wo Sie uns sehen");
 
-  // And back, which is the direction that bounces if the stored preference is
-  // written after the navigation rather than before: "/de/agenda" → "/agenda"
-  // is fine, but "/de" → "/" would meet main.tsx's redirect.
   await page.getByRole("link", { name: "Passer en français" }).click();
 
   await expect(page).toHaveURL(/\/agenda$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr-CH");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Où nous voir");
 });
 
-test("SWITCHING BACK FROM THE GERMAN ROOT DOES NOT BOUNCE", async ({ page }) => {
-  // The exact trap preference.ts's docblock warns about. Reaching /de stores
-  // "de-CH"; switching to French lands on "/", where main.tsx asks
-  // shouldRedirectToGerman() — which would send the visitor straight back if
-  // rememberLocale("fr") had not already run.
+test("the switch does not reload the page, and keeps what was typed", async ({ page }) => {
+  await page.goto("/contact");
+  await page.getByLabel("Prénom").fill("Anna");
+  // Gone if the browser loads the document again.
+  await page.evaluate(() => Object.assign(window, { stillTheSamePage: true }));
+
+  await page.getByRole("link", { name: "Auf Deutsch wechseln" }).click();
+
+  await expect(page).toHaveURL(/\/de\/contact$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kontakt");
+  await expect(page.getByLabel("Vorname")).toHaveValue("Anna");
+  // The metadata follows without a load as well.
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    /Kinder-Guggenmusik aus Freiburg/,
+  );
+  expect(await page.evaluate(() => "stillTheSamePage" in window)).toBe(true);
+});
+
+test("SWITCHING BACK FROM THE GERMAN ROOT DOES NOT BOUNCE ON THE NEXT VISIT", async ({ page }) => {
+  // The trap preference.ts's docblock warns about. Reaching /de stores
+  // "de-CH"; a later visit to "/" meets main.tsx's shouldRedirectToGerman(),
+  // which sends the visitor to /de unless switching to French stored "fr".
   //
-  // MUTATION TEST, AND THE OBVIOUS ONE DOES NOT WORK. Deleting
-  // rememberLocale outright leaves this test PASSING: with nothing ever
-  // stored there is nothing to bounce on, because the first click is also
-  // what records "de-CH". The mutation that does fail is breaking only the
-  // French direction — `if (target !== "fr") rememberLocale(target)` — which
-  // is what "remembered after the navigation" actually looks like from here.
-  // Checked both ways rather than assumed.
+  // Deleting rememberLocale outright leaves this test passing: with nothing
+  // ever stored there is nothing to bounce on. The mutation that fails is
+  // breaking only the French direction, `if (target !== "fr")
+  // rememberLocale(target)`.
   await page.goto("/");
   await page.getByRole("link", { name: "Auf Deutsch wechseln" }).click();
   await expect(page).toHaveURL(/\/de$/);
 
   await page.getByRole("link", { name: "Passer en français" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/");
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator("html")).toHaveAttribute("lang", "fr-CH");
@@ -115,8 +129,7 @@ test("the session survives the switch", async ({ page }) => {
   await page.goto("/events");
   await page.getByRole("link", { name: "Auf Deutsch wechseln" }).click();
 
-  // A full page load, so the cookie is what carries the session across it —
-  // and the members' nav is what proves it did.
+  // The members' page stays open, now in German.
   await expect(page).toHaveURL(/\/de\/events$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Planung");
 });

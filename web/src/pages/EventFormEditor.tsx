@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye, Pencil } from "lucide-react";
 import { useEffect, useState, type DragEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -50,6 +50,7 @@ import { useLeaveGuard } from "../components/LeaveGuard";
 import { PageSection } from "../components/PageSection";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { parseFrancs } from "../money";
 
 /** What the screen compares to tell an unsaved edit, ignoring React's keys. */

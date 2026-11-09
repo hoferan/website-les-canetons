@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { getEventIndexQueryKey, useEventStore } from "../api/generated/endpoints";
 import { ApiError } from "../api/http";
@@ -10,6 +9,7 @@ import { EventForm, eventBodyFrom, type EventDraft } from "../events/EventForm";
 import { publishEvent } from "../events/publishEvent";
 import { saveEventPoster, type PosterChange } from "../events/saveEventPoster";
 import { t, translateApiError } from "../i18n";
+import { useNavigate } from "../i18n/routing";
 
 /**
  * Adding one event to the planning.

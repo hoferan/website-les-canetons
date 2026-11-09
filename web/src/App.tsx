@@ -1,6 +1,7 @@
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 
 import { LeaveGuardProvider } from "./components/LeaveGuard";
+import { LocaleFromUrl } from "./i18n/routing";
 import { AppRoutes } from "./routes";
 
 /**
@@ -11,14 +12,11 @@ import { AppRoutes } from "./routes";
  * table stays a <Routes> tree in routes.tsx under one splat route: nothing
  * here uses loaders or actions, the only things descendant <Routes> miss.
  *
- * `basename` makes the locale prefix free at the call sites: <Link
- * to="/agenda"> resolves under it, and useLocation() returns the pathname
- * with it stripped, so guards comparing to a literal ("/account" in
- * MustChangePassword) keep matching.
- *
- * The caller derives it from the URL; it is never hardcoded. React Router
- * renders nothing when the URL does not begin with the basename, so a literal
- * "/de" would break jsdom tests and Playwright alike. French is unprefixed.
+ * `basename` is where the app is served, the same for both languages: the
+ * root, or a PR preview's subpath. `LocaleFromUrl` reads the language from
+ * the rest of the path and hands the route table that path without it, so
+ * changing language is a navigation like any other and keeps the page
+ * mounted (#369).
  *
  * The caller creates it once, outside React. A browser router listens to the
  * history as soon as it exists, and StrictMode runs a state initialiser twice,
@@ -31,7 +29,9 @@ export function createAppRouter(basename = "/") {
         path: "*",
         element: (
           <LeaveGuardProvider>
-            <AppRoutes />
+            <LocaleFromUrl>
+              <AppRoutes />
+            </LocaleFromUrl>
           </LeaveGuardProvider>
         ),
       },

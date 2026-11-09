@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
-
 import { Button } from "@/components/ui/button";
+
+import { Link } from "../i18n/routing";
 
 /**
  * A link that looks like a button.
@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
  * rel="noreferrer": target="_blank" without it hands the destination a
  * window.opener it can navigate.
  *
- * The `external` branch emits a raw <a href>, which the router never sees, so
- * it does not get the locale basename. Never pass it an app-internal path, or
- * the visitor silently leaves their locale.
+ * The `external` branch emits a raw <a href>, which gets no German prefix.
+ * Never pass it an app-internal path, or the visitor silently leaves their
+ * locale.
  */
 export function ButtonLink({
   to,

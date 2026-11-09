@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { type ComponentType, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+
+import { Link } from "../i18n/routing";
 
 /**
  * One nav destination: an internal route, or an external site that opens in a

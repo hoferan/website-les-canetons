@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { FormActions } from "@/components/ui/form-actions";
@@ -30,6 +30,7 @@ import { useAnswers } from "../booking/useAnswers";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { formatDay } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
 

@@ -1,7 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Circle, CircleCheck } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { FormActions } from "@/components/ui/form-actions";
@@ -14,6 +13,7 @@ import { FormError, FormField, RequiredLegend, formIsValid } from "../components
 import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
 
 /**

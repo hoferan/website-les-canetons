@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import App, { createAppRouter } from "./App";
 import { AppProviders } from "./AppProviders";
 import { applyDocumentMeta } from "./i18n/documentMeta";
-import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
+import { APP_BASE, htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
 import "./styles.css";
 
@@ -49,7 +49,7 @@ if (redirecting) {
   // stopping this script. Falling through would mount the French app, boot
   // requests included, and flash the wrong language. A module has no
   // top-level `return`.
-  const { locale, basename } = localeFromPath(window.location.pathname);
+  const locale = localeFromPath(window.location.pathname);
 
   // The shell ships <html lang="fr"> for a crawler that runs no JavaScript.
   // This corrects it for the German mount; a screen reader picks its voice
@@ -76,7 +76,7 @@ if (redirecting) {
     },
   });
 
-  const router = createAppRouter(basename);
+  const router = createAppRouter(APP_BASE || "/");
 
   createRoot(root).render(
     <StrictMode>

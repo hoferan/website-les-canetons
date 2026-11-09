@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom";
-
 import { PageSection } from "@/components/PageSection";
 import { Tbd } from "@/components/Tbd";
 import { Card } from "@/components/ui/card";
@@ -13,6 +11,7 @@ import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { ManagedElsewhere } from "../content/editor/ManagedElsewhere";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 
 /**
  * The committee: who to write to, and who holds which seat.

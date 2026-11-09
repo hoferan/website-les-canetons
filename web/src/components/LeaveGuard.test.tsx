@@ -21,6 +21,7 @@ function Page({ guards }: { guards: boolean[] }) {
       ))}
       <Link to="/elsewhere">Ailleurs</Link>
       <Link to="/guarded#top">Même page</Link>
+      <Link to="/de/guarded">Auf Deutsch</Link>
       <button type="button" onClick={() => navigate(-1)}>
         Retour
       </button>
@@ -104,6 +105,16 @@ test("a link to the same page is not leaving it", async () => {
 
   expect(confirm).not.toHaveBeenCalled();
   expect(screen.getByRole("heading", { name: "Page gardée" })).toBeInTheDocument();
+});
+
+// The other language is the same page (#369): the switch keeps what is typed.
+test("the same page in the other language is not leaving it", async () => {
+  const confirm = vi.spyOn(window, "confirm");
+  await renderGuarded([true]);
+
+  await userEvent.click(screen.getByRole("link", { name: "Auf Deutsch" }));
+
+  expect(confirm).not.toHaveBeenCalled();
 });
 
 test("an active guard warns on closing the tab", async () => {

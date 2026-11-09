@@ -6,7 +6,8 @@ import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { LeaveGuardProvider } from "../components/LeaveGuard";
 import { BlocksGate, BlocksProvider } from "../content/BlocksProvider";
 import { setLocale } from "../i18n";
-import { type Locale } from "../i18n/locale";
+import { localizePath, splitLocale, type Locale } from "../i18n/locale";
+import { LocaleFromUrl } from "../i18n/routing";
 import { SessionProvider } from "../session/SessionProvider";
 import { EditModeProvider } from "../content/EditMode";
 
@@ -34,11 +35,15 @@ export async function renderWithSession(
   // An object entry's `pathname` is taken literally, so "/login?x=1" would
   // bury the query in the path. State needs the object form, so the split
   // happens here.
-  const [pathname = "/", query] = route.split("?");
+  const [path = "/", query] = route.split("?");
+  // The URL decides the language, as in the app, so a German test starts on
+  // the German URL of the page it names.
+  const pathname = splitLocale(path).locale === locale ? path : localizePath(path, locale);
   const entry = { pathname, search: query ? `?${query}` : "", state };
 
   // A data router, like the app's, because `useBlocker` works under nothing
-  // else. The splat route hands every path to whatever <Routes> `ui` holds.
+  // else. The splat route hands every path to whatever <Routes> `ui` holds,
+  // with the German segment taken off, as the app's route table sees it.
   const router = createMemoryRouter(
     [
       {
@@ -50,7 +55,9 @@ export async function renderWithSession(
                 <BlocksGate>
                   <EditModeProvider>
                     <LeaveGuardProvider>
-                      <div data-testid="booted">{ui}</div>
+                      <LocaleFromUrl>
+                        <div data-testid="booted">{ui}</div>
+                      </LocaleFromUrl>
                     </LeaveGuardProvider>
                   </EditModeProvider>
                 </BlocksGate>
@@ -66,5 +73,6 @@ export async function renderWithSession(
   const result = render(<RouterProvider router={router} />);
 
   await screen.findByTestId("booted");
-  return result;
+  // The router too, whose location is the URL as the browser would show it.
+  return { ...result, router };
 }

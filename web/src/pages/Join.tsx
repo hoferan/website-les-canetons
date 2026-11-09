@@ -1,11 +1,10 @@
-import { Link } from "react-router-dom";
-
 import { PageSection } from "@/components/PageSection";
 
 import { useBlock } from "../content/BlocksProvider";
 import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 
 /**
  * How to join: the page a parent or a curious child lands on.

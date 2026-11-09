@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 import { eventShow, eventUpdate, getEventIndexQueryKey } from "../api/generated/endpoints";
 import type { EventResource, UpdateEventRequest } from "../api/generated/model";
@@ -11,6 +11,7 @@ import { EventForm, eventBodyFrom, type EventDraft } from "../events/EventForm";
 import { publishEvent } from "../events/publishEvent";
 import { saveEventPoster, type PosterChange } from "../events/saveEventPoster";
 import { t, type TranslatedError } from "../i18n";
+import { useNavigate } from "../i18n/routing";
 
 /**
  * Correcting one event.

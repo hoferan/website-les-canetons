@@ -1,11 +1,11 @@
 import { ArrowUpRight, Pencil, type LucideIcon } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import { buttonVariants } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 
 import { t } from "../../i18n";
+import { Link } from "../../i18n/routing";
 
 /**
  * Top padding for a block whose first line can run under the chip: a hero's

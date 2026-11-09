@@ -148,7 +148,7 @@ test("offers a booking link in German", async () => {
   await renderWithSession(<Agenda />, { route: "/agenda", locale: "de-CH" });
 
   const link = await screen.findByRole("link", { name: "Jetzt anmelden — Souper de soutien" });
-  expect(link).toHaveAttribute("href", "/events/7/book");
+  expect(link).toHaveAttribute("href", "/de/events/7/book");
 });
 
 test("in edit mode, a notice links to Événements, and not otherwise", async () => {

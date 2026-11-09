@@ -89,7 +89,7 @@ test("renders the page and the booking placeholder in German", async () => {
   expect(screen.getByRole("heading", { name: "Der Vorstand" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Dem Vorstand schreiben" })).toHaveAttribute(
     "href",
-    "/contact",
+    "/de/contact",
   );
   expect(screen.getByText(/Nummer für Auftritte/)).toBeInTheDocument();
 });
