@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 
@@ -206,4 +206,29 @@ test("the docked panel's width changes from its handle and is kept for next time
     "aria-valuenow",
     "408",
   );
+});
+
+test("dragging the panel's edge moves only the panel, and keeps the width on release", async () => {
+  // Re-rendering the form and reflowing the page on every pointer move made
+  // the drag lag; both wait for the release.
+  localStorage.removeItem("blockEditor.panelWidth");
+  const { dialog } = await openHeroEditor();
+  const handle = within(dialog).getByRole("separator", { name: "Largeur du panneau" });
+
+  // jsdom has no PointerEvent: a mouse event under the pointer event's name
+  // carries the clientX React reads.
+  const pointer = (type: string, clientX: number) =>
+    fireEvent(handle, new MouseEvent(type, { bubbles: true, clientX }));
+  pointer("pointerdown", window.innerWidth - 400);
+  pointer("pointermove", window.innerWidth - 520);
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+
+  expect(dialog.style.getPropertyValue("--panel-w")).toBe("520px");
+  expect(handle).toHaveAttribute("aria-valuenow", "400");
+  expect(localStorage.getItem("blockEditor.panelWidth")).toBeNull();
+
+  pointer("pointerup", window.innerWidth - 520);
+
+  expect(handle).toHaveAttribute("aria-valuenow", "520");
+  expect(localStorage.getItem("blockEditor.panelWidth")).toBe("520");
 });

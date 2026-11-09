@@ -23,7 +23,7 @@ const PANEL_STEP_PX = 24;
 /** Where this browser keeps the width; a convenience, so it may be lost. */
 const PANEL_KEY = "blockEditor.panelWidth";
 
-const clampPanel = (width: number) =>
+export const clampPanel = (width: number) =>
   Math.round(Math.min(PANEL_MAX_PX, Math.max(PANEL_MIN_PX, width)));
 
 function storedPanelWidth(): number {
