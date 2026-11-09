@@ -1466,7 +1466,6 @@ export const de: typeof fr = {
     save: "Speichern",
     saving: "Wird gespeichert…",
     preview: "Vorschau",
-    panelWidth: "Breite des Bereichs",
     reset: "Original wiederherstellen",
     saved: "Gespeichert",
     undoPhotoFailed:

@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 
@@ -179,64 +179,4 @@ test("a card being added is findable for the fade once it shows", async () => {
   expect(document.querySelectorAll('[data-edit-block^="join.facts/"]')).toHaveLength(
     shippedCards.length + 1,
   );
-});
-
-test("the docked panel's width changes from its handle and is kept for next time", async () => {
-  localStorage.removeItem("blockEditor.panelWidth");
-  const { user, dialog } = await openHeroEditor();
-  const handle = within(dialog).getByRole("separator", { name: "Largeur du panneau" });
-  expect(handle).toHaveAttribute("aria-valuenow", "400");
-
-  handle.focus();
-  await user.keyboard("{ArrowLeft}");
-  expect(handle).toHaveAttribute("aria-valuenow", "424");
-  await user.keyboard("{End}");
-  expect(handle).toHaveAttribute("aria-valuenow", "640");
-  await user.keyboard("{Home}");
-  await user.keyboard("{ArrowRight}");
-  expect(handle).toHaveAttribute("aria-valuenow", "360");
-
-  await user.keyboard("{ArrowLeft}{ArrowLeft}");
-  await user.click(within(dialog).getByRole("button", { name: "Annuler" }));
-  await user.click(
-    await screen.findByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }),
-  );
-  const again = await screen.findByRole("dialog");
-  expect(within(again).getByRole("separator", { name: "Largeur du panneau" })).toHaveAttribute(
-    "aria-valuenow",
-    "408",
-  );
-});
-
-test("dragging the panel's edge moves the panel and the page, and keeps the width on release", async () => {
-  // Re-rendering the form on every pointer move made the drag lag: the drag
-  // moves the panel and the page itself, and the width is set on release.
-  localStorage.removeItem("blockEditor.panelWidth");
-  const wide = vi.spyOn(window, "innerWidth", "get").mockReturnValue(1440);
-  const root = document.body.appendChild(
-    Object.assign(document.createElement("div"), { id: "root" }),
-  );
-  const { dialog } = await openHeroEditor();
-  expect(root.style.marginRight).toBe("400px");
-  const handle = within(dialog).getByRole("separator", { name: "Largeur du panneau" });
-
-  // jsdom has no PointerEvent: a mouse event under the pointer event's name
-  // carries the clientX React reads.
-  const pointer = (type: string, clientX: number) =>
-    fireEvent(handle, new MouseEvent(type, { bubbles: true, clientX }));
-  pointer("pointerdown", window.innerWidth - 400);
-  pointer("pointermove", window.innerWidth - 520);
-  await new Promise((resolve) => requestAnimationFrame(resolve));
-
-  expect(dialog.style.getPropertyValue("--panel-w")).toBe("520px");
-  expect(root.style.marginRight).toBe("520px");
-  expect(handle).toHaveAttribute("aria-valuenow", "400");
-  expect(localStorage.getItem("blockEditor.panelWidth")).toBeNull();
-
-  pointer("pointerup", window.innerWidth - 520);
-
-  expect(handle).toHaveAttribute("aria-valuenow", "520");
-  expect(localStorage.getItem("blockEditor.panelWidth")).toBe("520");
-  root.remove();
-  wide.mockRestore();
 });

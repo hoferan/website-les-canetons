@@ -9,63 +9,11 @@ import { fadeAround } from "./fadeAround";
  * layout, which breaks the header and the card grids, hence xl.
  */
 export const DOCKED_PX = 1280;
-/**
- * The docked panel's width, which the page gives up: 400px at first, then
- * whatever the editor dragged it to, between the two bounds. Below the
- * minimum a card's icon grid wraps to three columns; past the maximum the
- * page beside it gets narrower than the panel.
- */
+/** The docked panel's width, which the page gives up. */
 export const PANEL_PX = 400;
-export const PANEL_MIN_PX = 360;
-export const PANEL_MAX_PX = 640;
-/** How far one arrow key press moves the panel's edge. */
-const PANEL_STEP_PX = 24;
-/** Where this browser keeps the width; a convenience, so it may be lost. */
-const PANEL_KEY = "blockEditor.panelWidth";
-
-export const clampPanel = (width: number) =>
-  Math.round(Math.min(PANEL_MAX_PX, Math.max(PANEL_MIN_PX, width)));
-
-function storedPanelWidth(): number {
-  try {
-    const stored = Number(localStorage.getItem(PANEL_KEY));
-    return stored ? clampPanel(stored) : PANEL_PX;
-  } catch {
-    return PANEL_PX;
-  }
-}
-
-/**
- * The docked panel's width and the ways to change it: `set` for a drag,
- * `step` for the arrow keys (a positive step widens it), `set(min or max)`
- * for Home and End. Kept in this browser for the next editor.
- */
-export function usePanelWidth() {
-  const [width, setWidth] = useState(storedPanelWidth);
-  const set = (next: number) => {
-    const clamped = clampPanel(next);
-    setWidth(clamped);
-    try {
-      localStorage.setItem(PANEL_KEY, String(clamped));
-    } catch {
-      // A private window: the width lasts as long as the page.
-    }
-  };
-  return { width, set, step: (direction: 1 | -1) => set(width + direction * PANEL_STEP_PX) };
-}
 
 /** The page's own root, which the editor makes inert and moves aside. */
 const pageRoot = () => document.getElementById("root");
-
-/**
- * Moves the page aside as far as the docked panel is wide; nothing where the
- * editor is a sheet. Written to the page's root directly, so a drag can call
- * it every frame without React rendering anything.
- */
-export function movePageAside(panelWidth: number) {
-  const root = pageRoot();
-  if (root && window.innerWidth >= DOCKED_PX) root.style.marginRight = `${panelWidth}px`;
-}
 
 /** The page's sticky bar on a phone ("Menu"), which covers the top of the page. */
 function stickyBarHeight(): number {
@@ -98,7 +46,6 @@ export function usePageBeside(
   lowered: boolean,
   target: string,
   sheet: () => HTMLElement | null,
-  panelWidth: number,
 ) {
   const loweredNow = useRef(lowered);
   loweredNow.current = lowered;
@@ -107,6 +54,7 @@ export function usePageBeside(
     const root = pageRoot();
     if (!open || !root) return;
     root.inert = true;
+    if (window.innerWidth >= DOCKED_PX) root.style.marginRight = `${PANEL_PX}px`;
     const unfade = fadeAround(
       () => findBlock(target),
       () => loweredNow.current,
@@ -118,12 +66,6 @@ export function usePageBeside(
       root.style.paddingBottom = "";
     };
   }, [open, target]);
-
-  // The page moves aside as far as the docked panel is wide; PanelHandle
-  // moves it too while the panel is dragged.
-  useLayoutEffect(() => {
-    if (open) movePageAside(panelWidth);
-  }, [open, panelWidth]);
 
   useEffect(() => {
     if (!open) return;
