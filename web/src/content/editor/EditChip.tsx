@@ -45,10 +45,10 @@ const CORNER = "absolute top-2 right-2 z-10";
  * pushes the other chips aside instead of covering them.
  *
  * `changed` marks a block the band has changed, so the editor sees what
- * "Rétablir l'original" would undo without opening it (#359): a dot in the
- * chip's top right corner, clear of the pencil, and "(modifié)" after both the
- * name and the word. The dot is drawn inside the chip, so the chip keeps its
- * size and edit-blocks.spec.ts's overlap sweep still holds.
+ * "Rétablir l'original" would undo without opening it (#359): a dot centred
+ * on the chip's top right corner, and "(modifié)" after both the name and the
+ * word. The dot is a pseudo-element, so the chip's box, which
+ * edit-blocks.spec.ts's overlap sweep measures, keeps its size.
  */
 export function EditChip({
   label,
@@ -89,9 +89,13 @@ export function EditChip({
 /**
  * The changed dot, as the chip's `::after`: IconButton takes no children.
  * `relative` anchors it, and CORNER's `absolute`, merged after it, does too.
+ *
+ * Cyan with an ink ring, centred over the corner, picked from rendered
+ * variants. Violet is the link colour and red the danger one, so either read
+ * as something to act on. A dot inside the corner touched the pencil's tip.
  */
 const DOT =
-  "relative after:absolute after:top-1 after:right-1 after:size-2.5 after:rounded-full after:bg-violet after:ring-2 after:ring-panel after:content-['']";
+  "relative after:absolute after:-top-[5px] after:-right-[5px] after:size-3 after:rounded-full after:bg-cyan after:ring-2 after:ring-ink after:content-['']";
 
 /**
  * A chip that leads somewhere instead of opening an editor, in the same
