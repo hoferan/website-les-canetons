@@ -1832,6 +1832,8 @@ export const fr = {
   blockEditor: {
     // The chip's accessible name; its visible word is common.edit.
     edit: "Modifier : {{label}}",
+    // Added to the chip's name and word when the band has changed the block (#359).
+    changed: "{{text}} (modifié)",
     // The notice under a page's hero in edit mode, one line per kind of data
     // the page shows but does not own. {{page}} becomes the link to the page
     // that manages it.

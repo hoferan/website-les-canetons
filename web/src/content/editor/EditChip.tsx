@@ -43,36 +43,55 @@ const CORNER = "absolute top-2 right-2 z-10";
  * `corner={false}` leaves the placing to the caller, for a pencil at the end
  * of a row of chips: the row grows leftwards as the word shows, so the word
  * pushes the other chips aside instead of covering them.
+ *
+ * `changed` marks a block the band has changed, so the editor sees what
+ * "Rétablir l'original" would undo without opening it (#359): a dot in the
+ * chip's top right corner, clear of the pencil, and "(modifié)" after both the
+ * name and the word. The dot is drawn inside the chip, so the chip keeps its
+ * size and edit-blocks.spec.ts's overlap sweep still holds.
  */
 export function EditChip({
   label,
   text,
   onClick,
   corner = true,
+  changed = false,
   id,
 }: {
   label: string;
   text?: string;
   onClick: () => void;
   corner?: boolean;
+  changed?: boolean;
   /** For a screen that moves focus here itself. */
   id?: string;
 }) {
+  const name = text ?? t("blockEditor.edit", { label });
+  const word = text ?? t("common.edit");
+  const marked = (said: string) => (changed ? t("blockEditor.changed", { text: said }) : said);
   return (
     <IconButton
       id={id}
       type="button"
       icon={Pencil}
-      label={text ?? t("blockEditor.edit", { label })}
-      word={text ?? t("common.edit")}
+      label={marked(name)}
+      word={marked(word)}
       mode="grow"
       variant="accent"
       data-chip="button"
+      data-changed={changed || undefined}
       onClick={onClick}
-      className={cn(corner && CORNER)}
+      className={cn(changed && DOT, corner && CORNER)}
     />
   );
 }
+
+/**
+ * The changed dot, as the chip's `::after`: IconButton takes no children.
+ * `relative` anchors it, and CORNER's `absolute`, merged after it, does too.
+ */
+const DOT =
+  "relative after:absolute after:top-1 after:right-1 after:size-2.5 after:rounded-full after:bg-violet after:ring-2 after:ring-panel after:content-['']";
 
 /**
  * A chip that leads somewhere instead of opening an editor, in the same

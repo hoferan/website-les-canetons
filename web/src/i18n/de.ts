@@ -1456,6 +1456,7 @@ export const de: typeof fr = {
 
   blockEditor: {
     edit: "Bearbeiten: {{label}}",
+    changed: "{{text}} (geändert)",
     managedElsewhere: {
       registerMembers: "Wer in welchem Register spielt, wird unter {{page}} verwaltet.",
       registers: "Die Register, ihre Namen und ihre Reihenfolge werden unter {{page}} verwaltet.",

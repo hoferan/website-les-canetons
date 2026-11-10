@@ -15,7 +15,7 @@ import { SlotPhoto } from "../images/SlotPhoto";
 import { SlotPicture } from "../images/SlotPicture";
 import { PublicAgenda } from "../events/PublicAgenda";
 import { t } from "../i18n";
-import { useBlock } from "../content/BlocksProvider";
+import { useBlock, useBlockStored } from "../content/BlocksProvider";
 import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroActions, HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
@@ -63,6 +63,7 @@ export function Home() {
   useFooterEdge(agenda.isPending ? null : "var(--color-yellow)");
   const hero = useBlock("home.hero");
   const editing = useBlockEditing();
+  const heroChanged = useBlockStored("home.hero");
   const [editingHero, setEditingHero] = useState(false);
   const intro = hero.intro ? tr(hero.intro) : "";
   const discoverId = useId();
@@ -79,7 +80,11 @@ export function Home() {
         <Confetti seed={11} colours={POSTER_CONFETTI} wobble />
         {/* In the header's own corner; the grid below makes room for it. */}
         {editing ? (
-          <EditChip label={t(BLOCKS["home.hero"].label)} onClick={() => setEditingHero(true)} />
+          <EditChip
+            label={t(BLOCKS["home.hero"].label)}
+            changed={heroChanged}
+            onClick={() => setEditingHero(true)}
+          />
         ) : null}
         <div
           className={cn(

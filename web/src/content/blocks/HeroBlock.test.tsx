@@ -105,6 +105,24 @@ test("Aucun on the German row clears the German highlight and keeps the French o
   expect(highlight()?.textContent).toBe("Canetons");
 });
 
+test("the hero chip says whether the band has changed the block", async () => {
+  setMockUser("demo.direction");
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  const { unmount } = await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, {
+    route: "/join",
+  });
+  expect(
+    screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }),
+  ).not.toHaveAttribute("data-changed");
+  unmount();
+
+  storeBlock("join.hero", { title: { fr: "Rejoins-nous" } });
+  await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
+  expect(
+    await screen.findByRole("button", { name: "Modifier : Nous rejoindre · en-tête (modifié)" }),
+  ).toHaveAttribute("data-changed");
+});
+
 test("the hero chip edits title and intro together", async () => {
   const user = userEvent.setup();
   const puts = recordBlockPuts();
@@ -238,7 +256,8 @@ async function openEditor(user: ReturnType<typeof userEvent.setup>) {
   setMockUser("demo.direction");
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
-  await user.click(screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }));
+  // Stored or shipped: some callers store a hero first, which adds "(modifié)".
+  await user.click(screen.getByRole("button", { name: /^Modifier : Nous rejoindre · en-tête/ }));
   return screen.findByRole("dialog");
 }
 

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
 import { cn } from "@/lib/utils";
+import { useBlockStored } from "../content/BlocksProvider";
 import { useEditPillShown } from "../content/EditMode";
 import { ActionLink, shownActions } from "../content/blocks/ActionLink";
 import { useSite } from "../content/blocks/SiteBlock";
@@ -57,6 +58,7 @@ const CHIP_ROOM_BELOW = "pt-21";
 export function Footer({ above }: { above: string | null }) {
   const site = useSite();
   const editing = useBlockEditing();
+  const siteChanged = useBlockStored("site");
   const [editingSite, setEditingSite] = useState(false);
   // The floating pill sits over the last 4rem of the page; keep it off the footer's own buttons.
   const pillShown = useEditPillShown();
@@ -80,6 +82,7 @@ export function Footer({ above }: { above: string | null }) {
               label={t("blocks.site")}
               text={t("blockEditor.site.edit")}
               corner={false}
+              changed={siteChanged}
               onClick={() => setEditingSite(true)}
             />
           </div>

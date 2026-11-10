@@ -148,6 +148,13 @@ export function DevUi() {
           Un bloc éditable.
           <EditChip label="Bloc d'essai" onClick={() => undefined} />
         </div>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Le même, sur un bloc que la bande a modifié (le point) :
+        </p>
+        <div className="relative mt-2 min-h-24 rounded-xl border-3 border-dashed border-ink bg-white p-4 pt-14">
+          Un bloc modifié.
+          <EditChip label="Bloc modifié" changed onClick={() => undefined} />
+        </div>
       </Block>
 
       <Block title="Appel à l'action sur le fond sombre">

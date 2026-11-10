@@ -57,6 +57,27 @@ test("the text prop is both the visible text and the accessible name", () => {
   expect(chip).toHaveTextContent("Modifier les infos du site");
 });
 
+test("a changed block's chip wears the dot and says 'modifié'", () => {
+  const { rerender } = render(<EditChip label="Texte d'accueil" onClick={() => {}} />);
+  const plain = screen.getByRole("button", { name: "Modifier : Texte d'accueil" });
+  expect(plain).not.toHaveAttribute("data-changed");
+
+  rerender(<EditChip label="Texte d'accueil" changed onClick={() => {}} />);
+  const chip = screen.getByRole("button", { name: "Modifier : Texte d'accueil (modifié)" });
+  expect(chip).toHaveAttribute("data-changed");
+  expect(chip).toHaveTextContent("Modifier (modifié)");
+});
+
+test("a changed chip with its own text adds 'modifié' to it", () => {
+  render(
+    <EditChip label="Infos du site" text="Modifier les infos du site" changed onClick={() => {}} />,
+  );
+
+  expect(
+    screen.getByRole("button", { name: "Modifier les infos du site (modifié)" }),
+  ).toHaveAttribute("data-changed");
+});
+
 test("a chip sits inside its block's top right corner and calls onClick", async () => {
   const onClick = vi.fn();
   render(<EditChip label="Bloc" onClick={onClick} />);
