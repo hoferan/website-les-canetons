@@ -1,8 +1,7 @@
 /**
- * Which locale a URL is in, and where the router should be mounted for it.
+ * Which locale a URL is in, and the path the route table sees for it.
  *
- * No React and no router here: unit tests mount a memory router, which never
- * exercises `basename`, so locale resolution must be testable without one.
+ * No React and no router here, so locale resolution is testable without one.
  *
  * The URL is the only authority on locale. Nothing here reads localStorage or
  * navigator.language: a stored preference overriding the URL would render a
@@ -21,10 +20,21 @@ export const GERMAN_SEGMENT = "de";
 
 /**
  * Matched as a whole segment, never as a string prefix:
- * `pathname.startsWith("/de")` would claim /design and /details and mount the
- * router at /de, which renders a blank page.
+ * `pathname.startsWith("/de")` would claim /design and /details as German.
  */
 const GERMAN_PATH = new RegExp(`^/${GERMAN_SEGMENT}(?=/|$)`);
+
+/**
+ * `/fr`, which opens the French page of the rest of the path. French URLs
+ * have no prefix, so the address bar then drops it (`LocaleFromUrl`): one URL
+ * per page, as search engines want, while a hand-typed `/fr/join` still works.
+ */
+const FRENCH_ALIAS = /^\/fr(?=\/|$)/;
+
+/** Whether a path inside the app starts with the `/fr` alias. */
+export function isFrenchAlias(path: string): boolean {
+  return FRENCH_ALIAS.test(path);
+}
 
 /**
  * Where the SPA is mounted, with no trailing slash.
@@ -44,31 +54,37 @@ export function pathInApp(pathname: string, base: string = APP_BASE): string {
   return pathname.startsWith(`${base}/`) ? pathname.slice(base.length) : pathname;
 }
 
-export function localeFromPath(
-  pathname: string,
-  base: string = APP_BASE,
-): { locale: Locale; basename: string } {
-  return GERMAN_PATH.test(pathInApp(pathname, base))
-    ? { locale: "de-CH", basename: `${base}/${GERMAN_SEGMENT}` }
-    : { locale: DEFAULT_LOCALE, basename: base || "/" };
+/** The locale of a browser pathname, base included. */
+export function localeFromPath(pathname: string, base: string = APP_BASE): Locale {
+  return splitLocale(pathInApp(pathname, base)).locale;
 }
 
 /**
- * The same page in another locale, as an origin-absolute path.
- *
- * Takes and returns a full pathname, prefix included, for
- * `window.location.assign`. Switching locale is a real navigation, because
- * `basename` is fixed when the router mounts, so each locale boots clean with
- * no stale i18next state.
+ * A path inside the app, as its locale and the path the route table matches:
+ * `/de/agenda` is German `/agenda`, and `/de` is German `/`. The router is
+ * mounted once for both languages (#369), so the route table never sees the
+ * language segment. The `/fr` alias comes off the same way.
+ */
+export function splitLocale(path: string): { locale: Locale; path: string } {
+  if (GERMAN_PATH.test(path)) {
+    return { locale: "de-CH", path: path.replace(GERMAN_PATH, "") || "/" };
+  }
+  return { locale: DEFAULT_LOCALE, path: path.replace(FRENCH_ALIAS, "") || "/" };
+}
+
+/** A path the route table matches, as the app's path in `locale`: `splitLocale` undone. */
+export function localizePath(path: string, locale: Locale): string {
+  if (locale === DEFAULT_LOCALE) return path;
+  return path === "/" ? `/${GERMAN_SEGMENT}` : `/${GERMAN_SEGMENT}${path}`;
+}
+
+/**
+ * The same page in another locale, as an origin-absolute path, base included:
+ * for what leaves the router, such as `window.location` or an `hreflang` URL.
+ * Inside the app, `Link` and `useNavigate` from routing.tsx add the prefix.
  */
 export function pathInLocale(pathname: string, target: Locale, base: string = APP_BASE): string {
-  const bare = pathInApp(pathname, base).replace(GERMAN_PATH, "") || "/";
-
-  if (target === DEFAULT_LOCALE) {
-    return `${base}${bare}`;
-  }
-
-  return bare === "/" ? `${base}/${GERMAN_SEGMENT}` : `${base}/${GERMAN_SEGMENT}${bare}`;
+  return `${base}${localizePath(splitLocale(pathInApp(pathname, base)).path, target)}`;
 }
 
 /**

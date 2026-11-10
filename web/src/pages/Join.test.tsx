@@ -33,7 +33,7 @@ test("says how to join, in German", async () => {
   expect(screen.getByText("Trompete")).toBeInTheDocument();
   // The two joining contacts are placeholders, one per seat.
   expect(screen.getAllByText(/Name und Nummer/)).toHaveLength(2);
-  expect(screen.getByRole("link", { name: "Kontaktseite" })).toHaveAttribute("href", "/contact");
+  expect(screen.getByRole("link", { name: "Kontaktseite" })).toHaveAttribute("href", "/de/contact");
 });
 
 /** The shipped cards, with the contacts card's rows replaced. */

@@ -205,8 +205,7 @@ test("the stored buttons replace the shipped ones, in German too", async () => {
   const [agenda, photos] = buttons();
   expect(buttons()).toHaveLength(2);
   expect(agenda).toHaveTextContent("Unsere Agenda");
-  // The router adds the /de basename in the app; the test router has none.
-  expect(agenda).toHaveAttribute("href", "/agenda");
+  expect(agenda).toHaveAttribute("href", "/de/agenda");
   expect(agenda).not.toHaveAttribute("target");
   // An address elsewhere opens a new tab and says so, as the networks do.
   expect(photos).toHaveTextContent("Fotos");

@@ -1,10 +1,10 @@
 import { ImageMinus } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 
 import type { ImageResourceUsagesItem } from "../api/generated/model";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { isRecordSlot } from "./photoSlots";
 
 /**
@@ -19,8 +19,7 @@ export function usageLabel(usage: ImageResourceUsagesItem): string {
 /**
  * Every place a photo is shown, each a link to the page that shows it, where
  * it is also changed. The path is the one the page sent with the placement,
- * without the `/de` prefix, which the router's basename adds on the German
- * side. A placement without a path is listed without a link.
+ * without the `/de` prefix, which `Link` adds on the German side. A placement without a path is listed without a link.
  *
  * With `onRemove`, a place on a page also gets "Retirer de cet emplacement":
  * a slot whose page no longer draws it (a deleted card, a replaced slot) has

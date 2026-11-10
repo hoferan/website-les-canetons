@@ -21,7 +21,8 @@ const OWNED = "data-hreflang-alternate";
  */
 export function Hreflang() {
   // The router's location only signals a navigation. The paths come from
-  // window.location, which keeps the `/de` basename useLocation() strips.
+  // window.location, which keeps the `/de` that useLocation() has taken off
+  // (LocaleFromUrl), and the base path.
   const location = useLocation();
 
   useEffect(() => {

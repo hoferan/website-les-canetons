@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
 import { ChevronDown, Plus } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -38,6 +37,7 @@ import { TagFilter, shownTag } from "../events/TagFilter";
 import { bandZoneParts } from "../events/bandTime";
 import { isDraft } from "../events/eventDates";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
 
 /**

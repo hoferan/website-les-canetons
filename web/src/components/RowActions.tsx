@@ -8,9 +8,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Ellipsis } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { ButtonLink } from "./ButtonLink";
 
 /**

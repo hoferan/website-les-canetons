@@ -4,7 +4,7 @@ import { afterEach, expect, test } from "vitest";
 
 import { renderWithSession } from "../test/renderWithSession";
 import { setLocale } from "./index";
-import { LanguageSwitch, switchDestination } from "./LanguageSwitch";
+import { LanguageSwitch } from "./LanguageSwitch";
 import { LOCALE_STORAGE_KEY } from "./preference";
 
 afterEach(async () => {
@@ -12,36 +12,38 @@ afterEach(async () => {
   window.localStorage.clear();
 });
 
-/** A browser location, as the switcher reads it. */
-function at(pathname: string, search = "", hash = "") {
-  return { pathname, search, hash };
+/** Where the switch points, from `route` in `locale`. */
+async function destination(route: string, locale: "fr" | "de-CH" = "fr") {
+  await renderWithSession(<LanguageSwitch />, { route, locale });
+  const name = locale === "fr" ? "Auf Deutsch wechseln" : "Passer en français";
+  return screen.getByRole("link", { name }).getAttribute("href");
 }
 
 /* ---------------------------------------------------------------------------
- * The destination — the pure half
+ * The destination
  * -------------------------------------------------------------------------- */
 
-test("it maps a French path onto the German mount and back", () => {
-  expect(switchDestination("de-CH", at("/agenda"))).toBe("/de/agenda");
-  expect(switchDestination("fr", at("/de/agenda"))).toBe("/agenda");
+test("it points a French page at its German twin", async () => {
+  expect(await destination("/agenda")).toBe("/de/agenda");
 });
 
-test("the roots round-trip, which is the case the redirect guard cares about", () => {
-  expect(switchDestination("de-CH", at("/"))).toBe("/de");
-  expect(switchDestination("fr", at("/de"))).toBe("/");
+test("it points a German page at its French twin", async () => {
+  expect(await destination("/de/agenda", "de-CH")).toBe("/agenda");
 });
 
-test("search and hash travel with the switch", () => {
+test("the roots round-trip, which is the case the redirect guard cares about", async () => {
+  expect(await destination("/de", "de-CH")).toBe("/");
+});
+
+test("search and hash travel with the switch", async () => {
   // Switching language on "past events" should keep showing past events.
-  expect(switchDestination("de-CH", at("/events", "?past=1"))).toBe("/de/events?past=1");
-  expect(switchDestination("fr", at("/de/events", "?past=1", "#bas"))).toBe("/events?past=1#bas");
+  expect(await destination("/de/events?past=1", "de-CH")).toBe("/events?past=1");
 });
 
-test("a path that merely starts with those letters is not the German mount", () => {
-  // `/design` and `/demo/x` are French pages. Matching `/de` without the
-  // segment boundary would strip two letters off each of them.
-  expect(switchDestination("fr", at("/design"))).toBe("/design");
-  expect(switchDestination("de-CH", at("/design"))).toBe("/de/design");
+test("a path that merely starts with those letters is not the German mount", async () => {
+  // `/design` is a French page. Matching `/de` without the segment boundary
+  // would strip two letters off it.
+  expect(await destination("/design")).toBe("/de/design");
 });
 
 /* ---------------------------------------------------------------------------

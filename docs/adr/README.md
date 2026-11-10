@@ -46,7 +46,7 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0020](0020-registration-is-a-property-of-an-event.md)              | Make public registration a property of an event                               |
 | [0021](0021-compute-the-committee-inbox.md)                         | Compute the committee inbox at read time                                      |
 | [0022](0022-one-light-theme-and-vendored-components.md)             | Use one light theme, "Scène", with vendored components that alias it          |
-| [0023](0023-locale-in-the-path-text-in-typed-catalogues.md)         | Put the locale in the URL and every string in two typed catalogues            |
+| [0023](0023-locale-in-the-path-text-in-typed-catalogues.md)         | Put the locale in the URL and every string in two typed catalogues (amended by ADR 0041) |
 | [0024](0024-lay-out-every-list-as-cards.md)                         | Lay out every list as cards, at every width                                   |
 | [0025](0025-icons-on-controls.md)                                   | Give a control an icon only where the icon says one thing (amended by ADR 0040)                     |
 | [0026](0026-user-typed-content-carries-its-own-translations.md)     | Store user-typed content in both languages, and fall back per entry           |
@@ -64,3 +64,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0038](0038-public-pages-are-content-blocks-edited-in-place.md) | Edit the public pages block by block, over defaults the code ships |
 | [0039](0039-move-the-website-between-servers.md) | Move the public website between servers as one file, imported all at once |
 | [0040](0040-one-button-system.md) | Build every button from one system of role variants and three components |
+| [0041](0041-switch-language-in-place.md) | Switch language in place, keeping the locale in the path |

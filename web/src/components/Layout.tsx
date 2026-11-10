@@ -10,7 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import { Logo } from "./Logo";
 import { DesktopNav } from "./DesktopNav";
@@ -20,6 +20,7 @@ import { type MemberEntry, PhoneNav } from "./PhoneNav";
 import { useInboxSummary } from "../api/generated/endpoints";
 import { FooterEdgeContext } from "../carnival/footerEdge";
 import { type TranslationKey, t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { Hreflang } from "../i18n/Hreflang";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { AccountDropdown, type AccountTool } from "../session/AccountMenu";

@@ -121,10 +121,10 @@ test("points every destination card at a public page, in German", async () => {
   const links = within(destinations).getAllByRole("link");
 
   expect(links.map((link) => link.getAttribute("href"))).toEqual([
-    "/join",
-    "/band",
-    "/history",
-    "/committee",
+    "/de/join",
+    "/de/band",
+    "/de/history",
+    "/de/committee",
   ]);
 });
 

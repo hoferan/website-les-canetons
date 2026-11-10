@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, Route, Routes } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 
 import type { ImageResource } from "../api/generated/model";
@@ -116,13 +116,8 @@ const usages: ImageResource["usages"] = [
   { slot: "3f2a9c1e-7b4d-4e8a-9c2f-5d6e7f8a9b0c", label: null, path: null },
 ];
 
-test("each usage links to the path its page sent, under /de on the German side", () => {
-  // The basename is what App.tsx gives the router under /de.
-  render(
-    <MemoryRouter basename="/de" initialEntries={["/de/media/1"]}>
-      <UsageLinks usages={usages} />
-    </MemoryRouter>,
-  );
+test("each usage links to the path its page sent, under /de on the German side", async () => {
+  await renderWithSession(<UsageLinks usages={usages} />, { route: "/media/1", locale: "de-CH" });
 
   expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
     "/de/band",

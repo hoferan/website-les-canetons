@@ -1,5 +1,7 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { Route, Routes, useParams } from "react-router-dom";
+
+import { Navigate, useLocale } from "./i18n/routing";
 
 import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
@@ -76,8 +78,15 @@ const DevUi = import.meta.env.DEV
  *
  * Legacy French paths are not redirected (ADR 0003); they get the 404 view
  * like every other unknown path.
+ *
+ * Both languages share this table: it sees the path with `/de` taken off
+ * (`LocaleFromUrl`), so a change of language keeps the page mounted. It reads
+ * the language so that a change renders it again, and with it every page in
+ * the new language.
  */
 export function AppRoutes() {
+  useLocale();
+
   return (
     <Routes>
       <Route element={<Layout />}>

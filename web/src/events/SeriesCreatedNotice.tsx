@@ -1,11 +1,12 @@
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { IconButton } from "@/components/ui/icon-button";
 
 import { Notice } from "../components/Notice";
 import { t } from "../i18n";
+import { Link, useNavigate } from "../i18n/routing";
 
 /** What the series generator hands the planning as it navigates there. */
 export type SeriesCreatedState = { seriesCreated: number };

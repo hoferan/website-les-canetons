@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { FormActions } from "@/components/ui/form-actions";
@@ -42,6 +42,7 @@ import { SuspectBadge, SuspectReasons } from "../components/SuspectFlag";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { translateApiError } from "../i18n";
 import { t, type TranslationKey } from "../i18n";
+import { Link } from "../i18n/routing";
 import { formatCents } from "../money";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";

@@ -1,8 +1,8 @@
 import { ChevronDown, ExternalLink } from "lucide-react";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { type NavEntry, EntryLink } from "./NavEntry";
 import { DESK_IDLE, DESK_LINK, NAV_HERE } from "./navStyles";
 import {

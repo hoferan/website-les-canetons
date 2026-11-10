@@ -1,38 +1,85 @@
 import { describe, expect, test } from "vitest";
 
-import { htmlLang, intlTag, localeFromPath, pathInLocale } from "./locale";
+import {
+  htmlLang,
+  intlTag,
+  localeFromPath,
+  localizePath,
+  pathInLocale,
+  splitLocale,
+} from "./locale";
 
-describe("localeFromPath", () => {
-  test("an unprefixed path is French, mounted at the root", () => {
-    expect(localeFromPath("/agenda")).toEqual({ locale: "fr", basename: "/" });
-    expect(localeFromPath("/")).toEqual({ locale: "fr", basename: "/" });
-    expect(localeFromPath("")).toEqual({ locale: "fr", basename: "/" });
+describe("splitLocale", () => {
+  test("takes the German segment off, and says the path was German", () => {
+    expect(splitLocale("/de/agenda")).toEqual({ locale: "de-CH", path: "/agenda" });
+    expect(splitLocale("/de/events/12/edit")).toEqual({ locale: "de-CH", path: "/events/12/edit" });
   });
 
-  test("a /de-prefixed path is German, mounted at /de", () => {
-    expect(localeFromPath("/de/agenda")).toEqual({ locale: "de-CH", basename: "/de" });
-    expect(localeFromPath("/de/events/12/attendance")).toEqual({
-      locale: "de-CH",
-      basename: "/de",
-    });
+  test("the German root is the home page", () => {
+    expect(splitLocale("/de")).toEqual({ locale: "de-CH", path: "/" });
+    expect(splitLocale("/de/")).toEqual({ locale: "de-CH", path: "/" });
+  });
+
+  test("leaves a French path as it is, /design included", () => {
+    expect(splitLocale("/agenda")).toEqual({ locale: "fr", path: "/agenda" });
+    expect(splitLocale("/")).toEqual({ locale: "fr", path: "/" });
+    expect(splitLocale("/design")).toEqual({ locale: "fr", path: "/design" });
+  });
+
+  test("takes /fr off too, as the French page it names", () => {
+    expect(splitLocale("/fr/agenda")).toEqual({ locale: "fr", path: "/agenda" });
+    expect(splitLocale("/fr")).toEqual({ locale: "fr", path: "/" });
+    expect(splitLocale("/fr/")).toEqual({ locale: "fr", path: "/" });
+    expect(splitLocale("/frites")).toEqual({ locale: "fr", path: "/frites" });
+  });
+});
+
+describe("localizePath", () => {
+  test("puts a route's path under /de for German", () => {
+    expect(localizePath("/agenda", "de-CH")).toBe("/de/agenda");
+    expect(localizePath("/", "de-CH")).toBe("/de");
+  });
+
+  test("leaves it as it is for French", () => {
+    expect(localizePath("/agenda", "fr")).toBe("/agenda");
+    expect(localizePath("/", "fr")).toBe("/");
+  });
+
+  test("undoes splitLocale", () => {
+    for (const url of ["/de/agenda", "/de", "/agenda", "/"]) {
+      const { locale, path } = splitLocale(url);
+      expect(localizePath(path, locale)).toBe(url);
+    }
+  });
+});
+
+describe("localeFromPath", () => {
+  test("an unprefixed path is French", () => {
+    expect(localeFromPath("/agenda")).toBe("fr");
+    expect(localeFromPath("/")).toBe("fr");
+    expect(localeFromPath("")).toBe("fr");
+  });
+
+  test("a /de-prefixed path is German", () => {
+    expect(localeFromPath("/de/agenda")).toBe("de-CH");
+    expect(localeFromPath("/de/events/12/attendance")).toBe("de-CH");
   });
 
   test("the bare /de root is German", () => {
-    expect(localeFromPath("/de")).toEqual({ locale: "de-CH", basename: "/de" });
-    expect(localeFromPath("/de/")).toEqual({ locale: "de-CH", basename: "/de" });
+    expect(localeFromPath("/de")).toBe("de-CH");
+    expect(localeFromPath("/de/")).toBe("de-CH");
   });
 
-  // A prefix match on "/de" would claim every one of these, mount the router
-  // at /de, and render nothing.
+  // A prefix match on "/de" would claim every one of these as German.
   test("matches /de as a whole segment, never as a string prefix", () => {
-    expect(localeFromPath("/design")).toEqual({ locale: "fr", basename: "/" });
-    expect(localeFromPath("/depot")).toEqual({ locale: "fr", basename: "/" });
-    expect(localeFromPath("/demo/x")).toEqual({ locale: "fr", basename: "/" });
-    expect(localeFromPath("/details")).toEqual({ locale: "fr", basename: "/" });
+    expect(localeFromPath("/design")).toBe("fr");
+    expect(localeFromPath("/depot")).toBe("fr");
+    expect(localeFromPath("/demo/x")).toBe("fr");
+    expect(localeFromPath("/details")).toBe("fr");
   });
 
   test("is case-sensitive: /DE is not the German prefix", () => {
-    expect(localeFromPath("/DE/agenda")).toEqual({ locale: "fr", basename: "/" });
+    expect(localeFromPath("/DE/agenda")).toBe("fr");
   });
 });
 
@@ -59,21 +106,15 @@ describe("pathInLocale", () => {
 describe("under a base path", () => {
   const base = "/website-les-canetons/pr-12";
 
-  test("the base root and anything under it are French, mounted at the base", () => {
-    expect(localeFromPath(`${base}/`, base)).toEqual({ locale: "fr", basename: base });
-    expect(localeFromPath(base, base)).toEqual({ locale: "fr", basename: base });
-    expect(localeFromPath(`${base}/agenda`, base)).toEqual({ locale: "fr", basename: base });
+  test("the base root and anything under it are French", () => {
+    expect(localeFromPath(`${base}/`, base)).toBe("fr");
+    expect(localeFromPath(base, base)).toBe("fr");
+    expect(localeFromPath(`${base}/agenda`, base)).toBe("fr");
   });
 
-  test("/de under the base is German, mounted at the base's /de", () => {
-    expect(localeFromPath(`${base}/de`, base)).toEqual({
-      locale: "de-CH",
-      basename: `${base}/de`,
-    });
-    expect(localeFromPath(`${base}/de/agenda`, base)).toEqual({
-      locale: "de-CH",
-      basename: `${base}/de`,
-    });
+  test("/de under the base is German", () => {
+    expect(localeFromPath(`${base}/de`, base)).toBe("de-CH");
+    expect(localeFromPath(`${base}/de/agenda`, base)).toBe("de-CH");
   });
 
   test("switching locale keeps the base", () => {

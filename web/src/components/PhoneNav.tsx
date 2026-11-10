@@ -1,11 +1,11 @@
 import { LogOut, Menu, User, X, type LucideIcon } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { type ReactNode } from "react";
-import { Link } from "react-router-dom";
 
 import { Confetti } from "../carnival/Confetti";
 import { useSite } from "../content/blocks/SiteBlock";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { publicUrl } from "../publicUrl";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { useLogout } from "../session/logout";

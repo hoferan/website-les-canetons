@@ -14,9 +14,10 @@ import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
 import { dateWithPreposition, historyDate, shownIn } from "../history/entry";
 import { TimelineMarker } from "../history/TimelineMarker";
 import { currentLocale, t } from "../i18n";
+import { useNavigate } from "../i18n/routing";
 import { Photo, PHOTO_SIZES } from "../images/Photo";
 import { historySlot, usePhotoSlots } from "../images/photoSlots";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { useSession } from "../session/SessionProvider";
 

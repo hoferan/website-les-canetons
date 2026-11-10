@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 
 import { historyEntryStore } from "../api/generated/endpoints";
 import type { HistoryEntryResource, StoreHistoryEntryRequest } from "../api/generated/model";
@@ -8,6 +7,7 @@ import { PageSection } from "../components/PageSection";
 import { HistoryForm, type PhotoChange } from "../history/HistoryForm";
 import { invalidateHistory, saveHistoryPhoto } from "../history/saveHistoryPhoto";
 import { t } from "../i18n";
+import { useNavigate } from "../i18n/routing";
 import { type HistorySavedState } from "./History";
 
 /**

@@ -1,6 +1,9 @@
+import { useLocation } from "react-router-dom";
+
 import { currentLocale, t } from "./index";
-import { htmlLang, pathInLocale, type Locale } from "./locale";
+import { htmlLang, splitLocale, type Locale } from "./locale";
 import { rememberLocale } from "./preference";
+import { Link } from "./routing";
 
 /**
  * What each language calls itself, and the code the header shows for it.
@@ -23,25 +26,6 @@ const CODE: Record<Locale, string> = {
 const ORDER: Locale[] = ["fr", "de-CH"];
 
 /**
- * Where the switcher points, as a string.
- *
- * A pure function, the same seam as `logoutDestination()`: `window.location`
- * is non-configurable in this jsdom setup, so the navigation is not testable.
- *
- * It reads the real browser path, never `useLocation()`, which has `/de`
- * stripped by the router's `basename`.
- *
- * Search and hash travel: switching language on `/events?past=1` should keep
- * showing past events.
- */
-export function switchDestination(
-  target: Locale,
-  at: { pathname: string; search: string; hash: string } = window.location,
-): string {
-  return `${pathInLocale(at.pathname, target)}${at.search}${at.hash}`;
-}
-
-/**
  * "FR DE" in the header, the current language marked.
  *
  * Outside the nav list, so it is visible on every screen size without opening
@@ -52,20 +36,23 @@ export function switchDestination(
  *
  * The current language is not a link; it would point at the page you are on.
  *
- * The other one is a real link, not a button. Changing locale is a full page
- * load (`basename` is fixed when the router mounts), and an anchor is
- * middle-clickable and visible to a crawler.
+ * The other one is a real link, not a button: an anchor is middle-clickable
+ * and visible to a crawler. A click is a navigation inside the app (#369): the
+ * page stays mounted and only its language changes, so what was typed stays.
+ * Search and hash travel, so `/events?past=1` keeps showing past events.
  *
- * `rememberLocale` runs in the click handler, before the navigation.
- * Switching to French from `/de` lands on `/`, where main.tsx's
- * `shouldRedirectToGerman()` would bounce a visitor whose stored preference
- * is still German straight back. localStorage writes synchronously, so the
- * handler finishes before the browser navigates (see preference.ts).
+ * `rememberLocale` runs in the click handler. A French visitor whose stored
+ * preference is still German would otherwise be sent back to `/de` by
+ * main.tsx's `shouldRedirectToGerman()` the next time they open `/`.
  *
  * Two locales, so a pair rather than a menu.
  */
 export function LanguageSwitch() {
   const current = currentLocale();
+  // `splitLocale` too, for a caller outside the route table, whose location
+  // still holds `/de`.
+  const { pathname, search, hash } = useLocation();
+  const page = { pathname: splitLocale(pathname).path, search, hash };
 
   return (
     <div role="group" aria-label={t("nav.language")} className="flex items-center text-sm">
@@ -85,9 +72,10 @@ export function LanguageSwitch() {
             <span className="sr-only">{ENDONYM[locale]}</span>
           </span>
         ) : (
-          <a
+          <Link
             key={locale}
-            href={switchDestination(locale)}
+            to={page}
+            locale={locale}
             // Both name the target: `hrefLang` tells a crawler what is on the
             // other end, and `lang` stops a screen reader using the page's
             // voice.
@@ -99,7 +87,7 @@ export function LanguageSwitch() {
             className="focus-ring-stage inline-flex min-h-touch min-w-touch items-center justify-center rounded text-white/70 hover:text-white"
           >
             <span className="px-2 py-1 leading-none font-semibold">{CODE[locale]}</span>
-          </a>
+          </Link>
         ),
       )}
     </div>

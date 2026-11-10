@@ -8,7 +8,6 @@ import {
   type FieldErrors,
   type UseFormReturn,
 } from "react-hook-form";
-import { Link } from "react-router-dom";
 
 import {
   AlertDialog,
@@ -27,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { FormError } from "../../components/FormField";
 import { RAISED_CARD } from "../../carnival/raised";
 import { t } from "../../i18n";
+import { Link } from "../../i18n/routing";
 import { cardSlot } from "../../images/photoSlots";
 import { SlotPhoto } from "../../images/SlotPhoto";
 import { useBlock } from "../BlocksProvider";
@@ -405,7 +405,7 @@ function CardView({
   if (target !== undefined && !editing) {
     const className = cn(look, "transition-transform hover:-translate-y-0.5");
     return isPublicPage(target) ? (
-      // The router's basename keeps a visitor in their language.
+      // Link keeps a visitor in their language (i18n/routing.tsx).
       <Card asChild data-edit-block={editBlock} className={className}>
         <Link to={target} className="focus-ring">
           {body}

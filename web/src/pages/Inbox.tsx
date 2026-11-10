@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { rowsOf } from "../api/collection";
@@ -15,6 +14,7 @@ import { PageSection } from "../components/PageSection";
 import { SuspectBadge } from "../components/SuspectFlag";
 import { Button } from "@/components/ui/button";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { formatDay, formatInstant } from "../lib/date";
 import { OUTLINED_CARD } from "../carnival/raised";
 

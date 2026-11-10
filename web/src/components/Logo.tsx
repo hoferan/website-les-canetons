@@ -1,9 +1,8 @@
-import { Link } from "react-router-dom";
-
 import { cn } from "@/lib/utils";
 
 import { useSite } from "../content/blocks/SiteBlock";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { publicUrl } from "../publicUrl";
 
 /**

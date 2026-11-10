@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { answerLine, nameOf } from "../events/chaseList";
 import { CorrectAnswerDialog } from "../events/CorrectAnswerDialog";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { registerName, t, translateApiError } from "../i18n";
+import { Link } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
 

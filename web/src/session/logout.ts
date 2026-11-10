@@ -57,8 +57,9 @@ export function useLogout(onDone: () => void): { logOut: () => void; isPending: 
  * redefine property: assign". Layout.test.tsx's `ends the session on the
  * server` proves the server half only, and a real browser checks the landing.
  *
- * This is the one place in web/src/ that escapes the router's basename, so a
- * literal "/" would drop a German member on the French home page.
+ * This is the one place in web/src/ that leaves the router, so it adds the
+ * German prefix itself: a literal "/" would drop a German member on the French
+ * home page.
  */
 export function logoutDestination(): string {
   return pathInLocale("/", currentLocale());
