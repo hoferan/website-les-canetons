@@ -126,9 +126,7 @@ test("a Rétablir l'original save is undone by writing the stored block back, in
   await renderHero();
   await waitFor(() => expect(heroTitle()).toBe("Viens jouer avec nous"));
 
-  await user.click(
-    screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête (modifié)" }),
-  );
+  await user.click(screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }));
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Rétablir l’original" }));
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
@@ -182,7 +180,7 @@ test("undoing the deletion of a card brings it back with its photo", async () =>
   await renderCards();
   const writes = recordWrites();
 
-  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires (modifié)" }));
+  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
   const confirm = await screen.findByRole("alertdialog");

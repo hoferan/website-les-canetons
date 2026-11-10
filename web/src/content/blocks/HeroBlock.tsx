@@ -2,10 +2,10 @@ import { useState, type ReactNode } from "react";
 
 import { PageHero } from "../../carnival/PageHero";
 import { t } from "../../i18n";
-import { useBlock, useBlockStored } from "../BlocksProvider";
+import { useBlock } from "../BlocksProvider";
 import { ActionsField, BlockEditor, EditChip, MarkPicker, TranslatedField } from "../editor";
 import { BLOCKS, type BlockKey } from "../registry";
-import { tr, trMark } from "../translated";
+import { lacksGerman, tr, trMark } from "../translated";
 import type { Action, heroBlock } from "../types";
 import { ActionLink, shownActions } from "./ActionLink";
 import { useBlockEditing } from "./useBlockEditing";
@@ -36,7 +36,6 @@ export function HeroBlock({
 }) {
   const hero = useBlock(blockKey);
   const editing = useBlockEditing();
-  const changed = useBlockStored(blockKey);
   const [open, setOpen] = useState(false);
   const intro = hero.intro ? tr(hero.intro) : "";
   const actions = shownActions(hero.actions);
@@ -53,7 +52,7 @@ export function HeroBlock({
           editing ? (
             <EditChip
               label={t(BLOCKS[blockKey].label)}
-              changed={changed}
+              missingGerman={lacksGerman(hero)}
               onClick={() => setOpen(true)}
             />
           ) : null

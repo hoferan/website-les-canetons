@@ -41,3 +41,26 @@ export function trMark(title: Translated, mark: Translated | undefined): string 
   }
   return mark?.fr ?? "";
 }
+
+/**
+ * Whether a block, a card or a single text shows French on the German page
+ * because a text has no German, or only a blank one (#359). A text with no
+ * French either shows nothing, so it does not count.
+ *
+ * A hero's `mark` is skipped: it is the highlight inside the title, not a
+ * text, and a German title with no German mark is "Aucun" on purpose.
+ */
+export function lacksGerman(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(lacksGerman);
+  if (value === null || typeof value !== "object") return false;
+  if (isTranslated(value)) return value.fr.trim() !== "" && (value.de ?? "").trim() === "";
+  return Object.entries(value).some(([key, inner]) => key !== "mark" && lacksGerman(inner));
+}
+
+function isTranslated(value: object): value is Translated {
+  const keys = Object.keys(value);
+  return (
+    typeof (value as { fr?: unknown }).fr === "string" &&
+    keys.every((key) => key === "fr" || key === "de")
+  );
+}

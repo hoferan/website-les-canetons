@@ -45,37 +45,43 @@ const CORNER = "absolute top-2 right-2 z-10";
  * of a row of chips: the row grows leftwards as the word shows, so the word
  * pushes the other chips aside instead of covering them.
  *
- * `changed` marks a block the band has changed, so the editor sees what
- * "Rétablir l'original" would undo without opening it (#359): an
- * {@link Indicator} dot over the chip's top right corner, and "(modifié)" after
- * both the name and the word, which is where the dot's meaning lives.
+ * `missingGerman` marks a block with a text that has no German, so the
+ * German page shows it in French (#359): an {@link Indicator} dot on the
+ * chip's top right corner, and "(sans allemand)" after both the name and the
+ * word, which is where the dot's meaning lives.
  *
  * The chip is always wrapped, shown or not, so a block's chips sit the same
- * whichever blocks are changed, and the corner placing goes on the wrapper.
+ * whether they wear the dot, and the corner placing goes on the wrapper.
  */
 export function EditChip({
   label,
   text,
   onClick,
   corner = true,
-  changed = false,
+  missingGerman = false,
   id,
 }: {
   label: string;
   text?: string;
   onClick: () => void;
   corner?: boolean;
-  changed?: boolean;
+  missingGerman?: boolean;
   /** For a screen that moves focus here itself. */
   id?: string;
 }) {
   const name = text ?? t("blockEditor.edit", { label });
   const word = text ?? t("common.edit");
-  const marked = (said: string) => (changed ? t("blockEditor.changed", { text: said }) : said);
+  const marked = (said: string) =>
+    missingGerman ? t("blockEditor.missingGerman", { text: said }) : said;
   return (
     // Cyan, picked from rendered variants: violet is the link colour and red
     // the danger one, so either read as something to act on.
-    <Indicator show={changed} color="cyan" className={cn(corner && CORNER)}>
+    <Indicator
+      show={missingGerman}
+      color="cyan"
+      offset={{ x: -4, y: 4 }}
+      className={cn(corner && CORNER)}
+    >
       <IconButton
         id={id}
         type="button"
@@ -85,7 +91,7 @@ export function EditChip({
         mode="grow"
         variant="accent"
         data-chip="button"
-        data-changed={changed || undefined}
+        data-missing-german={missingGerman || undefined}
         onClick={onClick}
       />
     </Indicator>

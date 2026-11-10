@@ -29,7 +29,7 @@ import { t } from "../../i18n";
 import { Link } from "../../i18n/routing";
 import { cardSlot } from "../../images/photoSlots";
 import { SlotPhoto } from "../../images/SlotPhoto";
-import { useBlock, useBlockStored } from "../BlocksProvider";
+import { useBlock } from "../BlocksProvider";
 import { PUBLIC_NAV, isPublicPage } from "../publicPages";
 import {
   BlockEditor,
@@ -44,11 +44,10 @@ import {
   TINT_BACKGROUNDS,
   TintPicker,
   TranslatedField,
-  sameData,
   useSaveBlock,
 } from "../editor";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
-import { tr } from "../translated";
+import { lacksGerman, tr } from "../translated";
 import { isActionTarget, type Card as CardData, type cardsBlock, type Icon } from "../types";
 import { RowView } from "./RowView";
 import { useBlockEditing } from "./useBlockEditing";
@@ -123,13 +122,6 @@ export function CardsBlock({
 }) {
   const { cards } = useBlock(blockKey);
   const editing = useBlockEditing();
-  // "Rétablir" in a card editor restores that one card, so the changed dot
-  // is per card: one the band added, or one unlike its shipped self. A stored
-  // block that only reorders the cards marks none (#359).
-  const shippedCards = useBlockStored(blockKey) ? BLOCKS[blockKey].defaults().cards : null;
-  const changed = (card: CardsData["cards"][number]) =>
-    shippedCards !== null &&
-    !shippedCards.some((shipped) => shipped.id === card.id && sameData(shipped, card));
   const [opened, setOpened] = useState<Opened | null>(null);
   // Remounts the card's fields after a reset, so every field reads it.
   const [resets, setResets] = useState(0);
@@ -275,7 +267,7 @@ export function CardsBlock({
                       id={chipId(card.id, "edit")}
                       label={title}
                       corner={false}
-                      changed={changed(card)}
+                      missingGerman={lacksGerman(card)}
                       onClick={() => setOpened({ id: card.id, adding: false })}
                     />
                   </div>

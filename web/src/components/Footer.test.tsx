@@ -255,10 +255,7 @@ test("an editor changes a footer button, removes the other, and restores both", 
     },
   });
 
-  // Saved, the block is the band's: its chip says so (#359).
-  await user.click(
-    await within(footer).findByRole("button", { name: "Modifier les infos du site (modifié)" }),
-  );
+  await user.click(within(footer).getByRole("button", { name: "Modifier les infos du site" }));
   dialog = await screen.findByRole("dialog", { name: "Infos du site" });
   await user.click(within(dialog).getByRole("button", { name: "Rétablir l’original" }));
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
@@ -266,10 +263,20 @@ test("an editor changes a footer button, removes the other, and restores both", 
   await waitFor(() =>
     expect(buttons().map((link) => link.textContent)).toEqual(["Nous rejoindre", "Contact"]),
   );
-  // Restored and saved, nothing is stored, and the dot goes.
+});
+
+test("the footer's chip says when a text of the site has no German", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  storeBlock("site", site({ pitch: { fr: "Une guggen d’enfants." } }));
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+
+  const footer = screen.getByRole("contentinfo");
   expect(
-    await within(footer).findByRole("button", { name: "Modifier les infos du site" }),
-  ).not.toHaveAttribute("data-changed");
+    await within(footer).findByRole("button", {
+      name: "Modifier les infos du site (sans allemand)",
+    }),
+  ).toHaveAttribute("data-missing-german");
 });
 
 test("each network is a link named after it, with the icon the band picked", async () => {

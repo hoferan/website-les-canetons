@@ -51,13 +51,10 @@ test("the booking number is stored from the contact card on /committee, and Term
   const number = page.getByRole("link", { name: "026 123 45 67" });
   await expect(number).toHaveAttribute("href", "tel:+41261234567");
   await expect(page.locator("[data-tbd='booking-number']")).toHaveCount(0);
-  // The card is the band's now, and its chip says so (#359). The chips still
-  // clear the card's text and each other with the dot showing.
+  // A phone number is no text, so the card still has all its German (#359).
   await expect(
-    page.getByRole("button", { name: "Modifier : Contact des Canetons (modifié)", exact: true }),
-  ).toHaveAttribute("data-changed", "true");
-  expect(await chipsOverText(page)).toEqual([]);
-  expect(await chipsOverChips(page)).toEqual([]);
+    page.getByRole("button", { name: "Modifier : Contact des Canetons", exact: true }),
+  ).not.toHaveAttribute("data-missing-german");
 
   // One element whose label changes, so it is the same button that ends it.
   await page.getByRole("button", { name: "Terminer la modification" }).click();

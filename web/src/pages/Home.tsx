@@ -15,13 +15,13 @@ import { SlotPhoto } from "../images/SlotPhoto";
 import { SlotPicture } from "../images/SlotPicture";
 import { PublicAgenda } from "../events/PublicAgenda";
 import { t } from "../i18n";
-import { useBlock, useBlockStored } from "../content/BlocksProvider";
+import { useBlock } from "../content/BlocksProvider";
 import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroActions, HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor";
 import { BLOCKS } from "../content/registry";
-import { tr, trMark } from "../content/translated";
+import { lacksGerman, tr, trMark } from "../content/translated";
 
 /**
  * The badge's frame: the sticker look and the sizes, for the badge and for a
@@ -63,7 +63,6 @@ export function Home() {
   useFooterEdge(agenda.isPending ? null : "var(--color-yellow)");
   const hero = useBlock("home.hero");
   const editing = useBlockEditing();
-  const heroChanged = useBlockStored("home.hero");
   const [editingHero, setEditingHero] = useState(false);
   const intro = hero.intro ? tr(hero.intro) : "";
   const discoverId = useId();
@@ -82,7 +81,7 @@ export function Home() {
         {editing ? (
           <EditChip
             label={t(BLOCKS["home.hero"].label)}
-            changed={heroChanged}
+            missingGerman={lacksGerman(hero)}
             onClick={() => setEditingHero(true)}
           />
         ) : null}

@@ -105,22 +105,28 @@ test("Aucun on the German row clears the German highlight and keeps the French o
   expect(highlight()?.textContent).toBe("Canetons");
 });
 
-test("the hero chip says whether the band has changed the block", async () => {
+test("the hero chip says when a text of the hero has no German", async () => {
   setMockUser("demo.direction");
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  // Shipped: every text has its German.
   const { unmount } = await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, {
     route: "/join",
   });
   expect(
     screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }),
-  ).not.toHaveAttribute("data-changed");
+  ).not.toHaveAttribute("data-missing-german");
   unmount();
 
-  storeBlock("join.hero", { title: { fr: "Rejoins-nous" } });
+  storeBlock("join.hero", {
+    title: { fr: "Rejoins-nous", de: "Mach mit" },
+    intro: { fr: "Viens !" },
+  });
   await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
   expect(
-    await screen.findByRole("button", { name: "Modifier : Nous rejoindre · en-tête (modifié)" }),
-  ).toHaveAttribute("data-changed");
+    await screen.findByRole("button", {
+      name: "Modifier : Nous rejoindre · en-tête (sans allemand)",
+    }),
+  ).toHaveAttribute("data-missing-german");
 });
 
 test("the hero chip edits title and intro together", async () => {
@@ -256,7 +262,7 @@ async function openEditor(user: ReturnType<typeof userEvent.setup>) {
   setMockUser("demo.direction");
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
-  // Stored or shipped: some callers store a hero first, which adds "(modifié)".
+  // Some callers store a hero with French alone, which adds "(sans allemand)".
   await user.click(screen.getByRole("button", { name: /^Modifier : Nous rejoindre · en-tête/ }));
   return screen.findByRole("dialog");
 }

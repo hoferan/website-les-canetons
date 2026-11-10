@@ -57,27 +57,34 @@ test("the text prop is both the visible text and the accessible name", () => {
   expect(chip).toHaveTextContent("Modifier les infos du site");
 });
 
-test("a changed block's chip wears the dot and says 'modifié'", () => {
+test("a block with a text missing its German wears the dot and says so", () => {
   const { rerender } = render(<EditChip label="Texte d'accueil" onClick={() => {}} />);
   const plain = screen.getByRole("button", { name: "Modifier : Texte d'accueil" });
-  expect(plain).not.toHaveAttribute("data-changed");
+  expect(plain).not.toHaveAttribute("data-missing-german");
   expect(plain.parentElement!.querySelector("[aria-hidden].bg-cyan")).toBeNull();
 
-  rerender(<EditChip label="Texte d'accueil" changed onClick={() => {}} />);
-  const chip = screen.getByRole("button", { name: "Modifier : Texte d'accueil (modifié)" });
-  expect(chip).toHaveAttribute("data-changed");
-  expect(chip).toHaveTextContent("Modifier (modifié)");
+  rerender(<EditChip label="Texte d'accueil" missingGerman onClick={() => {}} />);
+  const chip = screen.getByRole("button", {
+    name: "Modifier : Texte d'accueil (sans allemand)",
+  });
+  expect(chip).toHaveAttribute("data-missing-german");
+  expect(chip).toHaveTextContent("Modifier (sans allemand)");
   expect(chip.parentElement!.querySelector("[aria-hidden].bg-cyan")).not.toBeNull();
 });
 
-test("a changed chip with its own text adds 'modifié' to it", () => {
+test("a chip with its own text adds 'sans allemand' to it", () => {
   render(
-    <EditChip label="Infos du site" text="Modifier les infos du site" changed onClick={() => {}} />,
+    <EditChip
+      label="Infos du site"
+      text="Modifier les infos du site"
+      missingGerman
+      onClick={() => {}}
+    />,
   );
 
   expect(
-    screen.getByRole("button", { name: "Modifier les infos du site (modifié)" }),
-  ).toHaveAttribute("data-changed");
+    screen.getByRole("button", { name: "Modifier les infos du site (sans allemand)" }),
+  ).toHaveAttribute("data-missing-german");
 });
 
 test("a chip sits inside its block's top right corner and calls onClick", async () => {

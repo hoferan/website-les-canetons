@@ -335,7 +335,7 @@ test("such a hero, opened in the editor and saved, keeps the shipped buttons", a
   await renderWithSession(<Home />, { route: "/" });
 
   await user.click(
-    await screen.findByRole("button", { name: "Modifier : Accueil · en-tête (modifié)" }),
+    await screen.findByRole("button", { name: "Modifier : Accueil · en-tête (sans allemand)" }),
   );
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));

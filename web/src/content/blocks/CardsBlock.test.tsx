@@ -343,7 +343,7 @@ test("Rétablir in a card's editor restores that card alone", async () => {
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
   await user.click(
-    await screen.findByRole("button", { name: "Modifier : Horaires d’été (modifié)" }),
+    await screen.findByRole("button", { name: "Modifier : Horaires d’été (sans allemand)" }),
   );
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Rétablir l’original" }));
@@ -354,24 +354,26 @@ test("Rétablir in a card's editor restores that card alone", async () => {
   expect(puts[0]?.body).toEqual({ data: { cards: [older, instruments, schedule, ...rest] } });
 });
 
-test("only the cards the band changed or added wear the changed dot", async () => {
+test("each card's pencil says when a text of that card has no German", async () => {
   const [instruments, schedule, ...rest] = BLOCKS["join.facts"].defaults().cards;
   const summer = { ...schedule!, title: { fr: "Horaires d’été" } };
-  const added = { id: "added", tint: "lime", title: { fr: "Répétitions" }, rows: [] };
-  // Reordered too: a card in another place is not a changed card.
+  const added = { id: "added", tint: "lime", title: { fr: "Répétitions", de: "Proben" }, rows: [] };
   storeBlock("join.facts", { cards: [summer, instruments, ...rest, added] });
   editing();
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
-  const changed = () =>
-    [...document.querySelectorAll("[data-changed]")].map((chip) => chip.getAttribute("aria-label"));
+  const marked = () =>
+    [...document.querySelectorAll("[data-missing-german]")].map((chip) =>
+      chip.getAttribute("aria-label"),
+    );
+  // The shipped place card names "Werkhof" in French alone, as the catalogue does.
   await waitFor(() =>
-    expect(changed()).toEqual([
-      "Modifier : Horaires d’été (modifié)",
-      "Modifier : Répétitions (modifié)",
+    expect(marked()).toEqual([
+      "Modifier : Horaires d’été (sans allemand)",
+      "Modifier : Lieu (sans allemand)",
     ]),
   );
-  expect(screen.getByRole("button", { name: "Modifier : Instruments recherchés" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Modifier : Répétitions" })).toBeVisible();
 });
 
 test("a card without an icon shows its title alone, with no tile", async () => {
@@ -421,9 +423,7 @@ test("a card goes without an icon and gets one back, its colour kept", async () 
     ).toHaveAttribute("data-chip-scope"),
   );
 
-  await user.click(
-    screen.getByRole("button", { name: "Modifier : Contact des Canetons (modifié)" }),
-  );
+  await user.click(screen.getByRole("button", { name: "Modifier : Contact des Canetons" }));
   dialog = await screen.findByRole("dialog");
   expect(within(dialog).getByRole("switch", { name: "Icône" })).not.toBeChecked();
   await user.click(within(dialog).getByRole("switch", { name: "Icône" }));
@@ -448,7 +448,7 @@ test("Rétablir brings back a shipped card without an icon as none", async () =>
   });
 
   await user.click(
-    await screen.findByRole("button", { name: "Modifier : Le parrain et la marraine (modifié)" }),
+    await screen.findByRole("button", { name: "Modifier : Le parrain et la marraine" }),
   );
   const dialog = await screen.findByRole("dialog");
   expect(within(dialog).getByRole("radio", { name: "Étoile" })).toBeChecked();
@@ -476,7 +476,9 @@ test("a card the band added offers no Rétablir", async () => {
   editing();
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
-  await user.click(await screen.findByRole("button", { name: "Modifier : Répétitions (modifié)" }));
+  await user.click(
+    await screen.findByRole("button", { name: "Modifier : Répétitions (sans allemand)" }),
+  );
   const dialog = await screen.findByRole("dialog");
   expect(within(dialog).getByRole("textbox", { name: "Titre FR" })).toHaveValue("Répétitions");
   expect(within(dialog).queryByRole("button", { name: "Rétablir l’original" })).toBeNull();
@@ -512,7 +514,7 @@ test("deleting a card while another holds a refused number says which card", asy
   editing();
   await renderWithSession(<CardsBlock blockKey="committee.contact" />, { route: "/committee" });
 
-  await user.click(await screen.findByRole("button", { name: "Modifier : Lieu (modifié)" }));
+  await user.click(await screen.findByRole("button", { name: "Modifier : Lieu (sans allemand)" }));
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
   const confirm = await screen.findByRole("alertdialog");
@@ -616,7 +618,7 @@ test("deleting a card that carries a photo leaves the page rendering", async () 
     expect(document.querySelector("[data-photo-pending='join.facts.schedule']")).not.toBeNull(),
   );
 
-  await user.click(screen.getByRole("button", { name: "Modifier : Horaires (modifié)" }));
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
   dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
   const confirm = await screen.findByRole("alertdialog");
@@ -657,7 +659,7 @@ test("deleting a card whose photo is placed empties its slot once the list is sa
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
   const writes = recordWrites();
 
-  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires (modifié)" }));
+  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
   const confirm = await screen.findByRole("alertdialog");
@@ -681,7 +683,7 @@ test("switching a card's photo off empties its slot", async () => {
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
   const writes = recordWrites();
 
-  await user.click(screen.getByRole("button", { name: "Modifier : Horaires (modifié)" }));
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("switch", { name: "Photo" }));
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
@@ -715,7 +717,7 @@ test("an editor who cannot manage photos deletes the card and leaves the slot to
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
   const writes = recordWrites();
 
-  await user.click(screen.getByRole("button", { name: "Modifier : Horaires (modifié)" }));
+  await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
   const confirm = await screen.findByRole("alertdialog");
