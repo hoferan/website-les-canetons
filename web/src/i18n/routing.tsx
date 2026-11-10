@@ -65,6 +65,16 @@ export function Link({
   return <RouterLink {...props} to={inLocale(path, locale ?? currentLocale())} />;
 }
 
+/**
+ * This page, search and hash included, as a `Link` to it in another language
+ * takes it. `splitLocale` too, for a caller outside `LocaleFromUrl`, whose
+ * location still holds the language.
+ */
+export function useThisPage(): Path {
+  const { pathname, search, hash } = useLocation();
+  return { pathname: splitLocale(pathname).path, search, hash };
+}
+
 /** The router's `Navigate`, in the page's language. */
 export function Navigate({ to, relative, ...props }: NavigateProps) {
   const path = useResolvedPath(to, { relative });

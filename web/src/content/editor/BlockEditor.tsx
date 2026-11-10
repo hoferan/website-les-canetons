@@ -32,6 +32,7 @@ import { useBlockPreview, useSavedBlock } from "../BlocksProvider";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 import { useBlockChanged, useDiscardGuard } from "./DiscardGuard";
 import { useKeyboardRoom, usePageBeside } from "./pageBeside";
+import { PreviewLanguage } from "./PreviewLanguage";
 import { useSaveBlock } from "./useSaveBlock";
 
 type Props<K extends BlockKey> = {
@@ -96,7 +97,8 @@ function titled(place: string, title: string | undefined): { above: string; titl
  * accept shows on the page at once, in this browser only, and the rest of the
  * page fades. So the dialog is not modal and leaves the page in view; the page
  * is inert instead. Below xl, "Aperçu" lowers the sheet to a bar that keeps
- * Save, and "Modifier" raises it again.
+ * Save, and "Modifier" raises it again. FR | DE shows the page in either
+ * language, with the edit open (#368).
  *
  * "Rétablir l'original" only fills the fields with the shipped content; the
  * editor sees it before deciding to save, and saving it unchanged deletes
@@ -273,6 +275,7 @@ function EditorForm<K extends BlockKey>({
               {heading.title}
             </DialogTitle>
           </div>
+          <PreviewLanguage />
           <Button
             type="button"
             variant="secondary"

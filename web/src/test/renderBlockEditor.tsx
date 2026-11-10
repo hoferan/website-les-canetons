@@ -6,6 +6,7 @@ import type { UseFormReturn } from "react-hook-form";
 import { Toaster } from "../components/ui/sonner";
 import { BlockEditor } from "../content/editor";
 import type { BlockData, BlockKey } from "../content/registry";
+import type { Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "./renderWithSession";
@@ -50,6 +51,7 @@ export function storeBlock(key: BlockKey, data: unknown) {
 export async function renderBlockEditor<K extends BlockKey>(
   blockKey: K,
   fields: (form: UseFormReturn<BlockData<K>>) => ReactNode,
+  { locale = "fr" }: { locale?: Locale } = {},
 ) {
   setMockUser("demo.direction");
 
@@ -68,6 +70,6 @@ export async function renderBlockEditor<K extends BlockKey>(
     );
   }
 
-  await renderWithSession(<Harness />);
+  await renderWithSession(<Harness />, { locale });
   return screen.findByRole("dialog");
 }
