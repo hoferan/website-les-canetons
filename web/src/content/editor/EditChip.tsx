@@ -2,6 +2,7 @@ import { ArrowUpRight, Pencil, type LucideIcon } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
+import { Indicator } from "@/components/ui/indicator";
 import { cn } from "@/lib/utils";
 
 import { t } from "../../i18n";
@@ -45,10 +46,12 @@ const CORNER = "absolute top-2 right-2 z-10";
  * pushes the other chips aside instead of covering them.
  *
  * `changed` marks a block the band has changed, so the editor sees what
- * "Rétablir l'original" would undo without opening it (#359): a dot centred
- * on the chip's top right corner, and "(modifié)" after both the name and the
- * word. The dot is a pseudo-element, so the chip's box, which
- * edit-blocks.spec.ts's overlap sweep measures, keeps its size.
+ * "Rétablir l'original" would undo without opening it (#359): an
+ * {@link Indicator} dot over the chip's top right corner, and "(modifié)" after
+ * both the name and the word, which is where the dot's meaning lives.
+ *
+ * The chip is always wrapped, shown or not, so a block's chips sit the same
+ * whichever blocks are changed, and the corner placing goes on the wrapper.
  */
 export function EditChip({
   label,
@@ -70,32 +73,24 @@ export function EditChip({
   const word = text ?? t("common.edit");
   const marked = (said: string) => (changed ? t("blockEditor.changed", { text: said }) : said);
   return (
-    <IconButton
-      id={id}
-      type="button"
-      icon={Pencil}
-      label={marked(name)}
-      word={marked(word)}
-      mode="grow"
-      variant="accent"
-      data-chip="button"
-      data-changed={changed || undefined}
-      onClick={onClick}
-      className={cn(changed && DOT, corner && CORNER)}
-    />
+    // Cyan, picked from rendered variants: violet is the link colour and red
+    // the danger one, so either read as something to act on.
+    <Indicator show={changed} color="cyan" className={cn(corner && CORNER)}>
+      <IconButton
+        id={id}
+        type="button"
+        icon={Pencil}
+        label={marked(name)}
+        word={marked(word)}
+        mode="grow"
+        variant="accent"
+        data-chip="button"
+        data-changed={changed || undefined}
+        onClick={onClick}
+      />
+    </Indicator>
   );
 }
-
-/**
- * The changed dot, as the chip's `::after`: IconButton takes no children.
- * `relative` anchors it, and CORNER's `absolute`, merged after it, does too.
- *
- * Cyan with an ink ring, centred over the corner, picked from rendered
- * variants. Violet is the link colour and red the danger one, so either read
- * as something to act on. A dot inside the corner touched the pencil's tip.
- */
-const DOT =
-  "relative after:absolute after:-top-[5px] after:-right-[5px] after:size-3 after:rounded-full after:bg-cyan after:ring-2 after:ring-ink after:content-['']";
 
 /**
  * A chip that leads somewhere instead of opening an editor, in the same

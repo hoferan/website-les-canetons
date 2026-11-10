@@ -157,10 +157,12 @@ test("the footer's chip floats over the footer, out of its flow", async () => {
   const footer = screen.getByRole("contentinfo");
   const chip = within(footer).getByRole("button", { name: "Modifier les infos du site" });
   expect(chip).toHaveTextContent("Modifier les infos du site");
-  // Placed by a wrapper below the scallops, whose positioning parent is the footer.
-  expect(chip.parentElement).toHaveClass("absolute");
+  // Placed by a wrapper below the scallops, whose positioning parent is the
+  // footer. The chip sits in its Indicator first.
+  const placed = chip.closest("[data-indicator]")?.parentElement;
+  expect(placed).toHaveClass("absolute");
   expect(footer).toHaveClass("relative");
-  expect(chip.parentElement?.parentElement).toBe(footer);
+  expect(placed?.parentElement).toBe(footer);
 });
 
 /** The footer's buttons: its links that are neither a network nor the logo. */

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FormActions } from "@/components/ui/form-actions";
 import { IconButton } from "@/components/ui/icon-button";
+import { Indicator } from "@/components/ui/indicator";
 
 import { PageSection } from "../components/PageSection";
 import { EditChip } from "../content/editor/EditChip";
@@ -15,6 +16,9 @@ import { EditChip } from "../content/editor/EditChip";
 
 const VARIANTS = ["primary", "secondary", "danger", "quiet", "accent"] as const;
 const SIZES = ["default", "sm"] as const;
+const INDICATOR_COLORS = ["cyan", "pink", "lime", "yellow", "violet", "danger", "ink"] as const;
+const INDICATOR_SIZES = ["sm", "md", "lg"] as const;
+const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
 
 function Block({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
@@ -154,6 +158,82 @@ export function DevUi() {
         <div className="relative mt-2 min-h-24 rounded-xl border-3 border-dashed border-ink bg-white p-4 pt-14">
           Un bloc modifié.
           <EditChip label="Bloc modifié" changed onClick={() => undefined} />
+        </div>
+      </Block>
+
+      <Block
+        title="Indicator"
+        note="Un point ou un petit nombre posé sur un coin de n'importe quel élément. Le sens vit dans le nom de l'hôte : le point est masqué aux lecteurs d'écran."
+      >
+        <div className="grid gap-8">
+          <div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Couleurs, taille md, sur le coin, anneau encre
+            </p>
+            <div className="flex flex-wrap items-center gap-5">
+              {INDICATOR_COLORS.map((color) => (
+                <Indicator key={color} color={color}>
+                  <IconButton icon={Pencil} label={color} mode="grow" variant="accent" />
+                </Indicator>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Tailles sm, md, lg, puis anneau blanc et sans anneau
+            </p>
+            <div className="flex flex-wrap items-center gap-5">
+              {INDICATOR_SIZES.map((size) => (
+                <Indicator key={size} size={size}>
+                  <IconButton icon={Pencil} label={size} mode="grow" variant="accent" />
+                </Indicator>
+              ))}
+              <Indicator ring="white" color="danger">
+                <IconButton icon={Pencil} label="anneau blanc" mode="grow" variant="accent" />
+              </Indicator>
+              <Indicator ring="none" color="ink">
+                <IconButton icon={Pencil} label="sans anneau" mode="grow" variant="accent" />
+              </Indicator>
+            </div>
+          </div>
+          <div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Les quatre coins, sur le coin (over) puis à l'intérieur (inside)
+            </p>
+            <div className="flex flex-wrap items-center gap-6">
+              {(["over", "inside"] as const).flatMap((placement) =>
+                CORNERS.map((position) => (
+                  <Indicator key={placement + position} position={position} placement={placement}>
+                    <span className="flex h-14 w-20 items-center justify-center rounded-lg border-3 border-ink bg-white text-xs">
+                      {placement}
+                    </span>
+                  </Indicator>
+                )),
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Un nombre : 3, 12, 120 (plafonné à 99+), en sm, md et lg
+            </p>
+            <div className="flex flex-wrap items-center gap-6">
+              {INDICATOR_SIZES.flatMap((size) =>
+                [3, 12, 120].map((count) => (
+                  <Indicator
+                    key={size + count}
+                    count={count}
+                    size={size}
+                    color="danger"
+                    ring="white"
+                  >
+                    <Button variant="secondary" size="sm">
+                      Boîte
+                    </Button>
+                  </Indicator>
+                )),
+              )}
+            </div>
+          </div>
         </div>
       </Block>
 

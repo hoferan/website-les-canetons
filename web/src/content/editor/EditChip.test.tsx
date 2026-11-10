@@ -61,11 +61,13 @@ test("a changed block's chip wears the dot and says 'modifié'", () => {
   const { rerender } = render(<EditChip label="Texte d'accueil" onClick={() => {}} />);
   const plain = screen.getByRole("button", { name: "Modifier : Texte d'accueil" });
   expect(plain).not.toHaveAttribute("data-changed");
+  expect(plain.parentElement!.querySelector("[aria-hidden].bg-cyan")).toBeNull();
 
   rerender(<EditChip label="Texte d'accueil" changed onClick={() => {}} />);
   const chip = screen.getByRole("button", { name: "Modifier : Texte d'accueil (modifié)" });
   expect(chip).toHaveAttribute("data-changed");
   expect(chip).toHaveTextContent("Modifier (modifié)");
+  expect(chip.parentElement!.querySelector("[aria-hidden].bg-cyan")).not.toBeNull();
 });
 
 test("a changed chip with its own text adds 'modifié' to it", () => {
@@ -82,9 +84,10 @@ test("a chip sits inside its block's top right corner and calls onClick", async 
   const onClick = vi.fn();
   render(<EditChip label="Bloc" onClick={onClick} />);
 
+  // The Indicator wrapper is the box the block lays out, so it takes the corner.
   const chip = screen.getByRole("button");
-  expect(chip).toHaveClass("absolute", "top-2", "right-2");
-  expect(chip).not.toHaveClass("-top-3");
+  expect(chip.parentElement).toHaveClass("absolute", "top-2", "right-2");
+  expect(chip.parentElement).not.toHaveClass("-top-3");
   await userEvent.click(chip);
   expect(onClick).toHaveBeenCalledTimes(1);
 });

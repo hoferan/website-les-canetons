@@ -76,8 +76,11 @@ function chipsOverText(page: Page) {
     [...document.querySelectorAll("[data-chip]")].flatMap((chip) => {
       const c = chip.getBoundingClientRect();
       // A row of chips names its block with data-chip-scope; a lone chip sits
-      // directly in its block.
-      const scope = chip.closest("[data-chip-scope]") ?? chip.parentElement!;
+      // directly in its block, through the Indicator wrapper it may wear.
+      const own = chip.parentElement!;
+      const scope =
+        chip.closest("[data-chip-scope]") ??
+        (own.hasAttribute("data-indicator") ? own.parentElement! : own);
       const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
       const hits: string[] = [];
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
