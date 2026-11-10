@@ -42,10 +42,10 @@ test("the registry holds every block a page shows", () => {
   );
 });
 
-test("a catalogue text the same in both languages is stored without German", () => {
-  // A name or a place reads the same on both pages, so the editor opens on
-  // one field rather than two copies of it.
-  expect(fromCatalogue("join.locationPlace")).toEqual({ fr: "Werkhof" });
+test("a catalogue text keeps its German even when it reads the same as the French", () => {
+  // "Werkhof" is Werkhof in both languages, and has its German all the same,
+  // so a shipped text never wears the "sans allemand" dot.
+  expect(fromCatalogue("join.locationPlace")).toEqual({ fr: "Werkhof", de: "Werkhof" });
   expect(fromCatalogue("join.location")).toEqual({ fr: "Lieu", de: "Ort" });
 });
 

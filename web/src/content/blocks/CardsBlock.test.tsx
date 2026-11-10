@@ -366,13 +366,8 @@ test("each card's pencil says when a text of that card has no German", async () 
     [...document.querySelectorAll("[data-missing-german]")].map((chip) =>
       chip.getAttribute("aria-label"),
     );
-  // The shipped place card names "Werkhof" in French alone, as the catalogue does.
-  await waitFor(() =>
-    expect(marked()).toEqual([
-      "Modifier : Horaires d’été (sans allemand)",
-      "Modifier : Lieu (sans allemand)",
-    ]),
-  );
+  // The shipped cards all have their German, "Werkhof" included.
+  await waitFor(() => expect(marked()).toEqual(["Modifier : Horaires d’été (sans allemand)"]));
   expect(screen.getByRole("button", { name: "Modifier : Répétitions" })).toBeVisible();
 });
 

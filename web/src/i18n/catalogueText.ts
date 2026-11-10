@@ -21,13 +21,14 @@ export function catalogueValue(locale: Locale, key: string): string | undefined 
 
 /**
  * A text in both languages as the code ships it, the shape a content block
- * stores. German is left out when it reads the same as French (a name, a
- * place), so the editor opens on one field rather than two copies.
+ * stores. German is kept even when it reads the same as French ("Werkhof" is
+ * Werkhof in both): it is still the German wording, and a text without one
+ * wears the pencil's "sans allemand" dot (#359).
  */
 export function fromCatalogue(key: TranslationKey): { fr: string; de?: string } {
   const french = catalogueValue("fr", key) ?? "";
-  const german = catalogueValue("de-CH", key) ?? french;
-  return german === french ? { fr: french } : { fr: french, de: german };
+  const german = catalogueValue("de-CH", key);
+  return german === undefined ? { fr: french } : { fr: french, de: german };
 }
 
 /**
