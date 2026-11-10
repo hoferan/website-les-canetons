@@ -19,6 +19,11 @@ const SIZES = ["default", "sm"] as const;
 const INDICATOR_COLORS = ["cyan", "pink", "lime", "yellow", "violet", "danger", "ink"] as const;
 const INDICATOR_SIZES = ["sm", "md", "lg"] as const;
 const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
+const OFFSETS = [
+  { x: -4, y: 4 },
+  { x: -8, y: 8 },
+  { x: 4, y: -4 },
+];
 
 function Block({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
@@ -198,18 +203,24 @@ export function DevUi() {
           </div>
           <div>
             <p className="mb-3 text-sm text-muted-foreground">
-              Les quatre coins, sur le coin (over) puis à l'intérieur (inside)
+              Les quatre coins, toujours centré sur le coin ; puis un décalage (offset, en px : x
+              vers la droite, y vers le bas) depuis le coin en haut à droite
             </p>
             <div className="flex flex-wrap items-center gap-6">
-              {(["over", "inside"] as const).flatMap((placement) =>
-                CORNERS.map((position) => (
-                  <Indicator key={placement + position} position={position} placement={placement}>
-                    <span className="flex h-14 w-20 items-center justify-center rounded-lg border-3 border-ink bg-white text-xs">
-                      {placement}
-                    </span>
-                  </Indicator>
-                )),
-              )}
+              {CORNERS.map((position) => (
+                <Indicator key={position} position={position}>
+                  <span className="flex h-14 w-24 items-center justify-center rounded-lg border-3 border-ink bg-white text-xs">
+                    {position}
+                  </span>
+                </Indicator>
+              ))}
+              {OFFSETS.map((offset) => (
+                <Indicator key={`${offset.x},${offset.y}`} offset={offset}>
+                  <span className="flex h-14 w-24 items-center justify-center rounded-lg border-3 border-ink bg-white text-xs">
+                    x {offset.x}, y {offset.y}
+                  </span>
+                </Indicator>
+              ))}
             </div>
           </div>
           <div>

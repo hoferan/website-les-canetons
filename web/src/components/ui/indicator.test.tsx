@@ -29,15 +29,40 @@ test("adds a dot to its host, over the top right corner, cyan with an ink ring",
   );
 });
 
-test("colour, size, ring, position and placement are options", () => {
+test("colour, size, ring and corner are options, and the mark always overlaps its corner", () => {
   render(
-    <Indicator color="danger" size="lg" ring="white" position="bottom-left" placement="inside">
+    <Indicator color="danger" size="lg" ring="white" position="bottom-left">
       <span>Hôte</span>
     </Indicator>,
   );
 
-  expect(mark()).toHaveClass("bg-danger", "size-4", "ring-white", "bottom-1", "left-1");
-  expect(mark()).not.toHaveClass("translate-x-1/2", "-translate-x-1/2");
+  expect(mark()).toHaveClass(
+    "bg-danger",
+    "size-4",
+    "ring-white",
+    "bottom-0",
+    "left-0",
+    "-translate-x-1/2",
+    "translate-y-1/2",
+  );
+  expect(mark()).not.toHaveAttribute("style");
+});
+
+test("an offset moves the mark in screen directions, from whichever corner", () => {
+  const { rerender } = render(
+    <Indicator offset={{ x: 3, y: -2 }}>
+      <span>Hôte</span>
+    </Indicator>,
+  );
+  // Anchored top right: right moves it left, top moves it down.
+  expect(mark()).toHaveStyle({ marginRight: "-3px", marginTop: "-2px" });
+
+  rerender(
+    <Indicator position="bottom-left" offset={{ x: 3, y: -2 }}>
+      <span>Hôte</span>
+    </Indicator>,
+  );
+  expect(mark()).toHaveStyle({ marginLeft: "3px", marginBottom: "2px" });
 });
 
 test("a count shows the number, capped at max, and zero shows nothing", () => {

@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -21,10 +21,14 @@ const indicatorVariants = cva(
       // A dot is round; a count is a pill as wide as its figures.
       shape: { dot: "", count: "" },
       ring: { ink: "ring-2 ring-ink", white: "ring-2 ring-white", none: "" },
-      position: { "top-right": "", "top-left": "", "bottom-right": "", "bottom-left": "" },
-      // `over` centres the mark on the corner, half outside the host; `inside`
-      // keeps it within the host, 4px from both edges.
-      placement: { over: "", inside: "" },
+      // Always centred on the corner, half over the host's edge. `offset`
+      // nudges it from there.
+      position: {
+        "top-right": "top-0 right-0 translate-x-1/2 -translate-y-1/2",
+        "top-left": "top-0 left-0 -translate-x-1/2 -translate-y-1/2",
+        "bottom-right": "right-0 bottom-0 translate-x-1/2 translate-y-1/2",
+        "bottom-left": "bottom-0 left-0 -translate-x-1/2 translate-y-1/2",
+      },
     },
     compoundVariants: [
       { shape: "dot", size: "sm", class: "size-2" },
@@ -33,30 +37,6 @@ const indicatorVariants = cva(
       { shape: "count", size: "sm", class: "h-4 min-w-4 px-1 text-[10px]" },
       { shape: "count", size: "md", class: "h-5 min-w-5 px-1.5 text-xs" },
       { shape: "count", size: "lg", class: "h-6 min-w-6 px-2 text-sm" },
-      {
-        placement: "over",
-        position: "top-right",
-        class: "top-0 right-0 translate-x-1/2 -translate-y-1/2",
-      },
-      {
-        placement: "over",
-        position: "top-left",
-        class: "top-0 left-0 -translate-x-1/2 -translate-y-1/2",
-      },
-      {
-        placement: "over",
-        position: "bottom-right",
-        class: "right-0 bottom-0 translate-x-1/2 translate-y-1/2",
-      },
-      {
-        placement: "over",
-        position: "bottom-left",
-        class: "bottom-0 left-0 -translate-x-1/2 translate-y-1/2",
-      },
-      { placement: "inside", position: "top-right", class: "top-1 right-1" },
-      { placement: "inside", position: "top-left", class: "top-1 left-1" },
-      { placement: "inside", position: "bottom-right", class: "right-1 bottom-1" },
-      { placement: "inside", position: "bottom-left", class: "bottom-1 left-1" },
     ],
     defaultVariants: {
       color: "cyan",
@@ -64,7 +44,6 @@ const indicatorVariants = cva(
       shape: "dot",
       ring: "ink",
       position: "top-right",
-      placement: "over",
     },
   },
 );
@@ -78,16 +57,42 @@ type IndicatorProps = Omit<VariantProps<typeof indicatorVariants>, "shape"> & {
   count?: number;
   /** The highest count shown as is; above it reads "99+". */
   max?: number;
+  /**
+   * Pixels to move the mark from the corner: positive x to the right,
+   * positive y down, whichever corner it sits on.
+   */
+  offset?: { x?: number; y?: number };
   /** Places the wrapper, which takes the host's place in the layout. */
   className?: string;
 };
+
+type Corner = NonNullable<IndicatorProps["position"]>;
+
+/**
+ * The offset as margins on the sides the mark is anchored to. A margin moves
+ * an absolute box without touching the translate that centres it, and a
+ * margin on the right or bottom moves it the other way.
+ */
+function offsetStyle(corner: Corner, { x = 0, y = 0 }: { x?: number; y?: number }) {
+  const style: CSSProperties = {};
+  if (x !== 0) {
+    if (corner.endsWith("right")) style.marginRight = -x;
+    else style.marginLeft = x;
+  }
+  if (y !== 0) {
+    if (corner.startsWith("top")) style.marginTop = y;
+    else style.marginBottom = -y;
+  }
+  return Object.keys(style).length > 0 ? style : undefined;
+}
 
 /**
  * Puts a dot, or a small count, on a corner of any element: a status the
  * element wears, such as a block the band has changed (#359).
  *
  * It wraps the host in a `relative` inline-flex span marked `data-indicator`
- * and draws the mark over it. A host that was placed itself (an absolute
+ * and draws the mark centred on the chosen corner, half over the host's edge;
+ * `offset` nudges it from there. A host that was placed itself (an absolute
  * corner chip) hands its placing classes to `className`, since the wrapper is
  * now the box its parent lays out.
  *
@@ -103,8 +108,8 @@ export function Indicator({
   color,
   size,
   ring,
-  position,
-  placement,
+  position = "top-right",
+  offset,
 }: IndicatorProps) {
   const shown = show && count !== 0;
   const figure = count === undefined ? null : count > max ? `${max}+` : String(count);
@@ -119,9 +124,9 @@ export function Indicator({
             size,
             ring,
             position,
-            placement,
             shape: figure === null ? "dot" : "count",
           })}
+          style={offset ? offsetStyle(position ?? "top-right", offset) : undefined}
         >
           {figure}
         </span>
