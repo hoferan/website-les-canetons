@@ -1867,6 +1867,10 @@ export const fr = {
     german: "DE",
     addGerman: "+ Deutsch",
     removeGerman: "Retirer l’allemand",
+    // The editor's FR | DE, which shows the page, its preview, in either language.
+    previewLanguage: "Langue de l’aperçu",
+    previewInFrench: "Aperçu en français",
+    previewInGerman: "Aperçu en allemand",
     // Clears the words picked on the title for the highlight.
     markNone: "Aucun",
     up: "Monter",

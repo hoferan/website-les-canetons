@@ -7,8 +7,8 @@ import { expect, test, type Page } from "@playwright/test";
  *
  * Against the MOCKED backend, like every spec here. The mock keeps the blocks
  * in page memory, so the spec moves between pages by clicking rather than
- * with page.goto, which would reload it empty. The language switch reloads
- * too, so the German page is Committee.test.tsx's.
+ * with page.goto, which would reload it empty. The language switch does not
+ * reload (ADR 0041), so a German page can be reached the same way.
  */
 async function logIn(page: Page, username: string) {
   await page.goto("/login");
@@ -197,4 +197,32 @@ test("moving a card from the keyboard keeps focus on that card's arrow", async (
   await expect(
     page.getByRole("button", { name: "Modifier : Instruments recherchés" }),
   ).toBeFocused();
+});
+
+// The editor's FR | DE (#368): the page, its preview, in German, with the
+// edit still open, then saved from there.
+test("the editor shows the German page with the edit open, and saves from there", async ({
+  page,
+}) => {
+  await logIn(page, "demo.direction");
+  await page.locator('a[href="/join"]:visible').first().click();
+  await page.getByRole("button", { name: "Modifier la page" }).click();
+  await page.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }).click();
+
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("textbox", { name: "Titre FR" }).fill("Viens jouer avec nous");
+  await dialog.getByRole("link", { name: "Aperçu en allemand" }).click();
+
+  await expect(page).toHaveURL(/\/de\/join$/);
+  await expect(dialog.getByRole("textbox", { name: "Titel FR" })).toHaveValue(
+    "Viens jouer avec nous",
+  );
+  await dialog.getByRole("textbox", { name: "Titel DE" }).fill("Komm spiel mit uns");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Komm spiel mit uns");
+
+  await dialog.getByRole("button", { name: "Speichern" }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.getByRole("link", { name: "Passer en français" }).first().click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Viens jouer avec nous");
 });

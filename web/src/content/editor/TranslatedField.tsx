@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 
 import { FormField } from "../../components/FormField";
-import { t } from "../../i18n";
+import { currentLocale, t } from "../../i18n";
 import type { Translated } from "../translated";
 
 type Props<T extends FieldValues> = {
@@ -21,8 +21,9 @@ type Props<T extends FieldValues> = {
  * One text of a block, in French and, where it differs, in German.
  *
  * French is always there. German waits behind "+ Deutsch" until somebody has
- * a German wording to type, and is open from the start when the text has
- * one. A German field left blank, or taken away with "Retirer l'allemand",
+ * a German wording to type, and is open from the start when the text has one
+ * or the page is German. A German field left blank, or taken away with
+ * "Retirer l'allemand",
  * stores no `de` at all, so the German page shows the French: a name or a
  * number reads the same in both. A text the block's type may leave out is
  * dropped on save when it is blank in both languages (`useSaveBlock`).
@@ -42,8 +43,10 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
   const { field, fieldState } = useController({ control, name });
   const value = field.value as Translated | undefined;
   const id = useId();
-  const [revealed, setRevealed] = useState(false);
-  const open = revealed || value?.de !== undefined;
+  // Opened or closed by hand; until then, open where the text has German or
+  // the page is German (#368), where the editor is there to write it.
+  const [shown, setShown] = useState<boolean | null>(null);
+  const open = shown ?? (value?.de !== undefined || currentLocale() === "de-CH");
 
   const write = (fr: string, de: string | undefined) => {
     const german = de === undefined || de.trim() === "" ? undefined : de;
@@ -101,7 +104,7 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
             onChange={(de) => {
               // Kept open while emptied: the field stays where it is being
               // typed in, it only stores nothing.
-              setRevealed(true);
+              setShown(true);
               write(value?.fr ?? "", de);
             }}
             as={as}
@@ -119,7 +122,7 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
                 label={t("blockEditor.removeGerman")}
                 onClick={() => {
                   focusNext.current = "add";
-                  setRevealed(false);
+                  setShown(false);
                   write(value?.fr ?? "", undefined);
                 }}
               />
@@ -135,7 +138,7 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
           className="self-start font-bold text-violet"
           onClick={() => {
             focusNext.current = "german";
-            setRevealed(true);
+            setShown(true);
           }}
         >
           {t("blockEditor.addGerman")}

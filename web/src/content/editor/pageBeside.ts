@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 
+import { useLocale } from "../../i18n/routing";
 import { fadeAround } from "./fadeAround";
 
 /**
@@ -67,6 +68,10 @@ export function usePageBeside(
     };
   }, [open, target]);
 
+  // A change of language keeps the editor open but moves the block, since the
+  // other language's texts are longer or shorter: the block is placed again.
+  const locale = useLocale();
+
   useEffect(() => {
     if (!open) return;
     // From the next frame on: the page drops its edit chips once the editor
@@ -92,7 +97,7 @@ export function usePageBeside(
       window.scrollTo({ top: Math.max(0, y), behavior: "instant" });
     });
     return () => cancelAnimationFrame(frame);
-  }, [open, lowered, target, sheet]);
+  }, [open, lowered, target, sheet, locale]);
 }
 
 /** The block an editor changes, as the page renders it now. */

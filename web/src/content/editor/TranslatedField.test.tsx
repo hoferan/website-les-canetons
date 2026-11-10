@@ -45,6 +45,25 @@ test("+ Deutsch reveals the German field and saving keeps German blank when left
   expect(Object.keys(label ?? {})).toEqual(["fr"]);
 });
 
+// On the German page the editor is there to write German (#368).
+test("on the German page every German field is open, and Retirer l'allemand still closes one", async () => {
+  const user = userEvent.setup();
+  const dialog = await renderBlockEditor(
+    "join.facts",
+    () => <TranslatedField name={PLACE} label="Ort" />,
+    { locale: "de-CH" },
+  );
+
+  // The place name ships with no German, and its field is open all the same.
+  const german = within(dialog).getByRole("textbox", { name: "Ort DE" });
+  expect(german).toHaveValue("");
+
+  await user.click(within(dialog).getByRole("button", { name: "Deutsch entfernen" }));
+
+  expect(within(dialog).queryByRole("textbox", { name: "Ort DE" })).toBeNull();
+  expect(within(dialog).getByRole("button", { name: "+ Deutsch" })).toHaveFocus();
+});
+
 test("a German text already set shows its field, and Retirer l'allemand drops it", async () => {
   const user = userEvent.setup();
   const puts = recordBlockPuts();

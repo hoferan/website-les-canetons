@@ -1,9 +1,7 @@
-import { useLocation } from "react-router-dom";
-
 import { currentLocale, t } from "./index";
-import { htmlLang, splitLocale, type Locale } from "./locale";
+import { htmlLang, type Locale } from "./locale";
 import { rememberLocale } from "./preference";
-import { Link } from "./routing";
+import { Link, useThisPage } from "./routing";
 
 /**
  * What each language calls itself, and the code the header shows for it.
@@ -49,10 +47,7 @@ const ORDER: Locale[] = ["fr", "de-CH"];
  */
 export function LanguageSwitch() {
   const current = currentLocale();
-  // `splitLocale` too, for a caller outside the route table, whose location
-  // still holds `/de`.
-  const { pathname, search, hash } = useLocation();
-  const page = { pathname: splitLocale(pathname).path, search, hash };
+  const page = useThisPage();
 
   return (
     <div role="group" aria-label={t("nav.language")} className="flex items-center text-sm">
