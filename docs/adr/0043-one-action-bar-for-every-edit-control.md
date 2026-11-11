@@ -113,4 +113,5 @@ The ink diagonal carries all of the contrast. Cyan on the bar's yellow is 1.08:1
 ## More Information
 
 - ADR 0040 gives the buttons and the roll-up word that the bar's segments reuse. ADR 0042 gives the undo toast. ADR 0029 gives the look.
-- #360 (Dupliquer in the editor) is PR #374. The issues that build this decision are in R11.
+- #360 (Dupliquer in the editor) is PR #374, which puts Dupliquer and Supprimer in the editor's header menu.
+- #379 builds `ActionBar` and the move hook. Then #380 moves the cards onto it, #381 the history entries, #382 the editor's lines and #383 the single blocks' pencils.
