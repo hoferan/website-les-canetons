@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 
 import { Indicator } from "./indicator";
 
-const mark = () => document.querySelector("[data-indicator] > [aria-hidden]");
+const mark = () => document.querySelector("[data-indicator-mark]");
 
 test("adds a dot to its host, over the top right corner, cyan with an ink ring", () => {
   render(

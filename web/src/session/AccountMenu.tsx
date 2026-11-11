@@ -1,6 +1,7 @@
 import { type LucideIcon, LogOut, User } from "lucide-react";
 
 import { Avatar } from "../components/Avatar";
+import { Indicator } from "../components/ui/indicator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,20 +83,14 @@ function DesktopDropdown({
         aria-label={pending > 0 ? `${name}, ${t("nav.pending", { n: pending })}` : name}
         className="focus-ring-stage relative flex min-h-touch min-w-touch items-center justify-center rounded-full"
       >
-        <span
-          className={`rounded-full ${here ? "ring-2 ring-yellow ring-offset-2 ring-offset-stage" : ""}`}
-        >
-          <Avatar firstName={member.firstName} lastName={member.lastName} />
-        </span>
-        {pending > 0 ? (
+        {/* The count of what waits; the trigger's name says it in words. */}
+        <Indicator count={pending} color="pink" offset={{ x: -2, y: 4 }}>
           <span
-            data-testid="inbox-badge"
-            aria-hidden="true"
-            className="absolute -top-0.5 -right-1 inline-flex min-w-5 items-center justify-center rounded-full border-2 border-stage bg-pink px-1 text-xs leading-4 font-semibold text-ink"
+            className={`rounded-full ${here ? "ring-2 ring-yellow ring-offset-2 ring-offset-stage" : ""}`}
           >
-            {pending}
+            <Avatar firstName={member.firstName} lastName={member.lastName} />
           </span>
-        ) : null}
+        </Indicator>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" sideOffset={8} className="w-64">

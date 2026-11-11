@@ -68,7 +68,8 @@ test("a block with a text missing its German wears the dot and says so", () => {
     name: "Modifier : Texte d'accueil (sans allemand)",
   });
   expect(chip).toHaveAttribute("data-missing-german");
-  expect(chip).toHaveTextContent("Modifier (sans allemand)");
+  // The visible word stays short: a longer one pushed a card's arrows out.
+  expect(chip.textContent).toBe("Modifier");
   expect(chip.parentElement!.querySelector("[aria-hidden].bg-cyan")).not.toBeNull();
 });
 

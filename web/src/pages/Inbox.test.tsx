@@ -1,5 +1,5 @@
 import { HttpResponse, http } from "msw";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
@@ -154,7 +154,7 @@ test("shows no badge when the count is zero", async () => {
   expect(
     await screen.findByRole("button", { name: "Compte de demo.committee" }),
   ).toBeInTheDocument();
-  expect(screen.queryByTestId("inbox-badge")).not.toBeInTheDocument();
+  expect(document.querySelector("[data-indicator-mark]")).toBeNull();
 });
 
 /**
@@ -165,8 +165,10 @@ test("shows the badge's count when something is waiting", async () => {
   setMockUser("demo.committee");
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
-  const badge = await screen.findByTestId("inbox-badge");
-  expect(badge).toHaveTextContent("2");
+  const account = await screen.findByRole("button", { name: /^Compte de demo.committee/ });
+  await waitFor(() =>
+    expect(account.querySelector("[data-indicator-mark]")).toHaveTextContent("2"),
+  );
 });
 
 test("renders the inbox and its kind labels in German", async () => {

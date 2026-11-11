@@ -47,8 +47,9 @@ const CORNER = "absolute top-2 right-2 z-10";
  *
  * `missingGerman` marks a block with a text that has no German, so the
  * German page shows it in French (#359): an {@link Indicator} dot on the
- * chip's top right corner, and "(sans allemand)" after both the name and the
- * word, which is where the dot's meaning lives.
+ * chip's top right corner, and "(sans allemand)" after its accessible name,
+ * which is where the dot's meaning lives. The visible word stays "Modifier":
+ * a longer one pushed a card's arrows out over the next card.
  *
  * The chip is always wrapped, shown or not, so a block's chips sit the same
  * whether they wear the dot, and the corner placing goes on the wrapper.
@@ -87,7 +88,7 @@ export function EditChip({
         type="button"
         icon={Pencil}
         label={marked(name)}
-        word={marked(word)}
+        word={word}
         mode="grow"
         variant="accent"
         data-chip="button"

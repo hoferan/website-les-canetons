@@ -118,6 +118,7 @@ export function Indicator({
       {children}
       {shown ? (
         <span
+          data-indicator-mark=""
           aria-hidden="true"
           className={indicatorVariants({
             color,
