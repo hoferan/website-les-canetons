@@ -147,7 +147,7 @@ export function ToastCard({ level, message, action, onClose, frozenAt }: ToastCa
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocusInside(false);
       }}
-      className="grid min-h-18 w-full min-[601px]:w-(--width) grid-cols-[3.875rem_1fr_auto] items-center gap-3 overflow-hidden rounded-2xl border-3 border-ink bg-panel pr-2 font-sans text-base text-ink shadow-toast"
+      className="grid min-h-18 w-full animate-toast-in min-[601px]:w-(--width) grid-cols-[3.875rem_1fr_auto] items-center gap-3 overflow-hidden rounded-2xl border-3 border-ink bg-panel pr-2 font-sans text-base text-ink shadow-toast"
     >
       {/* The column: the level's colour, and the clock as how much of it is
           left. A toast that stays has no clock and a full column. */}
@@ -172,9 +172,11 @@ export function ToastCard({ level, message, action, onClose, frozenAt }: ToastCa
       <p className="py-3 font-bold">{message}</p>
       <div className="flex items-center gap-1">
         {action ? (
+          // Violet, the primary button: a white one vanished into the white
+          // toast. André picked it from four mocked colours on #378.
           <Button
             type="button"
-            variant="secondary"
+            variant="primary"
             size="sm"
             // A hook for tests that cannot query by role: a dialog open
             // beside the toast hides it from the accessibility tree.

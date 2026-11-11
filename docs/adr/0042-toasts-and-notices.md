@@ -47,7 +47,8 @@ The mock-ups are in [`0042/`](0042/): the [phone](0042/toasts-phone.png), the [d
 
 - Four levels: success (lime, a check), info (cyan, an "i"), warning (yellow, an "!") and error (the danger red, a cross). Colour is never the only signal: each level has its own icon.
 - A white body under the 3px ink frame and the 6px ink offset shadow of the raised buttons, plus a soft blurred shadow that nothing on the page has. To the left, a column in the level colour behind an ink rule holds the icon on a white disc with an ink outline, the same disc at every level.
-- The message is one sentence. At most one action, a framed button, and always a ✕ that closes the toast, labelled "Fermer" / "Schliessen".
+- The message is one sentence. At most one action, in the violet `primary` button of ADR 0040 so that it stands out from the white body, and always a ✕ that closes the toast, labelled "Fermer" / "Schliessen".
+- A toast slides in from the right edge with a small overshoot, and leaves to the right.
 - The column is the clock. A toast that goes on its own empties its column from the top into a light tint of the same colour, and a toast that stays keeps it full.
   - Success or info with no action goes after 5 seconds.
   - A toast with an action, such as the undo after a block save or a first attendance answer, goes after 10 seconds.
