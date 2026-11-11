@@ -1882,9 +1882,18 @@ export const fr = {
     addCard: "Ajouter une carte",
     // Beside the add button once a grid holds as many cards as the server takes.
     cardsFull: "{{max}} cartes au plus. Supprimez-en une pour en ajouter une autre.",
+    // The card editor's header menu (ADR 0043), named for what it holds.
+    cardActions: "Actions de la carte",
     // Copies the open card, rows and all, right after it, and opens the copy.
-    duplicateCard: "Dupliquer",
+    duplicateCard: "Dupliquer la carte",
+    // The heading of an unsaved copy, and the line under it.
+    copyOf: "Copie de « {{title}} »",
+    copyNote:
+      "Cette copie n’est pas encore enregistrée. « {{save}} » la crée, « {{cancel}} » la retire avec vos autres modifications.",
     removeCard: "Supprimer la carte",
+    // Added to the question when the form holds other changes, which the
+    // deletion's save stores too.
+    removeCardSavesChanges: "Vos autres modifications de ce bloc sont enregistrées en même temps.",
     removeCardTitle: "Supprimer cette carte ?",
     removeCardBody: "La carte et ses lignes disparaissent de la page.",
     removeCardConfirm: "Supprimer",

@@ -182,7 +182,8 @@ test("undoing the deletion of a card brings it back with its photo", async () =>
 
   await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
   const dialog = await screen.findByRole("dialog");
-  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  await user.click(within(dialog).getByRole("button", { name: "Actions de la carte" }));
+  await user.click(await screen.findByRole("menuitem", { name: "Supprimer la carte" }));
   const confirm = await screen.findByRole("alertdialog");
   await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
   await waitFor(() => expect(screen.queryByRole("heading", { name: "Horaires" })).toBeNull());
