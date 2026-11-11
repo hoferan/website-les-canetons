@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card actions, round 2</title>
+<!-- Round 2, after the review. ?c=stub|fold picks the concept, &lang=de the
+     German words, &touch=1 a touch screen in every frame, &only=<frame id>
+     one frame. Hover, Tab and the arrow keys, click and the ⋯ menu work. -->
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Karla:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --ground:#fff7ec; --ink:#14121c; --muted:#5a5768; --line:#e2e3ea; --violet:#4b2ed6; --danger:#e0201a;
+    --yellow:#ffd23f; --yellow-h:#f2bd1f; --cyan:#2ee6d6; --pink:#ff3d9a; --ease:cubic-bezier(.2,.8,.2,1); --t:.2s; }
+  @media (prefers-reduced-motion: reduce) { :root { --t:0s; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Karla",system-ui,sans-serif; color:var(--ink); background:#d9d6cf; }
+  svg { width:1.25rem; height:1.25rem; fill:none; stroke:currentColor; stroke-width:2.25; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  button { font:inherit; color:inherit; }
+  h1 { font-size:22px; margin:24px 28px 4px; }
+  .frames { display:flex; flex-direction:column; gap:22px; padding:12px 28px 40px; }
+  .cap { font-weight:800; font-size:15px; margin:0 0 6px; }
+  .cap small { font-weight:500; color:var(--muted); }
+  .band { position:relative; background:var(--yellow); padding:36px 24px 40px; border-radius:6px; }
+  .band.grid2 { background:var(--ground); }
+  .tiles { display:grid; gap:20px; list-style:none; margin:0; padding:0; }
+  .tile { position:relative; background:#fff; border:3px solid var(--ink); border-radius:20px; box-shadow:5px 5px 0 var(--ink);
+    padding:16px 16px 18px; min-height:220px; }
+  .tilt > li:nth-child(odd) .tile { transform:rotate(-1.2deg); }
+  .tilt > li:nth-child(even) .tile { transform:rotate(1deg); }
+  .tile .glyph { width:52px; height:52px; display:grid; place-items:center; border:3px solid var(--ink); border-radius:14px; margin-bottom:12px; }
+  .tile .glyph svg { width:28px; height:28px; }
+  .tile h3 { font-family:"Bungee"; font-weight:400; font-size:19px; text-transform:uppercase; margin:0 0 8px; line-height:1.15; }
+  .tile p { margin:0; color:var(--muted); line-height:1.45; }
+  .tile p a { color:var(--violet); }
+  .phoneframe { width:390px; height:760px; overflow:hidden; position:relative; border-radius:6px; }
+  .phoneframe .band { border-radius:0; padding:24px 16px; min-height:760px; }
+
+  /* A segment: shared by both concepts. The open one shows its word. */
+  .seg { position:relative; min-width:0; height:100%; display:flex; align-items:center; justify-content:center; gap:.4rem; padding:0 .55rem;
+    border:0; background:transparent; font-weight:800; font-size:.875rem; white-space:nowrap; cursor:pointer;
+    flex:0 0 var(--closed); transition:flex-basis var(--t) var(--ease), flex-grow var(--t) var(--ease), background .15s; }
+  .seg + .seg { border-left:3px solid var(--ink); }
+  .seg .w { display:none; }
+  .seg.open { flex:1 1 auto; }
+  .seg.open .w { display:inline; }
+  .seg:hover { background:var(--yellow-h); }
+  /* Focus: the segment inverts, so no ring has to escape the clipped strip. */
+  .seg:focus-visible { outline:none; background:var(--ink); color:var(--yellow); }
+  .seg.off { cursor:default; }
+  .seg.off svg, .seg.off .w { opacity:.3; }
+  .seg.off:hover { background:transparent; }
+  /* A text without German: the corner flag of ADR 0043, its ink diagonal carrying the contrast. */
+  .seg.danger-dot::before { content:""; position:absolute; top:0; left:0; width:14px; height:14px; background:linear-gradient(135deg, var(--cyan) 0 calc(50% - 1.5px), var(--ink) calc(50% - 1.5px) calc(50% + 1.5px), transparent calc(50% + 1.5px)); }
+  .seg.danger-dot:not(.open) { --f:12px; }
+  .seg.danger-dot:not(.open)::before { width:12px; height:12px; }
+  .seg.open { justify-content:flex-start; padding-left:1rem; }
+  /* Never shrinks, so a word that does not fit overflows and the check sees it. */
+  .all .seg { flex:1 0 auto; }
+  .all .seg .w { display:inline; }
+  .all .seg.icon-only { flex:0 0 2.75rem; }
+
+  /* 1 · Stub: the strip is the card's top edge, a ticket's stub with a perforation. */
+  .stub .tile { padding-top:calc(2.875rem + 18px); }
+  .strip { position:absolute; left:0; right:0; top:0; height:2.875rem; display:flex; background:var(--yellow);
+    border-radius:17px 17px 0 0; overflow:hidden; border-bottom:3px dashed var(--ink); }
+
+  /* 2 · Fold: the same group as a chip in the corner, the dot outside the clip. */
+  .fold .tile { padding-top:calc(2.75rem + 22px); }
+  .foldwrap { position:absolute; top:8px; right:8px; }
+  .fold-group { display:flex; height:2.75rem; border:3px solid var(--ink); border-radius:12px; box-shadow:3px 3px 0 var(--ink); background:var(--yellow); overflow:hidden; }
+  .foldwrap .dot { position:absolute; top:-6px; right:-6px; width:12px; height:12px; border-radius:99px; background:var(--cyan); border:2px solid var(--ink); }
+
+  /* The card that just moved shows where it went. */
+  .tile.moved { animation:moved .6s var(--ease); }
+  @keyframes moved { 0% { box-shadow:5px 5px 0 var(--ink), 0 0 0 6px var(--violet); } 100% { box-shadow:5px 5px 0 var(--ink), 0 0 0 0 transparent; } }
+  @media (prefers-reduced-motion: reduce) { .tile.moved { animation:none; outline:4px solid var(--violet); } }
+
+  .menu { position:absolute; z-index:12; background:#fff; border:3px solid var(--ink); border-radius:14px; box-shadow:5px 5px 0 var(--ink); padding:6px; min-width:220px; }
+  .menu button { display:flex; width:100%; align-items:center; gap:10px; height:44px; padding:0 12px; border-radius:10px; font-weight:700; border:0; background:none; cursor:pointer; text-align:left; }
+  .menu button:hover, .menu button:focus-visible { background:#f3f1fb; outline:none; }
+  .menu .danger { color:var(--danger); }
+  .menu hr { border:0; height:1px; background:var(--line); margin:6px -6px; }
+  .live { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  .toast { position:fixed; right:16px; bottom:16px; background:#fff; border:3px solid var(--ink); border-radius:16px; box-shadow:6px 6px 0 var(--ink); padding:12px 16px; font-weight:700; display:none; }
+  .toast { align-items:center; gap:12px; }
+  .toast .undo { height:36px; padding:0 14px; border:3px solid var(--ink); border-radius:12px; background:#fff; font-weight:800; box-shadow:3px 3px 0 var(--ink); cursor:pointer; }
+  .seg[data-blocked] { cursor:default; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="live" class="live" aria-live="polite"></div>
+<div id="toast" class="toast"></div>
+<script>
+const P = {
+  left:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>', right:'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  up:'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>', down:'<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+  pencil:'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+  more:'<circle cx="12" cy="12" r="1.2"/><circle cx="5" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+  copy:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  drum:'<path d="m2 2 8 8"/><path d="m22 2-8 8"/><ellipse cx="12" cy="9" rx="10" ry="5"/><path d="M7 13.4v7.9"/><path d="M12 14v8"/><path d="M17 13.4v7.9"/><path d="M2 9v8a10 5 0 0 0 20 0V9"/>',
+  star:'<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+};
+const i = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${P[k]}</svg>`;
+const q = new URLSearchParams(location.search);
+// Only the two known values: the concept goes into the page's HTML.
+const concept = q.get("c") === "fold" ? "fold" : "stub";
+const lang = q.get("lang") === "de" ? "de" : "fr";
+const allTouch = q.get("touch") === "1";
+const only = q.get("only");
+document.documentElement.lang = lang;
+
+const T = {
+  fr: { before: "Avant", after: "Après", edit: "Modifier", more: "Plus d’actions", dup: "Dupliquer la carte", del: "Supprimer la carte",
+    beforeL: (t) => `Déplacer « ${t} » avant`, afterL: (t) => `Déplacer « ${t} » après`, editL: (t) => `Modifier : ${t}`, moreL: (t) => `Plus d’actions : ${t}`,
+    moved: (t, n, of) => `${t} : position ${n} sur ${of}`, dupd: "Carte dupliquée", undo: "Annuler" },
+  de: { before: "Nach vorn", after: "Nach hinten", edit: "Bearbeiten", more: "Weitere Aktionen", dup: "Karte duplizieren", del: "Karte löschen",
+    beforeL: (t) => `„${t}“ nach vorn verschieben`, afterL: (t) => `„${t}“ nach hinten verschieben`, editL: (t) => `Bearbeiten: ${t}`, moreL: (t) => `Weitere Aktionen: ${t}`,
+    moved: (t, n, of) => `${t}: Position ${n} von ${of}`, dupd: "Karte dupliziert", undo: "Rückgängig" },
+}[lang];
+const TILES = {
+  fr: [["Nous rejoindre", "music", "#ff3d9a", "Les instruments recherchés, les horaires et les critères d’âge."],
+    ["Les canetons", "drum", "#2ee6d6", "Les musiciens du groupe, registre par registre."],
+    ["Notre histoire", "star", "#b6f23a", "Comment la guggen est née en 2002, et qui l’a dirigée depuis."],
+    ["Le comité", "chat", "#b9a8ff", 'Nous écrire depuis la <a href="#">page de contact</a>, et le comité.']],
+  de: [["Mitmachen", "music", "#ff3d9a", "Gesuchte Instrumente, Probezeiten und Altersgrenzen."],
+    ["Die Canetons", "drum", "#2ee6d6", "Die Musikerinnen und Musiker, Register für Register."],
+    ["Geschichte", "star", "#b6f23a", "Wie die Gugge 2002 entstanden ist, und wer sie seither geleitet hat."],
+    ["Der Vorstand", "chat", "#b9a8ff", 'Schreiben Sie uns über die <a href="#">Kontaktseite</a>.']],
+}[lang];
+const FRAMES = [
+  { id: "b1024", name: "Home band at 1024px", note: "237px tiles, the narrowest", tile: 237, cols: 4, tilt: true },
+  { id: "b1280", name: "Home band at 1280px", note: "270px tiles", tile: 270, cols: 4, tilt: true },
+  { id: "g640", name: "Two columns at 640px", note: "299px tiles", tile: 299, cols: 2, cls: "grid2" },
+  { id: "p390", name: "Phone at 390px", note: "touch, one column: the arrows point up and down", tile: 358, cols: 1, phone: true },
+  { id: "t1024", name: "Touch tablet at 1024px", note: "no hover: ✎ stays open, a tap acts at once", tile: 237, cols: 4, tilt: true, touch: true },
+];
+
+// Every strip has the same four slots, so a button sits at the same place on
+// every card; an end card's missing arrow keeps its slot, dimmed.
+function segs(index, count, stacked) {
+  return [["before", stacked ? "up" : "left", index === 0], ["after", stacked ? "down" : "right", index === count - 1], ["more", "more"], ["edit", "pencil"]];
+}
+function renderTile(tile, index, count, f) {
+  const [title, g, c, p] = tile;
+  const stacked = f.cols === 1;
+  const lacksGerman = index === 2; // one tile shows the "no German" dot
+  // The place in the name tells a copy from its original.
+  const place = `${title}, ${lang === "de" ? `Karte ${index + 1} von ${count}` : `carte ${index + 1} sur ${count}`}`;
+  const buttons = segs(index, count, stacked).map(([k, icon, off]) => {
+    const label = { before: T.beforeL, after: T.afterL, edit: T.editL, more: T.moreL }[k](place);
+    const word = k === "more" ? "" : T[k];
+    const extra = (k === "more" ? ' aria-haspopup="menu" aria-expanded="false"' : "") + (off ? ' aria-disabled="true"' : "");
+    const dot = concept === "stub" && k === "edit" && lacksGerman ? " danger-dot" : "";
+    return `<button class="seg${k === "more" ? " icon-only" : ""}${dot}${off ? " off" : ""}" data-k="${k}" aria-label="${label}"${extra} tabindex="-1">${i(icon)}<span class="w">${word}</span></button>`;
+  }).join("");
+  const controls = concept === "stub"
+    ? `<div class="strip" role="toolbar" aria-label="${title}">${buttons}</div>`
+    : `<div class="foldwrap"><div class="fold-group" role="toolbar" aria-label="${title}">${buttons}</div>${lacksGerman ? '<span class="dot" aria-hidden="true"></span>' : ""}</div>`;
+  return `<li><div class="tile" data-title="${title}">${controls}<span class="glyph" style="background:${c}">${i(g)}</span><h3>${title}</h3><p>${p}</p></div></li>`;
+}
+function renderFrame(f) {
+  const touch = allTouch || f.phone || f.touch;
+  const width = f.tile * f.cols + 20 * (f.cols - 1) + 48;
+  const tiles = f.phone ? TILES.slice(0, 3) : f.cols === 2 ? TILES : TILES;
+  const band = `<div class="band ${f.cls || ""} ${concept}" data-touch="${touch ? 1 : 0}" data-stacked="${f.cols === 1 ? 1 : 0}" style="width:${f.phone ? 390 : width}px">
+    <ul class="tiles ${f.tilt ? "tilt" : ""}" style="grid-template-columns:repeat(${f.cols}, ${f.phone ? "1fr" : f.tile + "px"})">${tiles.map((t, n) => renderTile(t, n, tiles.length, f)).join("")}</ul></div>`;
+  return `<section data-id="${f.id}"><p class="cap">${f.name} <small>· ${f.note}</small></p>${f.phone ? `<div class="phoneframe">${band}</div>` : band}</section>`;
+}
+const TITLE = { stub: "Ticket stub: the card’s top edge is its toolbar", fold: "Folding group, with the review’s fixes" };
+document.getElementById("root").innerHTML = (only ? "" : `<h1>${TITLE[concept]} · ${lang.toUpperCase()}</h1>`) +
+  `<div class="frames">${FRAMES.filter((f) => !only || f.id === only).map(renderFrame).join("")}</div>`;
+
+const say = (text) => { const live = document.getElementById("live"); live.textContent = ""; setTimeout(() => (live.textContent = text), 30); };
+
+/* One decision per band: every strip labels every word only when the worst
+   case, a card with all four slots, fits. Otherwise every strip keeps ✎ open
+   and the hovered or focused segment takes the room. */
+function setupBand(band) {
+  const touch = band.dataset.touch === "1";
+  const groups = [...band.querySelectorAll(".strip, .fold-group")];
+  groups.forEach((g) => g.classList.add("all"));
+  const fitsAll = concept === "stub" && groups.every((g) => g.scrollWidth <= g.clientWidth + 1);
+  groups.forEach((g) => { g.classList.toggle("all", fitsAll); setup(g, touch); });
+}
+
+function setup(group, touch) {
+  const fine = !touch && matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const segsEl = [...group.querySelectorAll(".seg")];
+  const edit = group.querySelector('[data-k="edit"]');
+  const tileEl = group.closest(".tile");
+  const allMode = group.classList.contains("all");
+  // A pointer only hovers a closed tab, so it can be slimmer than a tapped one.
+  const closed = concept === "stub" ? (touch ? "2.5rem" : "2rem") : "1.75rem";
+  group.style.setProperty("--closed", closed);
+  if (concept === "fold") {
+    const longest = Math.max(...segsEl.filter((s) => s.dataset.k !== "more").map((s) => { s.classList.add("open"); const w = s.scrollWidth; s.classList.remove("open"); return w; }));
+    group.style.width = touch ? `calc(${segsEl.length} * 2.75rem + ${(segsEl.length - 1) * 3 + 6}px)` : `calc(${segsEl.length - 1} * ${closed} + ${longest + 6 + (segsEl.length - 1) * 3}px)`;
+    if (touch) segsEl.forEach((s) => (s.style.flex = "1 1 0"));
+  }
+  const open = (seg) => { if (allMode) return; segsEl.forEach((s) => s.classList.toggle("open", s === seg)); };
+  const keyboardFocus = () => group.querySelector(".seg:focus-visible");
+  const rest = () => { if (!allMode) open(keyboardFocus() || edit); };
+  rest();
+  edit.tabIndex = 0;
+  segsEl.forEach((seg, n) => {
+    // A dimmed end arrow never opens under the pointer: it has nothing to offer.
+    if (fine) seg.onpointerenter = () => { if (!keyboardFocus() && !seg.classList.contains("off")) open(seg); };
+    seg.onpointerleave = () => seg.removeAttribute("data-blocked");
+    seg.onfocus = () => { if (seg.matches(":focus-visible")) open(seg); };
+    seg.onblur = () => setTimeout(rest, 0);
+    seg.onkeydown = (e) => {
+      const to = { ArrowRight: segsEl[n + 1], ArrowLeft: segsEl[n - 1], Home: segsEl[0], End: segsEl.at(-1) }[e.key];
+      if (!to) return;
+      e.preventDefault(); segsEl.forEach((s) => (s.tabIndex = -1)); to.tabIndex = 0; to.focus();
+    };
+    seg.onclick = (e) => activate(seg, tileEl, e);
+  });
+  if (fine) group.onpointerleave = rest;
+}
+
+let lastTap = { at: 0, x: 0, y: 0 };
+function activate(seg, tileEl, e) {
+  const k = seg.dataset.k;
+  if (seg.classList.contains("off")) return;
+  if (k === "edit") return say("L’éditeur de la carte s’ouvre");
+  if (k === "more") return openMenu(seg, tileEl);
+  // After a move, the neighbour's arrow sits under the pointer. It wakes up
+  // once the pointer has left it, so a second click never swaps the cards back.
+  if (seg.hasAttribute("data-blocked")) return;
+  const touched = e.pointerType === "touch" || tileEl.closest(".band").dataset.touch === "1";
+  if (touched && Date.now() - lastTap.at < 1000 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) return;
+  move(tileEl, k, e);
+}
+
+function move(tileEl, k, e) {
+  const li = tileEl.closest("li"), ul = li.parentElement;
+  const sibling = k === "before" ? li.previousElementSibling : li.nextElementSibling;
+  if (!sibling) return;
+  const keyboard = e.detail === 0;
+  const items = [...ul.children], before = items.map((el) => el.getBoundingClientRect());
+  if (k === "before") ul.insertBefore(li, sibling); else ul.insertBefore(sibling, li);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  items.forEach((el, n) => {
+    const after = el.getBoundingClientRect();
+    const dx = before[n].left - after.left, dy = before[n].top - after.top;
+    if (!reduced && (dx || dy)) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" });
+  });
+  rebuild(ul);
+  const moved = [...ul.querySelectorAll(".tile")].find((t) => t.dataset.title === tileEl.dataset.title);
+  pulse(moved);
+  lastTap = { at: Date.now(), x: e.clientX, y: e.clientY };
+  if (!keyboard) {
+    const under = document.elementFromPoint(e.clientX, e.clientY)?.closest(".seg");
+    if (under && under.closest(".tile") !== moved) under.setAttribute("data-blocked", "");
+  }
+  const n = [...ul.children].indexOf(moved.closest("li")) + 1;
+  say(T.moved(moved.dataset.title, n, ul.children.length));
+  // Focus stays on the same arrow of the moved card, or its pencil at an end.
+  // It shows as keyboard focus only when the move came from the keyboard.
+  const target = moved.querySelector(`[data-k="${k}"]:not(.off)`) || moved.querySelector('[data-k="edit"]');
+  target.closest(".strip, .fold-group").querySelectorAll(".seg").forEach((s) => (s.tabIndex = -1));
+  target.tabIndex = 0;
+  target.focus({ focusVisible: keyboard });
+}
+function pulse(tile) {
+  tile.classList.remove("moved"); void tile.offsetWidth; tile.classList.add("moved");
+  setTimeout(() => tile.classList.remove("moved"), 900);
+}
+// The arrows a card offers depend on its place, so a change redraws the list.
+function rebuild(ul) {
+  const band = ul.closest(".band"), f = FRAMES.find((x) => band.closest(`[data-id="${x.id}"]`));
+  const titles = [...ul.querySelectorAll(".tile")].map((t) => t.dataset.title);
+  ul.innerHTML = titles.map((t, n) => renderTile(TILES.find((x) => x[0] === t) || [t, "star", "#ffd23f", ""], n, titles.length, f)).join("");
+  setupBand(band);
+}
+
+function closeMenus() { document.querySelectorAll(".menu").forEach((m) => { m.opener?.setAttribute("aria-expanded", "false"); m.remove(); }); }
+function openMenu(anchor, tileEl) {
+  closeMenus();
+  const band = anchor.closest(".band");
+  const r = anchor.getBoundingClientRect(), b = band.getBoundingClientRect();
+  const m = document.createElement("div");
+  m.className = "menu"; m.setAttribute("role", "menu"); m.opener = anchor;
+  m.innerHTML = `<button role="menuitem" tabindex="-1" data-a="dup">${i("copy")}${T.dup}</button><hr><button role="menuitem" tabindex="-1" data-a="del" class="danger">${i("trash")}${T.del}</button>`;
+  band.appendChild(m);
+  anchor.setAttribute("aria-expanded", "true");
+  m.style.left = Math.max(8, Math.min(r.right - b.left - 220, b.width - 230)) + "px";
+  m.style.top = r.bottom - b.top + 8 + "px";
+  const items = [...m.querySelectorAll("button")];
+  items[0].focus();
+  m.onkeydown = (e) => {
+    const n = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); items[(n + 1) % items.length].focus(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); items[(n - 1 + items.length) % items.length].focus(); }
+    if (e.key === "Escape") { e.preventDefault(); closeMenus(); anchor.focus(); }
+    // Tab leaves the menu and goes on from its button, as a menu should.
+    if (e.key === "Tab") { anchor.focus(); closeMenus(); }
+  };
+  m.onclick = (e) => {
+    const a = e.target.closest("button")?.dataset.a; if (!a) return;
+    closeMenus();
+    if (a === "dup") {
+      const li = tileEl.closest("li"), ul = li.parentElement;
+      const at = [...ul.children].indexOf(li);
+      const copy = li.cloneNode(true);
+      copy.querySelector(".tile").dataset.title += " ²"; copy.querySelector("h3").textContent += " ²";
+      TILES.push([copy.querySelector(".tile").dataset.title, "star", "#ffd23f", tileEl.querySelector("p").innerHTML]);
+      li.after(copy); rebuild(ul);
+      const made = ul.children[at + 1].querySelector(".tile");
+      pulse(made);
+      made.querySelector('[data-k="edit"]').focus();
+      toast(T.dupd);
+    } else { say("Supprimer cette carte ? (confirmation)"); anchor.focus(); }
+  };
+}
+document.addEventListener("click", (e) => { if (!e.target.closest(".menu, [data-k='more']")) closeMenus(); });
+
+// The undo toast of ADR 0042: a real button, ten seconds, paused while hovered or focused.
+function toast(text) {
+  const el = document.getElementById("toast");
+  el.innerHTML = `<span>${text}</span> <button type="button" class="undo">${T.undo}</button>`;
+  el.style.display = "flex";
+  let left = 10000, last = Date.now();
+  clearInterval(toast.timer);
+  toast.timer = setInterval(() => {
+    const now = Date.now();
+    if (!el.matches(":hover") && !el.contains(document.activeElement)) left -= now - last;
+    last = now;
+    if (left <= 0) { clearInterval(toast.timer); el.style.display = "none"; }
+  }, 100);
+  el.querySelector(".undo").onclick = () => { clearInterval(toast.timer); el.style.display = "none"; say("Annulé"); };
+}
+
+// Measured with the real font, or a word judged to fit gets cut once it loads;
+// and again whenever a band changes width.
+document.fonts.ready.then(() => {
+  document.querySelectorAll(".band").forEach((band) => {
+    setupBand(band);
+    let width = band.clientWidth;
+    new ResizeObserver(() => { if (band.clientWidth !== width) { width = band.clientWidth; setupBand(band); } }).observe(band);
+  });
+});
+</script>
+</body>
+</html>
