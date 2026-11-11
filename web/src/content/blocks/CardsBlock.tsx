@@ -1,9 +1,19 @@
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Copy,
+  Ellipsis,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   Controller,
   useFieldArray,
   useFormContext,
+  useFormState,
   useWatch,
   type FieldErrors,
   type UseFormReturn,
@@ -20,10 +30,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { IconButton } from "@/components/ui/icon-button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 import { FormError } from "../../components/FormField";
+import { Notice } from "../../components/Notice";
 import { RAISED_CARD } from "../../carnival/raised";
 import { t } from "../../i18n";
 import { Link } from "../../i18n/routing";
@@ -36,6 +55,7 @@ import {
   CHIP_ROOM,
   ChipButton,
   EditChip,
+  EditorMenu,
   ICON_GLYPHS,
   IconPicker,
   MAX_ITEMS,
@@ -64,9 +84,10 @@ export type CardSlot = { beforeRows?: ReactNode; afterRows?: ReactNode };
 
 /**
  * The card the editor shows, by id: a card being added has no place in the
- * list until the editor appends it.
+ * list until the editor appends it. A copy made in the editor knows the
+ * title of the card it copies, which its heading names.
  */
-type Opened = { id: string; adding: boolean };
+type Opened = { id: string; adding: boolean; copyOf?: string };
 
 /** A card's chips, which a move puts focus back on. */
 type ChipPart = "before" | "after" | "edit";
@@ -288,15 +309,23 @@ export function CardsBlock({
       {editing || opened !== null ? (
         <BlockEditor
           blockKey={blockKey}
-          // The card itself, live as its title is typed; a new one has none yet.
-          title={openedTitle}
+          // The card itself, live as its title is typed; a new one has none
+          // yet, and an unsaved copy says what it copies.
+          title={
+            opened?.copyOf !== undefined
+              ? t("blockEditor.copyOf", { title: opened.copyOf || blockLabel })
+              : openedTitle
+          }
+          menu
           target={opened ? cardEditTarget(blockKey, opened.id) : undefined}
           open={opened !== null}
           onClose={() => setOpened(null)}
           onReset={shipped ? restore : false}
           invalidMessage={elsewhere}
         >
-          {() => (opened ? <CardEditor key={resets} {...opened} links={links} /> : null)}
+          {() =>
+            opened ? <CardEditor key={resets} {...opened} links={links} onOpen={setOpened} /> : null
+          }
         </BlockEditor>
       ) : null}
     </>
@@ -542,17 +571,37 @@ function newCard(id: string): CardData {
 /**
  * The fields of the card being edited, inside the block's editor. It finds
  * its card by id, so a card being added shows once the effect below has
- * appended it. Deleting the card saves the list at once, through the
- * editor's own submit, so its checks and its error line apply.
+ * appended it.
+ *
+ * The card's own actions sit in the editor's header menu (ADR 0043), which
+ * stays in view while the fields scroll:
+ *
+ * - "Dupliquer la carte" puts a copy right after the card and opens the copy
+ *   in the same unsaved form, so Enregistrer stores both cards and Annuler
+ *   drops the copy with any other change. The copy gets a new id: its photo
+ *   slot is its own and starts empty, and page code placed by the original's
+ *   id stays with the original.
+ * - "Supprimer la carte" asks first, then saves the list at once through the
+ *   editor's own submit, so its checks and its error line apply. That submit
+ *   stores the form's other changes too, which the question then says.
  */
-function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
-  const { control, getValues } = useFormContext<CardsData>();
-  const { append, remove } = useFieldArray({ control, name: "cards" });
+function CardEditor({
+  id,
+  adding,
+  copyOf,
+  links,
+  onOpen,
+}: Opened & { links: boolean; onOpen: (opened: Opened) => void }) {
+  const { control, getValues, setFocus } = useFormContext<CardsData>();
+  const { append, insert, remove } = useFieldArray({ control, name: "cards" });
+  const { isDirty } = useFormState({ control });
   // Read from the form, which the append and the removal change before the
   // re-render they cause; useWatch would lag one render behind.
   const cards = getValues("cards");
   const index = cards.findIndex((card) => card.id === id);
   const [confirming, setConfirming] = useState(false);
+  // Whether the form held other changes when the question was asked.
+  const [othersChanged, setOthersChanged] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   // A ref, so StrictMode's second run of the effect does not save twice.
@@ -573,12 +622,78 @@ function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
     root.current?.closest("form")?.requestSubmit();
   }, [deleted]);
 
+  // The copy's title takes focus once its fields are mounted, so the editor
+  // knows the card on screen changed and can type the new name at once. The
+  // closing menu leaves it there: Radix only returns focus to its button
+  // when nothing else has taken it.
+  const focusTitle = useRef(false);
+  useEffect(() => {
+    if (!focusTitle.current || index === -1) return;
+    focusTitle.current = false;
+    setFocus(`cards.${index}.title`);
+  }, [index, setFocus]);
+
+  const duplicate = () => {
+    const original = getValues(`cards.${index}`);
+    const copy = { ...structuredClone(original), id: crypto.randomUUID() };
+    insert(index + 1, copy, { shouldFocus: false });
+    focusTitle.current = true;
+    onOpen({ id: copy.id, adding: false, copyOf: tr(original.title).trim() });
+  };
+
   const shown = !deleted && index !== -1;
 
   return (
     <div ref={root} className="space-y-4">
       {shown ? (
+        <EditorMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                icon={Ellipsis}
+                label={t("blockEditor.cardActions")}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {/* Left out at the limit: "Ajouter une carte" on the page
+                  already says why. */}
+              {cards.length < MAX_ITEMS ? (
+                <>
+                  <DropdownMenuItem onSelect={duplicate}>
+                    <Copy aria-hidden="true" />
+                    {t("blockEditor.duplicateCard")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              <DropdownMenuItem
+                destructive
+                onSelect={() => {
+                  setOthersChanged(isDirty);
+                  setConfirming(true);
+                }}
+              >
+                <Trash2 aria-hidden="true" />
+                {t("blockEditor.removeCard")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </EditorMenu>
+      ) : null}
+
+      {shown ? (
         <>
+          {copyOf !== undefined ? (
+            <Notice>
+              {t("blockEditor.copyNote", {
+                save: t("blockEditor.save"),
+                cancel: t("common.cancel"),
+              })}
+            </Notice>
+          ) : null}
           {/* Keyed by place, so the fields mount on the card's own path. */}
           <div key={index} className="space-y-4">
             <TranslatedField
@@ -591,19 +706,6 @@ function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
             <PhotoSwitch name={`cards.${index}.photo`} />
             <RowFields name={`cards.${index}.rows`} />
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="sm:ml-auto"
-              onClick={() => setConfirming(true)}
-            >
-              <Trash2 aria-hidden="true" />
-              {t("blockEditor.removeCard")}
-            </Button>
-          </div>
         </>
       ) : null}
 
@@ -611,7 +713,10 @@ function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("blockEditor.removeCardTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("blockEditor.removeCardBody")}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t("blockEditor.removeCardBody")}
+              {othersChanged ? <> {t("blockEditor.removeCardSavesChanges")}</> : null}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button

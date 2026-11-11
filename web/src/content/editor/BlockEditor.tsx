@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormActions } from "@/components/ui/form-actions";
+import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 
 import { FormError, formIsValid } from "../../components/FormField";
@@ -31,6 +32,7 @@ import { t } from "../../i18n";
 import { useBlockPreview, useSavedBlock } from "../BlocksProvider";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 import { useBlockChanged, useDiscardGuard } from "./DiscardGuard";
+import { EditorHeaderSlot } from "./EditorMenu";
 import { useKeyboardRoom, usePageBeside } from "./pageBeside";
 import { PreviewLanguage } from "./PreviewLanguage";
 import { useSaveBlock } from "./useSaveBlock";
@@ -64,6 +66,11 @@ type Props<K extends BlockKey> = {
    * one part of its block: `blockKey` by default.
    */
   target?: string;
+  /**
+   * Whether the fields put an `EditorMenu` in the header. Below xl,
+   * "Aperçu" then shows as its icon alone, so the title keeps some room.
+   */
+  menu?: boolean;
 };
 
 /**
@@ -112,7 +119,13 @@ function titled(place: string, title: string | undefined): { above: string; titl
  * `onOpenChange(false)`, so a close button added later is covered too. A tap
  * on the faded page does not close it: the editor may only be looking.
  */
-export function BlockEditor<K extends BlockKey>({ open, title, target, ...props }: Props<K>) {
+export function BlockEditor<K extends BlockKey>({
+  open,
+  title,
+  target,
+  menu = false,
+  ...props
+}: Props<K>) {
   // The form's way out, which knows whether there is anything to lose. The
   // form lives inside the content, so it hands this up.
   const editor = useRef<EditorHandle>(null);
@@ -191,6 +204,7 @@ export function BlockEditor<K extends BlockKey>({ open, title, target, ...props 
             ref={editor}
             formId={formId}
             heading={heading}
+            menu={menu}
             onLower={() => setLowered(true)}
           />
         </div>
@@ -210,13 +224,18 @@ function EditorForm<K extends BlockKey>({
   ref,
   formId,
   heading,
+  menu,
   onLower,
-}: Omit<Props<K>, "open" | "title" | "target"> & {
+}: Omit<Props<K>, "open" | "title" | "target" | "menu"> & {
   ref: Ref<EditorHandle>;
   formId: string;
   heading: { above: string; title: string };
+  menu: boolean;
   onLower: () => void;
 }) {
+  // Where the fields' EditorMenu shows: a state, so the fields render again
+  // once the header has mounted it.
+  const [menuSlot, setMenuSlot] = useState<HTMLDivElement | null>(null);
   const definition = BLOCKS[blockKey];
   const current = useSavedBlock(blockKey);
   const formElement = useRef<HTMLFormElement>(null);
@@ -276,19 +295,34 @@ function EditorForm<K extends BlockKey>({
             </DialogTitle>
           </div>
           <PreviewLanguage />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="xl:hidden"
-            onClick={onLower}
-          >
-            <Eye aria-hidden="true" />
-            {t("blockEditor.preview")}
-          </Button>
+          {menu ? (
+            <IconButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              icon={Eye}
+              label={t("blockEditor.preview")}
+              className="xl:hidden"
+              onClick={onLower}
+            />
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="xl:hidden"
+              onClick={onLower}
+            >
+              <Eye aria-hidden="true" />
+              {t("blockEditor.preview")}
+            </Button>
+          )}
+          {menu ? <div ref={setMenuSlot} className="contents" /> : null}
         </DialogHeader>
 
-        <div className="space-y-4 px-4 sm:px-6">{children(form)}</div>
+        <EditorHeaderSlot value={menuSlot}>
+          <div className="space-y-4 px-4 sm:px-6">{children(form)}</div>
+        </EditorHeaderSlot>
 
         <div className="px-4 empty:hidden sm:px-6">
           <FormError error={error ?? (invalid ? { message: invalid, fields: [] } : null)} />

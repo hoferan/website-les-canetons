@@ -1,5 +1,6 @@
 export { ActionsField, TargetField } from "./ActionsField";
 export { BlockEditor } from "./BlockEditor";
+export { EditorMenu } from "./EditorMenu";
 export { CHIP_ROOM, ChipButton, ChipLink, EditChip } from "./EditChip";
 export { ICON_GLYPHS, IconPicker } from "./IconPicker";
 export { ListField, MAX_ITEMS } from "./ListField";

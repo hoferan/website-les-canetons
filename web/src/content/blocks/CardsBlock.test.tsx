@@ -36,6 +36,16 @@ beforeAll(() => {
 });
 afterAll(() => vi.unstubAllGlobals());
 
+/** Picks an item from the menu in the card editor's header. */
+async function pickFromCardMenu(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  item: string,
+) {
+  await user.click(within(dialog).getByRole("button", { name: "Actions de la carte" }));
+  await user.click(await screen.findByRole("menuitem", { name: item }));
+}
+
 function editing() {
   setMockUser("demo.direction");
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
@@ -275,7 +285,7 @@ test("deleting the last card leaves Ajouter une carte in edit mode", async () =>
 
   await user.click(screen.getByRole("button", { name: "Modifier : Contact des Canetons" }));
   const dialog = await screen.findByRole("dialog");
-  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  await pickFromCardMenu(user, dialog, "Supprimer la carte");
   const confirm = await screen.findByRole("alertdialog", { name: "Supprimer cette carte ?" });
   await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
 
@@ -310,6 +320,115 @@ test("Ajouter une carte stops at 24 cards and says why", async () => {
 
   await user.click(add);
   expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("Dupliquer copies a card right after it, and the copy edits apart from the original", async () => {
+  const user = userEvent.setup();
+  editing();
+  // A photo already placed for the card. The block itself goes through the
+  // mocked store rather than `storeBlock`, so the page reads the saved list.
+  setMockPhotoSlot(SCHEDULE_SLOT, { imageId: 1, label: "Horaires", path: "/join" });
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const puts = recordBlockPuts();
+
+  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("switch", { name: "Photo" }));
+  await pickFromCardMenu(user, dialog, "Dupliquer la carte");
+
+  // The editor now shows the copy, its title ready to be typed over, and
+  // says the copy is not stored yet.
+  const title = within(dialog).getByRole("textbox", { name: "Titre FR" });
+  expect(title).toHaveValue("Horaires");
+  await waitFor(() => expect(title).toHaveFocus());
+  expect(
+    within(dialog).getByRole("heading", { name: t("blockEditor.copyOf", { title: "Horaires" }) }),
+  ).toBeVisible();
+  // The matcher drops a no-break space from the text it is given, but reads
+  // the page's as a plain one.
+  expect(dialog).toHaveTextContent(
+    t("blockEditor.copyNote", {
+      save: t("blockEditor.save"),
+      cancel: t("common.cancel"),
+    }).replaceAll(" ", " "),
+  );
+  await user.clear(title);
+  await user.type(title, "Horaires bis");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const shipped = BLOCKS["join.facts"].defaults().cards;
+  const schedule = { ...shipped.find((card) => card.id === "schedule")!, photo: true };
+  const saved = (puts[0]!.body as { data: { cards: { id: string }[] } }).data.cards;
+  const copyId = saved[2]!.id;
+  expect(copyId).not.toBe("schedule");
+  expect(saved).toEqual([
+    shipped[0],
+    schedule,
+    { ...schedule, id: copyId, title: { ...schedule.title, fr: "Horaires bis" } },
+    ...shipped.slice(2),
+  ]);
+
+  // The copy shows its own empty slot; the original keeps its photo.
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(
+      document.querySelector(`[data-photo-pending='${cardSlot("join.facts", copyId)}']`),
+    ).not.toBeNull(),
+  );
+  expect(mockPhotoSlot(SCHEDULE_SLOT)).not.toBeNull();
+  expect(document.querySelectorAll("[data-photo-frame]")).toHaveLength(1);
+  expect(
+    screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+  ).toEqual([
+    "Instruments recherchés",
+    "Horaires",
+    "Horaires bis",
+    "Critères d’âge",
+    "Lieu",
+    "Contacts",
+  ]);
+});
+
+test("deleting a card from an editor with other changes says they are saved too", async () => {
+  const user = userEvent.setup();
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  await pickFromCardMenu(user, dialog, "Supprimer la carte");
+  let confirm = await screen.findByRole("alertdialog");
+  // Nothing else changed: no word about other changes.
+  expect(confirm).toHaveTextContent(t("blockEditor.removeCardBody"));
+  expect(confirm).not.toHaveTextContent(t("blockEditor.removeCardSavesChanges"));
+  await user.click(within(confirm).getByRole("button", { name: "Annuler" }));
+
+  await user.type(within(dialog).getByRole("textbox", { name: "Titre FR" }), " du samedi");
+  await pickFromCardMenu(user, dialog, "Supprimer la carte");
+  confirm = await screen.findByRole("alertdialog");
+  expect(confirm).toHaveTextContent(t("blockEditor.removeCardSavesChanges"));
+});
+
+test("a grid at 24 cards offers no Dupliquer", async () => {
+  const user = userEvent.setup();
+  const card = (index: number) => ({
+    id: `card-${index}`,
+    icon: "star" as const,
+    tint: "pink" as const,
+    title: { fr: `Carte ${index}` },
+    rows: [],
+  });
+  storeBlock("committee.contact", { cards: Array.from({ length: 24 }, (_, i) => card(i)) });
+  editing();
+  await renderWithSession(<CardsBlock blockKey="committee.contact" />, { route: "/committee" });
+
+  // The chip's name also says the card has no German.
+  await user.click(await screen.findByRole("button", { name: /^Modifier : Carte 0\b/ }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Actions de la carte" }));
+  expect(await screen.findByRole("menuitem", { name: "Supprimer la carte" })).toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", { name: "Dupliquer la carte" })).toBeNull();
 });
 
 test("a stored card list shows as stored", async () => {
@@ -511,7 +630,7 @@ test("deleting a card while another holds a refused number says which card", asy
 
   await user.click(await screen.findByRole("button", { name: "Modifier : Lieu (sans allemand)" }));
   const dialog = await screen.findByRole("dialog");
-  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  await pickFromCardMenu(user, dialog, "Supprimer la carte");
   const confirm = await screen.findByRole("alertdialog");
   await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
 
@@ -615,7 +734,7 @@ test("deleting a card that carries a photo leaves the page rendering", async () 
 
   await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
   dialog = await screen.findByRole("dialog");
-  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  await pickFromCardMenu(user, dialog, "Supprimer la carte");
   const confirm = await screen.findByRole("alertdialog");
   await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
 
@@ -656,7 +775,7 @@ test("deleting a card whose photo is placed empties its slot once the list is sa
 
   await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
   const dialog = await screen.findByRole("dialog");
-  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  await pickFromCardMenu(user, dialog, "Supprimer la carte");
   const confirm = await screen.findByRole("alertdialog");
   await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
 
@@ -714,7 +833,7 @@ test("an editor who cannot manage photos deletes the card and leaves the slot to
 
   await user.click(screen.getByRole("button", { name: "Modifier : Horaires" }));
   const dialog = await screen.findByRole("dialog");
-  await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
+  await pickFromCardMenu(user, dialog, "Supprimer la carte");
   const confirm = await screen.findByRole("alertdialog");
   await user.click(within(confirm).getByRole("button", { name: "Supprimer" }));
 
