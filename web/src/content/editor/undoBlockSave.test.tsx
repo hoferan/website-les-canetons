@@ -1,10 +1,10 @@
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { toast } from "sonner";
 import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 
 import { Toaster } from "../../components/ui/sonner";
+import { notify } from "../../components/ui/toast";
 import { cardSlot } from "../../images/photoSlots";
 import { mockPhotoSlot, setMockBlock, setMockPhotoSlot, setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";
@@ -20,7 +20,7 @@ afterEach(() => {
   server.events.removeAllListeners();
   // Sonner keeps its toasts in a module, and a Toaster mounted by the next
   // test would show this one's, whose undo is still live.
-  toast.dismiss();
+  notify.dismiss();
 });
 
 // Radix sizes a radio's hidden form input with ResizeObserver, which jsdom

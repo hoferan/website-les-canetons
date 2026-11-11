@@ -3,6 +3,22 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+// See the block that uses them, below.
+const ROUTER_IMPORTS = {
+  name: 'react-router-dom',
+  importNames: ['Link', 'NavLink', 'Navigate', 'useNavigate', 'redirect'],
+  message:
+    'Import Link, Navigate and useNavigate from i18n/routing, which keep the page in its language (#369).',
+};
+
+// A toast has a level, an icon, a close button and our own clock (ADR 0042),
+// which only the wrapper in components/ui/toast.tsx gives it.
+const SONNER_TOAST = {
+  name: 'sonner',
+  importNames: ['toast'],
+  message: 'Raise a toast with notify from @/components/ui/toast (ADR 0042).',
+};
+
 export default [
   js.configs.recommended,
   {
@@ -96,19 +112,14 @@ export default [
     files: ['web/src/**/*.{ts,tsx}'],
     ignores: ['web/src/i18n/routing.tsx', 'web/src/**/*.test.{ts,tsx}', 'web/src/test/**'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: 'react-router-dom',
-              importNames: ['Link', 'NavLink', 'Navigate', 'useNavigate', 'redirect'],
-              message:
-                'Import Link, Navigate and useNavigate from i18n/routing, which keep the page in its language (#369).',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', { paths: [ROUTER_IMPORTS, SONNER_TOAST] }],
+    },
+  },
+  {
+    // The toast wrapper is the one place that raises a sonner toast.
+    files: ['web/src/components/ui/toast.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', { paths: [ROUTER_IMPORTS] }],
     },
   },
   {

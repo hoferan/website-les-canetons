@@ -66,6 +66,10 @@
   --shadow-raised-sm: 3px 3px 0 var(--color-ink);
   --shadow-raised-stage: 4px 4px 0 var(--color-pink);
 
+  /* A toast's lift (ADR 0042): the raised shadow, plus a soft one nothing on
+     the page has, so a toast reads as above the cards and not as one more. */
+  --shadow-toast: 6px 6px 0 var(--color-ink), 0 14px 34px rgba(20, 18, 28, 0.32);
+
   /* What the shadow shrinks to while a button is pressed in. */
   --shadow-raised-pressed: 1px 1px 0 var(--color-ink);
   --shadow-raised-stage-pressed: 1px 1px 0 var(--color-pink);
