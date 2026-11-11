@@ -3,19 +3,28 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test } from "vitest";
 
 import { server } from "../../mocks/node";
-import { recordBlockPuts, renderBlockEditor } from "../../test/renderBlockEditor";
+import { recordBlockPuts, renderBlockEditor, storeBlock } from "../../test/renderBlockEditor";
+import { BLOCKS } from "../registry";
 import { TranslatedField } from "./TranslatedField";
 
 afterEach(() => server.events.removeAllListeners());
 
 type Label = Record<string, unknown>;
 
-/** The place card's place name, which ships with no German. */
+/** The place card's place name. */
 const PLACE = "cards.3.rows.0.label";
+
+/** The shipped place card with its place name in French alone, as the band may type it. */
+function storeFrenchOnlyPlace() {
+  const cards = structuredClone(BLOCKS["join.facts"].defaults().cards);
+  (cards[3]!.rows[0] as { label: Label }).label = { fr: "Werkhof" };
+  storeBlock("join.facts", { cards });
+}
 
 test("+ Deutsch reveals the German field and saving keeps German blank when left empty", async () => {
   const user = userEvent.setup();
   const puts = recordBlockPuts();
+  storeFrenchOnlyPlace();
   const dialog = await renderBlockEditor("join.facts", () => (
     <TranslatedField name={PLACE} label="Lieu" />
   ));
@@ -48,13 +57,14 @@ test("+ Deutsch reveals the German field and saving keeps German blank when left
 // On the German page the editor is there to write German (#368).
 test("on the German page every German field is open, and Retirer l'allemand still closes one", async () => {
   const user = userEvent.setup();
+  storeFrenchOnlyPlace();
   const dialog = await renderBlockEditor(
     "join.facts",
     () => <TranslatedField name={PLACE} label="Ort" />,
     { locale: "de-CH" },
   );
 
-  // The place name ships with no German, and its field is open all the same.
+  // The place name has no German, and its field is open all the same.
   const german = within(dialog).getByRole("textbox", { name: "Ort DE" });
   expect(german).toHaveValue("");
 

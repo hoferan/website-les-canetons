@@ -5,7 +5,7 @@ import { t } from "../../i18n";
 import { useBlock } from "../BlocksProvider";
 import { ActionsField, BlockEditor, EditChip, MarkPicker, TranslatedField } from "../editor";
 import { BLOCKS, type BlockKey } from "../registry";
-import { tr, trMark } from "../translated";
+import { lacksGerman, tr, trMark } from "../translated";
 import type { Action, heroBlock } from "../types";
 import { ActionLink, shownActions } from "./ActionLink";
 import { useBlockEditing } from "./useBlockEditing";
@@ -50,7 +50,11 @@ export function HeroBlock({
         {...(width ? { width } : {})}
         edit={
           editing ? (
-            <EditChip label={t(BLOCKS[blockKey].label)} onClick={() => setOpen(true)} />
+            <EditChip
+              label={t(BLOCKS[blockKey].label)}
+              missingGerman={lacksGerman(hero)}
+              onClick={() => setOpen(true)}
+            />
           ) : null
         }
       >

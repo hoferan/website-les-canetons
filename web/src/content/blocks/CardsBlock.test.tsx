@@ -342,7 +342,9 @@ test("Rétablir in a card's editor restores that card alone", async () => {
   editing();
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
-  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires d’été" }));
+  await user.click(
+    await screen.findByRole("button", { name: "Modifier : Horaires d’été (sans allemand)" }),
+  );
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Rétablir l’original" }));
   expect(within(dialog).getByRole("textbox", { name: "Titre FR" })).toHaveValue("Horaires");
@@ -350,6 +352,23 @@ test("Rétablir in a card's editor restores that card alone", async () => {
 
   await expect.poll(() => puts).toHaveLength(1);
   expect(puts[0]?.body).toEqual({ data: { cards: [older, instruments, schedule, ...rest] } });
+});
+
+test("each card's pencil says when a text of that card has no German", async () => {
+  const [instruments, schedule, ...rest] = BLOCKS["join.facts"].defaults().cards;
+  const summer = { ...schedule!, title: { fr: "Horaires d’été" } };
+  const added = { id: "added", tint: "lime", title: { fr: "Répétitions", de: "Proben" }, rows: [] };
+  storeBlock("join.facts", { cards: [summer, instruments, ...rest, added] });
+  editing();
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+
+  const marked = () =>
+    [...document.querySelectorAll("[data-missing-german]")].map((chip) =>
+      chip.getAttribute("aria-label"),
+    );
+  // The shipped cards all have their German, "Werkhof" included.
+  await waitFor(() => expect(marked()).toEqual(["Modifier : Horaires d’été (sans allemand)"]));
+  expect(screen.getByRole("button", { name: "Modifier : Répétitions" })).toBeVisible();
 });
 
 test("a card without an icon shows its title alone, with no tile", async () => {
@@ -452,7 +471,9 @@ test("a card the band added offers no Rétablir", async () => {
   editing();
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
-  await user.click(await screen.findByRole("button", { name: "Modifier : Répétitions" }));
+  await user.click(
+    await screen.findByRole("button", { name: "Modifier : Répétitions (sans allemand)" }),
+  );
   const dialog = await screen.findByRole("dialog");
   expect(within(dialog).getByRole("textbox", { name: "Titre FR" })).toHaveValue("Répétitions");
   expect(within(dialog).queryByRole("button", { name: "Rétablir l’original" })).toBeNull();
@@ -488,7 +509,7 @@ test("deleting a card while another holds a refused number says which card", asy
   editing();
   await renderWithSession(<CardsBlock blockKey="committee.contact" />, { route: "/committee" });
 
-  await user.click(await screen.findByRole("button", { name: "Modifier : Lieu" }));
+  await user.click(await screen.findByRole("button", { name: "Modifier : Lieu (sans allemand)" }));
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer la carte" }));
   const confirm = await screen.findByRole("alertdialog");

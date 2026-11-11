@@ -21,7 +21,7 @@ import { HeroActions, HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor";
 import { BLOCKS } from "../content/registry";
-import { tr, trMark } from "../content/translated";
+import { lacksGerman, tr, trMark } from "../content/translated";
 
 /**
  * The badge's frame: the sticker look and the sizes, for the badge and for a
@@ -79,7 +79,11 @@ export function Home() {
         <Confetti seed={11} colours={POSTER_CONFETTI} wobble />
         {/* In the header's own corner; the grid below makes room for it. */}
         {editing ? (
-          <EditChip label={t(BLOCKS["home.hero"].label)} onClick={() => setEditingHero(true)} />
+          <EditChip
+            label={t(BLOCKS["home.hero"].label)}
+            missingGerman={lacksGerman(hero)}
+            onClick={() => setEditingHero(true)}
+          />
         ) : null}
         <div
           className={cn(

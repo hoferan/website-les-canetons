@@ -47,7 +47,7 @@ import {
   useSaveBlock,
 } from "../editor";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
-import { tr } from "../translated";
+import { lacksGerman, tr } from "../translated";
 import { isActionTarget, type Card as CardData, type cardsBlock, type Icon } from "../types";
 import { RowView } from "./RowView";
 import { useBlockEditing } from "./useBlockEditing";
@@ -267,6 +267,7 @@ export function CardsBlock({
                       id={chipId(card.id, "edit")}
                       label={title}
                       corner={false}
+                      missingGerman={lacksGerman(card)}
                       onClick={() => setOpened({ id: card.id, adding: false })}
                     />
                   </div>

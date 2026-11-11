@@ -9,7 +9,7 @@ import { useSite } from "../content/blocks/SiteBlock";
 import { SiteEditor } from "../content/blocks/SiteEditor";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor/EditChip";
-import { tr } from "../content/translated";
+import { lacksGerman, tr } from "../content/translated";
 import { NetworkMark, networksOf } from "./social";
 
 /**
@@ -80,6 +80,7 @@ export function Footer({ above }: { above: string | null }) {
               label={t("blocks.site")}
               text={t("blockEditor.site.edit")}
               corner={false}
+              missingGerman={lacksGerman(site)}
               onClick={() => setEditingSite(true)}
             />
           </div>

@@ -57,13 +57,45 @@ test("the text prop is both the visible text and the accessible name", () => {
   expect(chip).toHaveTextContent("Modifier les infos du site");
 });
 
+test("a block with a text missing its German wears the dot and says so", () => {
+  const { rerender } = render(<EditChip label="Texte d'accueil" onClick={() => {}} />);
+  const plain = screen.getByRole("button", { name: "Modifier : Texte d'accueil" });
+  expect(plain).not.toHaveAttribute("data-missing-german");
+  expect(plain.parentElement!.querySelector("[aria-hidden].bg-cyan")).toBeNull();
+
+  rerender(<EditChip label="Texte d'accueil" missingGerman onClick={() => {}} />);
+  const chip = screen.getByRole("button", {
+    name: "Modifier : Texte d'accueil (sans allemand)",
+  });
+  expect(chip).toHaveAttribute("data-missing-german");
+  // The visible word stays short: a longer one pushed a card's arrows out.
+  expect(chip.textContent).toBe("Modifier");
+  expect(chip.parentElement!.querySelector("[aria-hidden].bg-cyan")).not.toBeNull();
+});
+
+test("a chip with its own text adds 'sans allemand' to it", () => {
+  render(
+    <EditChip
+      label="Infos du site"
+      text="Modifier les infos du site"
+      missingGerman
+      onClick={() => {}}
+    />,
+  );
+
+  expect(
+    screen.getByRole("button", { name: "Modifier les infos du site (sans allemand)" }),
+  ).toHaveAttribute("data-missing-german");
+});
+
 test("a chip sits inside its block's top right corner and calls onClick", async () => {
   const onClick = vi.fn();
   render(<EditChip label="Bloc" onClick={onClick} />);
 
+  // The Indicator wrapper is the box the block lays out, so it takes the corner.
   const chip = screen.getByRole("button");
-  expect(chip).toHaveClass("absolute", "top-2", "right-2");
-  expect(chip).not.toHaveClass("-top-3");
+  expect(chip.parentElement).toHaveClass("absolute", "top-2", "right-2");
+  expect(chip.parentElement).not.toHaveClass("-top-3");
   await userEvent.click(chip);
   expect(onClick).toHaveBeenCalledTimes(1);
 });

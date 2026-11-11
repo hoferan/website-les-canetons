@@ -2,6 +2,7 @@ import { ArrowUpRight, Pencil, type LucideIcon } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
+import { Indicator } from "@/components/ui/indicator";
 import { cn } from "@/lib/utils";
 
 import { t } from "../../i18n";
@@ -43,34 +44,58 @@ const CORNER = "absolute top-2 right-2 z-10";
  * `corner={false}` leaves the placing to the caller, for a pencil at the end
  * of a row of chips: the row grows leftwards as the word shows, so the word
  * pushes the other chips aside instead of covering them.
+ *
+ * `missingGerman` marks a block with a text that has no German, so the
+ * German page shows it in French (#359): an {@link Indicator} dot on the
+ * chip's top right corner, and "(sans allemand)" after its accessible name,
+ * which is where the dot's meaning lives. The visible word stays "Modifier":
+ * a longer one pushed a card's arrows out over the next card.
+ *
+ * The chip is always wrapped, shown or not, so a block's chips sit the same
+ * whether they wear the dot, and the corner placing goes on the wrapper.
  */
 export function EditChip({
   label,
   text,
   onClick,
   corner = true,
+  missingGerman = false,
   id,
 }: {
   label: string;
   text?: string;
   onClick: () => void;
   corner?: boolean;
+  missingGerman?: boolean;
   /** For a screen that moves focus here itself. */
   id?: string;
 }) {
+  const name = text ?? t("blockEditor.edit", { label });
+  const word = text ?? t("common.edit");
+  const marked = (said: string) =>
+    missingGerman ? t("blockEditor.missingGerman", { text: said }) : said;
   return (
-    <IconButton
-      id={id}
-      type="button"
-      icon={Pencil}
-      label={text ?? t("blockEditor.edit", { label })}
-      word={text ?? t("common.edit")}
-      mode="grow"
-      variant="accent"
-      data-chip="button"
-      onClick={onClick}
+    // Cyan, picked from rendered variants: violet is the link colour and red
+    // the danger one, so either read as something to act on.
+    <Indicator
+      show={missingGerman}
+      color="cyan"
+      offset={{ x: -4, y: 4 }}
       className={cn(corner && CORNER)}
-    />
+    >
+      <IconButton
+        id={id}
+        type="button"
+        icon={Pencil}
+        label={marked(name)}
+        word={word}
+        mode="grow"
+        variant="accent"
+        data-chip="button"
+        data-missing-german={missingGerman || undefined}
+        onClick={onClick}
+      />
+    </Indicator>
   );
 }
 

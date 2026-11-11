@@ -157,10 +157,12 @@ test("the footer's chip floats over the footer, out of its flow", async () => {
   const footer = screen.getByRole("contentinfo");
   const chip = within(footer).getByRole("button", { name: "Modifier les infos du site" });
   expect(chip).toHaveTextContent("Modifier les infos du site");
-  // Placed by a wrapper below the scallops, whose positioning parent is the footer.
-  expect(chip.parentElement).toHaveClass("absolute");
+  // Placed by a wrapper below the scallops, whose positioning parent is the
+  // footer. The chip sits in its Indicator first.
+  const placed = chip.closest("[data-indicator]")?.parentElement;
+  expect(placed).toHaveClass("absolute");
   expect(footer).toHaveClass("relative");
-  expect(chip.parentElement?.parentElement).toBe(footer);
+  expect(placed?.parentElement).toBe(footer);
 });
 
 /** The footer's buttons: its links that are neither a network nor the logo. */
@@ -261,6 +263,20 @@ test("an editor changes a footer button, removes the other, and restores both", 
   await waitFor(() =>
     expect(buttons().map((link) => link.textContent)).toEqual(["Nous rejoindre", "Contact"]),
   );
+});
+
+test("the footer's chip says when a text of the site has no German", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  storeBlock("site", site({ pitch: { fr: "Une guggen d’enfants." } }));
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+
+  const footer = screen.getByRole("contentinfo");
+  expect(
+    await within(footer).findByRole("button", {
+      name: "Modifier les infos du site (sans allemand)",
+    }),
+  ).toHaveAttribute("data-missing-german");
 });
 
 test("each network is a link named after it, with the icon the band picked", async () => {

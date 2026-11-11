@@ -51,6 +51,10 @@ test("the booking number is stored from the contact card on /committee, and Term
   const number = page.getByRole("link", { name: "026 123 45 67" });
   await expect(number).toHaveAttribute("href", "tel:+41261234567");
   await expect(page.locator("[data-tbd='booking-number']")).toHaveCount(0);
+  // A phone number is no text, so the card still has all its German (#359).
+  await expect(
+    page.getByRole("button", { name: "Modifier : Contact des Canetons", exact: true }),
+  ).not.toHaveAttribute("data-missing-german");
 
   // One element whose label changes, so it is the same button that ends it.
   await page.getByRole("button", { name: "Terminer la modification" }).click();
@@ -69,8 +73,11 @@ function chipsOverText(page: Page) {
     [...document.querySelectorAll("[data-chip]")].flatMap((chip) => {
       const c = chip.getBoundingClientRect();
       // A row of chips names its block with data-chip-scope; a lone chip sits
-      // directly in its block.
-      const scope = chip.closest("[data-chip-scope]") ?? chip.parentElement!;
+      // directly in its block, through the Indicator wrapper it may wear.
+      const own = chip.parentElement!;
+      const scope =
+        chip.closest("[data-chip-scope]") ??
+        (own.hasAttribute("data-indicator") ? own.parentElement! : own);
       const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
       const hits: string[] = [];
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
