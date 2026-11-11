@@ -1,0 +1,69 @@
+{
+ "eventsErrorAfter": {
+  "afterMs": 1512,
+  "t": "Planning\nPlanning\nPassés\nRechercher un événement\nTous\nRépétition\nConcert\nSortie\nCarnaval\n\nLe planning n’a pas pu être chargé."
+ },
+ "eventsErrBtns": [
+  "Planning",
+  "Passés",
+  "Calendrier",
+  "Tous",
+  "Répétition",
+  "Concert",
+  "Sortie",
+  "Carnaval"
+ ],
+ "delbtn /members": [],
+ "delbtn /roles": [
+  "Supprimer",
+  "Supprimer",
+  "Supprimer"
+ ],
+ "delbtn /registers": [
+  "Supprimer",
+  "Supprimer",
+  "Supprimer",
+  "Supprimer",
+  "Supprimer",
+  "Supprimer"
+ ],
+ "delbtn /event-tags": [
+  "Supprimer",
+  "Supprimer",
+  "Supprimer",
+  "Supprimer"
+ ],
+ "delbtn /media/1": [
+  "Supprimer",
+  "Retirer de cet emplacement"
+ ],
+ "delbtn /events": [],
+ "delbtn /history": [],
+ "dialog": {
+  "role": "alertdialog",
+  "labelledby": true,
+  "describedby": true,
+  "text": "Supprimer « Répétition » ?\n\nElle sera retirée de 5 événements.\n\nSupprimer\nAnnuler",
+  "active": "Annuler",
+  "buttons": [
+   "Supprimer",
+   "Annuler"
+  ]
+ },
+ "dialogTabs": [
+  "in:Supprimer",
+  "in:Annuler",
+  "in:Supprimer",
+  "in:Annuler",
+  "in:Supprimer",
+  "in:Annuler"
+ ],
+ "afterEsc": {
+  "open": false,
+  "active": "Supprimer"
+ },
+ "regNameless": [
+  "<button data-slot=\"button\" data-variant=\"secondary\" data-size=\"sm\" data-surface=\"page\" class=\"inline-flex min-h-touch shrink-0 items-center justify-center cursor-pointer text-sm whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:o",
+  "<button data-slot=\"button\" data-variant=\"secondary\" data-size=\"sm\" data-surface=\"page\" class=\"inline-flex min-h-touch shrink-0 items-center justify-center cursor-pointer text-sm whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:o"
+ ]
+}

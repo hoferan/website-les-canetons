@@ -1,0 +1,4 @@
+demo.both 768 /events -> /account/password
+demo.both 768 /account/password -> /account/password
+demo.both 768 /de/events -> /de/account/password
+demo.both 768 /de/account/password -> /de/account/password

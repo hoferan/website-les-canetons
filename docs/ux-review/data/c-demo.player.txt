@@ -1,0 +1,4 @@
+demo.player 375 /events 0
+demo.player 375 /account 0
+demo.player 1280 /events 0
+demo.player 1280 /account 0

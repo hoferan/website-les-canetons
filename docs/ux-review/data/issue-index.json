@@ -1,0 +1,194 @@
+[
+ {
+  "n": 1,
+  "slug": "badge-component",
+  "title": "Extract one Badge component for tags, visibility and account status",
+  "labels": [
+   "ux",
+   "component"
+  ],
+  "sev": "medium",
+  "eff": "m",
+  "dep": "Blocks: 014"
+ },
+ {
+  "n": 2,
+  "slug": "surface-component",
+  "title": "Extract one Surface (card) component and retire radius/border/shadow drift",
+  "labels": [
+   "ux",
+   "component"
+  ],
+  "sev": "medium",
+  "eff": "l",
+  "dep": "Blocks: 014. Split into two PRs if it exceeds roughly 400 changed lines: lists first, home tiles and form panels second."
+ },
+ {
+  "n": 3,
+  "slug": "state-message-component",
+  "title": "Create a StateMessage component for loading, empty and error states",
+  "labels": [
+   "ux",
+   "component"
+  ],
+  "sev": "medium",
+  "eff": "m",
+  "dep": "Blocks: 004, 014"
+ },
+ {
+  "n": 4,
+  "slug": "adopt-state-message",
+  "title": "Adopt StateMessage on every screen that loads a list",
+  "labels": [
+   "ux",
+   "design-system"
+  ],
+  "sev": "medium",
+  "eff": "m",
+  "dep": "Blocked by: 003"
+ },
+ {
+  "n": 5,
+  "slug": "route-title-and-announcement",
+  "title": "Give every route its own page title and announce navigation to screen readers",
+  "labels": [
+   "ux",
+   "a11y"
+  ],
+  "sev": "high",
+  "eff": "s",
+  "dep": "Related (not a duplicate): #172 closed, which made the shell metadata French/German; titles are still static."
+ },
+ {
+  "n": 6,
+  "slug": "checkbox-shrinks-when-label-wraps",
+  "title": "Stop checkboxes shrinking to 13-19 px when their label wraps",
+  "labels": [
+   "ux",
+   "a11y"
+  ],
+  "sev": "medium",
+  "eff": "s",
+  "dep": "None"
+ },
+ {
+  "n": 7,
+  "slug": "stronger-button-focus-indicator",
+  "title": "Strengthen the keyboard focus indicator on buttons",
+  "labels": [
+   "ux",
+   "a11y"
+  ],
+  "sev": "medium",
+  "eff": "s",
+  "dep": "None"
+ },
+ {
+  "n": 8,
+  "slug": "heading-levels",
+  "title": "Fix heading levels: event titles under section headings, form section legends",
+  "labels": [
+   "ux",
+   "a11y"
+  ],
+  "sev": "medium",
+  "eff": "s",
+  "dep": "None"
+ },
+ {
+  "n": 9,
+  "slug": "public-pages-show-editor-placeholders",
+  "title": "Stop showing editor instructions and empty photo placeholders to visitors",
+  "labels": [
+   "ux",
+   "content"
+  ],
+  "sev": "medium",
+  "eff": "s",
+  "dep": "Overlaps #106 (open): the public site still needs photographs. This issue is about what visitors see until then."
+ },
+ {
+  "n": 10,
+  "slug": "show-progress-while-submitting",
+  "title": "Show progress and block repeat clicks while a form is sending",
+  "labels": [
+   "ux",
+   "forms"
+  ],
+  "sev": "medium",
+  "eff": "s",
+  "dep": "None"
+ },
+ {
+  "n": 11,
+  "slug": "home-hero-shift",
+  "title": "Stop the home hero shifting when the display font loads",
+  "labels": [
+   "ux",
+   "performance"
+  ],
+  "sev": "medium",
+  "eff": "s",
+  "dep": "Regression of #236 (closed), which addressed data-driven shifts; this one is above the data."
+ },
+ {
+  "n": 12,
+  "slug": "bundle-size-and-lcp-budget",
+  "title": "Bring the public bundle and LCP back inside the Lighthouse budget",
+  "labels": [
+   "ux",
+   "performance"
+  ],
+  "sev": "medium",
+  "eff": "m",
+  "dep": "Related: #294 closed (editor photo code out of the visitor bundle)."
+ },
+ {
+  "n": 13,
+  "slug": "align-button-sizes-and-padding",
+  "title": "Align button heights and horizontal padding to one value per size",
+  "labels": [
+   "ux",
+   "design-system"
+  ],
+  "sev": "low",
+  "eff": "s",
+  "dep": "Related: #344 closed (one button system)."
+ },
+ {
+  "n": 14,
+  "slug": "document-token-scale",
+  "title": "Document and enforce the radius, shadow and type-size scales",
+  "labels": [
+   "ux",
+   "design-system"
+  ],
+  "sev": "low",
+  "eff": "m",
+  "dep": "Blocked by: 001, 002 (their variants decide the radius and shadow set)."
+ },
+ {
+  "n": 15,
+  "slug": "planning-vs-evenements-terminology",
+  "title": "Use one name for the planning section in the nav, title and links",
+  "labels": [
+   "ux",
+   "content"
+  ],
+  "sev": "low",
+  "eff": "s",
+  "dep": "None"
+ },
+ {
+  "n": 16,
+  "slug": "touch-target-for-back-links",
+  "title": "Give standalone links like \"← Retour au planning\" a 44 px target",
+  "labels": [
+   "ux",
+   "a11y"
+  ],
+  "sev": "low",
+  "eff": "s",
+  "dep": "None"
+ }
+]

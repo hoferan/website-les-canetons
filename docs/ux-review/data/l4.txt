@@ -1,0 +1,17 @@
+demo.player 1280 /events -> /events
+PAGEERROR Failed to update a ServiceWorker for scope ('http://127.0.0.1:5199/') with script ('http://127.0.0.1:5199/mockServiceWorker.js'): Not found
+demo.player 1280 /events/4/book -> /events/4/book
+demo.player 1280 /account -> /account
+demo.player 1280 /account/password -> /account/password
+demo.player 1280 /de/events -> /de/events
+demo.player 1280 /de/events/4/book -> /de/events/4/book
+demo.player 1280 /de/account -> /de/account
+demo.player 1280 /de/account/password -> /de/account/password
+demo.player 1920 /events -> /events
+demo.player 1920 /events/4/book -> /events/4/book
+demo.player 1920 /account -> /account
+demo.player 1920 /account/password -> /account/password
+demo.player 1920 /de/events -> /de/events
+demo.player 1920 /de/events/4/book -> /de/events/4/book
+demo.player 1920 /de/account -> /de/account
+demo.player 1920 /de/account/password -> /de/account/password

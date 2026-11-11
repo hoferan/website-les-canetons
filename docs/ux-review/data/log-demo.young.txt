@@ -1,0 +1,8 @@
+demo.young 375 /events -> /events
+demo.young 375 /de/events -> /de/events
+demo.young 768 /events -> /events
+demo.young 768 /de/events -> /de/events
+demo.young 1280 /events -> /events
+demo.young 1280 /de/events -> /de/events
+demo.young 1920 /events -> /events
+demo.young 1920 /de/events -> /de/events

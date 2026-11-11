@@ -1,0 +1,133 @@
+{
+ "homeCLS": [
+  {
+   "v": 0.223,
+   "t": 1670,
+   "src": [
+    "SECTION.mx-auto px-4 py-8 max-w-shell 589->646",
+    "#text. 198->253",
+    "DIV.mt-related max-w-text text-lg 329->386",
+    "IMG.h-auto rounded-lg w-48 rotate-[4deg] bor 230->258",
+    "svg.[object SVGAnimatedString] 567->624"
+   ]
+  }
+ ],
+ "fonts": [
+  "Karla Variable 200 800 unloaded display=swap",
+  "Karla Variable 200 800 loaded display=swap",
+  "Bungee 400 unloaded display=swap",
+  "Bungee 400 unloaded display=swap",
+  "Bungee 400 loaded display=swap"
+ ],
+ "titles": {
+  "/": "Guggenmusik Les Canetons de Fribourg",
+  "/de/": "Guggenmusik Les Canetons de Fribourg",
+  "/band": "Guggenmusik Les Canetons de Fribourg",
+  "/de/band": "Guggenmusik Les Canetons de Fribourg",
+  "/contact": "Guggenmusik Les Canetons de Fribourg",
+  "/login": "Guggenmusik Les Canetons de Fribourg",
+  "/no-such-page": "Guggenmusik Les Canetons de Fribourg"
+ },
+ "events_slow_375": {
+  "main": "Planning\nPlanning\nPassés\nRechercher un événement\nTous\nRépétition\nConcert\nSortie\nCarnaval\n\nChargement…",
+  "roles": [
+   "status:"
+  ],
+  "retry": []
+ },
+ "events_slow_1280": {
+  "main": "Planning\nPlanning\nPassés\nRechercher un événement\nCalendrier\nTous\nRépétition\nConcert\nSortie\nCarnaval\n\nChargement…",
+  "roles": [
+   "status:"
+  ],
+  "retry": []
+ },
+ "events_fail_375": {
+  "main": "Planning\nPlanning\nPassés\nRechercher un événement\nTous\nRépétition\nConcert\nSortie\nCarnaval\n\nChargement…",
+  "roles": [
+   "status:"
+  ],
+  "retry": []
+ },
+ "events_fail_1280": {
+  "main": "Planning\nPlanning\nPassés\nRechercher un événement\nCalendrier\nTous\nRépétition\nConcert\nSortie\nCarnaval\n\nChargement…",
+  "roles": [
+   "status:"
+  ],
+  "retry": []
+ },
+ "events_empty_375": {
+  "main": "Planning\nPlanning\nPassés\nRechercher un événement\nTous\nRépétition\nConcert\nSortie\nCarnaval\n\nAucun événement au planning.",
+  "roles": [
+   "status:"
+  ],
+  "retry": []
+ },
+ "events_empty_1280": {
+  "main": "Planning\nPlanning\nPassés\nRechercher un événement\nCalendrier\nTous\nRépétition\nConcert\nSortie\nCarnaval\n\nAucun événement au planning.",
+  "roles": [
+   "status:"
+  ],
+  "retry": []
+ },
+ "editButtons": [
+  "Répétition",
+  "Concert",
+  "Sortie",
+  "Carnaval",
+  "Choisir",
+  "Enregistrer",
+  "Annuler"
+ ],
+ "newEventFields": [
+  "title|text|req=true|label=Titre",
+  "startDate|date|req=false|label=Date de début",
+  "startTime|time|req=false|label=Heure de début",
+  "endDate|date|req=false|label=Date de fin",
+  "endTime|time|req=false|label=Heure de fin",
+  "location|text|req=false|label=Lieu",
+  "attire|text|req=false|label=Tenue",
+  "|checkbox|req=false|label=Visible sur le site public",
+  "notes|textarea|req=false|label=Remarques"
+ ],
+ "newEventEmpty": {
+  "active": "INPUT",
+  "invalid": 1,
+  "alerts": [
+   ""
+  ]
+ },
+ "bookEmpty": {
+  "active": "INPUT",
+  "invalid": 4,
+  "errs": [
+   "Nom est obligatoire",
+   "Prénom est obligatoire",
+   "E-mail est obligatoire",
+   "Téléphone est obligatoire"
+  ],
+  "alerts": [
+   ""
+  ]
+ },
+ "bookQty": [
+  "|min=0|max=50|inputmode=numeric|label=Repas adulte — CHF 45.00",
+  "|min=0|max=3|inputmode=numeric|label=Repas enfant — CHF 20.00",
+  "|min=0|max=50|inputmode=numeric|label=Sans repas"
+ ],
+ "bookPhone": [
+  "booking-lastName:text:ac=family-name:im=",
+  "booking-firstName:text:ac=given-name:im=",
+  "booking-email:email:ac=email:im=",
+  "booking-phone:tel:ac=tel:im=",
+  "booking-address:text:ac=street-address:im=",
+  "option-1:number:ac=:im=numeric",
+  "option-2:number:ac=:im=numeric",
+  "option-3:number:ac=:im=numeric",
+  "option-5:radio:ac=:im=",
+  "option-5:radio:ac=:im=",
+  "option-6:radio:ac=:im=",
+  "option-6:radio:ac=:im=",
+  "website:text:ac=off:im="
+ ]
+}

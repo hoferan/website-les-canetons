@@ -1,0 +1,6 @@
+demo.committee 1280 /events/7/registrations -> /events/7/registrations
+demo.committee 1280 /inbox -> /inbox
+demo.committee 1280 /contact-messages -> /contact-messages
+demo.committee 1280 /de/events/7/registrations -> /de/events/7/registrations
+demo.committee 1280 /de/inbox -> /de/inbox
+demo.committee 1280 /de/contact-messages -> /de/contact-messages

@@ -1,0 +1,16 @@
+demo.both 375 /events -> /account/password
+demo.both 375 /account/password -> /account/password
+demo.both 375 /de/events -> /de/account/password
+demo.both 375 /de/account/password -> /de/account/password
+demo.both 768 /events -> /login
+demo.both 768 /account/password -> /login
+demo.both 768 /de/events -> /de/login
+demo.both 768 /de/account/password -> /de/login
+demo.both 1280 /events -> /account/password
+demo.both 1280 /account/password -> /account/password
+demo.both 1280 /de/events -> /de/account/password
+demo.both 1280 /de/account/password -> /de/account/password
+demo.both 1920 /events -> /account/password
+demo.both 1920 /account/password -> /account/password
+demo.both 1920 /de/events -> /de/account/password
+demo.both 1920 /de/account/password -> /de/account/password

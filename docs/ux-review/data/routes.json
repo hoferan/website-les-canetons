@@ -1,0 +1,1208 @@
+{
+ "anon": {
+  "/": {
+   "url": "/",
+   "h1": [
+    "La guggen d’enfants de Fribourg, depuis 2002."
+   ]
+  },
+  "/de": {
+   "url": "/de",
+   "h1": [
+    "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+   ]
+  },
+  "/join": {
+   "url": "/join",
+   "h1": [
+    "Tu veux commencer la guggen ?"
+   ]
+  },
+  "/agenda": {
+   "url": "/agenda",
+   "h1": [
+    "Où nous voir"
+   ]
+  },
+  "/band": {
+   "url": "/band",
+   "h1": [
+    "Nos Canetons"
+   ]
+  },
+  "/contact": {
+   "url": "/contact",
+   "h1": [
+    "Contact"
+   ]
+  },
+  "/committee": {
+   "url": "/committee",
+   "h1": [
+    "Le comité"
+   ]
+  },
+  "/history": {
+   "url": "/history",
+   "h1": [
+    "L’Histoire des Canetons"
+   ]
+  },
+  "/login": {
+   "url": "/login",
+   "h1": [
+    "Connexion"
+   ]
+  },
+  "/events/7/book": {
+   "url": "/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/join": {
+   "url": "/de/join",
+   "h1": [
+    "Willst du mit der Gugge anfangen?"
+   ]
+  },
+  "/de/agenda": {
+   "url": "/de/agenda",
+   "h1": [
+    "Wo Sie uns sehen"
+   ]
+  },
+  "/de/band": {
+   "url": "/de/band",
+   "h1": [
+    "Unsere Canetons"
+   ]
+  },
+  "/de/contact": {
+   "url": "/de/contact",
+   "h1": [
+    "Kontakt"
+   ]
+  },
+  "/de/committee": {
+   "url": "/de/committee",
+   "h1": [
+    "Der Vorstand"
+   ]
+  },
+  "/de/history": {
+   "url": "/de/history",
+   "h1": [
+    "Die Geschichte der Canetons"
+   ]
+  },
+  "/de/login": {
+   "url": "/de/login",
+   "h1": [
+    "Anmelden"
+   ]
+  },
+  "/de/events/7/book": {
+   "url": "/de/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  }
+ },
+ "demo.player": {
+  "/": {
+   "url": "/",
+   "h1": [
+    "La guggen d’enfants de Fribourg, depuis 2002."
+   ]
+  },
+  "/de": {
+   "url": "/de",
+   "h1": [
+    "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+   ]
+  },
+  "/events": {
+   "url": "/events",
+   "h1": [
+    "Planning"
+   ]
+  },
+  "/join": {
+   "url": "/join",
+   "h1": [
+    "Tu veux commencer la guggen ?"
+   ]
+  },
+  "/agenda": {
+   "url": "/agenda",
+   "h1": [
+    "Où nous voir"
+   ]
+  },
+  "/band": {
+   "url": "/band",
+   "h1": [
+    "Nos Canetons"
+   ]
+  },
+  "/contact": {
+   "url": "/contact",
+   "h1": [
+    "Contact"
+   ]
+  },
+  "/committee": {
+   "url": "/committee",
+   "h1": [
+    "Le comité"
+   ]
+  },
+  "/history": {
+   "url": "/history",
+   "h1": [
+    "L’Histoire des Canetons"
+   ]
+  },
+  "/events/7/book": {
+   "url": "/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/events": {
+   "url": "/de/events",
+   "h1": [
+    "Planung"
+   ]
+  },
+  "/de/join": {
+   "url": "/de/join",
+   "h1": [
+    "Willst du mit der Gugge anfangen?"
+   ]
+  },
+  "/de/agenda": {
+   "url": "/de/agenda",
+   "h1": [
+    "Wo Sie uns sehen"
+   ]
+  },
+  "/de/band": {
+   "url": "/de/band",
+   "h1": [
+    "Unsere Canetons"
+   ]
+  },
+  "/de/contact": {
+   "url": "/de/contact",
+   "h1": [
+    "Kontakt"
+   ]
+  },
+  "/de/committee": {
+   "url": "/de/committee",
+   "h1": [
+    "Der Vorstand"
+   ]
+  },
+  "/de/history": {
+   "url": "/de/history",
+   "h1": [
+    "Die Geschichte der Canetons"
+   ]
+  },
+  "/de/events/7/book": {
+   "url": "/de/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/events/4/book": {
+   "url": "/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  },
+  "/de/events/4/book": {
+   "url": "/de/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  }
+ },
+ "demo.both": {
+  "/": {
+   "url": "/",
+   "h1": [
+    "La guggen d’enfants de Fribourg, depuis 2002."
+   ]
+  },
+  "/de": {
+   "url": "/de",
+   "h1": [
+    "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+   ]
+  },
+  "/events": {
+   "url": "/account/password",
+   "h1": [
+    "Mot de passe"
+   ]
+  },
+  "/join": {
+   "url": "/join",
+   "h1": [
+    "Tu veux commencer la guggen ?"
+   ]
+  },
+  "/agenda": {
+   "url": "/agenda",
+   "h1": [
+    "Où nous voir"
+   ]
+  },
+  "/band": {
+   "url": "/band",
+   "h1": [
+    "Nos Canetons"
+   ]
+  },
+  "/contact": {
+   "url": "/contact",
+   "h1": [
+    "Contact"
+   ]
+  },
+  "/committee": {
+   "url": "/committee",
+   "h1": [
+    "Le comité"
+   ]
+  },
+  "/history": {
+   "url": "/history",
+   "h1": [
+    "L’Histoire des Canetons"
+   ]
+  },
+  "/events/7/book": {
+   "url": "/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/events": {
+   "url": "/de/account/password",
+   "h1": [
+    "Passwort"
+   ]
+  },
+  "/de/join": {
+   "url": "/de/join",
+   "h1": [
+    "Willst du mit der Gugge anfangen?"
+   ]
+  },
+  "/de/agenda": {
+   "url": "/de/agenda",
+   "h1": [
+    "Wo Sie uns sehen"
+   ]
+  },
+  "/de/band": {
+   "url": "/de/band",
+   "h1": [
+    "Unsere Canetons"
+   ]
+  },
+  "/de/contact": {
+   "url": "/de/contact",
+   "h1": [
+    "Kontakt"
+   ]
+  },
+  "/de/committee": {
+   "url": "/de/committee",
+   "h1": [
+    "Der Vorstand"
+   ]
+  },
+  "/de/history": {
+   "url": "/de/history",
+   "h1": [
+    "Die Geschichte der Canetons"
+   ]
+  },
+  "/de/events/7/book": {
+   "url": "/de/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/events/7/book/edit": {
+   "url": "/account/password",
+   "h1": [
+    "Mot de passe"
+   ]
+  },
+  "/account/password": {
+   "url": "/account/password",
+   "h1": [
+    "Mot de passe"
+   ]
+  },
+  "/de/events/7/book/edit": {
+   "url": "/de/account/password",
+   "h1": [
+    "Passwort"
+   ]
+  }
+ },
+ "demo.direction": {
+  "/": {
+   "url": "/",
+   "h1": [
+    "La guggen d’enfants de Fribourg, depuis 2002."
+   ]
+  },
+  "/de": {
+   "url": "/de",
+   "h1": [
+    "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+   ]
+  },
+  "/events": {
+   "url": "/events",
+   "h1": [
+    "Planning"
+   ]
+  },
+  "/join": {
+   "url": "/join",
+   "h1": [
+    "Tu veux commencer la guggen ?"
+   ]
+  },
+  "/agenda": {
+   "url": "/agenda",
+   "h1": [
+    "Où nous voir"
+   ]
+  },
+  "/band": {
+   "url": "/band",
+   "h1": [
+    "Nos Canetons"
+   ]
+  },
+  "/contact": {
+   "url": "/contact",
+   "h1": [
+    "Contact"
+   ]
+  },
+  "/committee": {
+   "url": "/committee",
+   "h1": [
+    "Le comité"
+   ]
+  },
+  "/history": {
+   "url": "/history",
+   "h1": [
+    "L’Histoire des Canetons"
+   ]
+  },
+  "/events/7/book": {
+   "url": "/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/events": {
+   "url": "/de/events",
+   "h1": [
+    "Planung"
+   ]
+  },
+  "/de/join": {
+   "url": "/de/join",
+   "h1": [
+    "Willst du mit der Gugge anfangen?"
+   ]
+  },
+  "/de/agenda": {
+   "url": "/de/agenda",
+   "h1": [
+    "Wo Sie uns sehen"
+   ]
+  },
+  "/de/band": {
+   "url": "/de/band",
+   "h1": [
+    "Unsere Canetons"
+   ]
+  },
+  "/de/contact": {
+   "url": "/de/contact",
+   "h1": [
+    "Kontakt"
+   ]
+  },
+  "/de/committee": {
+   "url": "/de/committee",
+   "h1": [
+    "Der Vorstand"
+   ]
+  },
+  "/de/history": {
+   "url": "/de/history",
+   "h1": [
+    "Die Geschichte der Canetons"
+   ]
+  },
+  "/de/events/7/book": {
+   "url": "/de/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/events/1/attendance": {
+   "url": "/events/1/attendance",
+   "h1": [
+    "Qui vient ?"
+   ]
+  },
+  "/events/2/attendance": {
+   "url": "/events/2/attendance",
+   "h1": [
+    "Qui vient ?"
+   ]
+  },
+  "/events/3/attendance": {
+   "url": "/events/3/attendance",
+   "h1": [
+    "Qui vient ?"
+   ]
+  },
+  "/events/4/attendance": {
+   "url": "/events/4/attendance",
+   "h1": [
+    "Qui vient ?"
+   ]
+  },
+  "/events/5/attendance": {
+   "url": "/events/5/attendance",
+   "h1": [
+    "Qui vient ?"
+   ]
+  },
+  "/events/7/attendance": {
+   "url": "/events/7/attendance",
+   "h1": [
+    "Qui vient ?"
+   ]
+  },
+  "/events/7/book/edit": {
+   "url": "/events/7/book/edit",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/events/1/attendance": {
+   "url": "/de/events/1/attendance",
+   "h1": [
+    "Wer kommt?"
+   ]
+  },
+  "/de/events/2/attendance": {
+   "url": "/de/events/2/attendance",
+   "h1": [
+    "Wer kommt?"
+   ]
+  },
+  "/de/events/3/attendance": {
+   "url": "/de/events/3/attendance",
+   "h1": [
+    "Wer kommt?"
+   ]
+  },
+  "/de/events/4/attendance": {
+   "url": "/de/events/4/attendance",
+   "h1": [
+    "Wer kommt?"
+   ]
+  },
+  "/de/events/5/attendance": {
+   "url": "/de/events/5/attendance",
+   "h1": [
+    "Wer kommt?"
+   ]
+  },
+  "/de/events/7/attendance": {
+   "url": "/de/events/7/attendance",
+   "h1": [
+    "Wer kommt?"
+   ]
+  },
+  "/de/events/7/book/edit": {
+   "url": "/de/events/7/book/edit",
+   "h1": [
+    "Souper de soutien"
+   ]
+  }
+ },
+ "demo.committee": {
+  "/": {
+   "url": "/",
+   "h1": [
+    "La guggen d’enfants de Fribourg, depuis 2002."
+   ]
+  },
+  "/de": {
+   "url": "/de",
+   "h1": [
+    "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+   ]
+  },
+  "/events": {
+   "url": "/events",
+   "h1": [
+    "Planning"
+   ]
+  },
+  "/join": {
+   "url": "/join",
+   "h1": [
+    "Tu veux commencer la guggen ?"
+   ]
+  },
+  "/agenda": {
+   "url": "/agenda",
+   "h1": [
+    "Où nous voir"
+   ]
+  },
+  "/band": {
+   "url": "/band",
+   "h1": [
+    "Nos Canetons"
+   ]
+  },
+  "/contact": {
+   "url": "/contact",
+   "h1": [
+    "Contact"
+   ]
+  },
+  "/committee": {
+   "url": "/committee",
+   "h1": [
+    "Le comité"
+   ]
+  },
+  "/history": {
+   "url": "/history",
+   "h1": [
+    "L’Histoire des Canetons"
+   ]
+  },
+  "/events/7/book": {
+   "url": "/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/events": {
+   "url": "/de/events",
+   "h1": [
+    "Planung"
+   ]
+  },
+  "/de/join": {
+   "url": "/de/join",
+   "h1": [
+    "Willst du mit der Gugge anfangen?"
+   ]
+  },
+  "/de/agenda": {
+   "url": "/de/agenda",
+   "h1": [
+    "Wo Sie uns sehen"
+   ]
+  },
+  "/de/band": {
+   "url": "/de/band",
+   "h1": [
+    "Unsere Canetons"
+   ]
+  },
+  "/de/contact": {
+   "url": "/de/contact",
+   "h1": [
+    "Kontakt"
+   ]
+  },
+  "/de/committee": {
+   "url": "/de/committee",
+   "h1": [
+    "Der Vorstand"
+   ]
+  },
+  "/de/history": {
+   "url": "/de/history",
+   "h1": [
+    "Die Geschichte der Canetons"
+   ]
+  },
+  "/de/events/7/book": {
+   "url": "/de/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/events/4/book": {
+   "url": "/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  },
+  "/events/4/registrations": {
+   "url": "/events/4/registrations",
+   "h1": [
+    "Inscriptions"
+   ]
+  },
+  "/events/7/registrations": {
+   "url": "/events/7/registrations",
+   "h1": [
+    "Inscriptions"
+   ]
+  },
+  "/de/events/4/book": {
+   "url": "/de/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  },
+  "/de/events/4/registrations": {
+   "url": "/de/events/4/registrations",
+   "h1": [
+    "Anmeldungen"
+   ]
+  },
+  "/de/events/7/registrations": {
+   "url": "/de/events/7/registrations",
+   "h1": [
+    "Anmeldungen"
+   ]
+  }
+ },
+ "demo.young": {
+  "/": {
+   "url": "/",
+   "h1": [
+    "La guggen d’enfants de Fribourg, depuis 2002."
+   ]
+  },
+  "/de": {
+   "url": "/de",
+   "h1": [
+    "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+   ]
+  },
+  "/events": {
+   "url": "/events",
+   "h1": [
+    "Planning"
+   ]
+  },
+  "/join": {
+   "url": "/join",
+   "h1": [
+    "Tu veux commencer la guggen ?"
+   ]
+  },
+  "/agenda": {
+   "url": "/agenda",
+   "h1": [
+    "Où nous voir"
+   ]
+  },
+  "/band": {
+   "url": "/band",
+   "h1": [
+    "Nos Canetons"
+   ]
+  },
+  "/contact": {
+   "url": "/contact",
+   "h1": [
+    "Contact"
+   ]
+  },
+  "/committee": {
+   "url": "/committee",
+   "h1": [
+    "Le comité"
+   ]
+  },
+  "/history": {
+   "url": "/history",
+   "h1": [
+    "L’Histoire des Canetons"
+   ]
+  },
+  "/events/7/book": {
+   "url": "/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/events": {
+   "url": "/de/events",
+   "h1": [
+    "Planung"
+   ]
+  },
+  "/de/join": {
+   "url": "/de/join",
+   "h1": [
+    "Willst du mit der Gugge anfangen?"
+   ]
+  },
+  "/de/agenda": {
+   "url": "/de/agenda",
+   "h1": [
+    "Wo Sie uns sehen"
+   ]
+  },
+  "/de/band": {
+   "url": "/de/band",
+   "h1": [
+    "Unsere Canetons"
+   ]
+  },
+  "/de/contact": {
+   "url": "/de/contact",
+   "h1": [
+    "Kontakt"
+   ]
+  },
+  "/de/committee": {
+   "url": "/de/committee",
+   "h1": [
+    "Der Vorstand"
+   ]
+  },
+  "/de/history": {
+   "url": "/de/history",
+   "h1": [
+    "Die Geschichte der Canetons"
+   ]
+  },
+  "/de/events/7/book": {
+   "url": "/de/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/events/4/book": {
+   "url": "/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  },
+  "/de/events/4/book": {
+   "url": "/de/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  }
+ },
+ "demo.mustchange": {
+  "/": {
+   "url": "/",
+   "h1": [
+    "La guggen d’enfants de Fribourg, depuis 2002."
+   ]
+  },
+  "/de": {
+   "url": "/de",
+   "h1": [
+    "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+   ]
+  },
+  "/events": {
+   "url": "/account/password",
+   "h1": [
+    "Mot de passe"
+   ]
+  },
+  "/join": {
+   "url": "/join",
+   "h1": [
+    "Tu veux commencer la guggen ?"
+   ]
+  },
+  "/agenda": {
+   "url": "/agenda",
+   "h1": [
+    "Où nous voir"
+   ]
+  },
+  "/band": {
+   "url": "/band",
+   "h1": [
+    "Nos Canetons"
+   ]
+  },
+  "/contact": {
+   "url": "/contact",
+   "h1": [
+    "Contact"
+   ]
+  },
+  "/committee": {
+   "url": "/committee",
+   "h1": [
+    "Le comité"
+   ]
+  },
+  "/history": {
+   "url": "/history",
+   "h1": [
+    "L’Histoire des Canetons"
+   ]
+  },
+  "/events/7/book": {
+   "url": "/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/events": {
+   "url": "/de/account/password",
+   "h1": [
+    "Passwort"
+   ]
+  },
+  "/de/join": {
+   "url": "/de/join",
+   "h1": [
+    "Willst du mit der Gugge anfangen?"
+   ]
+  },
+  "/de/agenda": {
+   "url": "/de/agenda",
+   "h1": [
+    "Wo Sie uns sehen"
+   ]
+  },
+  "/de/band": {
+   "url": "/de/band",
+   "h1": [
+    "Unsere Canetons"
+   ]
+  },
+  "/de/contact": {
+   "url": "/de/contact",
+   "h1": [
+    "Kontakt"
+   ]
+  },
+  "/de/committee": {
+   "url": "/de/committee",
+   "h1": [
+    "Der Vorstand"
+   ]
+  },
+  "/de/history": {
+   "url": "/de/history",
+   "h1": [
+    "Die Geschichte der Canetons"
+   ]
+  },
+  "/de/events/7/book": {
+   "url": "/de/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/account/password": {
+   "url": "/account/password",
+   "h1": [
+    "Mot de passe"
+   ]
+  }
+ },
+ "demo.registeronly": {
+  "/": {
+   "url": "/",
+   "h1": [
+    "La guggen d’enfants de Fribourg, depuis 2002."
+   ]
+  },
+  "/de": {
+   "url": "/de",
+   "h1": [
+    "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+   ]
+  },
+  "/events": {
+   "url": "/events",
+   "h1": [
+    "Planning"
+   ]
+  },
+  "/join": {
+   "url": "/join",
+   "h1": [
+    "Tu veux commencer la guggen ?"
+   ]
+  },
+  "/agenda": {
+   "url": "/agenda",
+   "h1": [
+    "Où nous voir"
+   ]
+  },
+  "/band": {
+   "url": "/band",
+   "h1": [
+    "Nos Canetons"
+   ]
+  },
+  "/contact": {
+   "url": "/contact",
+   "h1": [
+    "Contact"
+   ]
+  },
+  "/committee": {
+   "url": "/committee",
+   "h1": [
+    "Le comité"
+   ]
+  },
+  "/history": {
+   "url": "/history",
+   "h1": [
+    "L’Histoire des Canetons"
+   ]
+  },
+  "/events/7/book": {
+   "url": "/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/events": {
+   "url": "/de/events",
+   "h1": [
+    "Planung"
+   ]
+  },
+  "/de/join": {
+   "url": "/de/join",
+   "h1": [
+    "Willst du mit der Gugge anfangen?"
+   ]
+  },
+  "/de/agenda": {
+   "url": "/de/agenda",
+   "h1": [
+    "Wo Sie uns sehen"
+   ]
+  },
+  "/de/band": {
+   "url": "/de/band",
+   "h1": [
+    "Unsere Canetons"
+   ]
+  },
+  "/de/contact": {
+   "url": "/de/contact",
+   "h1": [
+    "Kontakt"
+   ]
+  },
+  "/de/committee": {
+   "url": "/de/committee",
+   "h1": [
+    "Der Vorstand"
+   ]
+  },
+  "/de/history": {
+   "url": "/de/history",
+   "h1": [
+    "Die Geschichte der Canetons"
+   ]
+  },
+  "/de/events/7/book": {
+   "url": "/de/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/events/4/book": {
+   "url": "/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  },
+  "/de/events/4/book": {
+   "url": "/de/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  }
+ },
+ "demo.guestlists": {
+  "/": {
+   "url": "/",
+   "h1": [
+    "La guggen d’enfants de Fribourg, depuis 2002."
+   ]
+  },
+  "/de": {
+   "url": "/de",
+   "h1": [
+    "Die Kinder-Guggenmusik aus Freiburg, seit 2002."
+   ]
+  },
+  "/events": {
+   "url": "/events",
+   "h1": [
+    "Planning"
+   ]
+  },
+  "/join": {
+   "url": "/join",
+   "h1": [
+    "Tu veux commencer la guggen ?"
+   ]
+  },
+  "/agenda": {
+   "url": "/agenda",
+   "h1": [
+    "Où nous voir"
+   ]
+  },
+  "/band": {
+   "url": "/band",
+   "h1": [
+    "Nos Canetons"
+   ]
+  },
+  "/contact": {
+   "url": "/contact",
+   "h1": [
+    "Contact"
+   ]
+  },
+  "/committee": {
+   "url": "/committee",
+   "h1": [
+    "Le comité"
+   ]
+  },
+  "/history": {
+   "url": "/history",
+   "h1": [
+    "L’Histoire des Canetons"
+   ]
+  },
+  "/events/7/book": {
+   "url": "/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/de/events": {
+   "url": "/de/events",
+   "h1": [
+    "Planung"
+   ]
+  },
+  "/de/join": {
+   "url": "/de/join",
+   "h1": [
+    "Willst du mit der Gugge anfangen?"
+   ]
+  },
+  "/de/agenda": {
+   "url": "/de/agenda",
+   "h1": [
+    "Wo Sie uns sehen"
+   ]
+  },
+  "/de/band": {
+   "url": "/de/band",
+   "h1": [
+    "Unsere Canetons"
+   ]
+  },
+  "/de/contact": {
+   "url": "/de/contact",
+   "h1": [
+    "Kontakt"
+   ]
+  },
+  "/de/committee": {
+   "url": "/de/committee",
+   "h1": [
+    "Der Vorstand"
+   ]
+  },
+  "/de/history": {
+   "url": "/de/history",
+   "h1": [
+    "Die Geschichte der Canetons"
+   ]
+  },
+  "/de/events/7/book": {
+   "url": "/de/events/7/book",
+   "h1": [
+    "Souper de soutien"
+   ]
+  },
+  "/events/4/book": {
+   "url": "/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  },
+  "/events/4/registrations": {
+   "url": "/events/4/registrations",
+   "h1": [
+    "Inscriptions"
+   ]
+  },
+  "/events/7/registrations": {
+   "url": "/events/7/registrations",
+   "h1": [
+    "Inscriptions"
+   ]
+  },
+  "/de/events/4/book": {
+   "url": "/de/events/4/book",
+   "h1": [
+    "Weekend musical"
+   ]
+  },
+  "/de/events/4/registrations": {
+   "url": "/de/events/4/registrations",
+   "h1": [
+    "Anmeldungen"
+   ]
+  },
+  "/de/events/7/registrations": {
+   "url": "/de/events/7/registrations",
+   "h1": [
+    "Anmeldungen"
+   ]
+  }
+ }
+}

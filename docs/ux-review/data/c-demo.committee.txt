@@ -1,0 +1,4 @@
+demo.committee 375 /events/7/registrations 0
+demo.committee 375 /inbox 0
+demo.committee 1280 /events/7/registrations 0
+demo.committee 1280 /inbox 0

@@ -1,0 +1,13 @@
+import { browser, newPage, login, BASE } from "./lib.mjs";
+const b = await browser(); const { page } = await newPage(b, { width: 375, height: 800 }); await login(page, "demo.player");
+await page.addInitScript(() => { const f = window.fetch; window.fetch = (u, o) => { const url = String(u?.url || u); if (/\/api\/v1\/events(\?|$)/.test(url) && (!o || !o.method || o.method === "GET")) return Promise.resolve(new Response(JSON.stringify({ title: "x", status: 500, code: "server_error" }), { status: 500, headers: { "content-type": "application/problem+json" } })); return f(u, o); }; });
+await page.goto(BASE + "/events"); await page.waitForTimeout(2500);
+console.log("load-error colour", await page.evaluate(() => getComputedStyle(document.querySelector("main p[role=alert]")).color));
+await page.goto(BASE + "/contact"); await page.getByRole("button", { name: /envoyer/i }).click(); await page.waitForTimeout(500);
+console.log("field-error colour", await page.evaluate(() => getComputedStyle(document.querySelector("#contact-lastName-error")).color + " " + getComputedStyle(document.querySelector("#contact-lastName-error")).fontSize));
+await b.close();
+const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; const L = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+const cr = (a, b) => { const [x, y] = [L(a), L(b)].sort((p, q) => q - p); return ((x + 0.05) / (y + 0.05)).toFixed(2); };
+const blend = (f, bg, a) => f.map((v, i) => Math.round(v * a + bg[i] * (1 - a)));
+console.log("focus ring on white", cr(blend([75, 46, 214], [255, 255, 255], 0.5), [255, 255, 255]), "on cream", cr(blend([75, 46, 214], [255, 247, 236], 0.5), [255, 247, 236]));
+console.log("red #e0201a on white/cream", cr([224, 32, 26], [255, 255, 255]), cr([224, 32, 26], [255, 247, 236]));

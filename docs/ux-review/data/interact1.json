@@ -1,0 +1,190 @@
+{
+ "contactInitial": {
+  "active": "BODY Aller au contenu\nDEV\nLes Canet",
+  "invalid": [],
+  "alerts": [
+   "alert/null: ",
+   "null/polite: "
+  ],
+  "errTexts": [
+   "*",
+   "*",
+   "*",
+   "*",
+   "*",
+   "*"
+  ],
+  "html5": ":text:req=true:ac=family-name, :text:req=true:ac=given-name, :email:req=true:ac=email, :text:req=true:ac=, :textarea:req=true:ac=",
+  "noValidate": true
+ },
+ "contactEmptySubmit": {
+  "active": "INPUT contact-lastName",
+  "invalid": [
+   "contact-lastName desc=contact-lastName-error -> Nom est obligatoire",
+   "contact-firstName desc=contact-firstName-error -> Prénom est obligatoire",
+   "contact-email desc=contact-email-error -> E-mail est obligatoire",
+   "contact-subject desc=contact-subject-error -> Sujet est obligatoire",
+   "contact-message desc=contact-message-error -> Message est obligatoire"
+  ],
+  "alerts": [
+   "alert/null: ",
+   "null/polite: "
+  ],
+  "errTexts": [
+   "*",
+   "*",
+   "Nom est obligatoire",
+   "*",
+   "Prénom est obligatoire",
+   "*",
+   "E-mail est obligatoire",
+   "*",
+   "Sujet est obligatoire",
+   "*",
+   "Message est obligatoire"
+  ],
+  "html5": ":text:req=true:ac=family-name, :text:req=true:ac=given-name, :email:req=true:ac=email, :text:req=true:ac=, :textarea:req=true:ac=",
+  "noValidate": true
+ },
+ "contactBadEmail": {
+  "active": "INPUT contact-email",
+  "invalid": [
+   "contact-email desc=contact-email-error -> E-mail n'est pas dans un format valide"
+  ],
+  "alerts": [
+   "alert/null: ",
+   "null/polite: "
+  ],
+  "errTexts": [
+   "*",
+   "*",
+   "*",
+   "*",
+   "E-mail n'est pas dans un format valide",
+   "*",
+   "*"
+  ],
+  "html5": ":text:req=true:ac=family-name, :text:req=true:ac=given-name, :email:req=true:ac=email, :text:req=true:ac=, :textarea:req=true:ac=",
+  "noValidate": true
+ },
+ "contactSuccess": {
+  "active": "H1 Message envoyé",
+  "invalid": [],
+  "alerts": [
+   "null/polite: "
+  ],
+  "errTexts": [],
+  "html5": ""
+ },
+ "contactSuccessText": "Message envoyé\n\nMerci ! Le comité a reçu votre message et vous répondra à l’adresse que vous avez indiquée.",
+ "contactSending": "Menu disabled=false aria-busy=null | Envoyer disabled=false aria-busy=null",
+ "contactServerError": {
+  "active": "BUTTON Envoyer",
+  "invalid": [],
+  "alerts": [
+   "alert/null: Une erreur est survenue. Veuillez réessayer.",
+   "null/polite: "
+  ],
+  "errTexts": [
+   "Une erreur est survenue. Veuillez réessayer.",
+   "*",
+   "*",
+   "*",
+   "*",
+   "*",
+   "*"
+  ],
+  "html5": ":text:req=true:ac=family-name, :text:req=true:ac=given-name, :email:req=true:ac=email, :text:req=true:ac=, :textarea:req=true:ac=",
+  "noValidate": true
+ },
+ "contactValuesKept": "Muller|Léa|lea@example.ch|Salut|Bonjour|",
+ "loginInitial": {
+  "active": "BODY Aller au contenu\nDEV\nLes Canet",
+  "invalid": [],
+  "alerts": [
+   "alert/null: ",
+   "null/polite: "
+  ],
+  "errTexts": [
+   "*",
+   "*",
+   "*"
+  ],
+  "html5": ":text:req=true:ac=username, :password:req=true:ac=current-password",
+  "noValidate": true
+ },
+ "loginFields": [
+  "|text|ac=username|label=Identifiant",
+  "|password|ac=current-password|label=Mot de passe"
+ ],
+ "loginEmpty": {
+  "active": "INPUT username",
+  "invalid": [
+   "username desc=username-error -> Identifiant est obligatoire",
+   "password desc=password-error -> Mot de passe est obligatoire"
+  ],
+  "alerts": [
+   "alert/null: ",
+   "null/polite: "
+  ],
+  "errTexts": [
+   "*",
+   "*",
+   "Identifiant est obligatoire",
+   "*",
+   "Mot de passe est obligatoire"
+  ],
+  "html5": ":text:req=true:ac=username, :password:req=true:ac=current-password",
+  "noValidate": true
+ },
+ "loginWrong": {
+  "active": "BUTTON Se connecter",
+  "invalid": [],
+  "alerts": [
+   "alert/null: Nom d'utilisateur ou mot de passe incorrect",
+   "null/polite: "
+  ],
+  "errTexts": [
+   "*",
+   "*",
+   "*",
+   "Nom d'utilisateur ou mot de passe incorrect"
+  ],
+  "html5": ":text:req=true:ac=username, :password:req=true:ac=current-password",
+  "noValidate": true
+ },
+ "tabStops": [
+  "A \"Aller au contenu\" outline=solid 2px rgb(75, 46, 214) shadow=none",
+  "A \"Les Canetons de Fribou\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"DE\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"NOUS REJOINDRE\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"OÙ NOUS VOIR\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"LES CANETONS\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"CONTACT\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"COMITÉ\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"HISTOIRE\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"GALERIE\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"Instagram (nouvel ongl\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"Facebook (nouvel ongle\" outline=solid 2px rgb(255, 255, 255) shadow=none",
+  "A \"Connexion\" outline=solid 3px rgb(20, 18, 28) shadow=rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0",
+  "A \"S’inscrire\" outline=none 3px rgb(255, 255, 255) shadow=rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0"
+ ],
+ "langFromAgenda": "http://127.0.0.1:5199/de/agenda",
+ "langFromBook": "http://127.0.0.1:5199/de/events/7/book",
+ "langAttrFr": "fr-CH",
+ "langSwitchMarkup": "<div role=\"group\" aria-label=\"Langue\" class=\"flex items-center text-sm\"><span aria-current=\"true\" class=\"inline-flex min-h-touch min-w-touch items-center justify-center\"><span aria-hidden=\"true\" class=\"rounded bg-white px-2 py-1 leading-none font-semibold text-stage\">FR</span><span class=\"sr-only\">Français</span></span><a hreflang=\"de-CH\" lang=\"de-CH\" title=\"Deutsch\" aria-label=\"Auf Deutsch wechseln\" class=\"focus-ring-stage inline-flex min-h-touch min-w-touch items-center justify-center rounded ",
+ "menuBtn": {
+  "expanded": "false",
+  "controls": null,
+  "h": 44,
+  "w": 106.109375
+ },
+ "menuOpen": {
+  "active": "BUTTON ",
+  "expandedAfter": "true"
+ },
+ "menuAfterEsc": {
+  "expanded": "false",
+  "active": "BUTTON Menu"
+ }
+}

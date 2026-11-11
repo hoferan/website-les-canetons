@@ -1,0 +1,25 @@
+demo.committee 375 /events/7/registrations -> /events/7/registrations
+demo.committee 375 /inbox -> /inbox
+PAGEERROR Failed to update a ServiceWorker for scope ('http://127.0.0.1:5199/') with script ('http://127.0.0.1:5199/mockServiceWorker.js'): Not found
+demo.committee 375 /contact-messages -> /contact-messages
+demo.committee 375 /de/events/7/registrations -> /de/events/7/registrations
+demo.committee 375 /de/inbox -> /de/inbox
+demo.committee 375 /de/contact-messages -> /de/contact-messages
+demo.committee 768 /events/7/registrations -> /events/7/registrations
+demo.committee 768 /inbox -> /inbox
+demo.committee 768 /contact-messages -> /contact-messages
+demo.committee 768 /de/events/7/registrations -> /de/events/7/registrations
+demo.committee 768 /de/inbox -> /de/inbox
+demo.committee 768 /de/contact-messages -> /de/contact-messages
+demo.committee 1280 /events/7/registrations -> /login
+demo.committee 1280 /inbox -> /login
+demo.committee 1280 /contact-messages -> /login
+demo.committee 1280 /de/events/7/registrations -> /de/login
+demo.committee 1280 /de/inbox -> /de/login
+demo.committee 1280 /de/contact-messages -> /de/login
+demo.committee 1920 /events/7/registrations -> /events/7/registrations
+demo.committee 1920 /inbox -> /inbox
+demo.committee 1920 /contact-messages -> /contact-messages
+demo.committee 1920 /de/events/7/registrations -> /de/events/7/registrations
+demo.committee 1920 /de/inbox -> /de/inbox
+demo.committee 1920 /de/contact-messages -> /de/contact-messages
