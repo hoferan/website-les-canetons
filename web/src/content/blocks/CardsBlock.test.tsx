@@ -312,6 +312,82 @@ test("Ajouter une carte stops at 24 cards and says why", async () => {
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
+test("Dupliquer copies a card right after it, and the copy edits apart from the original", async () => {
+  const user = userEvent.setup();
+  editing();
+  // A photo already placed for the card. The block itself goes through the
+  // mocked store rather than `storeBlock`, so the page reads the saved list.
+  setMockPhotoSlot(SCHEDULE_SLOT, { imageId: 1, label: "Horaires", path: "/join" });
+  await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
+  const puts = recordBlockPuts();
+
+  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("switch", { name: "Photo" }));
+  await user.click(within(dialog).getByRole("button", { name: "Dupliquer" }));
+
+  // The editor now shows the copy, its title ready to be typed over.
+  const title = within(dialog).getByRole("textbox", { name: "Titre FR" });
+  expect(title).toHaveValue("Horaires");
+  expect(title).toHaveFocus();
+  await user.clear(title);
+  await user.type(title, "Horaires bis");
+  await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => puts).toHaveLength(1);
+  const shipped = BLOCKS["join.facts"].defaults().cards;
+  const schedule = { ...shipped.find((card) => card.id === "schedule")!, photo: true };
+  const saved = (puts[0]!.body as { data: { cards: { id: string }[] } }).data.cards;
+  const copyId = saved[2]!.id;
+  expect(copyId).not.toBe("schedule");
+  expect(saved).toEqual([
+    shipped[0],
+    schedule,
+    { ...schedule, id: copyId, title: { ...schedule.title, fr: "Horaires bis" } },
+    ...shipped.slice(2),
+  ]);
+
+  // The copy shows its own empty slot; the original keeps its photo.
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(
+      document.querySelector(`[data-photo-pending='${cardSlot("join.facts", copyId)}']`),
+    ).not.toBeNull(),
+  );
+  expect(mockPhotoSlot(SCHEDULE_SLOT)).not.toBeNull();
+  expect(document.querySelectorAll("[data-photo-frame]")).toHaveLength(1);
+  expect(
+    screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+  ).toEqual([
+    "Instruments recherchés",
+    "Horaires",
+    "Horaires bis",
+    "Critères d’âge",
+    "Lieu",
+    "Contacts",
+  ]);
+});
+
+test("a grid at 24 cards offers no Dupliquer", async () => {
+  const user = userEvent.setup();
+  const card = (index: number) => ({
+    id: `card-${index}`,
+    icon: "star" as const,
+    tint: "pink" as const,
+    title: { fr: `Carte ${index}` },
+    rows: [],
+  });
+  storeBlock("committee.contact", { cards: Array.from({ length: 24 }, (_, i) => card(i)) });
+  editing();
+  await renderWithSession(<CardsBlock blockKey="committee.contact" />, { route: "/committee" });
+
+  // The chip's name also says the card has no German.
+  await user.click(await screen.findByRole("button", { name: /^Modifier : Carte 0\b/ }));
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).getByRole("button", { name: "Supprimer la carte" })).toBeInTheDocument();
+  expect(within(dialog).queryByRole("button", { name: "Dupliquer" })).toBeNull();
+});
+
 test("a stored card list shows as stored", async () => {
   storeBlock("committee.contact", {
     cards: [

@@ -1882,6 +1882,8 @@ export const fr = {
     addCard: "Ajouter une carte",
     // Beside the add button once a grid holds as many cards as the server takes.
     cardsFull: "{{max}} cartes au plus. Supprimez-en une pour en ajouter une autre.",
+    // Copies the open card, rows and all, right after it, and opens the copy.
+    duplicateCard: "Dupliquer",
     removeCard: "Supprimer la carte",
     removeCardTitle: "Supprimer cette carte ?",
     removeCardBody: "La carte et ses lignes disparaissent de la page.",

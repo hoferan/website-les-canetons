@@ -1494,6 +1494,7 @@ export const de: typeof fr = {
     addRow: "Zeile hinzufügen",
     addCard: "Karte hinzufügen",
     cardsFull: "Höchstens {{max}} Karten. Bitte zuerst eine löschen.",
+    duplicateCard: "Duplizieren",
     removeCard: "Karte löschen",
     removeCardTitle: "Diese Karte löschen?",
     removeCardBody: "Die Karte und ihre Zeilen verschwinden von der Seite.",

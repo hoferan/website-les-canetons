@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Copy, Plus, Trash2 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   Controller,
@@ -296,7 +296,16 @@ export function CardsBlock({
           onReset={shipped ? restore : false}
           invalidMessage={elsewhere}
         >
-          {() => (opened ? <CardEditor key={resets} {...opened} links={links} /> : null)}
+          {() =>
+            opened ? (
+              <CardEditor
+                key={resets}
+                {...opened}
+                links={links}
+                onOpen={(id) => setOpened({ id, adding: false })}
+              />
+            ) : null
+          }
         </BlockEditor>
       ) : null}
     </>
@@ -544,10 +553,21 @@ function newCard(id: string): CardData {
  * its card by id, so a card being added shows once the effect below has
  * appended it. Deleting the card saves the list at once, through the
  * editor's own submit, so its checks and its error line apply.
+ *
+ * "Dupliquer" puts a copy right after the card and opens the copy in the
+ * same unsaved form, so Enregistrer stores both cards and Annuler drops the
+ * copy with any other change. The copy gets a new id: its photo slot is its
+ * own and starts empty, and page code placed by the original's id stays with
+ * the original.
  */
-function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
-  const { control, getValues } = useFormContext<CardsData>();
-  const { append, remove } = useFieldArray({ control, name: "cards" });
+function CardEditor({
+  id,
+  adding,
+  links,
+  onOpen,
+}: Opened & { links: boolean; onOpen: (id: string) => void }) {
+  const { control, getValues, setFocus } = useFormContext<CardsData>();
+  const { append, insert, remove } = useFieldArray({ control, name: "cards" });
   // Read from the form, which the append and the removal change before the
   // re-render they cause; useWatch would lag one render behind.
   const cards = getValues("cards");
@@ -573,6 +593,22 @@ function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
     root.current?.closest("form")?.requestSubmit();
   }, [deleted]);
 
+  // The copy's title takes focus once its fields are mounted, so the editor
+  // knows the card on screen changed and can type the new name at once.
+  const focusTitle = useRef(false);
+  useEffect(() => {
+    if (!focusTitle.current || index === -1) return;
+    focusTitle.current = false;
+    setFocus(`cards.${index}.title`);
+  }, [index, setFocus]);
+
+  const duplicate = () => {
+    const copy = { ...structuredClone(getValues(`cards.${index}`)), id: crypto.randomUUID() };
+    insert(index + 1, copy, { shouldFocus: false });
+    focusTitle.current = true;
+    onOpen(copy.id);
+  };
+
   const shown = !deleted && index !== -1;
 
   return (
@@ -592,14 +628,16 @@ function CardEditor({ id, adding, links }: Opened & { links: boolean }) {
             <RowFields name={`cards.${index}.rows`} />
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="sm:ml-auto"
-              onClick={() => setConfirming(true)}
-            >
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            {/* Left out, not disabled, at the limit: "Ajouter une carte" on
+                the page already says why. */}
+            {cards.length < MAX_ITEMS ? (
+              <Button type="button" variant="secondary" size="sm" onClick={duplicate}>
+                <Copy aria-hidden="true" />
+                {t("blockEditor.duplicateCard")}
+              </Button>
+            ) : null}
+            <Button type="button" variant="secondary" size="sm" onClick={() => setConfirming(true)}>
               <Trash2 aria-hidden="true" />
               {t("blockEditor.removeCard")}
             </Button>
