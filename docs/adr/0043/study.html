@@ -106,7 +106,8 @@ const P = {
 };
 const i = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${P[k]}</svg>`;
 const q = new URLSearchParams(location.search);
-const concept = q.get("c") || "stub";
+// Only the two known values: the concept goes into the page's HTML.
+const concept = q.get("c") === "fold" ? "fold" : "stub";
 const lang = q.get("lang") === "de" ? "de" : "fr";
 const allTouch = q.get("touch") === "1";
 const only = q.get("only");
