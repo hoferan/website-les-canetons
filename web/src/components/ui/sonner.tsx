@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
 /**
@@ -5,26 +6,19 @@ import { Toaster as Sonner, type ToasterProps } from "sonner";
  *
  * The registry version imports useTheme from `next-themes`, a Next.js package.
  * This app has a single light look (ADR 0022), so next-themes is not installed
- * and the theme is fixed. The registry's icon map is dropped too: a toast of
- * one short sentence needs no glyph.
+ * and the theme is fixed.
  *
- * Colours come through the shadcn token aliases in styles.css, so a toast
- * matches the rest of the app without naming a colour here.
+ * Every toast is a `ToastCard` raised through `notify` (./toast.tsx), which
+ * sonner renders unstyled, so no toast class names are set here. Sonner keeps
+ * the stack, the swipe, the live region and the position. The width is the
+ * card's, 380px from ADR 0042's mock-up; below 600px sonner spans the screen.
  */
-export function Toaster(props: ToasterProps) {
+export function Toaster({ style, ...props }: ToasterProps) {
   return (
     <Sonner
       theme="light"
       className="toaster group"
-      toastOptions={{
-        classNames: {
-          toast:
-            "group toast group-[.toaster]:bg-panel group-[.toaster]:text-ink group-[.toaster]:border-line group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-ink-muted",
-          actionButton: "group-[.toast]:bg-violet group-[.toast]:text-white",
-          cancelButton: "group-[.toast]:bg-ground group-[.toast]:text-ink-muted",
-        },
-      }}
+      style={{ "--width": "380px", ...style } as CSSProperties}
       {...props}
     />
   );

@@ -413,6 +413,12 @@ export const fr = {
     moreActions: "Autres actions",
   },
 
+  /** The toasts (ADR 0042), raised through notify in components/ui/toast. */
+  toast: {
+    // The close control every toast carries, beside its action if it has one.
+    close: "Fermer",
+  },
+
   /**
    * The document itself: what the browser tab and a search result show,
    * applied by ./documentMeta.ts at boot.

@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { Undo2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { notify } from "@/components/ui/toast";
 
 import {
   attendanceDestroy,
@@ -133,7 +134,7 @@ export function AttendanceControls({
       // worse than the refusal itself. Past the five minutes this is
       // `answer_already_settled`, which says to change the answer instead.
       patchMyAttendance(queryClient, event.id, recorded);
-      toast.error(
+      notify.error(
         thrown instanceof ApiError ? translateApiError(thrown).message : t("attendance.undoFailed"),
       );
     }
@@ -178,7 +179,7 @@ export function AttendanceControls({
       // fixed by tapping the other answer again.
       // The toast names the event, so somebody who tapped the wrong card can
       // tell; otherwise the undo is useless to them.
-      toast.success(
+      notify.success(
         t(status === "yes" ? "attendance.toastYes" : "attendance.toastNo", {
           title: event.title,
         }),
@@ -191,6 +192,7 @@ export function AttendanceControls({
                   // "Rückgängig") and the dialogs' one closes without doing
                   // anything ("Abbrechen").
                   label: t("attendance.undo"),
+                  icon: Undo2,
                   onClick: () => void undo(recorded),
                 }
               : undefined,
@@ -202,7 +204,7 @@ export function AttendanceControls({
       // When the dialog is open it shows the message against its field.
       // Otherwise a toast is the only surface.
       if (!withdrawing) {
-        toast.error(
+        notify.error(
           thrown instanceof ApiError
             ? translateApiError(thrown).message
             : t("attendance.ownRecordFailed"),

@@ -344,6 +344,10 @@ export const de: typeof fr = {
     moreActions: "Weitere Aktionen",
   },
 
+  toast: {
+    close: "Schliessen",
+  },
+
   meta: {
     // Identical to the French on purpose; see the note in fr.ts.
     title: "Guggenmusik Les Canetons de Fribourg",

@@ -43,7 +43,7 @@ function toast(page: Page, text: string) {
 
 /** The undo a toast offers, found the same way whether or not it is there. */
 function undoIn(toastLocator: Locator) {
-  return toastLocator.locator("button[data-action]", { hasText: "Annuler" });
+  return toastLocator.locator("button[data-toast-action]", { hasText: "Annuler" });
 }
 
 test("a member answers yes, then takes it back with the reason the committee will read", async ({
@@ -98,7 +98,7 @@ test("a member answers yes, then takes it back with the reason the committee wil
   await expect(changed).toBeVisible();
   // COUNTED ONCE. A toast closes itself after a few seconds, so
   // `toHaveCount(0)` waits for that and passes whatever the toast carried.
-  // Found by sonner's own attribute, because this toast is raised while the
+  // Found by the toast's own attribute, because this toast is raised while the
   // withdraw dialog is still open, and the dialog hides everything outside it
   // from the accessibility tree, so a role query finds no button either way.
   // Both of those versions passed against a toast that offered the undo.

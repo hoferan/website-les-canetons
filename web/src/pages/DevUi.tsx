@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { FormActions } from "@/components/ui/form-actions";
 import { IconButton } from "@/components/ui/icon-button";
 import { Indicator } from "@/components/ui/indicator";
+import { notify, ToastCard, type ToastLevel } from "@/components/ui/toast";
 
 import { PageSection } from "../components/PageSection";
 import { EditChip } from "../content/editor/EditChip";
@@ -18,6 +19,13 @@ const VARIANTS = ["primary", "secondary", "danger", "quiet", "accent"] as const;
 const SIZES = ["default", "sm"] as const;
 const INDICATOR_COLORS = ["cyan", "pink", "lime", "yellow", "violet", "danger", "ink"] as const;
 const INDICATOR_SIZES = ["sm", "md", "lg"] as const;
+const LEVELS: Array<{ level: ToastLevel; message: string; frozenAt?: number }> = [
+  { level: "success", message: "Texte enregistré.", frozenAt: 0.65 },
+  { level: "info", message: "Une version plus récente de la page a été chargée.", frozenAt: 0.3 },
+  { level: "warning", message: "Le contenu est rétabli, mais pas sa photo. Placez-la à nouveau." },
+  { level: "error", message: "Votre réponse n’a pas pu être enregistrée." },
+];
+const UNDO = { label: "Annuler", icon: Undo2, onClick: () => undefined };
 const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
 const OFFSETS = [
   { x: -4, y: 4 },
@@ -302,6 +310,39 @@ export function DevUi() {
               </FormActions>
             </form>
           </div>
+        </div>
+      </Block>
+      <Block
+        title="Toasts"
+        note="ADR 0042. La colonne dit le niveau et se vide en haut tant que le temps passe : 5 s sans action, 10 s avec une action. Un avertissement et une erreur restent jusqu'à fermeture. Les cartes ci-dessous sont figées ; les boutons lèvent de vrais toasts, dont l'horloge s'arrête au survol et au focus."
+      >
+        <div className="grid max-w-[380px] gap-5">
+          {LEVELS.map(({ level, message, frozenAt }) => (
+            <ToastCard
+              key={level}
+              level={level}
+              message={message}
+              frozenAt={frozenAt}
+              onClose={() => undefined}
+            />
+          ))}
+          <ToastCard
+            level="success"
+            message="Modifié"
+            action={UNDO}
+            frozenAt={0.8}
+            onClose={() => undefined}
+          />
+        </div>
+        <div className="mt-6 flex flex-wrap gap-3">
+          {LEVELS.map(({ level, message }) => (
+            <Button key={level} variant="secondary" onClick={() => notify[level](message)}>
+              {level}
+            </Button>
+          ))}
+          <Button variant="secondary" onClick={() => notify.success("Modifié", { action: UNDO })}>
+            success + action
+          </Button>
         </div>
       </Block>
     </PageSection>

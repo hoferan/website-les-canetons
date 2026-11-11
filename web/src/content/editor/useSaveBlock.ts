@@ -5,8 +5,10 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { useRef } from "react";
-import { toast } from "sonner";
+import { Undo2 } from "lucide-react";
 import type { z } from "zod";
+
+import { notify } from "@/components/ui/toast";
 
 import { rowsOf } from "../../api/collection";
 import {
@@ -30,9 +32,6 @@ import { cardSlot, usePhotoSlots } from "../../images/photoSlots";
 import { useSession } from "../../session/SessionProvider";
 import { useSavedBlock, useStoredBlock } from "../BlocksProvider";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
-
-/** How long the saved toast, and with it the undo, stays up. */
-const UNDO_MS = 10_000;
 
 /**
  * Every block save shows its toast under this one id, so a new save replaces
@@ -96,10 +95,10 @@ export function useSaveBlock<K extends BlockKey>(key: K, onSaved: () => void) {
         await emptySlots(orphans);
         await refresh(queryClient, orphans.length > 0);
         onSaved();
-        toast(t("blockEditor.saved"), {
+        notify.success(t("blockEditor.saved"), {
           id: SAVED_TOAST,
-          duration: UNDO_MS,
           action: {
+            icon: Undo2,
             // attendance.undo, never common.cancel: both are "Annuler" in
             // French, but German says "Rückgängig" for this one.
             label: t("attendance.undo"),
@@ -168,9 +167,9 @@ async function undo(queryClient: QueryClient, key: BlockKey, before: unknown, pl
   });
   try {
     const allPlaced = await observer.mutate();
-    if (!allPlaced) toast.error(t("blockEditor.undoPhotoFailed"));
+    if (!allPlaced) notify.warning(t("blockEditor.undoPhotoFailed"));
   } catch (thrown) {
-    toast.error(
+    notify.error(
       thrown instanceof ApiError ? translateApiError(thrown).message : t("attendance.undoFailed"),
     );
   }

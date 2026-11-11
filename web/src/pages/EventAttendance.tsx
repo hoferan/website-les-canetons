@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { notify } from "@/components/ui/toast";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -86,7 +86,7 @@ export function EventAttendance() {
       // One sentence per answer instead of the answer lowercased into one:
       // see the note on attendance.answer in fr.ts. The French space before
       // the colon is part of the string because German takes none.
-      toast.success(
+      notify.success(
         t(status === "yes" ? "attendance.recordedYes" : "attendance.recordedNo", {
           name: nameOf(entry),
         }),
@@ -97,7 +97,7 @@ export function EventAttendance() {
       // While the dialog is open it shows the refusal against its own field,
       // so a toast would say the same thing twice.
       if (!correcting) {
-        toast.error(
+        notify.error(
           thrown instanceof ApiError
             ? translateApiError(thrown).message
             : t("attendance.recordFailed"),
