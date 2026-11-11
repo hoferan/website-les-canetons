@@ -65,3 +65,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0039](0039-move-the-website-between-servers.md) | Move the public website between servers as one file, imported all at once |
 | [0040](0040-one-button-system.md) | Build every button from one system of role variants and three components |
 | [0041](0041-switch-language-in-place.md) | Switch language in place, keeping the locale in the path |
+| [0042](0042-toasts-and-notices.md) | Confirm an action in a toast with a level and a visible time, and keep page-bound messages inline |

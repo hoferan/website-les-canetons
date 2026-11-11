@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0042 toasts</title>
+<!-- The agreed toast, ADR 0042. Open it from a checkout at 390px and at 1280px.
+     The members' agenda behind it is a stand-in: white raised cards on cream are
+     where a toast is hardest to tell apart from the page. -->
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Karla:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ground:#fff7ec; --ink:#14121c; --stage:#0b0a12; --violet:#4b2ed6;
+    --danger:#e0201a; --yellow:#ffd23f; --cyan:#2ee6d6; --lime:#b6f23a;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ground); font-family:"Karla",system-ui,sans-serif; color:var(--ink); height:100vh; overflow:hidden; }
+  header { background:var(--stage); color:#fff; height:64px; display:flex; align-items:center; padding:0 24px; }
+  header b { font-family:"Bungee"; font-size:18px; }
+  main { padding:24px; max-width:1100px; }
+  h1 { font-family:"Bungee"; font-size:28px; margin:0 0 16px; }
+  .list { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:20px; }
+  .ev { background:#fff; border:3px solid var(--ink); border-radius:16px; box-shadow:5px 5px 0 var(--ink); padding:14px 16px; }
+  .ev .d { font-weight:800; color:var(--violet); font-size:14px; }
+  .ev h3 { margin:4px 0 10px; font-size:18px; }
+  .ev .btns { display:flex; gap:10px; }
+  .ev .btns span { border:3px solid var(--ink); border-radius:12px; height:40px; padding:0 16px; display:flex; align-items:center; font-weight:800; box-shadow:3px 3px 0 var(--ink); background:#fff; }
+
+  /* The stack: bottom right from sm, full width with a 16px gutter below. */
+  .stack { position:fixed; right:16px; bottom:16px; width:380px; display:flex; flex-direction:column; gap:16px; }
+  @media (max-width:639px) { .stack { left:16px; width:auto; } }
+
+  /* The toast: white, the ink frame and offset shadow of the raised buttons, plus
+     a soft shadow nothing on the page has, so it reads as above the page. */
+  .toast { position:relative; display:grid; grid-template-columns:62px 1fr auto; align-items:center; gap:12px; min-height:72px;
+    padding:0 8px 0 0; background:#fff; border:3px solid var(--ink); border-radius:16px; overflow:hidden;
+    box-shadow:6px 6px 0 var(--ink), 0 14px 34px rgba(20,18,28,.32); font-size:16px; line-height:1.35; }
+  .success { --lv:var(--lime); } .info { --lv:var(--cyan); } .warning { --lv:var(--yellow); } .error { --lv:var(--danger); }
+
+  /* The column says the level. A timed toast empties it from the top into a
+     tint of the same colour; a toast that stays keeps it full. */
+  .col { position:relative; align-self:stretch; display:grid; place-items:center; border-right:3px solid var(--ink);
+    background:color-mix(in srgb, var(--lv) 28%, #fff); }
+  .fill { position:absolute; left:0; right:0; bottom:0; background:var(--lv); }
+  .disc { position:relative; width:38px; height:38px; display:grid; place-items:center; background:#fff; border:3px solid var(--ink); border-radius:999px; }
+  .disc svg { width:22px; height:22px; }
+  .msg { font-weight:700; padding:12px 0 14px; }
+  .actions { display:flex; align-items:center; gap:4px; }
+  .act { height:36px; padding:0 14px; border:3px solid var(--ink); border-radius:12px; background:#fff; font:inherit; font-weight:800; font-size:14px; box-shadow:3px 3px 0 var(--ink); display:inline-flex; align-items:center; gap:6px; }
+  .act svg, .x svg { width:20px; height:20px; }
+  .x { width:44px; height:44px; display:grid; place-items:center; border:0; background:none; }
+</style>
+</head>
+<body>
+<header><b>LES CANETONS</b></header>
+<main>
+  <h1>Agenda</h1>
+  <div class="list" id="list"></div>
+</main>
+<div class="stack" id="stack" aria-live="polite"></div>
+
+<template id="icons">
+  <svg data-k="success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <svg data-k="info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16v-5"/><path d="M12 8h.01"/></svg>
+  <svg data-k="warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v6"/><path d="M12 17h.01"/></svg>
+  <svg data-k="error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+  <svg data-k="undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+</template>
+
+<script>
+  const events = ["sam. 14 févr. · 18:00|Cortège des enfants", "dim. 15 févr. · 13:30|Grand cortège",
+    "mar. 17 févr. · 19:00|Concert de clôture", "ven. 20 févr. · 20:00|Répétition générale",
+    "sam. 28 févr. · 19:00|Souper de fin", "sam. 7 mars · 10:00|Rangement du local",
+    "sam. 14 mars · 09:00|Sortie à Bulle", "dim. 22 mars · 14:00|Assemblée générale",
+    "sam. 4 avr. · 18:00|Souper des parents", "sam. 2 mai · 10:00|Journée portes ouvertes",
+    "sam. 6 juin · 15:00|Fête de la musique", "sam. 4 juil. · 11:00|Pique-nique"];
+  document.getElementById("list").innerHTML = events.map(e => {
+    const [d, t] = e.split("|");
+    return `<div class="ev"><div class="d">${d}</div><h3>${t}</h3><div class="btns"><span>Oui</span><span>Non</span></div></div>`;
+  }).join("");
+
+  const icon = k => document.getElementById("icons").content.querySelector(`[data-k="${k}"]`).outerHTML;
+  // left: the share of the time still to run; none means the toast stays.
+  const toasts = [
+    { k: "error", msg: "Votre réponse n’a pas pu être enregistrée." },
+    { k: "warning", msg: "Le contenu est rétabli, mais pas sa photo. Placez-la à nouveau." },
+    { k: "info", msg: "Une version plus récente de la page a été chargée.", left: 0.3 },
+    { k: "success", msg: "Texte enregistré.", action: "Annuler", left: 0.65 },
+  ];
+  document.getElementById("stack").innerHTML = toasts.map(t => `
+    <div class="toast ${t.k}">
+      <span class="col"><span class="fill" style="height:${(t.left ?? 1) * 100}%"></span><span class="disc">${icon(t.k)}</span></span>
+      <span class="msg">${t.msg}</span>
+      <span class="actions">
+        ${t.action ? `<button class="act">${icon("undo")}${t.action}</button>` : ""}
+        <button class="x" aria-label="Fermer">${icon("error")}</button>
+      </span>
+    </div>`).join("");
+</script>
+</body>
+</html>
