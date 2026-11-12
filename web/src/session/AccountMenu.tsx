@@ -1,14 +1,15 @@
 import { type LucideIcon, LogOut, User } from "lucide-react";
 
-import { Avatar } from "../components/Avatar";
-import { Indicator } from "../components/ui/indicator";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
+} from "@ds";
+
+import { Avatar } from "../components/Avatar";
+import { Indicator } from "../components/ui/indicator";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { useLogout } from "./logout";

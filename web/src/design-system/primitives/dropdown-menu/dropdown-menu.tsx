@@ -1,12 +1,12 @@
 import * as React from "react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
-import { cn } from "@/lib/utils";
+import { cn } from "../../internal/cn";
 
 /**
  * Vendored from shadcn/ui and trimmed, like ui/alert-dialog.tsx. Only the
  * parts in use: a screen that needs a submenu, checkbox item, group or label
- * adds it then. No `dark:` utility, for the reason in design-system/primitives/button/button.tsx.
+ * adds it then. No `dark:` utility, for the reason in ../button/button.tsx.
  *
  * `modal` defaults to false, unlike Radix. A short menu over a card has no
  * reason to hide the rest of the page from assistive technology, lock scroll

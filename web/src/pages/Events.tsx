@@ -1,13 +1,13 @@
 import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { Button } from "@ds";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@ds";
 import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
 import { ChevronDown, Plus } from "lucide-react";
 

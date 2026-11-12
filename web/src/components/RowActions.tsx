@@ -1,12 +1,12 @@
-import { Button } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@ds";
+import { IconButton } from "@/components/ui/icon-button";
 import { Ellipsis } from "lucide-react";
 
 import { t } from "../i18n";

@@ -1,16 +1,12 @@
 import { ChevronDown, ExternalLink } from "lucide-react";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@ds";
+
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { type NavEntry, EntryLink } from "./NavEntry";
 import { DESK_IDLE, DESK_LINK, NAV_HERE } from "./navStyles";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
 
 /** Tailwind's gap-5, which the arithmetic below has to agree with. */
 const GAP = 20;
