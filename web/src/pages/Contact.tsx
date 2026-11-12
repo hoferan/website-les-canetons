@@ -197,14 +197,15 @@ export function Contact() {
               }
             />
 
-            {/* aria-disabled, not disabled: see design-system/primitives/button/button.tsx. The
-                submit handler's early return is the real guard. */}
+            {/* `loading` is aria-disabled plus a spinner, never `disabled` (see
+                the design system's Button), and drops the click. The submit
+                handler's early return stays the guard for Enter in a field. */}
             <FormActions>
               <Button
                 type="submit"
                 variant="primary"
                 className="h-12 px-5 text-base"
-                aria-disabled={send.isPending}
+                loading={send.isPending}
               >
                 {t("contact.submit")}
               </Button>

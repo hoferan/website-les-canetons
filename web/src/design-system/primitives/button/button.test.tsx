@@ -1,6 +1,10 @@
-import { expect, test } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
+import { describe, expect, test, vi } from "vitest";
 
-import { buttonVariants } from "./button";
+import { expectNoA11yViolations } from "../../internal/testing/axe";
+import { Button, buttonVariants } from "./button";
 
 const FRAMED = ["primary", "secondary", "danger", "accent"] as const;
 const ALL = [...FRAMED, "quiet"] as const;
@@ -53,4 +57,90 @@ test.each(FRAMED)("%s has the button radius", (variant) => {
 
 test("the default is primary", () => {
   expect(buttonVariants({})).toBe(buttonVariants({ variant: "primary" }));
+});
+
+// ---- Rendered contract ------------------------------------------------------
+
+describe("Button", () => {
+  test("is a button with its label as its name, and forwards ref and className", () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(
+      <Button ref={ref} className="px-8">
+        Envoyer
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Envoyer" });
+    expect(ref.current).toBe(button);
+    // The caller's padding replaces the size's, instead of sitting beside it.
+    expect(button).toHaveClass("px-8");
+    expect(button).not.toHaveClass("px-4");
+    expect(button).toHaveAttribute("data-slot", "button");
+  });
+
+  test("asChild gives a link the button's looks without a nested button", () => {
+    render(
+      <Button asChild>
+        <a href="/agenda">Agenda</a>
+      </Button>,
+    );
+    const link = screen.getByRole("link", { name: "Agenda" });
+    expect(link).toHaveClass("rounded-button");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  test("Enter and Space activate it", async () => {
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+    render(<Button onClick={onClick}>Go</Button>);
+    await user.tab();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
+  test("loading is busy and aria-disabled, never disabled, and ignores clicks", async () => {
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Button loading onClick={onClick}>
+        Envoyer
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Envoyer" });
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    // `disabled` would blur a focused submit button to <body>.
+    expect(button).not.toBeDisabled();
+    await user.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  test("loading keeps the label and adds a hidden spinner", () => {
+    render(<Button loading>Envoyer</Button>);
+    const button = screen.getByRole("button");
+    expect(button).toHaveTextContent("Envoyer");
+    expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  test("not loading carries no busy or disabled state", () => {
+    render(<Button>Envoyer</Button>);
+    const button = screen.getByRole("button");
+    expect(button).not.toHaveAttribute("aria-busy");
+    expect(button).not.toHaveAttribute("aria-disabled");
+  });
+
+  test.each(ALL)("%s has no structural accessibility violations", async (variant) => {
+    const { container } = render(<Button variant={variant}>Envoyer</Button>);
+    await expectNoA11yViolations(container);
+  });
+
+  test("the stage surface and a loading state have none either", async () => {
+    const { container } = render(
+      <div>
+        <Button surface="stage">Connexion</Button>
+        <Button loading>Envoi</Button>
+      </div>,
+    );
+    await expectNoA11yViolations(container);
+  });
 });
