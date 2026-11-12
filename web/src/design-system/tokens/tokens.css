@@ -33,6 +33,10 @@
   --color-focus: var(--color-violet);
   --color-focus-stage: #fff;
 
+  /* A status a control wears, such as the corner flag of a text without German
+     (ADR 0043). It never carries meaning alone: an ink edge and the name do. */
+  --color-mark: var(--color-cyan);
+
   /* Feedback. Errors only for now; success, warning and info arrive with
      StateMessage (#387). */
   --color-feedback-error: var(--color-danger);

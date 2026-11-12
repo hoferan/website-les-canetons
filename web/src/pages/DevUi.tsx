@@ -10,6 +10,7 @@ import { notify, ToastCard, type ToastLevel } from "@/components/ui/toast";
 
 import { PageSection } from "../components/PageSection";
 import { EditChip } from "../content/editor/EditChip";
+import { ActionBarShowcase } from "./DevUiActionBar";
 
 // A developer page, mounted only under `import.meta.env.DEV` (routes.tsx).
 // Its copy is French and written inline on purpose: it never reaches a visitor,
@@ -344,6 +345,12 @@ export function DevUi() {
             success + action
           </Button>
         </div>
+      </Block>
+      <Block
+        title="Barre d’actions"
+        note="ADR 0043. Le mot de l’action principale reste ouvert ; une autre s’ouvre au survol (pointeur fin) ou au clavier, qui l’emporte. Une liste montre tous les mots si la plus large de ses barres les contient tous. Les flèches et le menu agissent vraiment sur ces listes."
+      >
+        <ActionBarShowcase />
       </Block>
     </PageSection>
   );
