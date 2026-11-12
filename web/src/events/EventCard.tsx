@@ -82,7 +82,7 @@ export function EventCard({
                 unwrapped width, so `flex-wrap` never fires and the row runs
                 past a 390px phone. Shrinkable, its min-content is its widest
                 button and the row wraps. The buttons keep their own
-                `shrink-0` from components/ui/button.tsx, so they do not
+                `shrink-0` from design-system/primitives/button/button.tsx, so they do not
                 squash. */}
             {actions ? <div className="flex flex-wrap gap-tight">{actions}</div> : null}
           </div>

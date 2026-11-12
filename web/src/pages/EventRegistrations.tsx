@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 import { Switch } from "@/components/ui/switch";
 
@@ -776,7 +776,7 @@ function DownloadButton({
  * "Payé" so voice control reaches it by the word on screen.
  *
  * aria-disabled and an early return while the write is in flight, never
- * `disabled`: Radix renders the switch as a button, and ui/button.tsx says
+ * `disabled`: Radix renders the switch as a button, and design-system/primitives/button/button.tsx says
  * what `disabled` does to its focus.
  */
 function PaymentLine({

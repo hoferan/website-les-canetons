@@ -3,7 +3,7 @@ import { Eye, Pencil } from "lucide-react";
 import { useEffect, useState, type DragEvent } from "react";
 import { useParams } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import type { EventResource, StoreEventRequest } from "../api/generated/model";

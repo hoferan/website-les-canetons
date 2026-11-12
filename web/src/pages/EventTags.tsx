@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 import { Switch } from "@/components/ui/switch";
 
@@ -228,7 +228,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
           </div>
           {/* Every button on this page takes aria-disabled and an early
               return while a write runs, never `disabled`: see rule 2 in
-              ui/button.tsx. */}
+              design-system/primitives/button/button.tsx. */}
           <div className="flex flex-wrap items-center gap-tight">
             <Button
               type="button"

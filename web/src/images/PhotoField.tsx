@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 
 import type { ImageResource } from "../api/generated/model";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 import { Photo, PHOTO_SIZES, type PhotoData } from "./Photo";

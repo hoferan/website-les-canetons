@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 
 import { Link } from "../i18n/routing";
 

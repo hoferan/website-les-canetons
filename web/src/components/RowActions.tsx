@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { IconButton } from "@/components/ui/icon-button";
 import {
   DropdownMenu,
@@ -120,7 +120,7 @@ function InlineAction({ action }: { action: RowAction }) {
   }
 
   // aria-disabled and an early return, never the disabled attribute: see the
-  // docblock in ui/button.tsx.
+  // docblock in design-system/primitives/button/button.tsx.
   return (
     <Button
       type="button"

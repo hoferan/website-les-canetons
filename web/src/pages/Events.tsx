@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import {
   DropdownMenu,
   DropdownMenuContent,

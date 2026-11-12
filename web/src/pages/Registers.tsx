@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 import { IconButton } from "@/components/ui/icon-button";
 
@@ -223,7 +223,7 @@ function RegisterRow({
           {/* The arrows apart from the actions, and Supprimer last, away from
               them: see docs/adr/0025-icons-on-controls.md. Every button here
               takes aria-disabled and an early return while a write runs,
-              never `disabled`: see rule 2 in ui/button.tsx. */}
+              never `disabled`: see rule 2 in design-system/primitives/button/button.tsx. */}
           <div className="flex flex-wrap items-center gap-tight">
             <IconButton
               type="button"

@@ -217,7 +217,7 @@ test("a stored hero shows its buttons, the first raised and the second light", a
   const [first, second] = screen.getAllByRole("link");
   expect(first).toHaveTextContent("Nous rejoindre");
   expect(first).toHaveAttribute("href", "/join");
-  expect(first!.className).toContain("bg-yellow");
+  expect(first!.className).toContain("bg-action-accent");
   expect(second).toHaveTextContent("Où nous voir");
   expect(second).toHaveAttribute("href", "/agenda");
   expect(second!.className).toContain("bg-white");
