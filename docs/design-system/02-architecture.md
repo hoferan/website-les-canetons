@@ -167,7 +167,7 @@ Write option A so the migration is mechanical:
 | Semantic token | Resolves to (today) | Replaces / unifies |
 | --- | --- | --- |
 | `--color-surface-page` / `-panel` / `-stage` | `ground` / `panel` / `stage` | `bg-ground`, `bg-panel`, `bg-stage` |
-| `--color-text` / `-muted` / `-on-action` / `-on-stage` | `ink` / `ink-muted` / `#fff` / `#fff` | the loose `#fff` literals |
+| `--color-content` / `-muted` / `-on-action` | `ink` / `ink-muted` / `#fff` | the loose `#fff` literals. Named `content`, not `text`: `text-text-muted` is ugly and `--color-muted` already exists (shadcn's alias for the page ground), so `text-muted` would paint cream text. **Built in the slice.** |
 | `--color-border` / `-strong` | `line` / `ink` | `border-line`, `border-ink` |
 | `--color-action` / `-hover` | `violet` / `violet-hover` | `bg-violet`, `bg-primary` (two names today) |
 | `--color-action-accent` / `-hover` | `yellow` / `yellow-hover` | `accent` button |
@@ -276,4 +276,4 @@ Rule set in words (to be encoded in Phase 5):
 2. Nothing in `design-system/` imports `@/…` (app) or any forbidden package.
 3. Files outside `design-system/` import only from `@ds` (the barrel) and `@ds/brand`, never from deeper paths.
 4. No cycles anywhere in `design-system/`.
-5. CI job `design-system-boundaries` (`depcruise`) is added to `all-green`'s `needs` (the repo's rule: a job protects `main` only once it is listed there).
+5. `npm run lint:boundaries` (`depcruise`) runs as a step of the existing `assets` CI job, which `all-green` already requires, so no new job and no change to `all-green`'s `needs` (the repo's rule: a job protects `main` only once it is listed there). **Built in the slice** and proven with negative tests: a file that breaks each rule fails.
