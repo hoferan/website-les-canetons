@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { expectNoA11yViolations } from "../../internal/testing/axe";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,14 @@ describe("DropdownMenu", () => {
 
     expect(screen.queryByRole("menuitem", { name: "Premier" })).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+
+  it("has no axe violation, closed or open", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Harness />);
+    await expectNoA11yViolations(container);
+    await user.click(screen.getByRole("button", { name: "Autres actions" }));
+    await expectNoA11yViolations(await screen.findByRole("menu"));
   });
 
   it("moves through items with the arrow keys and selects with Enter", async () => {

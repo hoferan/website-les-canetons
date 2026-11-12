@@ -2,14 +2,14 @@ import { ArrowDown, ArrowUp, Plus, Trash2, type LucideIcon } from "lucide-react"
 import { useEffect, useRef, type ReactNode } from "react";
 import { useFieldArray, useFormContext, type FieldValues } from "react-hook-form";
 
-import { Button } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@ds";
+import { IconButton } from "@/components/ui/icon-button";
 
 import { t } from "../../i18n";
 
