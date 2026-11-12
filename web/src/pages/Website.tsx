@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CircleCheck, Download, FileArchive, Upload } from "lucide-react";
 import { useId, useRef, useState, type ChangeEvent } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { imageSummary, websiteExport, websiteImport } from "../api/generated/endpoints";

@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 

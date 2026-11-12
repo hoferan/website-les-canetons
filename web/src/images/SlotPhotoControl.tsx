@@ -11,7 +11,7 @@ import {
 } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError } from "../components/FormField";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@ds";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 import { t } from "../i18n";

@@ -2,7 +2,7 @@ import { Check, Pencil } from "lucide-react";
 import { createContext, use, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { t } from "../i18n";

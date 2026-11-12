@@ -3,7 +3,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 
 import { PageSection } from "@/components/PageSection";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -197,7 +197,7 @@ export function Contact() {
               }
             />
 
-            {/* aria-disabled, not disabled: see components/ui/button.tsx. The
+            {/* aria-disabled, not disabled: see design-system/primitives/button/button.tsx. The
                 submit handler's early return is the real guard. */}
             <FormActions>
               <Button

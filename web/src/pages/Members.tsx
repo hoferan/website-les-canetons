@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-q
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 
 import {
   getMemberIndexQueryKey,

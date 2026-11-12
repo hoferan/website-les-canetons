@@ -130,7 +130,7 @@ test("the confetti switch shows the stored flag and saves as it is flipped", asy
 /**
  * Mutation test: pass `disabled={busy}`, alone or beside aria-disabled, and
  * `toBeEnabled()` fails. In a browser that attribute throws a keyboard user's
- * focus to <body> mid-save (rule 2 in ui/button.tsx), but jsdom keeps the
+ * focus to <body> mid-save (rule 2 in design-system/primitives/button/button.tsx), but jsdom keeps the
  * focus where it was, so the focus assertions here cannot see it;
  * tags.spec.ts shows it in Chromium. Drop the early return and the second
  * Space turns the switch off mid-save.

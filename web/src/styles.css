@@ -4,6 +4,9 @@
 @import "@fontsource-variable/karla";
 @import "@fontsource/bungee";
 
+/* The design system's semantic tokens (ADR 0002). They alias the palette below. */
+@import "./design-system/tokens/tokens.css";
+
 /**
  * The "Scène" palette.
  *
@@ -306,7 +309,7 @@ h2 {
    leaves no ring while a keyboard tab does. */
 @utility focus-ring {
   &:focus-visible {
-    outline: 2px solid var(--color-violet);
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
 }
@@ -323,7 +326,7 @@ h2 {
    shows: the phone menu's layer and the header band. */
 @utility focus-ring-stage {
   &:focus-visible {
-    outline: 2px solid #fff;
+    outline: 2px solid var(--color-focus-stage);
     outline-offset: 2px;
   }
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { rowsOf } from "../api/collection";
 import { useImageIndex } from "../api/generated/endpoints";
 import type { ImageResource } from "../api/generated/model";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { IconButton } from "@/components/ui/icon-button";
 import {
   Dialog,

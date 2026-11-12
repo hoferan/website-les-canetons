@@ -29,7 +29,7 @@ import { EnvRibbon } from "./EnvRibbon";
 import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
 import { NETWORK_MARKS, networksOf } from "./social";
-import { buttonVariants } from "./ui/button";
+import { buttonVariants } from "@ds";
 import { Toaster } from "./ui/sonner";
 import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";

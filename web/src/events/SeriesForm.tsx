@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import type { StoreEventSeriesRequest } from "../api/generated/model";

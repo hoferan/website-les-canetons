@@ -13,7 +13,7 @@ import type { BookingReadResource } from "../api/generated/model";
 import { t } from "../i18n";
 import { formatInstant } from "../lib/date";
 import { actorsText, changesText } from "./bookingProgress";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 
 /**
  * Whether the committee has read this guest list, and what moved since

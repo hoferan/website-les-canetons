@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { IconButton } from "@/components/ui/icon-button";
 import {
   AlertDialog,
@@ -470,7 +470,7 @@ function MessageSummary({
  * "Traité" is a switch because it saves as it is flipped, and flipping it
  * back reopens the message. aria-disabled and an early return while a write
  * is in flight, never `disabled`: Radix renders the switch as a button, and
- * the docblock in ui/button.tsx says what `disabled` does to its focus.
+ * the docblock in design-system/primitives/button/button.tsx says what `disabled` does to its focus.
  */
 function MessagePanel({
   message,

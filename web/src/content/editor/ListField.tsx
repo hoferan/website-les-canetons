@@ -2,7 +2,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2, type LucideIcon } from "lucide-react"
 import { useEffect, useRef, type ReactNode } from "react";
 import { useFieldArray, useFormContext, type FieldValues } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { IconButton } from "@/components/ui/icon-button";
 import {
   DropdownMenu,

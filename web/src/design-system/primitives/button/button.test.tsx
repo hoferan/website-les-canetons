@@ -47,8 +47,8 @@ test("quiet presses onto its line", () => {
   expect(classes.some((name) => name.startsWith("active:translate"))).toBe(false);
 });
 
-test.each(FRAMED)("%s is rounded-xl", (variant) => {
-  expect(buttonVariants({ variant }).split(" ")).toContain("rounded-xl");
+test.each(FRAMED)("%s has the button radius", (variant) => {
+  expect(buttonVariants({ variant }).split(" ")).toContain("rounded-button");
 });
 
 test("the default is primary", () => {

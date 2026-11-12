@@ -2,7 +2,7 @@ import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { IconButton } from "@/components/ui/icon-button";
-import { Input } from "@/components/ui/input";
+import { Input } from "@ds";
 
 import { t } from "../i18n";
 

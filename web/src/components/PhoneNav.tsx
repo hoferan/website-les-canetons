@@ -12,7 +12,7 @@ import { useLogout } from "../session/logout";
 import { Avatar } from "./Avatar";
 import { type NavEntry, EntryLink } from "./NavEntry";
 import { NAV_HERE } from "./navStyles";
-import { buttonVariants } from "./ui/button";
+import { buttonVariants } from "@ds";
 import { cn } from "@/lib/utils";
 
 type Member = { username: string; firstName: string; lastName: string };
@@ -255,7 +255,7 @@ function AccountFooter({
           </Link>
         ) : null}
         {/* aria-disabled and the guard inside logOut, never `disabled`: see
-            the docblock in ui/button.tsx. */}
+            the docblock in design-system/primitives/button/button.tsx. */}
         <button type="button" onClick={logOut} aria-disabled={isPending} className={action}>
           <LogOut aria-hidden="true" className="size-4" />
           {t("nav.logout")}

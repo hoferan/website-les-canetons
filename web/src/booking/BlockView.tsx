@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Input } from "@/components/ui/input";
+import { Input } from "@ds";
 import { cn } from "@/lib/utils";
 
 import type { RegistrationOptionResource } from "../api/generated/model";
