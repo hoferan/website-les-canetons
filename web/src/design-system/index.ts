@@ -4,3 +4,4 @@
  * fail a deep import. Anything not re-exported below is internal.
  */
 export * from "./primitives";
+export * from "./composites";
