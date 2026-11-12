@@ -1,0 +1,44 @@
+/**
+ * Semantic tokens: the roles a design-system component may use (ADR 0045).
+ *
+ * Each one aliases a raw token from the @theme block in styles.css, which stays
+ * the home of the palette. A component names a role (`action`, `focus`), never
+ * a hue (`violet`), so a theme is a re-declaration of these lines and nothing
+ * else. They are added when a component first needs one, not in advance.
+ *
+ * Why `content` and not `text`: `--color-text-muted` would give the utility
+ * `text-text-muted`, and `--color-muted` already exists as shadcn's alias for
+ * the page ground, so `text-muted` would paint text in cream. `content` has no
+ * such twin.
+ *
+ * Not declared `@theme inline`: an inline theme variable is replaced by its
+ * value at build time, which would freeze the alias and defeat theming.
+ */
+@theme {
+  /* Actions. */
+  --color-action: var(--color-violet);
+  --color-action-hover: var(--color-violet-hover);
+  --color-action-accent: var(--color-yellow);
+  --color-action-accent-hover: var(--color-yellow-hover);
+  --color-action-danger: var(--color-danger);
+  --color-action-danger-hover: var(--color-danger-hover);
+
+  /* Text on a surface, and on an action. */
+  --color-content: var(--color-ink);
+  --color-content-muted: var(--color-ink-muted);
+  --color-content-on-action: #fff;
+
+  /* The single focus indicator (#391). Violet is 7:1 on the cream ground and on
+     white; the stage is black, where it would be 2.5:1, so it turns white. */
+  --color-focus: var(--color-violet);
+  --color-focus-stage: #fff;
+
+  /* Feedback. Errors only for now; success, warning and info arrive with
+     StateMessage (#387). */
+  --color-feedback-error: var(--color-danger);
+
+  /* Radius by role. Two of the eight radii found in the codebase; the
+     surface and pill radii come with Surface and Badge (#386, #385). */
+  --radius-control: 0.375rem;
+  --radius-button: 0.75rem;
+}

@@ -74,7 +74,7 @@ export function TagFilter({
 
 /**
  * A 44px-tall hit area around a chip-sized pill: the touch floor every control
- * here keeps (ui/button.tsx), without making the pill itself 44px tall.
+ * here keeps (design-system/primitives/button/button.tsx), without making the pill itself 44px tall.
  *
  * Radix sets `data-state` on the item, not on the pill inside it, so the
  * pill's checked look has to use `group-data-[state=checked]:`. A plain

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 
 import { rowsOf } from "../../api/collection";
 import { eventIndex, registrationOptionIndex } from "../../api/generated/endpoints";

@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import { rowsOf } from "../api/collection";
@@ -199,7 +199,7 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
             <p className="text-sm">{t("rolesPage.baselineNote")}</p>
           ) : (
             // aria-disabled and an early return while a write runs, never
-            // `disabled`: see rule 2 in ui/button.tsx.
+            // `disabled`: see rule 2 in design-system/primitives/button/button.tsx.
             <div className="mt-tight flex flex-wrap gap-tight">
               <Button
                 type="button"

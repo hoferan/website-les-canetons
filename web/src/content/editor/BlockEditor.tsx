@@ -21,7 +21,7 @@ import {
   type UseFormReturn,
 } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormActions } from "@/components/ui/form-actions";
 import { IconButton } from "@/components/ui/icon-button";

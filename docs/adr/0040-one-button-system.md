@@ -69,3 +69,4 @@ André picked each point below from a rendered mockup at 1280px and at 390px.
 
 - ADR 0025 decides which controls carry an icon, and ADR 0029 gives the framed look. This record amends both: it names what each variant means, and it sets 12px corners and a press onto the shadow on the raised buttons that ADR 0029 introduced.
 - Revisit Storybook if a designer joins, if more people build screens, or if automatic visual-regression checks are wanted.
+- ADR 0047 amends this record: design-system components are documented in Storybook, whose stories render without the app's providers and so show that a component is isolated. `/dev/ui` stays until the stories cover it (#408).

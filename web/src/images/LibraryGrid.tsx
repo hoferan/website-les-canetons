@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { SearchField } from "../components/SearchField";
 import { currentLocale, t, translateApiError } from "../i18n";
 import { Link } from "../i18n/routing";

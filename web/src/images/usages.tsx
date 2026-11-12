@@ -1,6 +1,6 @@
 import { ImageMinus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 
 import type { ImageResourceUsagesItem } from "../api/generated/model";
 import { t } from "../i18n";

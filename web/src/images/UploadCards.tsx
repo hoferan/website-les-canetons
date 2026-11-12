@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { t } from "../i18n";
 import type { Card } from "./useUploadQueue";
 import { OUTLINED_CARD } from "../carnival/raised";

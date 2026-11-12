@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { notify } from "@/components/ui/toast";
 
 import { rowsOf } from "../api/collection";

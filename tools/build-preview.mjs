@@ -5,6 +5,7 @@
 // The SPA against the mocked backend in web/src/mocks/, for GitHub Pages at
 // https://hoferan.github.io/website-les-canetons/pr-<n>/. vite.config.ts's
 // preview mode sets the base, the noindex tag and the deep-link restore.
+// The design system's Storybook goes beside it, at pr-<n>/storybook/.
 // .github/workflows/preview.yml publishes the result.
 //
 // Never the deploy artifact: that is `npm run build`, which tools/mock-leak.mjs
@@ -26,6 +27,12 @@ if (!/^[1-9]\d*$/.test(pr)) {
 // reason: `npx` is a .cmd shim on Windows that execFileSync cannot spawn.
 const require = createRequire(import.meta.url);
 const viteBin = path.join(path.dirname(require.resolve('vite/package.json')), 'bin', 'vite.js');
+const storybookBin = path.join(
+  path.dirname(require.resolve('storybook/package.json')),
+  'dist',
+  'bin',
+  'dispatcher.js',
+);
 
 rmSync(OUT, { recursive: true, force: true });
 execFileSync(process.execPath, [viteBin, 'build', '--mode', 'preview'], {
@@ -39,4 +46,15 @@ if (!existsSync(`${OUT}/mockServiceWorker.js`)) {
   process.exit(1);
 }
 
-console.log(`Built ${OUT}/ for PR ${pr}.`);
+// After Vite, never before: Vite empties its outDir, which would delete the
+// stories. Storybook writes only relative paths, so the folder works under the
+// PR's subpath with no base setting.
+execFileSync(process.execPath, [storybookBin, 'build', '--quiet', '-o', `${OUT}/storybook`], {
+  stdio: 'inherit',
+});
+if (!existsSync(`${OUT}/storybook/index.html`)) {
+  console.error(`${OUT}/storybook/index.html is missing after the Storybook build.`);
+  process.exit(1);
+}
+
+console.log(`Built ${OUT}/ for PR ${pr}, with the stories in ${OUT}/storybook/.`);

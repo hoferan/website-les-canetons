@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import boundaries from 'eslint-plugin-boundaries';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -17,6 +18,13 @@ const SONNER_TOAST = {
   name: 'sonner',
   importNames: ['toast'],
   message: 'Raise a toast with notify from @/components/ui/toast (ADR 0042).',
+};
+
+// See the router block below.
+const DS_DEEP_IMPORT = {
+  group: ['@ds/*', '**/design-system/*'],
+  message:
+    'Import from "@ds", the design system\'s public API (ADR 0046), not from a file inside it.',
 };
 
 export default [
@@ -112,9 +120,98 @@ export default [
     files: ['web/src/**/*.{ts,tsx}'],
     ignores: ['web/src/i18n/routing.tsx', 'web/src/**/*.test.{ts,tsx}', 'web/src/test/**'],
     rules: {
-      'no-restricted-imports': ['error', { paths: [ROUTER_IMPORTS, SONNER_TOAST] }],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [ROUTER_IMPORTS, SONNER_TOAST],
+          // The app reaches the design system through `@ds`, never past it
+          // (ADR 0046). Inside the design system the next block replaces this.
+          patterns: [DS_DEEP_IMPORT],
+        },
+      ],
     },
   },
+  {
+    // THE DESIGN SYSTEM'S BOUNDARIES (ADR 0046).
+    // Inner layers never import outer ones, and the app reaches the design
+    // system only through the `@ds` barrel. dependency-cruiser (npm run
+    // lint:boundaries, in CI) states the same rules a second time, adds the
+    // allow-list of packages and catches cycles; this block is the one that
+    // speaks in the editor.
+    files: ['web/src/design-system/**/*.{ts,tsx}'],
+    plugins: { boundaries },
+    settings: {
+      // The plugin resolves each import itself and, by default, tries `.js`
+      // only, so without this it never finds a .ts file and checks nothing.
+      'import/resolver': { node: { extensions: ['.ts', '.tsx', '.js'] } },
+      // One element per layer folder: a layer's barrel is part of the layer.
+      'boundaries/elements': [
+        {
+          type: 'ds-primitives',
+          pattern: 'web/src/design-system/primitives',
+          partialMatch: false,
+        },
+        {
+          type: 'ds-composites',
+          pattern: 'web/src/design-system/composites',
+          partialMatch: false,
+        },
+        { type: 'ds-internal', pattern: 'web/src/design-system/internal', partialMatch: false },
+      ],
+    },
+    rules: {
+      'boundaries/dependencies': [
+        2,
+        {
+          default: 'allow',
+          policies: [
+            {
+              from: { element: { type: 'ds-primitives' } },
+              disallow: { to: { element: { type: 'ds-composites' } } },
+              message:
+                'A primitive (layer 2) cannot import a composite (layer 3): dependencies point inward.',
+            },
+            {
+              from: { element: { type: 'ds-internal' } },
+              disallow: { to: { element: { types: ['ds-primitives', 'ds-composites'] } } },
+              message: 'design-system/internal is imported by the layers; it imports none of them.',
+            },
+          ],
+        },
+      ],
+      // What the design system must not know (ADR 0046). A package outside the
+      // allow-list fails dependency-cruiser too; this list is the part worth
+      // seeing as you type.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/*', '**/../i18n', '**/../i18n/*'],
+              message:
+                'The design system imports no app code: text, links and data arrive as props, asChild and slots.',
+            },
+            {
+              group: [
+                'i18next',
+                'react-i18next',
+                'react-router',
+                'react-router-dom',
+                '@tanstack/*',
+                'zod',
+                'react-hook-form',
+                '@hookform/*',
+                'msw',
+              ],
+              message:
+                'The design system must not know about i18n, routing, data fetching or form libraries (ADR 0046).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   {
     // The toast wrapper is the one place that raises a sonner toast.
     files: ['web/src/components/ui/toast.tsx'],

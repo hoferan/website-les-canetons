@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
  * The caller names it, and the name contains the visible label (WCAG 2.5.3).
  *
  * Busy is `aria-disabled`, never `disabled`, which would blur the focused
- * control to <body> (rule 2 in ui/button.tsx). The caller passes
+ * control to <body> (rule 2 in design-system/primitives/button/button.tsx). The caller passes
  * `aria-disabled` and returns early from `onCheckedChange`.
  */
 function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimitive.Root>) {

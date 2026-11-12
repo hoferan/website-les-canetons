@@ -323,6 +323,15 @@ jobs:
         run: npm run test:web
       - name: ESLint
         run: npm run lint:js
+      # The design system's layers and public API, read from the real import
+      # graph (ADR 0046; eslint.config.js says the same in the editor). It is a
+      # step here and not a job of its own, so `all-green` already requires it.
+      - name: Design-system boundaries
+        run: npm run lint:boundaries
+      # Every story must still build: the playground is the design system's
+      # documentation (ADR 0047), and a story that imports app code fails here.
+      - name: Storybook build
+        run: npm run build:storybook
       - name: Stylelint
         run: npm run lint:css
       - name: Prettier

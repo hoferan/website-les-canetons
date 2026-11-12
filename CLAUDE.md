@@ -174,6 +174,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
       routes.tsx          the route table; English URLs, /de/* is the German mount
       api/                GENERATED client + hooks, and the http.ts mutator
       mocks/              MSW handlers for the mocked backend
+      design-system/      the design system, imported only as "@ds": tokens, primitives, composites
       components/         layout, nav, footer, env ribbon, guards
       pages/              one component per route
       i18n/               both catalogues, the locale rules and the switcher
@@ -193,6 +194,13 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   `"/assets/…"`. Every PR gets a preview on GitHub Pages under
   `/website-les-canetons/pr-<n>/` (`.github/workflows/preview.yml`), where a
   root-absolute path 404s; `tools/public-url.test.mjs` fails on one.
+- **`web/src/design-system/` knows nothing about the app** (ADRs 0044 to
+  0047): no `@/` import, no i18n, router, query or form library. Text and
+  links come in as props and `asChild`. The app imports only from `@ds`, the
+  barrel. The alias is declared in `tsconfig.json`, `vite.config.ts`,
+  `vitest.config.ts` and `.storybook/vite.config.ts`, which must agree.
+  ESLint and `npm run lint:boundaries` fail on a breach. New components go
+  here with a story and an axe test; `components/ui/` is being emptied into it.
 - **`web/src/api/generated/` is generated; never hand-edit it.** Change the
   controller, run `npm run openapi && npm run generate:api`, commit the result.
   CI's `openapi-drift` job fails if either is stale.
@@ -292,6 +300,8 @@ npm run test:web      # Vitest (web/src)
 npm run test:e2e      # Playwright (web/e2e), against the mocked backend
 npm run test:js       # node:test over tools/
 npm run screenshots   # every route at 1280 and 390px into dist/screenshots/, plus index.html
+npm run storybook     # the design system's stories on :6006
+npm run lint:boundaries   # dependency-cruiser over the design system's layer rules (also in check)
 npm run build:preview -- <pr>   # a PR's Pages preview, mocks bundled, into dist/preview/
 npm run lighthouse    # public pages vs. the performance budget (informational)
 npm run artisan -- route:list   # artisan, composer and php go through php-runner

@@ -1,6 +1,6 @@
 import { ArrowUpRight, Pencil, type LucideIcon } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@ds";
 import { IconButton } from "@/components/ui/icon-button";
 import { Indicator } from "@/components/ui/indicator";
 import { cn } from "@/lib/utils";

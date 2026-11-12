@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 import { t } from "../../i18n";
-import { Button } from "./button";
+import { Button } from "@ds";
 import { IconButton } from "./icon-button";
 
 /**

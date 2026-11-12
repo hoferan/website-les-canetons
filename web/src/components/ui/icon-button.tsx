@@ -5,7 +5,7 @@ import { Slot, Tooltip } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
-import { buttonVariants } from "./button";
+import { buttonVariants } from "@ds";
 
 type Variant = NonNullable<VariantProps<typeof buttonVariants>["variant"]>;
 

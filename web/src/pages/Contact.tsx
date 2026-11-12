@@ -3,7 +3,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 
 import { PageSection } from "@/components/PageSection";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -197,14 +197,15 @@ export function Contact() {
               }
             />
 
-            {/* aria-disabled, not disabled: see components/ui/button.tsx. The
-                submit handler's early return is the real guard. */}
+            {/* `loading` is aria-disabled plus a spinner, never `disabled` (see
+                the design system's Button), and drops the click. The submit
+                handler's early return stays the guard for Enter in a field. */}
             <FormActions>
               <Button
                 type="submit"
                 variant="primary"
                 className="h-12 px-5 text-base"
-                aria-disabled={send.isPending}
+                loading={send.isPending}
               >
                 {t("contact.submit")}
               </Button>

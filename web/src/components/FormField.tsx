@@ -2,7 +2,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState, type FormEvent, type HTMLAttributes, type ReactNode, type Ref } from "react";
 
 import { IconButton } from "@/components/ui/icon-button";
-import { Input } from "@/components/ui/input";
+import { FormField as FieldFrame, Input, RequiredMark } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { t, type TranslatedError } from "../i18n";
@@ -89,20 +89,8 @@ function reasonFor(validity: ValidityState, type: string) {
   return "validation.invalid_format" as const;
 }
 
-/**
- * The star beside a required label, and the line that says what it means.
- *
- * Both are `aria-hidden`: a screen reader already hears "required" from the
- * control's `required` attribute. The star sits beside the label, not inside
- * it, so the label's text stays "Nom" and every query by label still finds it.
- */
-export function RequiredMark() {
-  return (
-    <span aria-hidden="true" className="text-danger">
-      *
-    </span>
-  );
-}
+// The star lives in the design system; re-exported so existing importers keep working.
+export { RequiredMark };
 
 /** Goes at the top of any form with a required field, so the star has a key. */
 export function RequiredLegend() {
@@ -206,12 +194,6 @@ export function FormField({
   const browser = useBrowserProblem(label);
   const shown = problem ?? browser.problem;
 
-  const errorId = `${id}-error`;
-  const hintId = `${id}-hint`;
-  const describedBy = [outside ?? null, hint ? hintId : null, shown ? errorId : null]
-    .filter(Boolean)
-    .join(" ");
-
   const [revealed, setRevealed] = useState(false);
   // Adjusting state while rendering, React's documented alternative to an
   // effect: an effect would paint one frame with the cleared field still
@@ -224,9 +206,8 @@ export function FormField({
     }
   }
 
-  const shared = {
-    id,
-    required,
+  // What the control carries besides the wiring that FieldFrame hands it.
+  const own = {
     autoComplete,
     autoCapitalize,
     value,
@@ -235,8 +216,6 @@ export function FormField({
     lang,
     ref: controlRef,
     onInvalid: browser.onInvalid,
-    "aria-invalid": shown || invalid ? true : undefined,
-    "aria-describedby": describedBy || undefined,
   };
 
   // The wrapper exists only with an action, so the field's structure is
@@ -264,75 +243,65 @@ export function FormField({
   };
 
   return (
-    <div className="flex flex-col gap-1">
-      <div>
-        <label htmlFor={id}>
-          {label}
-          {badge ? <> {badge}</> : null}
-        </label>
-        {required ? (
-          <>
-            {" "}
-            <RequiredMark />
-          </>
-        ) : null}
-      </div>
-      {withAction(
-        as === "textarea" ? (
-          <textarea
-            {...shared}
-            // Growing: a row per line typed, where the browser cannot size the
-            // box to its content itself; where it can, field-sizing also
-            // follows the lines a long paragraph wraps onto.
-            rows={grow ? Math.max(3, value.split("\n").length) : 6}
-            onChange={(event) => change(event.target.value)}
-            className={cn(
-              "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
-              action && "pr-12",
-              shown || invalid ? "border-danger" : "border-line",
-              grow && "field-sizing-content min-h-[calc(3lh+1rem+2px)]",
-            )}
-          />
-        ) : type === "password" ? (
-          <div className="relative">
+    <FieldFrame
+      id={id}
+      label={label}
+      badge={badge}
+      required={required}
+      hint={hint}
+      error={shown}
+      describedBy={outside}
+      invalid={invalid}
+    >
+      {(wiring) => {
+        const shared = { ...own, ...wiring };
+        return withAction(
+          as === "textarea" ? (
+            <textarea
+              {...shared}
+              // Growing: a row per line typed, where the browser cannot size the
+              // box to its content itself; where it can, field-sizing also
+              // follows the lines a long paragraph wraps onto.
+              rows={grow ? Math.max(3, value.split("\n").length) : 6}
+              onChange={(event) => change(event.target.value)}
+              className={cn(
+                "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
+                action && "pr-12",
+                shown || invalid ? "border-danger" : "border-line",
+                grow && "field-sizing-content min-h-[calc(3lh+1rem+2px)]",
+              )}
+            />
+          ) : type === "password" ? (
+            <div className="relative">
+              <Input
+                {...shared}
+                type={revealed ? "text" : "password"}
+                onChange={(event) => change(event.target.value)}
+                // Room for the toggle, which sits over the input's right edge the
+                // way SearchField's clear button does.
+                className="pr-12"
+              />
+              <IconButton
+                type="button"
+                variant="quiet"
+                icon={revealed ? EyeOff : Eye}
+                className="absolute inset-y-0 right-0 h-auto"
+                label={t("common.showPassword")}
+                aria-pressed={revealed}
+                aria-controls={id}
+                onClick={() => setRevealed((shown) => !shown)}
+              />
+            </div>
+          ) : (
             <Input
               {...shared}
-              type={revealed ? "text" : "password"}
+              type={type}
               onChange={(event) => change(event.target.value)}
-              // Room for the toggle, which sits over the input's right edge the
-              // way SearchField's clear button does.
-              className="pr-12"
+              className={action ? "pr-12" : undefined}
             />
-            <IconButton
-              type="button"
-              variant="quiet"
-              icon={revealed ? EyeOff : Eye}
-              className="absolute inset-y-0 right-0 h-auto"
-              label={t("common.showPassword")}
-              aria-pressed={revealed}
-              aria-controls={id}
-              onClick={() => setRevealed((shown) => !shown)}
-            />
-          </div>
-        ) : (
-          <Input
-            {...shared}
-            type={type}
-            onChange={(event) => change(event.target.value)}
-            className={action ? "pr-12" : undefined}
-          />
-        ),
-      )}
-      {hint ? (
-        <div id={hintId} className="text-sm text-ink-muted">
-          {hint}
-        </div>
-      ) : null}
-      {shown ? (
-        <span id={errorId} className="block text-sm text-danger">
-          {shown}
-        </span>
-      ) : null}
-    </div>
+          ),
+        );
+      }}
+    </FieldFrame>
   );
 }

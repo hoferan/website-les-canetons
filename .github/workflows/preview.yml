@@ -4,8 +4,9 @@ name: Preview
 # through a change on a laptop or a phone instead of checking out the branch
 # (#353). At https://hoferan.github.io/website-les-canetons/pr-<n>/, against
 # the mocked backend in web/src/mocks/: no PHP, no database, fixture data
-# only. The repository is public, so the preview is too; that is accepted
-# because nothing in it is real, and every page carries noindex.
+# only. The design system's Storybook sits beside it at pr-<n>/storybook/.
+# The repository is public, so the preview is too; that is accepted because
+# nothing in it is real, and every page carries noindex.
 #
 # Published from the gh-pages branch, one directory per PR, removed when the
 # PR closes. actions/deploy-pages replaces the whole site on every run, so one
@@ -142,7 +143,7 @@ jobs:
               (map({key: (.number | tostring), value: .}) | from_entries) as $open
               | $numbers[]
               | ($open[tostring] // {number: ., title: "(closed)", headRefName: "", url: ""}) as $p
-              | @html "<li><a class=\"title\" href=\"pr-\(.)/\">\($p.title)</a><span class=\"meta\">#\(.) \($p.headRefName)</span><span class=\"links\"><a href=\"pr-\(.)/\">FR</a><a href=\"pr-\(.)/de/\">DE</a><a href=\"\($p.url)\">PR</a></span></li>"
+              | @html "<li><a class=\"title\" href=\"pr-\(.)/\">\($p.title)</a><span class=\"meta\">#\(.) \($p.headRefName)</span><span class=\"links\"><a href=\"pr-\(.)/\">FR</a><a href=\"pr-\(.)/de/\">DE</a><a href=\"pr-\(.)/storybook/\">Storybook</a><a href=\"\($p.url)\">PR</a></span></li>"
             ' "$prs")
             if [ -z "$items" ]; then
               items='<li class="none">No open previews.</li>'
@@ -254,7 +255,7 @@ jobs:
             body="$marker
           ### Preview
 
-          [Open the preview]($url), French at the root and German under [\`de/\`](${url}de/). Built from ${SHA::7}. Pages takes a minute or two to publish it after this comment appears.
+          [Open the preview]($url), French at the root and German under [\`de/\`](${url}de/). The design system's stories are in [Storybook](${url}storybook/). Built from ${SHA::7}. Pages takes a minute or two to publish it after this comment appears.
 
           It runs against the mocked backend in \`web/src/mocks/\`, inside your browser: nothing reaches a server, and a reload resets the data but keeps you logged in. If a page ever loads without its data, reload it normally: a hard reload (Ctrl+Shift+R) can bypass the mocks.
 

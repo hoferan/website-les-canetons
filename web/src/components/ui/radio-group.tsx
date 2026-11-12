@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  * Vendored from radix-ui like ui/dropdown-menu.tsx and ui/alert-dialog.tsx,
  * with the same `data-slot` attributes and `cn()` composition. Root and Item
  * only: a segment shows its state by filling, so there is no `Indicator`.
- * No `dark:` utility, for the reason in ui/button.tsx.
+ * No `dark:` utility, for the reason in design-system/primitives/button/button.tsx.
  *
  * RadioGroup rather than ToggleGroup. `ToggleGroup type="single"` renders
  * radio roles but never selects on an arrow key, so focus moves while

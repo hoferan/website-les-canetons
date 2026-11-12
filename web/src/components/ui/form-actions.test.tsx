@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 
-import { Button } from "./button";
+import { Button } from "@ds";
 import { FormActions } from "./form-actions";
 
 test("stacks full width on a phone and rows from sm", () => {

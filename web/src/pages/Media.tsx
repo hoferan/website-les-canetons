@@ -6,7 +6,7 @@ import { useImageIndex, useImageSummary } from "../api/generated/endpoints";
 import type { ImageResource } from "../api/generated/model";
 import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { currentLocale, t } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import { LibraryGrid } from "../images/LibraryGrid";

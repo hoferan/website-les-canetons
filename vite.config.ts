@@ -93,6 +93,8 @@ const config: UserConfig = {
   // project -- see its own comment.
   resolve: {
     alias: {
+      // `@ds` before `@`: the alias list is matched in order and "@" is a prefix of it.
+      "@ds": fileURLToPath(new URL("./web/src/design-system", import.meta.url)),
       "@": fileURLToPath(new URL("./web/src", import.meta.url)),
     },
   },

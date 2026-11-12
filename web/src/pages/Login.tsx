@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -53,7 +53,7 @@ export function Login() {
     event.preventDefault();
 
     // The button is aria-disabled, not disabled, so this return prevents a
-    // double submit. See components/ui/button.tsx.
+    // double submit. See design-system/primitives/button/button.tsx.
     if (login.isPending) {
       return;
     }
