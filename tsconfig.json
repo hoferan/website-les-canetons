@@ -26,6 +26,7 @@
     "web/src",
     "web/e2e",
     "web/screenshots",
+    ".storybook",
     "orval.config.ts",
     "playwright.config.ts",
     "playwright.screenshots.config.ts"

@@ -19,4 +19,5 @@ Storybook 10 with `@storybook/react-vite`, `@storybook/addon-a11y` and `@storybo
 
 - Good: props tables and states from the code; a11y panel; stories are reusable as test fixtures.
 - Bad: a heavy dev-only dependency tree and another Vite config to keep aligned with the app's.
-- Bad: `storybook build` is not part of the required CI yet; a broken story is caught by the type-check (stories are in `tsconfig` `include`) and, in the roadmap, by a build step.
+- Good: `storybook build` runs in the `assets` CI job, so a story that no longer builds fails `all-green`; the type-check also covers stories.
+- Bad: a failing story *interaction* (the `play` functions) and the a11y addon are not run in CI yet. They are checked by hand with `npm run storybook`; a test runner is on the roadmap.
