@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 import { setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";
 import { AppRoutes } from "../../routes";
+import { cardPencil } from "../../test/cardControls";
 import { recordBlockPuts } from "../../test/renderBlockEditor";
 import { renderWithSession } from "../../test/renderWithSession";
 import { EDIT_MODE_KEY } from "../EditMode";
@@ -31,7 +32,7 @@ afterEach(() => {
  * The editor's FR | DE (#368): the page, its preview, moves to the other
  * language and the edit carries on, typed values and all.
  */
-async function editThenSwitch(chip: string, field: string, typed: string) {
+async function editThenSwitch(chip: string | RegExp, field: string, typed: string) {
   const user = userEvent.setup();
   setMockUser("demo.direction");
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
@@ -85,7 +86,7 @@ test("the hero's edit carries over to the German page, and saves from there", as
 test("a card's edit carries over to the German page, and saves from there", async () => {
   const puts = recordBlockPuts();
   const { user, dialog } = await editThenSwitch(
-    "Modifier : Instruments recherchés",
+    cardPencil("Instruments recherchés"),
     "Titre",
     "Instruments",
   );

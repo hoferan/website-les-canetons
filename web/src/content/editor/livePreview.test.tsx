@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vi
 
 import { setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";
+import { cardPencil } from "../../test/cardControls";
 import { recordBlockPuts } from "../../test/renderBlockEditor";
 import { renderWithSession } from "../../test/renderWithSession";
 import { CardsBlock } from "../blocks/CardsBlock";
@@ -131,7 +132,7 @@ test("a card's editor is titled by the card", async () => {
   const card = BLOCKS["join.facts"].defaults().cards[0]!;
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
-  await user.click(screen.getByRole("button", { name: `Modifier : ${card.title.fr}` }));
+  await user.click(screen.getByRole("button", { name: cardPencil(card.title.fr) }));
   const dialog = await screen.findByRole("dialog");
 
   expect(within(dialog).getByRole("heading", { name: card.title.fr })).toBeInTheDocument();
@@ -160,7 +161,7 @@ test("a card that is a link stays findable for the fade while its editor is open
     route: "/",
   });
 
-  await user.click(screen.getByRole("button", { name: `Modifier : ${card.title.fr}` }));
+  await user.click(screen.getByRole("button", { name: cardPencil(card.title.fr) }));
   await screen.findByRole("dialog");
 
   const marked = document.querySelector(`[data-edit-block="home.cards/${card.id}"]`);

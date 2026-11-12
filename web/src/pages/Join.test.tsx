@@ -5,6 +5,7 @@ import { EDIT_MODE_KEY } from "../content/EditMode";
 import { BLOCKS } from "../content/registry";
 import type { Card } from "../content/types";
 import { setMockUser } from "../mocks/handlers";
+import { cardPencil } from "../test/cardControls";
 import { storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
 import { Join } from "./Join";
@@ -147,7 +148,7 @@ test("in edit mode the hero and every card carry a chip", async () => {
   expect(
     await screen.findByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }),
   ).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Modifier : Contacts" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: cardPencil("Contacts") })).toBeInTheDocument();
   expect(screen.getAllByRole("button", { name: /^Modifier : / })).toHaveLength(6);
 });
 

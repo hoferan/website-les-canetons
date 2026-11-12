@@ -1,14 +1,5 @@
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Copy,
-  Ellipsis,
-  Plus,
-  Trash2,
-} from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Copy, Ellipsis, Pencil, Plus, Trash2 } from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode, type Ref } from "react";
 import {
   Controller,
   useFieldArray,
@@ -29,12 +20,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  ACTION_STRIP_ROOM,
+  ActionBar,
+  type ActionBarAction,
+  type ActionBarMenuItem,
+  ActionBarList,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  type ListMoves,
+  useListMoves,
 } from "@ds";
 import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
@@ -52,9 +50,6 @@ import { useBlock } from "../BlocksProvider";
 import { PUBLIC_NAV, isPublicPage } from "../publicPages";
 import {
   BlockEditor,
-  CHIP_ROOM,
-  ChipButton,
-  EditChip,
   EditorMenu,
   ICON_GLYPHS,
   IconPicker,
@@ -89,8 +84,12 @@ export type CardSlot = { beforeRows?: ReactNode; afterRows?: ReactNode };
  */
 type Opened = { id: string; adding: boolean; copyOf?: string };
 
-/** A card's chips, which a move puts focus back on. */
-type ChipPart = "before" | "after" | "edit";
+/**
+ * Where focus goes once a duplicate or a deletion made on the page shows
+ * there: a card's ✎, or "Ajouter une carte" (null) when no card is left.
+ * `added` and `gone` say what the page must show first.
+ */
+type FocusAfter = { focus: string | null; added?: string; gone?: string };
 
 const LAYOUTS = {
   grid: "grid gap-5 sm:grid-cols-2 lg:grid-cols-3",
@@ -103,19 +102,21 @@ const LAYOUTS = {
 
 /**
  * A band tile's own tilt, on the <li>, so the focus ring tilts with the card
- * it outlines and the chips tilt with the card they sit on.
+ * it outlines and the action strip tilts with the card it sits on.
  */
 const BAND_TILT = "odd:-rotate-[1.2deg] even:rotate-1";
 
 /**
  * A grid of raised cards, each a picture on a carnival colour, a heading and
- * its rows. In edit mode every card carries its own chip, and "Ajouter une
- * carte" sits above the grid, so a list saved empty can still be refilled.
+ * its rows. In edit mode every card wears an action strip along its top edge
+ * (ADR 0043), ← → ⋯ ✎, and "Ajouter une carte" sits above the grid, so a list
+ * saved empty can still be refilled.
  *
  * The editor shows one card but saves the whole list, since deleting a card
- * changes its neighbours' places. A card's arrows move it and save at once,
- * with no dialog. "Rétablir l'original" restores only the card on screen,
- * and only a card the site ships with.
+ * changes its neighbours' places. On the page, everything saves at once with
+ * no dialog and the undo toast: a card's arrows move it, and its ⋯ duplicates
+ * it, or deletes it once asked. "Rétablir l'original" restores only the card
+ * on screen, and only a card the site ships with.
  *
  * `slots` puts page code into a card by its id, before or after its rows: a
  * link to a page, or a line that depends on what the rows hold. A slot for a
@@ -151,48 +152,79 @@ export function CardsBlock({
   const List = band ? "ul" : "div";
   const full = cards.length >= MAX_ITEMS;
   const fullId = useId();
-  // Moving a card saves at once, with no dialog to close.
+  // The strip's actions save at once, with no dialog to close.
   const { save, pending, error } = useSaveBlock(blockKey, () => {});
-  const chipIds = useId();
-  const chipId = (cardId: string, part: ChipPart) => `${chipIds}-${cardId}-${part}`;
-  // The arrow a move was made with, to focus again on the moved card.
-  const refocus = useRef<{ id: string; part: ChipPart; to: number } | null>(null);
+  const list = useRef<HTMLElement>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
+  const focusAfter = useRef<FocusAfter | null>(null);
+  // The card whose deletion is being asked about.
+  const [removing, setRemoving] = useState<CardData | null>(null);
+  const titleOf = (card: CardData) => tr(card.title).trim() || blockLabel;
   const shipped = opened
     ? BLOCKS[blockKey].defaults().cards.find((card) => card.id === opened.id)
     : undefined;
   const openedCard = opened ? cards.find((card) => card.id === opened.id) : undefined;
   const openedTitle = openedCard ? tr(openedCard.title).trim() || undefined : undefined;
 
-  // The arrows are disabled while a save is on its way, so a move never starts
-  // from a list that lacks the one before it. Blocks are written without an
-  // ETag, so a stale list would silently undo that move instead of failing.
-  const shift = (from: number, to: number) => {
-    const moved = [...cards];
-    moved.splice(to, 0, ...moved.splice(from, 1));
-    refocus.current = { id: cards[from]!.id, part: to < from ? "before" : "after", to };
-    save({ cards: moved } as CardsData);
+  // The move hook slides the cards, says where the moved one went and keeps
+  // focus on its arrow once the saved order comes back.
+  const moves = useListMoves({
+    keys: cards.map((card) => card.id),
+    onMove: (id, to) => {
+      const moved = [...cards];
+      const from = moved.findIndex((card) => card.id === id);
+      moved.splice(to, 0, ...moved.splice(from, 1));
+      save({ cards: moved } as CardsData);
+    },
+    announce: (id, n, count) => {
+      const card = cards.find((other) => other.id === id);
+      return t("blockEditor.cardMoved", { title: card ? titleOf(card) : blockLabel, n, count });
+    },
+  });
+
+  // The copy goes right after the original with a new id, so its photo slot
+  // is its own and starts empty, and page code placed by the original's id
+  // stays with the original.
+  const duplicate = (index: number) => {
+    const copy = { ...structuredClone(cards[index]!), id: crypto.randomUUID() };
+    focusAfter.current = { focus: copy.id, added: copy.id };
+    save({
+      cards: [...cards.slice(0, index + 1), copy, ...cards.slice(index + 1)],
+    } as CardsData);
   };
 
-  // Once the page shows the move, focus goes to the same arrow of the moved
-  // card, so the next key press moves it on, or to its pencil when that arrow
-  // is gone (the card is now first or last). The card's buttons can be moved
-  // or unmounted under the focus, which leaves it on the page. Focus the
-  // person has taken elsewhere meanwhile stays where it is.
+  // useSaveBlock empties the deleted card's photo slot once the list is saved.
+  const remove = (card: CardData) => {
+    const index = cards.indexOf(card);
+    const next = cards[index + 1] ?? cards[index - 1];
+    focusAfter.current = { focus: next?.id ?? null, gone: card.id };
+    save({ cards: cards.filter((other) => other !== card) } as CardsData);
+  };
+
+  // Once the page shows the copy, or no longer shows the deleted card, focus
+  // goes to the copy's ✎, to the ✎ of the card that took the deleted one's
+  // place, or to "Ajouter une carte" when none is left. The save ends before
+  // the page reads the blocks again, and a refused one changes nothing, so
+  // focus then stays where it is.
   useEffect(() => {
-    const target = refocus.current;
+    const target = focusAfter.current;
     if (target === null || pending) return;
-    // The save can end a render before the page shows the new order; a
-    // refused one leaves the card where it was.
-    if (cards[target.to]?.id !== target.id && !error) return;
-    refocus.current = null;
-    const active = document.activeElement;
-    const lost = active === null || active === document.body || !active.isConnected;
-    if (!lost && !active.id.startsWith(chipIds)) return;
-    (
-      document.getElementById(`${chipIds}-${target.id}-${target.part}`) ??
-      document.getElementById(`${chipIds}-${target.id}-edit`)
-    )?.focus();
-  }, [pending, cards, error, chipIds]);
+    if (!error) {
+      if (target.added && !cards.some((card) => card.id === target.added)) return;
+      if (target.gone && cards.some((card) => card.id === target.gone)) return;
+    }
+    focusAfter.current = null;
+    if (error) return;
+    if (target.focus === null) {
+      addButton.current?.focus();
+      return;
+    }
+    list.current
+      ?.querySelector<HTMLElement>(
+        `[data-card-id="${CSS.escape(target.focus)}"] [data-action="edit"]`,
+      )
+      ?.focus();
+  }, [pending, cards, error]);
 
   const restore = (form: UseFormReturn<CardsData>) => {
     const index = form.getValues("cards").findIndex((card) => card.id === shipped?.id);
@@ -217,6 +249,7 @@ export function CardsBlock({
       {editing ? (
         <div className="mb-related flex flex-wrap items-center gap-x-3 gap-y-1">
           <Button
+            ref={addButton}
             type="button"
             variant="accent"
             size="sm"
@@ -241,70 +274,93 @@ export function CardsBlock({
       {editing ? <FormError error={error} /> : null}
 
       {cards.length > 0 ? (
-        <List className={LAYOUTS[layout]} aria-labelledby={band ? labelledBy : undefined}>
-          {cards.map((card, index) => {
-            const title = tr(card.title).trim() || blockLabel;
-            // Left and right where the grid shows columns (from sm), up and
-            // down where it stacks, so the arrow points where the card goes.
-            const several = layout !== "wide";
-            const view = (
-              <CardView
-                key={card.id}
-                blockKey={blockKey}
-                card={card}
-                slot={slots[card.id]}
-                editing={editing}
-                band={band}
-                links={links}
-              >
-                {editing ? (
-                  // One row in the card's corner, the pencil last: its word
-                  // shows on hover from sm and widens it leftwards, which
-                  // pushes the arrows along instead of covering them.
-                  <div className="absolute top-2 right-2 z-10 flex gap-2">
-                    {index > 0 ? (
-                      <ChipButton
-                        id={chipId(card.id, "before")}
-                        label={t("blockEditor.moveCardBefore", { title })}
-                        word={t("blockEditor.before")}
-                        icon={several ? ArrowLeft : ArrowUp}
-                        narrowIcon={several ? ArrowUp : undefined}
-                        disabled={pending}
-                        onClick={() => shift(index, index - 1)}
-                      />
-                    ) : null}
-                    {index < cards.length - 1 ? (
-                      <ChipButton
-                        id={chipId(card.id, "after")}
-                        label={t("blockEditor.moveCardAfter", { title })}
-                        word={t("blockEditor.after")}
-                        icon={several ? ArrowRight : ArrowDown}
-                        narrowIcon={several ? ArrowDown : undefined}
-                        disabled={pending}
-                        onClick={() => shift(index, index + 1)}
-                      />
-                    ) : null}
-                    <EditChip
-                      id={chipId(card.id, "edit")}
-                      label={title}
-                      corner={false}
-                      missingGerman={lacksGerman(card)}
-                      onClick={() => setOpened({ id: card.id, adding: false })}
+        // One column of wide cards is always stacked, so its arrows point up
+        // and down; a grid's bars find out for themselves.
+        <ActionBarList stacked={layout === "wide" || undefined}>
+          <List
+            ref={list as Ref<HTMLUListElement & HTMLDivElement>}
+            className={LAYOUTS[layout]}
+            aria-labelledby={band ? labelledBy : undefined}
+          >
+            {cards.map((card, index) => {
+              const view = (
+                <CardView
+                  key={card.id}
+                  blockKey={blockKey}
+                  card={card}
+                  slot={slots[card.id]}
+                  editing={editing}
+                  band={band}
+                  links={links}
+                  itemRef={band ? undefined : moves.itemRef(card.id)}
+                >
+                  {editing ? (
+                    <CardStrip
+                      card={card}
+                      place={t("blockEditor.cardPlace", {
+                        title: titleOf(card),
+                        n: index + 1,
+                        count: cards.length,
+                      })}
+                      band={band}
+                      moves={moves}
+                      // A move waits for the save before it, so it never
+                      // starts from a list that lacks that one. Blocks are
+                      // written without an ETag, so a stale list would
+                      // silently undo the move before instead of failing.
+                      busy={pending}
+                      onEdit={() => setOpened({ id: card.id, adding: false })}
+                      onDuplicate={full ? undefined : () => duplicate(index)}
+                      onRemove={() => setRemoving(card)}
                     />
-                  </div>
-                ) : null}
-              </CardView>
-            );
-            return band ? (
-              <li key={card.id} className={BAND_TILT} data-confetti-avoid>
-                {view}
-              </li>
-            ) : (
-              view
-            );
-          })}
-        </List>
+                  ) : null}
+                </CardView>
+              );
+              return band ? (
+                <li
+                  key={card.id}
+                  ref={moves.itemRef(card.id)}
+                  className={BAND_TILT}
+                  data-card-id={card.id}
+                  data-confetti-avoid
+                >
+                  {view}
+                </li>
+              ) : (
+                view
+              );
+            })}
+          </List>
+          {moves.liveRegion}
+        </ActionBarList>
       ) : null}
+
+      <AlertDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoving(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("blockEditor.removeCardTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("blockEditor.removeCardBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => {
+                if (removing) remove(removing);
+                setRemoving(null);
+              }}
+            >
+              {t("blockEditor.removeCardConfirm")}
+            </Button>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {editing || opened !== null ? (
         <BlockEditor
@@ -333,6 +389,92 @@ export function CardsBlock({
 }
 
 /**
+ * A card's action strip in edit mode (ADR 0043): ← → ⋯ ✎, with ✎ labelled.
+ * Every name carries the card's place, "carte 3 sur 5", so a copy can be told
+ * from its original. ⋯ holds the same two items as the card editor's header
+ * menu; Dupliquer is left out at the limit, where "Ajouter une carte" already
+ * says why.
+ */
+function CardStrip({
+  card,
+  place,
+  band,
+  moves,
+  busy,
+  onEdit,
+  onDuplicate,
+  onRemove,
+}: {
+  card: CardData;
+  place: string;
+  band: boolean;
+  moves: ListMoves;
+  /** A save is on its way: the arrows wait for it. */
+  busy: boolean;
+  onEdit: () => void;
+  onDuplicate: (() => void) | undefined;
+  onRemove: () => void;
+}) {
+  const missing = lacksGerman(card);
+  const edit = t("blockEditor.edit", { label: place });
+  const move = (direction: "before" | "after") => {
+    const action = moves.moveAction(card.id, direction, {
+      label: t(
+        direction === "before" ? "blockEditor.moveCardBefore" : "blockEditor.moveCardAfter",
+        {
+          title: place,
+        },
+      ),
+      word: t(direction === "before" ? "blockEditor.before" : "blockEditor.after"),
+    });
+    return busy ? { ...action, disabled: true } : action;
+  };
+  const menu: ActionBarMenuItem[] = [
+    ...(onDuplicate
+      ? [
+          {
+            id: "duplicate",
+            label: t("blockEditor.duplicateCard"),
+            icon: Copy,
+            onSelect: onDuplicate,
+          },
+        ]
+      : []),
+    {
+      id: "remove",
+      label: t("blockEditor.removeCard"),
+      icon: Trash2,
+      destructive: true,
+      onSelect: onRemove,
+    },
+  ];
+  const actions: ActionBarAction[] = [
+    move("before"),
+    move("after"),
+    { id: "more", label: t("blockEditor.cardMore", { label: place }), menu },
+    {
+      id: "edit",
+      icon: Pencil,
+      word: t("common.edit"),
+      label: missing ? t("blockEditor.missingGerman", { text: edit }) : edit,
+      flag: missing,
+      onSelect: onEdit,
+    },
+  ];
+  return (
+    <ActionBar
+      look="strip"
+      label={place}
+      actions={actions}
+      main="edit"
+      // A raised card's corner is 18px, a band tile's 20px; the strip meets
+      // the inner edge of the 3px border.
+      className={band ? undefined : "rounded-t-[15px]"}
+    />
+  );
+}
+
+/**
  * One card. The icon is decoration: the heading already says what the card is
  * about, so a card may go without one, and its title then starts at the
  * card's edge.
@@ -355,16 +497,19 @@ function CardView({
   editing,
   band,
   links,
+  itemRef,
   children,
 }: {
   blockKey: CardsKey;
   card: CardData;
   slot: CardSlot | undefined;
-  /** Whether the card wears its chip, and so needs room for it. */
+  /** Whether the card wears its action strip, and so needs room for it. */
   editing: boolean;
   band: boolean;
   /** Whether the grid lets a card lead somewhere. */
   links: boolean;
+  /** The move hook's ref, where no list item of its own holds the card. */
+  itemRef?: Ref<HTMLDivElement>;
   children: ReactNode;
 }) {
   const Glyph = card.icon === undefined ? undefined : ICON_GLYPHS[card.icon];
@@ -458,12 +603,14 @@ function CardView({
   }
 
   return (
-    // The card is its chips' scope: edit-blocks.spec.ts checks them against
-    // its text, and against each other.
+    // The card is its strip's scope: edit-blocks.spec.ts checks the strip
+    // against its text.
     <Card
+      ref={itemRef}
       data-chip-scope
+      data-card-id={card.id}
       data-edit-block={editBlock}
-      className={cn(look, "relative", editing && CHIP_ROOM)}
+      className={cn(look, "relative", editing && ACTION_STRIP_ROOM)}
     >
       {children}
       {body}
