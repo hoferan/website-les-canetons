@@ -13,7 +13,7 @@
     // `@/` -> web/src, as shadcn's CLI writes its imports. No "baseUrl": this
     // TypeScript errors on it as deprecated, and with moduleResolution
     // "bundler" a relative "paths" is resolved against this file's own
-    // directory anyway. `@ds` is the design system's public barrel (ADR 0001). It must
+    // directory anyway. `@ds` is the design system's public barrel (ADR 0044). It must
     // agree with vite.config.ts, vitest.config.ts AND .storybook/vite.config.ts,
     // which is a separate config here and does not read vite's.
     "paths": {

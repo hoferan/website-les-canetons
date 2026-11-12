@@ -24,7 +24,7 @@ const SONNER_TOAST = {
 const DS_DEEP_IMPORT = {
   group: ['@ds/*', '**/design-system/*'],
   message:
-    'Import from "@ds", the design system\'s public API (ADR 0003), not from a file inside it.',
+    'Import from "@ds", the design system\'s public API (ADR 0046), not from a file inside it.',
 };
 
 export default [
@@ -125,14 +125,14 @@ export default [
         {
           paths: [ROUTER_IMPORTS, SONNER_TOAST],
           // The app reaches the design system through `@ds`, never past it
-          // (ADR 0003). Inside the design system the next block replaces this.
+          // (ADR 0046). Inside the design system the next block replaces this.
           patterns: [DS_DEEP_IMPORT],
         },
       ],
     },
   },
   {
-    // THE DESIGN SYSTEM'S BOUNDARIES (ADR 0003, docs/design-system/02-architecture.md).
+    // THE DESIGN SYSTEM'S BOUNDARIES (ADR 0046).
     // Inner layers never import outer ones, and the app reaches the design
     // system only through the `@ds` barrel. dependency-cruiser (npm run
     // lint:boundaries, in CI) states the same rules a second time, adds the
@@ -179,7 +179,7 @@ export default [
           ],
         },
       ],
-      // What the design system must not know (ADR 0003). A package outside the
+      // What the design system must not know (ADR 0046). A package outside the
       // allow-list fails dependency-cruiser too; this list is the part worth
       // seeing as you type.
       'no-restricted-imports': [
@@ -204,7 +204,7 @@ export default [
                 'msw',
               ],
               message:
-                'The design system must not know about i18n, routing, data fetching or form libraries (ADR 0003).',
+                'The design system must not know about i18n, routing, data fetching or form libraries (ADR 0046).',
             },
           ],
         },

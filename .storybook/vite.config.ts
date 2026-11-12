@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 
 // The same plugins and aliases as the app's vite.config.ts, and no more. The
 // aliases must agree with tsconfig.json, vite.config.ts and vitest.config.ts
-// (ADR 0001 lists the four places).
+// (ADR 0044 lists the four places).
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {

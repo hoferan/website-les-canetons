@@ -1,7 +1,7 @@
 import type { StorybookConfig } from "@storybook/react-vite";
 
 /**
- * The design system's playground (ADR 0004). Only stories under the design
+ * The design system's playground (ADR 0047). Only stories under the design
  * system are collected: a story that needs the router, i18n or the session
  * does not belong here, and rendering with no providers is the proof that a
  * component respects the dependency rule.

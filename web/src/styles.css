@@ -4,7 +4,7 @@
 @import "@fontsource-variable/karla";
 @import "@fontsource/bungee";
 
-/* The design system's semantic tokens (ADR 0002). They alias the palette below. */
+/* The design system's semantic tokens (ADR 0045). They alias the palette below. */
 @import "./design-system/tokens/tokens.css";
 
 /**

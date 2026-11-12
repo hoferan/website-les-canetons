@@ -3,7 +3,7 @@ import { expect } from "vitest";
 
 /**
  * Fails when axe finds a structural accessibility problem in `container`:
- * names, roles, label associations, ARIA validity (ADR 0005).
+ * names, roles, label associations, ARIA validity (ADR 0047).
  *
  * jsdom has no layout and no painted colours, so the contrast rule is off here.
  * Contrast is checked against a real browser: the Playwright axe sweep

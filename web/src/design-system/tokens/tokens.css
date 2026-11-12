@@ -1,5 +1,5 @@
 /**
- * Semantic tokens: the roles a design-system component may use (ADR 0002).
+ * Semantic tokens: the roles a design-system component may use (ADR 0045).
  *
  * Each one aliases a raw token from the @theme block in styles.css, which stays
  * the home of the palette. A component names a role (`action`, `focus`), never

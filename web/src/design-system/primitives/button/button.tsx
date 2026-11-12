@@ -7,7 +7,7 @@ import { cn } from "../../internal/cn";
 
 /**
  * The button primitive (layer 2). Vendored from shadcn/ui and now owned by the
- * design system, which means it may import no app code (ADR 0003): text and
+ * design system, which means it may import no app code (ADR 0046): text and
  * links come in as `children` and `asChild`.
  *
  * What differs from stock shadcn:

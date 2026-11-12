@@ -67,3 +67,7 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0041](0041-switch-language-in-place.md) | Switch language in place, keeping the locale in the path |
 | [0042](0042-toasts-and-notices.md) | Confirm an action in a toast with a level and a visible time, and keep page-bound messages inline |
 | [0043](0043-one-action-bar-for-every-edit-control.md) | Give every edit control one action bar, with the main action labelled and the rest behind it |
+| [0044](0044-design-system-as-an-in-app-module.md) | Keep the design system in an in-app module behind `@ds`, without versioning |
+| [0045](0045-design-tokens-in-css-with-a-semantic-tier.md) | Keep design tokens in Tailwind's CSS, with a semantic tier over the palette |
+| [0046](0046-design-system-boundaries-enforced-by-lint.md) | Enforce the design system's layers and public API with ESLint and dependency-cruiser |
+| [0047](0047-storybook-and-component-tests.md) | Document components in Storybook, test them with Vitest and axe, and add visual regression later |

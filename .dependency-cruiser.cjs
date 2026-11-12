@@ -1,6 +1,6 @@
 /**
  * The design system's boundaries, checked a second time and from the outside
- * (ADR 0003). ESLint (eslint.config.js) says the same things in the editor;
+ * (ADR 0046). ESLint (eslint.config.js) says the same things in the editor;
  * this tool reads the real import graph, so it also sees re-exports, dynamic
  * imports and cycles, and it can hold an allow-list of packages.
  *
@@ -12,7 +12,7 @@
  */
 const DS = "^web/src/design-system/";
 // Tests and stories may use dev tooling; the library code may not. The design
-// system's shipped code can depend on exactly these packages (ADR 0003).
+// system's shipped code can depend on exactly these packages (ADR 0046).
 const TOOLING = "(\\.(test|stories)\\.tsx?$|/internal/testing/)";
 const ALLOWED_PACKAGES = [
   "react",
