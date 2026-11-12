@@ -1903,10 +1903,17 @@ export const fr = {
     removeCardTitle: "Supprimer cette carte ?",
     removeCardBody: "La carte et ses lignes disparaissent de la page.",
     removeCardConfirm: "Supprimer",
-    // The arrows beside a card's chip in edit mode, which reorder the grid.
+    // A card's name on its action strip (ADR 0043), with its place, so that
+    // a copy can be told from its original.
+    cardPlace: "{{title}}, carte {{n}} sur {{count}}",
+    // The strip's ⋯, which holds Dupliquer and Supprimer.
+    cardMore: "Plus d’actions : {{label}}",
+    // Said once a card has moved.
+    cardMoved: "{{title}} : position {{n}} sur {{count}}",
+    // The arrows on a card's strip in edit mode, which reorder the grid.
     moveCardBefore: "Déplacer « {{title}} » avant",
     moveCardAfter: "Déplacer « {{title}} » après",
-    // Their short words, shown on hover.
+    // Their short words.
     before: "Avant",
     after: "Après",
     rowType: {

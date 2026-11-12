@@ -10,6 +10,7 @@ import {
   setSectionNameDe,
 } from "../mocks/handlers";
 import { server } from "../mocks/node";
+import { cardPencil } from "../test/cardControls";
 import { storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
 import { EDIT_MODE_KEY } from "../content/EditMode";
@@ -231,7 +232,7 @@ test("in edit mode the hero and the godparents' card carry a chip", async () => 
   await renderWithSession(<Band />, { route: "/band" });
 
   expect(
-    await screen.findByRole("button", { name: "Modifier : Le parrain et la marraine" }),
+    await screen.findByRole("button", { name: cardPencil("Le parrain et la marraine") }),
   ).toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: "Modifier : Les canetons · en-tête" }),

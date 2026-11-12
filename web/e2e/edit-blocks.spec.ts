@@ -25,7 +25,9 @@ test("the booking number is stored from the contact card on /committee, and Term
   await page.locator('a[href="/committee"]:visible').first().click();
   await expect(page.locator("[data-tbd='booking-number']")).toBeVisible();
 
-  const chip = page.getByRole("button", { name: "Modifier : Contact des Canetons" });
+  const chip = page.getByRole("button", {
+    name: /^Modifier : Contact des Canetons, carte 1 sur 1$/,
+  });
   await expect(chip).toHaveCount(0);
   await page.getByRole("button", { name: "Modifier la page" }).click();
   await chip.click();
@@ -52,9 +54,7 @@ test("the booking number is stored from the contact card on /committee, and Term
   await expect(number).toHaveAttribute("href", "tel:+41261234567");
   await expect(page.locator("[data-tbd='booking-number']")).toHaveCount(0);
   // A phone number is no text, so the card still has all its German (#359).
-  await expect(
-    page.getByRole("button", { name: "Modifier : Contact des Canetons", exact: true }),
-  ).not.toHaveAttribute("data-missing-german");
+  await expect(chip.locator("[data-flag]")).toHaveCount(0);
 
   // One element whose label changes, so it is the same button that ends it.
   await page.getByRole("button", { name: "Terminer la modification" }).click();
@@ -70,7 +70,7 @@ test("the booking number is stored from the contact card on /committee, and Term
  */
 function chipsOverText(page: Page) {
   return page.evaluate(() =>
-    [...document.querySelectorAll("[data-chip]")].flatMap((chip) => {
+    [...document.querySelectorAll("[data-chip], [data-action-bar]")].flatMap((chip) => {
       const c = chip.getBoundingClientRect();
       // A row of chips names its block with data-chip-scope; a lone chip sits
       // directly in its block, through the Indicator wrapper it may wear.
@@ -84,7 +84,11 @@ function chipsOverText(page: Page) {
         // A chip's own word is not the block's text. A closed one still has
         // boxes, clipped away inside its chip, and chipsOverChips covers the
         // chips themselves.
-        if (node.parentElement!.closest("[data-chip]") || node.textContent!.trim() === "") continue;
+        if (
+          node.parentElement!.closest("[data-chip], [data-action-bar]") ||
+          node.textContent!.trim() === ""
+        )
+          continue;
         const range = document.createRange();
         range.selectNodeContents(node);
         for (const line of range.getClientRects()) {
@@ -108,7 +112,7 @@ function chipsOverText(page: Page) {
  */
 function chipsOverChips(page: Page) {
   return page.evaluate(() => {
-    const chips = [...document.querySelectorAll("[data-chip]")].filter(
+    const chips = [...document.querySelectorAll("[data-chip], [data-action-bar]")].filter(
       (chip) => chip.getBoundingClientRect().width > 0,
     );
     const hits: string[] = [];
@@ -148,31 +152,104 @@ test("no edit chip covers the text of its block, on a phone or a desktop", async
       await page.evaluate(() => document.fonts.ready);
       // Every public page has at least one chip, so a selector that matched
       // nothing could not pass for "no overlap".
-      expect(await page.locator("[data-chip]").count()).toBeGreaterThan(0);
+      expect(await page.locator("[data-chip], [data-action-bar]").count()).toBeGreaterThan(0);
       expect(await chipsOverText(page), `${path} at ${width}px`).toEqual([]);
       expect(await chipsOverChips(page), `${path} at ${width}px`).toEqual([]);
     }
   }
 });
 
-test("a card's pencil shows its word beside the arrows, never over them", async ({ page }) => {
-  // Measured before the fix: at 1280 the arrows sat in a box of their own
-  // and the hovered pencil grew over the "après" arrow beside it.
+/**
+ * Every action strip that runs past its card, and every word on one that is
+ * cut, in pixels. A strip cannot spill by construction; a word can still end
+ * in an ellipsis inside it.
+ */
+function stripProblems(page: Page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll("[data-action-bar='strip']")].flatMap((strip) => {
+      const card = strip.closest("[data-chip-scope]")!.getBoundingClientRect();
+      const s = strip.getBoundingClientRect();
+      const name = strip.getAttribute("aria-label");
+      const out =
+        s.left < card.left - 1 || s.right > card.right + 1 ? [`${name} runs past its card`] : [];
+      const cut = [...strip.querySelectorAll<HTMLElement>("[data-word]")]
+        .filter((word) => word.scrollWidth > word.clientWidth + 1)
+        .map((word) => `${name}: "${word.textContent}" is cut`);
+      return [...out, ...cut];
+    }),
+  );
+}
+
+test("the home band's action strips stay inside their tiles and cut no word", async ({ page }) => {
+  // ADR 0043: with ⋯ added, the old floating row needed 291px on a 237px tile
+  // at 1024px and spilled over the next tile; German words are longer still.
+  await page.addInitScript(() => sessionStorage.setItem("canetons.editMode", "1"));
+  await logIn(page, "demo.direction");
+  await page.locator('a[href="/"]:visible').first().click();
+
+  for (const language of ["fr", "de"]) {
+    if (language === "de") {
+      await page.getByRole("link", { name: "Auf Deutsch wechseln" }).first().click();
+      await expect(page).toHaveURL(/\/de\/?$/);
+    }
+    for (const width of [1280, 1024, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.evaluate(() => document.fonts.ready);
+      const strips = page.locator("[data-action-bar='strip']");
+      await expect(strips.first()).toBeVisible();
+      expect(await stripProblems(page), `${language} at ${width}px`).toEqual([]);
+      // A hovered segment takes the room and shows its word, on a middle tile.
+      if (width > 390) {
+        for (const move of ["before", "after"]) {
+          await strips.nth(1).locator(`[data-move="${move}"]`).hover();
+          expect(await stripProblems(page), `${language} at ${width}px, ${move} hovered`).toEqual(
+            [],
+          );
+        }
+        await page.mouse.move(0, 0);
+      }
+    }
+  }
+});
+
+test("a card is duplicated and deleted from the page, with no dialog but the question", async ({
+  page,
+}) => {
   await page.addInitScript(() => sessionStorage.setItem("canetons.editMode", "1"));
   await page.setViewportSize({ width: 1280, height: 844 });
   await logIn(page, "demo.direction");
   await page.locator('a[href="/join"]:visible').first().click();
+  const headings = page.locator("[data-slot='card'] h2");
+  await expect(headings).toHaveCount(5);
 
-  const pencil = page.getByRole("button", { name: "Modifier : Horaires" });
-  await pencil.hover();
-  await expect(pencil.getByText("Modifier")).toBeVisible();
-  const after = await page
-    .getByRole("button", { name: "Déplacer « Horaires » après" })
-    .boundingBox();
-  const word = await pencil.boundingBox();
-  expect(after!.x + after!.width).toBeLessThanOrEqual(word!.x);
-  expect(await chipsOverChips(page)).toEqual([]);
-  expect(await chipsOverText(page)).toEqual([]);
+  await page.getByRole("button", { name: /^Plus d’actions\s: Horaires, carte 2 sur 5$/ }).click();
+  await page.getByRole("menuitem", { name: "Dupliquer la carte" }).click();
+  await expect(headings).toHaveText([
+    "Instruments recherchés",
+    "Horaires",
+    "Horaires",
+    "Critères d’âge",
+    "Lieu",
+    "Contacts",
+  ]);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Modifier : Horaires, carte 3 sur 6" }),
+  ).toBeFocused();
+
+  await page.getByRole("button", { name: /^Plus d’actions\s: Horaires, carte 3 sur 6$/ }).click();
+  await page.getByRole("menuitem", { name: "Supprimer la carte" }).click();
+  await page
+    .getByRole("alertdialog", { name: "Supprimer cette carte ?" })
+    .getByRole("button", { name: "Supprimer" })
+    .click();
+  await expect(headings).toHaveCount(5);
+  await expect(
+    page.getByRole("button", { name: "Modifier : Critères d’âge, carte 3 sur 5" }),
+  ).toBeFocused();
+  // The page takes clicks again once the question has closed.
+  await page.getByRole("button", { name: "Modifier : Lieu, carte 4 sur 5" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
 });
 
 test("moving a card from the keyboard keeps focus on that card's arrow", async ({ page }) => {
@@ -181,7 +258,9 @@ test("moving a card from the keyboard keeps focus on that card's arrow", async (
   await logIn(page, "demo.direction");
   await page.locator('a[href="/join"]:visible').first().click();
   const headings = page.locator("[data-slot='card'] h2");
-  const after = page.getByRole("button", { name: "Déplacer « Instruments recherchés » après" });
+  const after = page.getByRole("button", {
+    name: /^Déplacer « Instruments recherchés, carte \d sur 5 » après$/,
+  });
 
   await after.focus();
   await page.keyboard.press("Enter");
@@ -193,16 +272,18 @@ test("moving a card from the keyboard keeps focus on that card's arrow", async (
   await expect(headings.nth(2)).toHaveText("Instruments recherchés");
   await expect(after).toBeFocused();
 
-  // Moved to the front, the card has no "avant" arrow left: its pencil takes the focus.
-  const before = page.getByRole("button", { name: "Déplacer « Instruments recherchés » avant" });
+  // Moved to the front, the card's "avant" arrow is dimmed: its pencil takes the focus.
+  const before = page.getByRole("button", {
+    name: /^Déplacer « Instruments recherchés, carte \d sur 5 » avant$/,
+  });
   for (const index of [1, 0]) {
     await before.focus();
     await page.keyboard.press("Enter");
     await expect(headings.nth(index)).toHaveText("Instruments recherchés");
   }
-  await expect(before).toHaveCount(0);
+  await expect(before).toHaveAttribute("aria-disabled", "true");
   await expect(
-    page.getByRole("button", { name: "Modifier : Instruments recherchés" }),
+    page.getByRole("button", { name: "Modifier : Instruments recherchés, carte 1 sur 5" }),
   ).toBeFocused();
 });
 

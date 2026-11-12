@@ -9,6 +9,7 @@ import {
   setMockUser,
   setMockUserWithPermissions,
 } from "../mocks/handlers";
+import { cardPencil } from "../test/cardControls";
 import { storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
 import { Committee } from "./Committee";
@@ -150,7 +151,7 @@ test("in edit mode the hero and the contact card carry a chip", async () => {
     await screen.findByRole("button", { name: "Modifier : Comité · en-tête" }),
   ).toBeInTheDocument();
   expect(
-    screen.getByRole("button", { name: "Modifier : Contact des Canetons" }),
+    screen.getByRole("button", { name: cardPencil("Contact des Canetons") }),
   ).toBeInTheDocument();
 });
 

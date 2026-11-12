@@ -8,6 +8,7 @@ import { notify } from "../../components/ui/toast";
 import { cardSlot } from "../../images/photoSlots";
 import { mockPhotoSlot, setMockBlock, setMockPhotoSlot, setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";
+import { cardArrow, cardPencil } from "../../test/cardControls";
 import { recordBlockPuts } from "../../test/renderBlockEditor";
 import { renderWithSession } from "../../test/renderWithSession";
 import { CardsBlock } from "../blocks/CardsBlock";
@@ -154,7 +155,7 @@ test("an arrow move is undone from its toast", async () => {
   const shipped = headings();
 
   await user.click(
-    screen.getByRole("button", { name: "Déplacer « Instruments recherchés » après" }),
+    screen.getByRole("button", { name: cardArrow("Instruments recherchés", "après") }),
   );
   await waitFor(() => expect(headings()[0]).toBe("Horaires"));
 
@@ -180,7 +181,7 @@ test("undoing the deletion of a card brings it back with its photo", async () =>
   await renderCards();
   const writes = recordWrites();
 
-  await user.click(await screen.findByRole("button", { name: "Modifier : Horaires" }));
+  await user.click(await screen.findByRole("button", { name: cardPencil("Horaires") }));
   const dialog = await screen.findByRole("dialog");
   await user.click(within(dialog).getByRole("button", { name: "Actions de la carte" }));
   await user.click(await screen.findByRole("menuitem", { name: "Supprimer la carte" }));
@@ -220,7 +221,7 @@ test("a second save replaces the first one's toast, so only it can be undone", a
   const puts = recordBlockPuts();
   editing();
   await renderCards();
-  const after = { name: "Déplacer « Instruments recherchés » après" };
+  const after = { name: cardArrow("Instruments recherchés", "après") };
 
   await user.click(screen.getByRole("button", after));
   await screen.findByText("Modifié");
