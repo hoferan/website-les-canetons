@@ -1,6 +1,6 @@
 # Handover: Les Canetons design system
 
-Written at **Checkpoint 2**. Read this first, then `00-task-prompt.md` (the original brief and ground rules).
+Written at **Checkpoint 2**, updated after Phase 6. Read this first, then `00-task-prompt.md` (the original brief and ground rules).
 Repo: `hoferan/website-les-canetons`. Branch: **`ccr-dec058aa-1fvzz2`** (pushed; no PR open; do not open one or push to another branch without asking).
 
 ## 1. Where we are
@@ -13,11 +13,11 @@ Repo: `hoferan/website-les-canetons`. Branch: **`ccr-dec058aa-1fvzz2`** (pushed;
 | ✋ Checkpoint 1 | answered | see decisions below |
 | 4 ADRs | done | `adr/0001`–`0006` + `adr/README.md` |
 | 5 Vertical slice | done | code in `web/src/design-system/`, see section 3 |
-| ✋ Checkpoint 2 | **waiting for the user's go** | the summary the user has already seen is in section 5 |
-| 6 Roadmap | **not started** | to write: `04-roadmap.md` |
-| Learnings | **not started** | to write: `05-learnings.md` |
+| ✋ Checkpoint 2 | answered (2026-11-12) | summary in section 5, answers in section 6 |
+| 6 Roadmap | done | `04-roadmap.md` |
+| Learnings | done | `05-learnings.md` |
 
-**Do not start Phase 6 until the user says go.** Ask the open questions in section 6 first.
+Every phase of the brief is done. What happens next is the roadmap's step 0: a PR from this branch, which the user has not asked for yet. Ask before opening it, and ask before creating the six issues proposed in `04-roadmap.md` §6.
 
 ## 2. Decisions taken (all recorded as ADRs)
 
@@ -86,14 +86,16 @@ Everything above was green at the last push. Not run in this session: `npm run b
 4. Run story `play` functions and the a11y addon in CI (today stories only build).
 5. Add `@ds/brand` only when needed; retire `/dev/ui` once stories cover it.
 
-## 6. Open questions for the user (ask before Phase 6)
+## 6. Checkpoint 2 questions and the user's answers
 
-1. Go ahead with Phase 6, mapped to UX milestone issues **#385–#401** (milestone "UI/UX Improvements", #401 is the tracking issue)? Do **not** create GitHub issues without asking.
-2. Promote `design-system/` to a source-only workspace package now as an exercise, or later?
-3. Is Contact the right "migrated screen"? Its drift was low; `MemberForm` has more but needs Select + Checkbox first.
-4. Roll `loading` out to the other forms (Login etc. still use `aria-disabled`)?
+1. Go ahead with Phase 6, mapped to UX milestone issues #385 to #401? Yes. No GitHub issues created; the roadmap only proposes them.
+2. Promote `design-system/` to a source-only workspace package now, or later? Later: roadmap step 7.3, optional.
+3. Is Contact the right "migrated screen"? Keep Contact. MemberForm is the next one, verified once Select and Checkbox exist (roadmap step 3.4).
+4. Roll `loading` out to the other forms? Yes, as a roadmap step (2.3 under #394), not on this branch.
 
 ## 7. Roadmap hints for Phase 6
+
+Superseded by `04-roadmap.md`, which follows them except in one place: #397 (button sizes) moves forward to step 1.2, so the Button template is fixed before new primitives copy it. Kept for the record.
 
 - Order (primitives first): Checkbox (#390), Select, Textarea, Badge (#385), Surface (#386, resolve 18 vs 20 px radius), StateMessage (#387, builds on `Notice`; merges `text-red-700` ×3 and `text-gray-600` into `--color-feedback-*`), adopt StateMessage (#388), token scales (#398), button size cleanup (#397: `h-*` classes are dead because `min-h-touch` wins), then app-level refactors (`ButtonLink` → `Button asChild`, toast `closeLabel`, `Highlighted`/`social.tsx` leaks).
 - Issues mapped to DS work: #385, #386, #387, #388, #390, #391 (done in slice), #394 (partly: Button `loading`), #397, #398, #400. Not DS work: #389, #392, #393, #395, #396, #399.
@@ -116,4 +118,6 @@ Everything above was green at the last push. Not run in this session: `npm run b
 
 ## 9. Suggested prompt to resume
 
-> Read `docs/design-system/HANDOVER.md` and `00-task-prompt.md` on branch `ccr-dec058aa-1fvzz2` of `hoferan/website-les-canetons`. We are at Checkpoint 2 and I give you the go for Phase 6 (answers to the open questions: …).
+> Read `docs/design-system/HANDOVER.md` and `04-roadmap.md` on branch `ccr-dec058aa-1fvzz2` of `hoferan/website-les-canetons`. Start roadmap step <n>.
+
+For step 0 that means opening the PR from this branch, titled as a Conventional Commit, with the body from `.github/PULL_REQUEST_TEMPLATE.md` and the pixel diff as evidence.
