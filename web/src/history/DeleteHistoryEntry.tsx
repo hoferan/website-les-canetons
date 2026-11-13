@@ -36,16 +36,19 @@ import { dateWithPreposition, historyDate, shownIn } from "./entry";
  * the dialog covers the row it was opened from.
  *
  * After a delete the button it was opened from is gone, so `afterDelete`
- * says where focus goes instead.
+ * says where focus goes instead. `afterCancel` does the same after a cancel,
+ * for a dialog opened from a menu: the item it was opened from is gone too.
  */
 export function DeleteHistoryEntry({
   entry,
   onClose,
   afterDelete,
+  afterCancel,
 }: {
   entry: HistoryEntryResource | null;
   onClose: () => void;
   afterDelete: () => void;
+  afterCancel?: () => void;
 }) {
   const queryClient = useQueryClient();
   const action = useApiFormError(t("history.deleteFailed"));
@@ -128,6 +131,9 @@ export function DeleteHistoryEntry({
             deleted.current = false;
             event.preventDefault();
             afterDelete();
+          } else if (afterCancel) {
+            event.preventDefault();
+            afterCancel();
           }
         }}
       >

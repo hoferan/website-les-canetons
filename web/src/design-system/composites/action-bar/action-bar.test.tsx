@@ -369,6 +369,39 @@ describe("the list", () => {
   });
 });
 
+describe("a chip", () => {
+  function Chip({ flag = false }: { flag?: boolean }) {
+    return (
+      <ActionBar
+        look="chip"
+        label="Notre histoire"
+        main="edit"
+        actions={cardActions({ flag }).slice(2)}
+      />
+    );
+  }
+
+  test("is as wide with the flag as without it, so a column of chips lines up", () => {
+    const { unmount } = render(<Chip />);
+    const plain = segment(/^Modifier/).className;
+    unmount();
+    render(<Chip flag />);
+    expect(segment(/^Modifier/).className).toBe(plain);
+  });
+});
+
+describe("a strip's main action", () => {
+  // jsdom has no layout, so this reads the classes that place the word.
+  test("starts at the left with or without the flag, so a column of strips lines up", () => {
+    const { unmount } = render(<Card />);
+    const plain = segment(/^Modifier/).className;
+    unmount();
+    render(<Card flag />);
+    expect(segment(/^Modifier/).className).toBe(plain);
+    expect(plain).toContain("justify-start");
+  });
+});
+
 describe("accessibility", () => {
   test.each(["chip", "strip", "row"] as const)("the %s look has no axe violation", async (look) => {
     const { container } = render(<Card look={look} flag />);

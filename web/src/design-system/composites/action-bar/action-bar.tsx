@@ -406,7 +406,15 @@ export function ActionBar({
                 : open
                   ? OPEN[look]
                   : cn(CLOSED[look], "px-0"),
-              open && action.flag && "justify-start pl-4",
+              // Only a segment wider than its content has room to give the
+              // flag. A chip's is as wide as its content, so the flag sits in
+              // its padding and the chip keeps its width. A strip's main
+              // action starts at the left with or without the flag, so the
+              // word sits in the same place down a column of strips.
+              open &&
+                look !== "chip" &&
+                (action.flag || (look === "strip" && action.id === main)) &&
+                "justify-start pl-4",
               action.disabled ? "cursor-default" : HOVER[look],
               // Last, so it beats the hover colour: keyboard focus wins.
               "data-[focused]:bg-content data-[focused]:text-action-accent",

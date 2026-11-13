@@ -1,8 +1,9 @@
 import { screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
+import type { HistoryEntryResource } from "../api/generated/model";
 import { EDIT_MODE_KEY } from "../content/EditMode";
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
@@ -20,6 +21,16 @@ async function renderHistory(
   setMockUser(user);
   await renderWithSession(<History />, { route: "/history", locale });
   return screen.findByTestId("history-timeline");
+}
+
+/** An entry's ⋯ on its chip. */
+const more = (name: string) =>
+  screen.getByRole("button", { name: `Plus d’actions\u00a0: ${name}` });
+
+/** Opens an entry's ⋯ and picks Supprimer, which asks first. */
+async function chooseDelete(user: UserEvent, name: string) {
+  await user.click(more(name));
+  await user.click(await screen.findByRole("menuitem", { name: "Supprimer" }));
 }
 
 test("the entries render oldest first, with dates in the page's language", async () => {
@@ -41,9 +52,30 @@ test("an entry without a title has its date as its heading, and its text", async
   expect(second).toHaveTextContent("Dès la saison 2007/2008");
 });
 
-test("a titled entry's heading carries its date too", async () => {
+test("a titled entry's heading carries its date too, apart from the title", async () => {
   await renderHistory();
-  expect(screen.getByRole("heading", { name: /octobre 2002.*Les débuts/ })).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: /^Étape importante.+octobre 2002, Les débuts$/ }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "2019, Delphine Maillard et Laura Mantel" }),
+  ).toBeInTheDocument();
+});
+
+/**
+ * The card opens on its year, large, with the month or the day beside it.
+ * That picture is a screen reader's too much: the heading already says the
+ * date in words.
+ */
+test("a card shows its year large, with the month beside it, hidden from a screen reader", async () => {
+  const timeline = await renderHistory();
+  const first = within(timeline).getAllByRole("listitem")[0] as HTMLElement;
+  const year = within(first).getByText("2002");
+  expect(year.closest("[aria-hidden='true']")).not.toBeNull();
+  expect(within(first).getByText("octobre").closest("[aria-hidden='true']")).not.toBeNull();
+  // A year entry has nothing beside its year.
+  const second = within(timeline).getAllByRole("listitem")[1] as HTMLElement;
+  expect(within(second).getByText("2007", { selector: "[aria-hidden='true'] *" })).toBeVisible();
 });
 
 test("the importance is announced in the page's own punctuation", async () => {
@@ -68,7 +100,7 @@ test("Ajouter leads with its plus, as every add control does", async () => {
 test("the delete dialog names the entry it deletes", async () => {
   const user = userEvent.setup();
   await renderHistory("fr", "demo.direction");
-  await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
+  await chooseDelete(user, "Le flambeau passe");
   expect(
     await screen.findByRole("alertdialog", {
       name: "Supprimer « Le flambeau passe » (2026) ?",
@@ -76,22 +108,21 @@ test("the delete dialog names the entry it deletes", async () => {
   ).toBeInTheDocument();
   await user.keyboard("{Escape}");
 
-  await user.click(screen.getByRole("button", { name: "Supprimer l’entrée de 2007" }));
+  await chooseDelete(user, "l’entrée de 2007");
   expect(
     await screen.findByRole("alertdialog", { name: "Supprimer l’entrée de 2007 ?" }),
   ).toBeInTheDocument();
 });
 
-test("cancelling a delete gives focus back to its button, and a delete to Ajouter", async () => {
+test("cancelling a delete gives focus back to the entry's ⋯, and a delete to Ajouter", async () => {
   const user = userEvent.setup();
   await renderHistory("fr", "demo.direction");
-  const trigger = screen.getByRole("button", { name: "Supprimer Le flambeau passe" });
 
-  await user.click(trigger);
+  await chooseDelete(user, "Le flambeau passe");
   await user.click(await screen.findByRole("button", { name: "Annuler" }));
-  expect(trigger).toHaveFocus();
+  await expect.poll(() => more("Le flambeau passe")).toHaveFocus();
 
-  await user.click(trigger);
+  await chooseDelete(user, "Le flambeau passe");
   const dialog = await screen.findByRole("alertdialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
   await expect.poll(() => screen.queryByText("Le flambeau passe")).toBeNull();
@@ -156,10 +187,36 @@ test("a German-only entry on the French page is German, marked", async () => {
   expect(within(only).getByText("2020").closest('[lang="de-CH"]')).toBeNull();
 });
 
-test("editing and deleting are named in the page's language and word order", async () => {
+test("the strip is named in the page's language and word order", async () => {
+  const user = userEvent.setup();
   await renderHistory("de-CH", "demo.direction");
-  expect(screen.getByRole("link", { name: "Le flambeau passe bearbeiten" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "den Eintrag von 2007 löschen" })).toBeInTheDocument();
+  expect(screen.getByRole("toolbar", { name: "Le flambeau passe" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Delphine Maillard und Laura Mantel bearbeiten" }),
+  ).toHaveTextContent("Bearbeiten");
+  await user.click(screen.getByRole("button", { name: "Weitere Aktionen: den Eintrag von 2007" }));
+  expect(await screen.findByRole("menuitem", { name: "Löschen" })).toBeInTheDocument();
+});
+
+/**
+ * Only a text with French and no German is missing its German. A German-only
+ * entry lacks nothing the page can show in German, and the flag is the
+ * corner of ✎, said in its name, as on a card.
+ */
+test("an entry with French and no German flags its ✎, and says so", async () => {
+  serveOnly(
+    { ...untitled(1, "2002-10-01", "month"), bodyDe: null },
+    untitled(2, "2023-11-11", "day"),
+    { ...untitled(3, "2019-01-01", "year"), bodyFr: null },
+  );
+  await renderHistory("fr", "demo.direction");
+  const missing = screen.getByRole("button", {
+    name: "Modifier l’entrée d’octobre 2002 (sans allemand)",
+  });
+  expect(missing.querySelector("[data-flag]")).not.toBeNull();
+  for (const name of ["Modifier l’entrée du 11.11.2023", "Modifier l’entrée de 2019"]) {
+    expect(screen.getByRole("button", { name }).querySelector("[data-flag]")).toBeNull();
+  }
 });
 
 /**
@@ -207,7 +264,7 @@ test("a delete confirmed after somebody changed the entry is refused, and says s
     ),
   );
   await renderHistory("fr", "demo.direction");
-  await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
+  await chooseDelete(user, "Le flambeau passe");
   const dialog = await screen.findByRole("alertdialog");
 
   version = "v2"; // a colleague saves a change while the dialog is open
@@ -221,31 +278,44 @@ test("a delete confirmed after somebody changed the entry is refused, and says s
 test("no editing controls without history.manage", async () => {
   await renderHistory("fr", "demo.player");
   expect(screen.queryByRole("link", { name: /Ajouter/ })).toBeNull();
-  expect(screen.queryByRole("link", { name: /^Modifier/ })).toBeNull();
-  expect(screen.queryByRole("button", { name: /^Supprimer/ })).toBeNull();
+  expect(screen.queryByRole("toolbar")).toBeNull();
 });
 
-test("an editor sees Ajouter, and Modifier and Supprimer on every entry", async () => {
+test("an editor sees Ajouter, and a strip of ⋯ ✎ on every card, with no arrows", async () => {
   await renderHistory("fr", "demo.direction");
   expect(screen.getByRole("link", { name: /Ajouter/ })).toHaveAttribute("href", "/history/new");
-  // Two actions per row, so RowActions draws both inline and no "…" menu.
-  expect(screen.getAllByRole("link", { name: /^Modifier / })).toHaveLength(4);
-  expect(screen.getAllByRole("button", { name: /^Supprimer / })).toHaveLength(4);
-  expect(screen.getByRole("link", { name: "Modifier l’entrée de 2007" })).toHaveAttribute(
-    "href",
-    "/history/2/edit",
+  const strips = screen.getAllByRole("toolbar");
+  expect(strips).toHaveLength(4);
+  for (const strip of strips) {
+    expect(strip).toHaveAttribute("data-action-bar", "strip");
+    expect(
+      [...strip.querySelectorAll("[data-action]")].map((b) => b.getAttribute("data-action")),
+    ).toEqual(["more", "edit"]);
+  }
+  expect(screen.getByRole("toolbar", { name: "l’entrée de 2007" })).toBeInTheDocument();
+});
+
+test("✎ leads to the entry's own edit page", async () => {
+  const user = userEvent.setup();
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  const { router } = await renderWithSession(<History />, { route: "/history" });
+  await screen.findByTestId("history-timeline");
+  await user.click(
+    screen.getByRole("button", { name: "Modifier l’entrée de 2007 (sans allemand)" }),
   );
+  expect(router.state.location.pathname).toBe("/history/2/edit");
 });
 
 test("deleting an entry removes it after the confirmation", async () => {
   const user = userEvent.setup();
   await renderHistory("fr", "demo.direction");
-  await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
+  await chooseDelete(user, "Le flambeau passe");
   await user.click(await screen.findByRole("button", { name: "Supprimer" }));
   await expect.poll(() => screen.queryByText("Le flambeau passe")).toBeNull();
 });
 
-const untitled = (id: number, occurredOn: string, precision: string) => ({
+const untitled = (id: number, occurredOn: string, precision: string): HistoryEntryResource => ({
   id,
   occurredOn,
   precision,
@@ -276,12 +346,12 @@ test("an untitled entry's buttons and dialog use the right French for its date",
   serveOnly(untitled(1, "2002-10-01", "month"), untitled(2, "2023-11-11", "day"));
   const user = userEvent.setup();
   await renderHistory("fr", "demo.direction");
-  await user.click(screen.getByRole("button", { name: "Supprimer l’entrée d’octobre 2002" }));
+  await chooseDelete(user, "l’entrée d’octobre 2002");
   expect(
     await screen.findByRole("alertdialog", { name: "Supprimer l’entrée d’octobre 2002 ?" }),
   ).toBeInTheDocument();
   await user.keyboard("{Escape}");
-  await user.click(screen.getByRole("button", { name: "Supprimer l’entrée du 11.11.2023" }));
+  await chooseDelete(user, "l’entrée du 11.11.2023");
   expect(
     await screen.findByRole("alertdialog", { name: "Supprimer l’entrée du 11.11.2023 ?" }),
   ).toBeInTheDocument();
@@ -291,7 +361,10 @@ test("the German dialog says vom for an exact date", async () => {
   serveOnly(untitled(2, "2023-11-11", "day"));
   const user = userEvent.setup();
   await renderHistory("de-CH", "demo.direction");
-  await user.click(screen.getByRole("button", { name: "den Eintrag vom 11.11.2023 löschen" }));
+  await user.click(
+    screen.getByRole("button", { name: "Weitere Aktionen: den Eintrag vom 11.11.2023" }),
+  );
+  await user.click(await screen.findByRole("menuitem", { name: "Löschen" }));
   expect(
     await screen.findByRole("alertdialog", { name: "Den Eintrag vom 11.11.2023 löschen?" }),
   ).toBeInTheDocument();
@@ -301,7 +374,7 @@ test("the German dialog says vom for an exact date", async () => {
 test("the French dialog title keeps its guillemets and question mark attached", async () => {
   const user = userEvent.setup();
   await renderHistory("fr", "demo.direction");
-  await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
+  await chooseDelete(user, "Le flambeau passe");
   const dialog = await screen.findByRole("alertdialog");
   expect(within(dialog).getByRole("heading").textContent).toBe(
     "Supprimer « Le flambeau passe » (2026) ?",
@@ -311,7 +384,7 @@ test("the French dialog title keeps its guillemets and question mark attached", 
 test("a delete says so", async () => {
   const user = userEvent.setup();
   await renderHistory("fr", "demo.direction");
-  await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
+  await chooseDelete(user, "Le flambeau passe");
   const dialog = await screen.findByRole("alertdialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
@@ -342,6 +415,5 @@ test("an entry saved without its photo says so where the editor lands", async ()
 test("an editor outside edit mode sees the timeline and none of its controls", async () => {
   await renderHistory("fr", "demo.direction", false);
   expect(screen.queryByRole("link", { name: /Ajouter/ })).toBeNull();
-  expect(screen.queryByRole("link", { name: /^Modifier / })).toBeNull();
-  expect(screen.queryByRole("button", { name: /^Supprimer / })).toBeNull();
+  expect(screen.queryByRole("toolbar")).toBeNull();
 });

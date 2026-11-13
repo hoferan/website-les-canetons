@@ -68,7 +68,7 @@ A shared hook owns the move rules for cards and for the editor's lines:
 
 ### The mark for a text without German
 
-The main action carries a cyan corner flag in its segment's top-left corner when a text of the item has no German, in place of the dot of #359. The flag is 14px, or 12px on a folded tab, and has a 3px ink diagonal. The frame it sits in clips it, so on a chip it follows the chip's curve. An open segment wider than its word starts its content right after the flag, so the flag stays next to the pencil. The accessible name still ends in "(sans allemand)".
+The main action carries a cyan corner flag in its segment's top-left corner when a text of the item has no German, in place of the dot of #359. The flag is 14px, or 12px on a folded tab, and has a 3px ink diagonal. The frame it sits in clips it, so on a chip it follows the chip's curve. An open segment wider than its word starts its content right after the flag, so the flag stays next to the pencil. On a strip the main action starts at the left whether or not it carries the flag, so its word sits in the same place down a column of strips. The accessible name still ends in "(sans allemand)".
 
 André preferred the flag to a dot on the pencil icon and to a cyan hole punched in the perforation, provided it held up everywhere. A separate reviewer then checked it in every look and state: the strip at rest, hovered, folded and focused, in German, on a phone, on a history entry, and the chip on cream, on the yellow band and on the black stage. The flag passed once it was clipped to the chip and sized down.
 

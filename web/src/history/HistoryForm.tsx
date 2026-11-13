@@ -22,7 +22,7 @@ import type { PhotoData } from "../images/Photo";
 import { PhotoField } from "../images/PhotoField";
 import { historySlot, usePhotoSlots } from "../images/photoSlots";
 import { HISTORY_ICONS, type HistoryIconKey, historyDate, iconFor } from "./entry";
-import { TimelineMarker } from "./TimelineMarker";
+import { EntryTile } from "./EntryTile";
 import { OUTLINED_CARD } from "../carnival/raised";
 
 const PRECISIONS = ["year", "month", "day"] as const;
@@ -322,10 +322,7 @@ export function HistoryForm({
       <p className="flex items-center gap-tight text-sm text-ink-muted">
         {t("historyForm.preview")}
         <span data-testid="history-preview" className="flex items-center gap-tight">
-          <TimelineMarker
-            important={draft.important}
-            icon={draft.icon === "none" ? null : draft.icon}
-          />
+          <EntryTile important={draft.important} icon={draft.icon === "none" ? null : draft.icon} />
           <span className="font-semibold text-violet">
             {date ? historyDate(date, draft.precision, locale) : t("historyForm.previewIncomplete")}
           </span>
