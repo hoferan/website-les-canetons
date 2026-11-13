@@ -52,9 +52,30 @@ test("an entry without a title has its date as its heading, and its text", async
   expect(second).toHaveTextContent("Dès la saison 2007/2008");
 });
 
-test("a titled entry's heading carries its date too", async () => {
+test("a titled entry's heading carries its date too, apart from the title", async () => {
   await renderHistory();
-  expect(screen.getByRole("heading", { name: /octobre 2002.*Les débuts/ })).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: /^Étape importante.+octobre 2002, Les débuts$/ }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "2019, Delphine Maillard et Laura Mantel" }),
+  ).toBeInTheDocument();
+});
+
+/**
+ * The card opens on its year, large, with the month or the day beside it.
+ * That picture is a screen reader's too much: the heading already says the
+ * date in words.
+ */
+test("a card shows its year large, with the month beside it, hidden from a screen reader", async () => {
+  const timeline = await renderHistory();
+  const first = within(timeline).getAllByRole("listitem")[0] as HTMLElement;
+  const year = within(first).getByText("2002");
+  expect(year.closest("[aria-hidden='true']")).not.toBeNull();
+  expect(within(first).getByText("octobre").closest("[aria-hidden='true']")).not.toBeNull();
+  // A year entry has nothing beside its year.
+  const second = within(timeline).getAllByRole("listitem")[1] as HTMLElement;
+  expect(within(second).getByText("2007", { selector: "[aria-hidden='true'] *" })).toBeVisible();
 });
 
 test("the importance is announced in the page's own punctuation", async () => {
@@ -166,7 +187,7 @@ test("a German-only entry on the French page is German, marked", async () => {
   expect(within(only).getByText("2020").closest('[lang="de-CH"]')).toBeNull();
 });
 
-test("the chip is named in the page's language and word order", async () => {
+test("the strip is named in the page's language and word order", async () => {
   const user = userEvent.setup();
   await renderHistory("de-CH", "demo.direction");
   expect(screen.getByRole("toolbar", { name: "Le flambeau passe" })).toBeInTheDocument();
@@ -260,18 +281,16 @@ test("no editing controls without history.manage", async () => {
   expect(screen.queryByRole("toolbar")).toBeNull();
 });
 
-test("an editor sees Ajouter, and a chip of ⋯ ✎ on every entry, with no arrows", async () => {
+test("an editor sees Ajouter, and a strip of ⋯ ✎ on every card, with no arrows", async () => {
   await renderHistory("fr", "demo.direction");
   expect(screen.getByRole("link", { name: /Ajouter/ })).toHaveAttribute("href", "/history/new");
-  const chips = screen.getAllByRole("toolbar");
-  expect(chips).toHaveLength(4);
-  for (const chip of chips) {
-    expect(chip).toHaveAttribute("data-action-bar", "chip");
+  const strips = screen.getAllByRole("toolbar");
+  expect(strips).toHaveLength(4);
+  for (const strip of strips) {
+    expect(strip).toHaveAttribute("data-action-bar", "strip");
     expect(
-      [...chip.querySelectorAll("[data-action]")].map((b) => b.getAttribute("data-action")),
+      [...strip.querySelectorAll("[data-action]")].map((b) => b.getAttribute("data-action")),
     ).toEqual(["more", "edit"]);
-    // The date line has room for it, so a phone shows the word too.
-    expect(within(chip).getByText("Modifier")).not.toHaveClass("max-sm:hidden");
   }
   expect(screen.getByRole("toolbar", { name: "l’entrée de 2007" })).toBeInTheDocument();
 });

@@ -93,6 +93,32 @@ export function historyDate(occurredOn: string, precision: string, locale: Local
   return formatter(locale, precision === "month" ? "month" : "day").format(date);
 }
 
+/** The entry's year, which the card shows large. */
+export function historyYear(occurredOn: string): string {
+  return occurredOn.slice(0, 4);
+}
+
+const details = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * What the card shows beside its large year: `octobre` / `Oktober` for a
+ * month entry, `11 novembre` / `11. November` for a day, nothing for a year.
+ */
+export function historyDetail(occurredOn: string, precision: string, locale: Locale): string {
+  if (precision !== "month" && precision !== "day") return "";
+  const key = `${locale}|${precision}`;
+  let found = details.get(key);
+  if (!found) {
+    // In UTC, for the reason `formatter` gives.
+    found = new Intl.DateTimeFormat(intlTag(locale), {
+      timeZone: "UTC",
+      ...(precision === "month" ? { month: "long" } : { day: "numeric", month: "long" }),
+    });
+    details.set(key, found);
+  }
+  return found.format(new Date(`${occurredOn}T00:00:00Z`));
+}
+
 /**
  * "de 2007", "d'octobre 2002", "du 11.11.2023" / "von 2007", "vom 11.11.2023":
  * the date with the preposition an untitled entry is named by.

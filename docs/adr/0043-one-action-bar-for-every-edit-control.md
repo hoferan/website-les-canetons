@@ -38,8 +38,8 @@ The mock-ups are in [`0043/`](0043/): [`study.html`](0043/study.html) is the int
 
 `ActionBar` takes an ordered list of actions, the one that is the main action, and the items of its ⋯ menu. It renders one of three looks:
 
-- `chip`: a floating frame for a single block, or for an item with no frame of its own, such as a history entry (⋯ ✎ at the end of its date line). Below `sm` a chip shows only its icons, since it floats over its block. One placed in room of its own keeps its word (`wordOnPhone`).
-- `strip`: a list item's top edge, a yellow strip under the item's top border with a dashed "perforation" below it. Used for cards (← → ⋯ ✎).
+- `chip`: a floating frame for a single block. In practice it holds only ✎, so it looks as it does today.
+- `strip`: a list item's top edge, a yellow strip under the item's top border with a dashed "perforation" below it. Used for cards (← → ⋯ ✎) and history entries (⋯ ✎, since their order is fixed by year).
 - `row`: a quiet white bar inside an editor, for a line's ↑ ↓ ⋯.
 
 Every look follows the same rules:
@@ -68,7 +68,7 @@ A shared hook owns the move rules for cards and for the editor's lines:
 
 ### The mark for a text without German
 
-The main action carries a cyan corner flag in its segment's top-left corner when a text of the item has no German, in place of the dot of #359. The flag is 14px, or 12px on a folded tab, and has a 3px ink diagonal. The frame it sits in clips it, so on a chip it follows the chip's curve. An open segment wider than its word starts its content right after the flag, so the flag stays next to the pencil. The accessible name still ends in "(sans allemand)".
+The main action carries a cyan corner flag in its segment's top-left corner when a text of the item has no German, in place of the dot of #359. The flag is 14px, or 12px on a folded tab, and has a 3px ink diagonal. The frame it sits in clips it, so on a chip it follows the chip's curve. An open segment wider than its word starts its content right after the flag, so the flag stays next to the pencil. On a strip the main action starts at the left whether or not it carries the flag, so its word sits in the same place down a column of strips. The accessible name still ends in "(sans allemand)".
 
 André preferred the flag to a dot on the pencil icon and to a cyan hole punched in the perforation, provided it held up everywhere. A separate reviewer then checked it in every look and state: the strip at rest, hovered, folded and focused, in German, on a phone, on a history entry, and the chip on cream, on the yellow band and on the black stage. The flag passed once it was clipped to the chip and sized down.
 
@@ -115,4 +115,3 @@ The ink diagonal carries all of the contrast. Cyan on the bar's yellow is 1.08:1
 - ADR 0040 gives the buttons and the roll-up word that the bar's segments reuse. ADR 0042 gives the undo toast. ADR 0029 gives the look.
 - #360 (Dupliquer in the editor) is PR #374, which puts Dupliquer and Supprimer in the editor's header menu.
 - #379 builds `ActionBar` and the move hook. Then #380 moves the cards onto it, #381 the history entries, #382 the editor's lines and #383 the single blocks' pencils.
-- Amended on 2026-11-13 by #381: history entries wear a chip in place of a strip. A strip needs a framed item, so the entries had become raised tiles in edit mode, and the page the editor saw was no longer the one visitors read: the text narrowed and wrapped differently. Raising the entries for visitors as well was weighed and rejected, because ADR 0029 keeps the long pages calm and a card's padding narrows the text on a phone. A flagged chip is now as wide as an unflagged one, so a column of chips lines up.
