@@ -157,10 +157,10 @@ test("the footer's chip floats over the footer, out of its flow", async () => {
   const footer = screen.getByRole("contentinfo");
   const chip = within(footer).getByRole("button", { name: "Modifier les infos du site" });
   expect(chip).toHaveTextContent("Modifier les infos du site");
-  // Placed by a wrapper below the scallops, whose positioning parent is the
-  // footer. The chip sits in its Indicator first.
-  const placed = chip.closest("[data-indicator]")?.parentElement;
-  expect(placed).toHaveClass("absolute");
+  // The chip's bar is placed below the scallops, and its positioning parent
+  // is the footer. On the black stage its shadow is the pink one.
+  const placed = chip.closest("[data-action-bar='chip']");
+  expect(placed).toHaveClass("absolute", "top-9", "shadow-raised-stage");
   expect(footer).toHaveClass("relative");
   expect(placed?.parentElement).toBe(footer);
 });
@@ -276,7 +276,7 @@ test("the footer's chip says when a text of the site has no German", async () =>
     await within(footer).findByRole("button", {
       name: "Modifier les infos du site (sans allemand)",
     }),
-  ).toHaveAttribute("data-missing-german");
+  ).toContainElement(footer.querySelector("[data-flag]") as HTMLElement);
 });
 
 test("each network is a link named after it, with the icon the band picked", async () => {

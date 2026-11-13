@@ -497,7 +497,9 @@ test("a changed year moves the card to its new place on the timeline", async () 
 /** While the panel is open, what shows is what a visitor would see. */
 test("the page's own edit controls step aside while the panel is open", async () => {
   await renderAt(3);
-  expect(screen.queryAllByRole("toolbar")).toEqual([]);
+  // The entries' strips. The hero is a block of its own and keeps its chip.
+  expect(document.querySelectorAll("[data-action-bar='strip']")).toHaveLength(0);
+  expect(screen.getByRole("toolbar", { name: "Histoire · en-tête" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Ajouter à l’histoire" })).toBeNull();
 });
 

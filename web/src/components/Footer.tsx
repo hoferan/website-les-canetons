@@ -20,8 +20,8 @@ const CHIP_TOP = "top-9";
 
 /**
  * The footer's top padding while the pencil shows: the 44px pencil ends at
- * 80px, and the band's name starts 4px below it, as CHIP_ROOM leaves a block's
- * heading clear of its chip.
+ * 80px, and the band's name starts 4px below it, as a block's `pt-14` keeps
+ * its heading clear of its chip.
  */
 const CHIP_ROOM_BELOW = "pt-21";
 
@@ -67,17 +67,14 @@ export function Footer({ above }: { above: string | null }) {
     >
       <Scallop from={above ?? "var(--color-ground)"} />
       {editing ? (
-        <>
-          <div className={cn("absolute right-2 z-10", CHIP_TOP)}>
-            <EditChip
-              label={t("blocks.site")}
-              text={t("blockEditor.site.edit")}
-              corner={false}
-              missingGerman={lacksGerman(site)}
-              onClick={() => setEditingSite(true)}
-            />
-          </div>
-        </>
+        <EditChip
+          label={t("blocks.site")}
+          text={t("blockEditor.site.edit")}
+          surface="stage"
+          className={cn("absolute right-2 z-10", CHIP_TOP)}
+          missingGerman={lacksGerman(site)}
+          onClick={() => setEditingSite(true)}
+        />
       ) : null}
       {editing || editingSite ? (
         <SiteEditor open={editingSite} onClose={() => setEditingSite(false)} />

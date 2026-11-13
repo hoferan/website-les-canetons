@@ -284,7 +284,10 @@ test("no editing controls without history.manage", async () => {
 test("an editor sees Ajouter, and a strip of ⋯ ✎ on every card, with no arrows", async () => {
   await renderHistory("fr", "demo.direction");
   expect(screen.getByRole("button", { name: /Ajouter/ })).toBeInTheDocument();
-  const strips = screen.getAllByRole("toolbar");
+  // Every toolbar but the hero's chip.
+  const strips = screen
+    .getAllByRole("toolbar")
+    .filter((bar) => bar.getAttribute("data-action-bar") !== "chip");
   expect(strips).toHaveLength(4);
   for (const strip of strips) {
     expect(strip).toHaveAttribute("data-action-bar", "strip");

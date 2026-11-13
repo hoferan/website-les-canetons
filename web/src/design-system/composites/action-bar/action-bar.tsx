@@ -199,8 +199,16 @@ export function ActionBarList({
 const FLAG =
   "linear-gradient(135deg, var(--color-mark) 0 calc(50% - 1.5px), var(--color-content) calc(50% - 1.5px) calc(50% + 1.5px), transparent calc(50% + 1.5px))";
 
+/**
+ * A chip's ink border is drawn over its segments by a pseudo-element that lets
+ * clicks through, so the segments fill all 44px: a single block's pencil
+ * is a 44px target, as it was before the bar (media.spec.ts measures it).
+ */
+const CHIP_BORDER =
+  "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border-3 after:border-ink";
+
 const FRAME: Record<ActionBarLook, string> = {
-  chip: "inline-flex h-11 rounded-xl border-3 border-ink bg-action-accent",
+  chip: `relative inline-flex h-11 rounded-xl bg-action-accent ${CHIP_BORDER}`,
   // 17px: a list item's 20px radius minus its 3px border, so the strip meets
   // the item's inner edge.
   strip:
@@ -226,7 +234,8 @@ const CLOSED: Record<ActionBarLook, string> = {
 
 /** On a strip the open segment takes the room that is left; elsewhere its word's. */
 const OPEN: Record<ActionBarLook, string> = {
-  chip: "flex-none px-3",
+  // 15px: px-3 plus the 3px the border covers, so the icon sits where it did.
+  chip: "flex-none px-[15px]",
   strip: "flex-[1_1_auto] px-2",
   row: "flex-none px-3",
 };
@@ -425,7 +434,9 @@ export function ActionBar({
                 aria-hidden="true"
                 data-flag=""
                 className={cn(
-                  "pointer-events-none absolute top-0 left-0",
+                  "pointer-events-none absolute",
+                  // Inside the chip's border, which is drawn over the segment.
+                  look === "chip" ? "top-[3px] left-[3px]" : "top-0 left-0",
                   open ? "size-3.5" : "size-3",
                 )}
                 style={{ background: FLAG }}

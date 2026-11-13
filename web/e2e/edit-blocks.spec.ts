@@ -77,24 +77,18 @@ test("the booking number is stored from the contact card on /committee, and Term
  */
 function chipsOverText(page: Page) {
   return page.evaluate(() =>
-    [...document.querySelectorAll("[data-chip], [data-action-bar]")].flatMap((chip) => {
+    [...document.querySelectorAll("[data-action-bar]")].flatMap((chip) => {
       const c = chip.getBoundingClientRect();
-      // A row of chips names its block with data-chip-scope; a lone chip sits
-      // directly in its block, through the Indicator wrapper it may wear.
-      const own = chip.parentElement!;
-      const scope =
-        chip.closest("[data-chip-scope]") ??
-        (own.hasAttribute("data-indicator") ? own.parentElement! : own);
+      // A strip names its card with data-chip-scope; a single block's chip
+      // sits directly in its block.
+      const scope = chip.closest("[data-chip-scope]") ?? chip.parentElement!;
       const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
       const hits: string[] = [];
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        // A chip's own word is not the block's text. A closed one still has
-        // boxes, clipped away inside its chip, and chipsOverChips covers the
-        // chips themselves.
-        if (
-          node.parentElement!.closest("[data-chip], [data-action-bar]") ||
-          node.textContent!.trim() === ""
-        )
+        // A bar's own words are not the block's text. A closed one still has
+        // boxes, clipped away inside its bar, and chipsOverChips covers the
+        // bars themselves.
+        if (node.parentElement!.closest("[data-action-bar]") || node.textContent!.trim() === "")
           continue;
         const range = document.createRange();
         range.selectNodeContents(node);
@@ -119,7 +113,7 @@ function chipsOverText(page: Page) {
  */
 function chipsOverChips(page: Page) {
   return page.evaluate(() => {
-    const chips = [...document.querySelectorAll("[data-chip], [data-action-bar]")].filter(
+    const chips = [...document.querySelectorAll("[data-action-bar]")].filter(
       (chip) => chip.getBoundingClientRect().width > 0,
     );
     const hits: string[] = [];
@@ -159,7 +153,7 @@ test("no edit chip covers the text of its block, on a phone or a desktop", async
       await page.evaluate(() => document.fonts.ready);
       // Every public page has at least one chip, so a selector that matched
       // nothing could not pass for "no overlap".
-      expect(await page.locator("[data-chip], [data-action-bar]").count()).toBeGreaterThan(0);
+      expect(await page.locator("[data-action-bar]").count()).toBeGreaterThan(0);
       expect(await chipsOverText(page), `${path} at ${width}px`).toEqual([]);
       expect(await chipsOverChips(page), `${path} at ${width}px`).toEqual([]);
     }

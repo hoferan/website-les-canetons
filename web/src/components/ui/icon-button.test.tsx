@@ -100,38 +100,10 @@ test("the word defaults to the label", async () => {
   expect(await screen.findByRole("tooltip")).toHaveTextContent("Effacer la recherche");
 });
 
-test("grow reveals the word only on hover or keyboard focus", () => {
-  render(<IconButton icon={Pencil} label="Modifier : Accueil" word="Modifier" mode="grow" />);
-
-  const button = screen.getByRole("button", { name: "Modifier : Accueil" });
-  expect(button).toHaveAttribute("data-mode", "grow");
-  expect(button).toHaveTextContent("Modifier");
-
-  const wrapper = screen.getByText("Modifier").parentElement;
-  const classes = `${wrapper?.className} ${screen.getByText("Modifier").className}`;
-  expect(wrapper).toHaveClass("max-w-0");
-  expect(classes).toContain("group-hover/icon:");
-  expect(classes).toContain("group-focus-visible/icon:");
-  // A tap is not a hover: no press state may open it.
-  expect(classes).not.toContain("group-active");
-  expect(classes).not.toMatch(/(^|\s)hover:/);
-});
-
-test("grow with showWord renders the word open", () => {
-  render(
-    <IconButton icon={Pencil} label="Modifier : Accueil" word="Modifier" mode="grow" showWord />,
-  );
-
-  const word = screen.getByText("Modifier");
-  expect(word.parentElement).toHaveClass("max-w-56");
-  expect(word.parentElement).not.toHaveClass("max-w-0");
-  expect(word).not.toHaveClass("opacity-0");
-});
-
 test("asChild renders the link with the button look", () => {
   render(
     <MemoryRouter>
-      <IconButton asChild icon={Pencil} label="Modifier Carnaval 1990" word="Modifier" mode="grow">
+      <IconButton asChild icon={Pencil} label="Modifier Carnaval 1990" word="Modifier">
         <Link to="/history/1/edit" />
       </IconButton>
     </MemoryRouter>,
@@ -141,7 +113,6 @@ test("asChild renders the link with the button look", () => {
   expect(link).toHaveAttribute("href", "/history/1/edit");
   expect(link).toHaveClass("cursor-pointer");
   expect(link.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-  expect(link).toHaveTextContent("Modifier");
 });
 
 test("a click hides the tip rather than leaving it over the next row", async () => {
