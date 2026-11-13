@@ -7,6 +7,7 @@ import { BLOCKS } from "../content/registry";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { AppRoutes } from "../routes";
+import { removeLine } from "../test/lineControls";
 import { recordBlockPuts, storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
 
@@ -119,7 +120,7 @@ test("an editor removes a network from the footer's site editor, and it leaves n
   const instagram = within(within(dialog).getByRole("group", { name: "Réseaux" })).getAllByRole(
     "listitem",
   )[0]!;
-  await user.click(within(instagram).getByRole("button", { name: "Supprimer" }));
+  await removeLine(user, instagram);
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
   await waitFor(() => expect(screen.queryAllByRole("link", { name: /Instagram/ })).toHaveLength(0));
@@ -244,7 +245,7 @@ test("an editor changes a footer button, removes the other, and restores both", 
   const label = within(first!).getByRole("textbox", { name: "Libellé FR" });
   await user.clear(label);
   await user.type(label, "Viens jouer");
-  await user.click(within(second!).getByRole("button", { name: "Supprimer" }));
+  await removeLine(user, second!);
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
   await waitFor(() => expect(buttons().map((link) => link.textContent)).toEqual(["Viens jouer"]));
