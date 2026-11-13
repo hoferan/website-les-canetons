@@ -122,17 +122,24 @@ test("with edit mode on, the photo controls appear", async () => {
   ).toBeGreaterThan(0);
 });
 
-test("the pill is ink with white text and a white ring, so it reads on every background", async () => {
+test("the switch sits in a stage bar docked across the bottom, with the stage's button look", async () => {
   const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<EditModePill />, { route: "/join" });
 
-  const classes = (pill: HTMLElement) => pill.className.split(" ");
-  const expected = ["bg-ink", "text-white", "ring-2", "ring-white", "shadow-raised"];
-  expect(classes(editButton()!)).toEqual(expect.arrayContaining(expected));
-
+  // The bar spans the screen, so the page passes behind it as it does behind
+  // the screen's edge, never under a floating button (edit-pill.spec.ts).
+  const bar = (button: HTMLElement) => button.closest(".fixed")!;
+  expect(bar(editButton()!).className.split(" ")).toEqual(
+    expect.arrayContaining(["inset-x-0", "bottom-0", "bg-stage"]),
+  );
+  const stageLook = (button: HTMLElement | null) => {
+    expect(button).toHaveAttribute("data-variant", "accent");
+    expect(button).toHaveAttribute("data-surface", "stage");
+  };
+  stageLook(editButton());
   await user.click(editButton()!);
-  expect(classes(doneButton()!)).toEqual(expect.arrayContaining(expected));
+  stageLook(doneButton());
 });
 
 test("a history.manage-only account gets the switch and the history controls, but no block chips", async () => {

@@ -58,7 +58,9 @@ export function Footer({ above }: { above: string | null }) {
   const site = useSite();
   const editing = useBlockEditing();
   const [editingSite, setEditingSite] = useState(false);
-  // The floating pill sits over the last 4rem of the page; keep it off the footer's own buttons.
+  // The edit-mode bar covers the bottom of the screen, 69px tall plus any
+  // safe-area inset beyond 12px. Padding the footer's end past it lets the
+  // last line scroll clear.
   const pillShown = useEditPillShown();
   const follow = networksOf(site.networks);
   const actions = shownActions(site.actions);
@@ -69,7 +71,7 @@ export function Footer({ above }: { above: string | null }) {
       className={cn(
         "relative bg-stage text-white",
         above === null && "mt-16",
-        pillShown && "pb-20",
+        pillShown && "pb-[calc(5rem+env(safe-area-inset-bottom))]",
       )}
     >
       <Scallop from={above ?? "var(--color-ground)"} />

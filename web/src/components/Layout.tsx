@@ -40,10 +40,10 @@ import { PUBLIC_NAV } from "../content/publicPages";
 import { useSite } from "../content/blocks/SiteBlock";
 
 /**
- * Where toasts stand while the edit pill is shown: above it, not on it. The
- * pill sits 1rem (or the safe-area inset) from the bottom and is 44px tall,
- * so 4rem more clears it with a gap. Over the pill, a toast took the click
- * that ends edit mode for as long as the pointer rested on it.
+ * Where toasts stand while the edit-mode bar is shown: above it, not on it.
+ * The bar is 69px tall, plus any safe-area inset beyond 12px, so this clears
+ * it with a gap. Over the switch, a toast took the click that ends edit mode
+ * for as long as the pointer rested on it.
  */
 const ABOVE_THE_PILL = { bottom: "calc(max(1rem, env(safe-area-inset-bottom)) + 4rem)" };
 

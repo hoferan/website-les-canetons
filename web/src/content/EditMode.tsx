@@ -3,7 +3,6 @@ import { createContext, use, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 
 import { Button } from "@ds";
-import { cn } from "@/lib/utils";
 
 import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
@@ -102,10 +101,17 @@ export function useEditPillShown(): boolean {
 }
 
 /**
- * The switch itself: a pill fixed at the bottom right of every public page an
- * editor may change, ink in both states. It is one element whose
- * label changes, so focus stays on it after a toggle; a polite live region
- * says what the mode now is, since the page change is mostly silent.
+ * The switch itself, in a bar docked to the bottom of every public page an
+ * editor may change. It is one element whose label changes, so focus stays on
+ * it after a toggle; a polite live region says what the mode now is, since the
+ * page change is mostly silent.
+ *
+ * Anything floating over the page lies on its text as it scrolls past: a pill
+ * at the bottom right covered a title or a line of card text at up to two
+ * thirds of scroll positions at 390px (#417). The opaque bar hides the page the
+ * way the screen's edge does, so scrolling brings every line into view, and
+ * the footer pads its end past the bar so the last line clears it too
+ * (edit-pill.spec.ts).
  */
 export function EditModePill() {
   const { on, setOn } = useEditMode();
@@ -123,20 +129,16 @@ export function EditModePill() {
 
   return (
     <>
-      <Button
-        onClick={toggle}
-        className={cn(
-          "fixed right-4 z-40 px-5",
-          "bottom-[max(1rem,env(safe-area-inset-bottom))]",
-          // Ink with a white ring reads on the yellow band, the cream, the
-          // violet hero and the footer alike; yellow or white vanished on one
-          // of them.
-          "bg-ink text-white ring-2 shadow-raised ring-white hover:bg-ink-hover",
-        )}
-      >
-        {on ? <Check aria-hidden="true" /> : <Pencil aria-hidden="true" />}
-        {on ? t("editMode.done") : t("editMode.start")}
-      </Button>
+      {/* On the stage like the footer and the phone's Menu bar, so the button
+          takes the stage's look: yellow, with the pink offset shadow. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-stage pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex max-w-shell justify-end px-4">
+          <Button variant="accent" surface="stage" onClick={toggle} className="px-5">
+            {on ? <Check aria-hidden="true" /> : <Pencil aria-hidden="true" />}
+            {on ? t("editMode.done") : t("editMode.start")}
+          </Button>
+        </div>
+      </div>
       <div role="status" className="sr-only">
         {announcement}
       </div>
