@@ -1,7 +1,11 @@
-import { type FormEvent, useState } from "react";
-
-import { Button } from "@ds";
-import { FormActions } from "@/components/ui/form-actions";
+import {
+  type FormEvent,
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from "react";
 
 import type {
   HistoryEntryResource,
@@ -9,21 +13,16 @@ import type {
   StoreHistoryEntryRequestIcon,
   StoreHistoryEntryRequestPrecision,
 } from "../api/generated/model";
-import {
-  FormError,
-  FormField,
-  RequiredLegend,
-  RequiredMark,
-  formIsValid,
-} from "../components/FormField";
+import { FormField, RequiredLegend, RequiredMark, formIsValid } from "../components/FormField";
 import { currentLocale, t, type TranslatedError } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import type { PhotoData } from "../images/Photo";
 import { PhotoField } from "../images/PhotoField";
 import { historySlot, usePhotoSlots } from "../images/photoSlots";
+import { useDiscardGuard } from "../content/editor/DiscardGuard";
+import { EditorPanelForm } from "../content/editor/EditorPanel";
 import { HISTORY_ICONS, type HistoryIconKey, historyDate, iconFor } from "./entry";
 import { EntryTile } from "./EntryTile";
-import { OUTLINED_CARD } from "../carnival/raised";
 
 const PRECISIONS = ["year", "month", "day"] as const;
 type Precision = (typeof PRECISIONS)[number];
@@ -107,6 +106,19 @@ const orNull = (value: string) => (value.trim() === "" ? null : value.trim());
  */
 export type PhotoChange = { imageId: number | null; photo: PhotoData | null } | null;
 
+/**
+ * What the page shows of the entry while it is being edited: its values as
+ * typed, and the photo as picked. Sent only while the date is complete, so
+ * the card never loses its place on the timeline mid-typing.
+ */
+export type HistoryDraft = Pick<
+  HistoryEntryResource,
+  "occurredOn" | "precision" | "titleFr" | "bodyFr" | "titleDe" | "bodyDe" | "important" | "icon"
+> & { photo: PhotoData | null };
+
+/** The form's way out, which knows whether there is anything to lose. */
+export type HistoryFormHandle = { requestClose: () => void };
+
 function monthNames(): string[] {
   const format = new Intl.DateTimeFormat(intlTag(currentLocale()), {
     month: "long",
@@ -118,12 +130,15 @@ function monthNames(): string[] {
 }
 
 /**
- * One history entry, new or edited.
+ * One history entry, new or edited, as the fields of the side panel
+ * (`HistoryPanel`). Everything typed reaches the page through `onDraft`, which
+ * is its preview; nothing is stored before Enregistrer. Annuler and Escape ask
+ * first once something changed (`useDiscardGuard`).
  *
  * The precision comes first and decides what is asked for: a year entry asks
  * for a year, a month entry for a month and a year, an exact date for a date,
- * so nobody has to invent a day for "2007". The preview prints the date as
- * the timeline will.
+ * so nobody has to invent a day for "2007". The line under the date prints it
+ * as the timeline will, for a phone where the sheet covers the page.
  *
  * No text field is marked required, because none is on its own: at least one
  * of the four is. The rule sits above the fields and describes each of them,
@@ -139,15 +154,24 @@ export function HistoryForm({
   problemFor,
   onSubmit,
   onCancel,
+  onDraft,
+  menu,
+  ref,
 }: {
   entry: HistoryEntryResource | null;
   busy: boolean;
   error: TranslatedError | null;
   problemFor: (field: string) => string | undefined;
   onSubmit: (body: StoreHistoryEntryRequest, photo: PhotoChange) => void;
+  /** Leaves without saving; asked through the discard guard first. */
   onCancel: () => void;
+  onDraft: (draft: HistoryDraft) => void;
+  /** Actions on the entry for the panel's header, an `EditorMenu`. */
+  menu?: ReactNode;
+  ref?: Ref<HistoryFormHandle>;
 }) {
-  const [draft, setDraft] = useState<Draft>(() => draftFrom(entry));
+  const [opened] = useState<Draft>(() => draftFrom(entry));
+  const [draft, setDraft] = useState<Draft>(opened);
   const [empty, setEmpty] = useState(false);
   const [yearProblem, setYearProblem] = useState<string | undefined>(undefined);
   const [monthProblem, setMonthProblem] = useState<string | undefined>(undefined);
@@ -157,6 +181,10 @@ export function HistoryForm({
   const slots = usePhotoSlots();
   const photo = change ? change.photo : entry ? slots.photoOf(historySlot(entry.id)) : null;
   const locale = currentLocale();
+  // Compared as values, so a field typed and taken back again is no change.
+  const changed = change !== null || JSON.stringify(draft) !== JSON.stringify(opened);
+  const { requestClose, question } = useDiscardGuard(changed, onCancel);
+  useImperativeHandle(ref, () => ({ requestClose }), [requestClose]);
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setEmpty(false);
@@ -192,6 +220,23 @@ export function HistoryForm({
   }
 
   const date = occurredOn(draft);
+
+  // The page shows the entry as typed. An incomplete date sends nothing, so
+  // the card keeps the last place it had.
+  useEffect(() => {
+    if (date === null) return;
+    onDraft({
+      occurredOn: date,
+      precision: draft.precision,
+      titleFr: orNull(draft.titleFr),
+      bodyFr: orNull(draft.bodyFr),
+      titleDe: orNull(draft.titleDe),
+      bodyDe: orNull(draft.bodyDe),
+      important: draft.important,
+      icon: draft.icon === "none" ? null : draft.icon,
+      photo,
+    });
+  }, [date, draft, photo, onDraft]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -241,210 +286,204 @@ export function HistoryForm({
   const selectClass = "focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink";
 
   return (
-    <form
-      noValidate
-      onSubmit={submit}
-      className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
-    >
-      <RequiredLegend />
-      <div className="flex flex-col gap-1">
-        <label htmlFor="precision">{t("fields.precision")}</label>
-        <select
-          id="precision"
-          className={selectClass}
-          value={draft.precision}
-          onChange={(changed) => changePrecision(changed.target.value as Precision)}
-        >
-          {PRECISIONS.map((precision) => (
-            <option key={precision} value={precision}>
-              {t(`historyForm.precisions.${precision}`)}
-            </option>
-          ))}
-        </select>
-      </div>
+    <>
+      <EditorPanelForm onSubmit={submit} pending={busy} error={error} onCancel={requestClose}>
+        {menu}
+        <RequiredLegend />
+        <div className="flex flex-col gap-1">
+          <label htmlFor="precision">{t("fields.precision")}</label>
+          <select
+            id="precision"
+            className={selectClass}
+            value={draft.precision}
+            onChange={(changed) => changePrecision(changed.target.value as Precision)}
+          >
+            {PRECISIONS.map((precision) => (
+              <option key={precision} value={precision}>
+                {t(`historyForm.precisions.${precision}`)}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <div className="grid gap-related sm:grid-cols-2">
-        {draft.precision === "day" ? (
-          <FormField
-            id="occurredOn"
-            type="date"
-            label={t("fields.occurredOn")}
-            value={draft.day}
-            onChange={(value) => set("day", value)}
-            problem={problemFor("occurredOn")}
-            required
-          />
-        ) : (
-          <>
-            {draft.precision === "month" ? (
-              <div className="flex flex-col gap-1">
-                <div>
-                  <label htmlFor="occurredMonth">{t("historyForm.month")}</label> <RequiredMark />
-                </div>
-                <select
-                  id="occurredMonth"
-                  required
-                  aria-invalid={monthProblem ? true : undefined}
-                  aria-describedby={monthProblem ? MONTH_ERROR_ID : undefined}
-                  className={`${selectClass} ${monthProblem ? "border-danger" : ""}`}
-                  value={draft.month}
-                  onChange={(changed) => set("month", changed.target.value)}
-                >
-                  <option value="" disabled>
-                    {t("historyForm.monthPlaceholder")}
-                  </option>
-                  {monthNames().map((name, index) => (
-                    <option key={name} value={String(index + 1).padStart(2, "0")}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-                {monthProblem ? (
-                  <span id={MONTH_ERROR_ID} className="block text-sm text-danger">
-                    {monthProblem}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
+        <div className="grid gap-related sm:grid-cols-2">
+          {draft.precision === "day" ? (
             <FormField
-              id="occurredYear"
-              inputMode="numeric"
-              label={t("historyForm.year")}
-              value={draft.year}
-              onChange={(value) => set("year", value)}
-              problem={yearProblem ?? problemFor("occurredOn")}
+              id="occurredOn"
+              type="date"
+              label={t("fields.occurredOn")}
+              value={draft.day}
+              onChange={(value) => set("day", value)}
+              problem={problemFor("occurredOn")}
               required
             />
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              {draft.precision === "month" ? (
+                <div className="flex flex-col gap-1">
+                  <div>
+                    <label htmlFor="occurredMonth">{t("historyForm.month")}</label> <RequiredMark />
+                  </div>
+                  <select
+                    id="occurredMonth"
+                    required
+                    aria-invalid={monthProblem ? true : undefined}
+                    aria-describedby={monthProblem ? MONTH_ERROR_ID : undefined}
+                    className={`${selectClass} ${monthProblem ? "border-danger" : ""}`}
+                    value={draft.month}
+                    onChange={(changed) => set("month", changed.target.value)}
+                  >
+                    <option value="" disabled>
+                      {t("historyForm.monthPlaceholder")}
+                    </option>
+                    {monthNames().map((name, index) => (
+                      <option key={name} value={String(index + 1).padStart(2, "0")}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  {monthProblem ? (
+                    <span id={MONTH_ERROR_ID} className="block text-sm text-danger">
+                      {monthProblem}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+              <FormField
+                id="occurredYear"
+                inputMode="numeric"
+                label={t("historyForm.year")}
+                value={draft.year}
+                onChange={(value) => set("year", value)}
+                problem={yearProblem ?? problemFor("occurredOn")}
+                required
+              />
+            </>
+          )}
+        </div>
 
-      <p className="flex items-center gap-tight text-sm text-ink-muted">
-        {t("historyForm.preview")}
-        <span data-testid="history-preview" className="flex items-center gap-tight">
-          <EntryTile important={draft.important} icon={draft.icon === "none" ? null : draft.icon} />
-          <span className="font-semibold text-violet">
-            {date ? historyDate(date, draft.precision, locale) : t("historyForm.previewIncomplete")}
+        <p className="flex items-center gap-tight text-sm text-ink-muted">
+          {t("historyForm.preview")}
+          <span data-testid="history-preview" className="flex items-center gap-tight">
+            <EntryTile
+              important={draft.important}
+              icon={draft.icon === "none" ? null : draft.icon}
+            />
+            <span className="font-semibold text-violet">
+              {date
+                ? historyDate(date, draft.precision, locale)
+                : t("historyForm.previewIncomplete")}
+            </span>
           </span>
-        </span>
-      </p>
+        </p>
 
-      {/* One element for the rule and its breach: when the four texts are
+        {/* One element for the rule and its breach: when the four texts are
           empty the rule itself turns into the error, instead of a second
           message saying nearly the same one line below. It describes each of
           the four fields, and focus moves to the first, which reads it. */}
-      <p id={RULE_ID} className={`text-sm ${empty ? "text-danger" : "text-ink-muted"}`}>
-        {empty ? t("errors.history_entry_empty") : t("historyForm.atLeastOne")}
-      </p>
+        <p id={RULE_ID} className={`text-sm ${empty ? "text-danger" : "text-ink-muted"}`}>
+          {empty ? t("errors.history_entry_empty") : t("historyForm.atLeastOne")}
+        </p>
 
-      {SIDES.map((side) => (
-        <fieldset key={side.legend} className="flex flex-col gap-related">
-          <legend className="font-semibold">{t(side.legend)}</legend>
-          <FormField
-            id={side.title.field}
-            label={t(side.title.label)}
-            value={draft[side.title.field]}
-            onChange={(value) => set(side.title.field, value)}
-            problem={problemFor(side.title.field)}
-            describedBy={textDescription}
-            invalid={empty}
-            maxLength={TITLE_MAX}
-            hint={
-              <>
-                <span aria-hidden="true" data-testid={`${side.title.field}-count`}>
-                  {draft[side.title.field].length} / {TITLE_MAX}
-                </span>
-                <span className="sr-only">
-                  {t("historyForm.counter", {
-                    n: draft[side.title.field].length,
-                    max: TITLE_MAX,
-                  })}
-                </span>
-              </>
-            }
-          />
-          <FormField
-            id={side.body.field}
-            as="textarea"
-            label={t(side.body.label)}
-            value={draft[side.body.field]}
-            onChange={(value) => set(side.body.field, value)}
-            problem={problemFor(side.body.field)}
-            describedBy={textDescription}
-            invalid={empty}
-          />
-        </fieldset>
-      ))}
+        {SIDES.map((side) => (
+          <fieldset key={side.legend} className="flex flex-col gap-related">
+            <legend className="font-semibold">{t(side.legend)}</legend>
+            <FormField
+              id={side.title.field}
+              label={t(side.title.label)}
+              value={draft[side.title.field]}
+              onChange={(value) => set(side.title.field, value)}
+              problem={problemFor(side.title.field)}
+              describedBy={textDescription}
+              invalid={empty}
+              maxLength={TITLE_MAX}
+              hint={
+                <>
+                  <span aria-hidden="true" data-testid={`${side.title.field}-count`}>
+                    {draft[side.title.field].length} / {TITLE_MAX}
+                  </span>
+                  <span className="sr-only">
+                    {t("historyForm.counter", {
+                      n: draft[side.title.field].length,
+                      max: TITLE_MAX,
+                    })}
+                  </span>
+                </>
+              }
+            />
+            <FormField
+              id={side.body.field}
+              as="textarea"
+              label={t(side.body.label)}
+              value={draft[side.body.field]}
+              onChange={(value) => set(side.body.field, value)}
+              problem={problemFor(side.body.field)}
+              describedBy={textDescription}
+              invalid={empty}
+            />
+          </fieldset>
+        ))}
 
-      <PhotoField
-        label={t("historyForm.photo")}
-        value={photo}
-        onChange={(imageId, next) => setChange({ imageId, photo: next })}
-      />
-
-      <label className="flex min-h-touch items-center gap-2">
-        <input
-          type="checkbox"
-          className="size-5"
-          checked={draft.important}
-          onChange={(changed) => set("important", changed.target.checked)}
+        <PhotoField
+          label={t("historyForm.photo")}
+          value={photo}
+          onChange={(imageId, next) => setChange({ imageId, photo: next })}
         />
-        {t("fields.important")}
-      </label>
 
-      <fieldset className="flex flex-col gap-tight">
-        <legend>
-          {t("historyForm.iconLegend")}
-          {/* The chosen icon's name, for a sighted user; each radio carries
+        <label className="flex min-h-touch items-center gap-2">
+          <input
+            type="checkbox"
+            className="size-5"
+            checked={draft.important}
+            onChange={(changed) => set("important", changed.target.checked)}
+          />
+          {t("fields.important")}
+        </label>
+
+        <fieldset className="flex flex-col gap-tight">
+          <legend>
+            {t("historyForm.iconLegend")}
+            {/* The chosen icon's name, for a sighted user; each radio carries
               its own name for a screen reader, which this would repeat. */}
-          <span aria-hidden="true" className="text-ink-muted">
-            {t("historyForm.labelSeparator")}
-            <span data-testid="icon-chosen">{t(`history.icons.${draft.icon}`)}</span>
-          </span>
-        </legend>
-        <div className="flex flex-wrap gap-tight">
-          {ICON_KEYS.map((key) => {
-            const Icon = key === "none" ? null : HISTORY_ICONS[key];
-            const name = t(`history.icons.${key}`);
-            return (
-              // A ring offset, because the checked circle is filled with the
-              // same violet as the ring: without the gap, focus on the
-              // selected icon, where focus nearly always is, is invisible.
-              <label
-                key={key}
-                title={name}
-                className="flex size-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink focus-within:ring-2 focus-within:ring-violet focus-within:ring-offset-2 focus-within:ring-offset-panel has-checked:border-violet has-checked:bg-violet has-checked:text-white"
-              >
-                <input
-                  type="radio"
-                  name="icon"
-                  value={key}
-                  className="sr-only"
-                  checked={draft.icon === key}
-                  onChange={() => set("icon", key)}
-                />
-                <span className="sr-only">{name}</span>
-                {Icon ? (
-                  <Icon aria-hidden="true" className="size-5" />
-                ) : (
-                  <span aria-hidden="true" className="size-2 rounded-full bg-current" />
-                )}
-              </label>
-            );
-          })}
-        </div>
-      </fieldset>
-
-      <FormError error={error} />
-
-      <FormActions>
-        <Button type="submit" aria-disabled={busy}>
-          {t("common.save")}
-        </Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          {t("common.cancel")}
-        </Button>
-      </FormActions>
-    </form>
+            <span aria-hidden="true" className="text-ink-muted">
+              {t("historyForm.labelSeparator")}
+              <span data-testid="icon-chosen">{t(`history.icons.${draft.icon}`)}</span>
+            </span>
+          </legend>
+          <div className="flex flex-wrap gap-tight">
+            {ICON_KEYS.map((key) => {
+              const Icon = key === "none" ? null : HISTORY_ICONS[key];
+              const name = t(`history.icons.${key}`);
+              return (
+                // A ring offset, because the checked circle is filled with the
+                // same violet as the ring: without the gap, focus on the
+                // selected icon, where focus nearly always is, is invisible.
+                <label
+                  key={key}
+                  title={name}
+                  className="flex size-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink focus-within:ring-2 focus-within:ring-violet focus-within:ring-offset-2 focus-within:ring-offset-panel has-checked:border-violet has-checked:bg-violet has-checked:text-white"
+                >
+                  <input
+                    type="radio"
+                    name="icon"
+                    value={key}
+                    className="sr-only"
+                    checked={draft.icon === key}
+                    onChange={() => set("icon", key)}
+                  />
+                  <span className="sr-only">{name}</span>
+                  {Icon ? (
+                    <Icon aria-hidden="true" className="size-5" />
+                  ) : (
+                    <span aria-hidden="true" className="size-2 rounded-full bg-current" />
+                  )}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      </EditorPanelForm>
+      {question}
+    </>
   );
 }

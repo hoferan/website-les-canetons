@@ -1,40 +1,57 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { Route, Routes } from "react-router-dom";
 import { expect, test } from "vitest";
 
+import { EDIT_MODE_KEY } from "../content/EditMode";
+import type { Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
+import { History } from "../pages/History";
 import { renderWithSession } from "../test/renderWithSession";
-import { History } from "./History";
-import { HistoryEdit } from "./HistoryEdit";
-import { HistoryNew } from "./HistoryNew";
 
-async function renderAt(route: string) {
-  setMockUser("demo.direction");
-  await renderWithSession(
-    <Routes>
-      <Route path="/history" element={<History />} />
-      <Route path="/history/new" element={<HistoryNew />} />
-      <Route path="/history/:id/edit" element={<HistoryEdit />} />
-    </Routes>,
-    { route },
-  );
+/**
+ * The history page in edit mode with the side panel open (#419): "new" opens
+ * it from "Ajouter", a number from that entry's ✎ on its card.
+ */
+async function renderAt(
+  open: "new" | number,
+  {
+    locale = "fr",
+    as = "demo.direction",
+  }: { locale?: Locale; as?: Parameters<typeof setMockUser>[0] } = {},
+) {
+  const user = userEvent.setup();
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser(as);
+  await renderWithSession(<History />, { route: "/history", locale });
+  await screen.findByTestId("history-timeline");
+  if (open === "new") {
+    await user.click(
+      screen.getByRole("button", { name: /^(Ajouter à l’histoire|Zur Geschichte hinzufügen)$/ }),
+    );
+  } else {
+    const pencil = document.querySelector<HTMLElement>(
+      `[data-entry-id="${open}"] [data-action="edit"]`,
+    );
+    if (!pencil) throw new Error(`no ✎ on entry ${open}`);
+    await user.click(pencil);
+  }
+  await screen.findByRole("dialog");
 }
 
 /**
- * Saved text is looked for inside the timeline. React keeps a controlled
- * textarea's text content in step with its value, so an unscoped findByText
- * can match the form's textarea mid-save and lose it when the form unmounts.
+ * The timeline once the panel has closed. While it is open the page shows
+ * what is typed, so a text on the timeline proves a save only after that.
  */
 async function timeline() {
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   return screen.findByTestId("history-timeline");
 }
 
 test("a new entry with only a German text and an exact date is saved and appears on the timeline", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   await user.selectOptions(await screen.findByLabelText("Précision de la date"), "day");
   await user.type(screen.getByLabelText(/^Date/), "2024-02-11");
   await user.type(screen.getByLabelText("Texte en allemand"), "Umzug am Fasnachtssonntag");
@@ -52,7 +69,7 @@ test("a new entry with only a German text and an exact date is saved and appears
  */
 test("a year entry asks for the year only, previews it, and saves it", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   expect(await screen.findByLabelText("Précision de la date")).toHaveValue("year");
   expect(screen.queryByLabelText(/^Date/)).toBeNull();
 
@@ -68,7 +85,7 @@ test("a year entry asks for the year only, previews it, and saves it", async () 
 
 test("a month entry asks for the month and the year", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   await user.selectOptions(await screen.findByLabelText("Précision de la date"), "month");
   await user.selectOptions(screen.getByLabelText(/^Mois/), "10");
   await user.type(screen.getByLabelText(/^Année/), "2002");
@@ -77,7 +94,7 @@ test("a month entry asks for the month and the year", async () => {
 });
 
 test("editing a year entry opens on its year, with no day to invent", async () => {
-  await renderAt("/history/3/edit");
+  await renderAt(3);
   const year = await screen.findByLabelText(/^Année/);
   expect(year).toHaveValue("2019");
   // A text field with a numeric keypad, not type=number: a scroll wheel over
@@ -94,7 +111,7 @@ test("editing a year entry opens on its year, with no day to invent", async () =
  */
 test("four empty text fields are refused before sending, next to the fields", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   await user.type(await screen.findByLabelText(/^Année/), "2024");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
@@ -106,7 +123,7 @@ test("four empty text fields are refused before sending, next to the fields", as
 });
 
 test("the rule comes before the fields it is about, and describes each of them", async () => {
-  await renderAt("/history/new");
+  await renderAt("new");
   const titleFr = await screen.findByLabelText("Titre en français");
   expect(titleFr).toHaveAccessibleDescription(/Au moins un titre ou un texte/);
 
@@ -116,7 +133,7 @@ test("the rule comes before the fields it is about, and describes each of them",
 
 test("a title stops at 120 characters and says how many are used", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   const titleFr = await screen.findByLabelText("Titre en français");
   expect(titleFr).toHaveAttribute("maxlength", "120");
 
@@ -128,7 +145,7 @@ test("a title stops at 120 characters and says how many are used", async () => {
 
 test("the chosen icon is named where a sighted user can read it", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   await user.click(await screen.findByRole("radio", { name: "Trophée" }));
 
   expect(screen.getByTestId("icon-chosen")).toHaveTextContent("Trophée");
@@ -137,7 +154,7 @@ test("the chosen icon is named where a sighted user can read it", async () => {
 /** Without `ifMatch(etag)` on the update the mock answers 428. */
 test("editing opens with the entry's values and saves with its tag", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/3/edit");
+  await renderAt(3);
   const title = await screen.findByLabelText("Titre en français");
   expect(title).toHaveValue("Delphine Maillard et Laura Mantel");
   expect(screen.getByRole("radio", { name: "Musique" })).toBeChecked();
@@ -167,7 +184,7 @@ test("a save against an entry changed meanwhile stays on the form and says so", 
       ),
     ),
   );
-  await renderAt("/history/3/edit");
+  await renderAt(3);
   await user.click(await screen.findByRole("button", { name: "Enregistrer" }));
 
   expect(
@@ -176,21 +193,32 @@ test("a save against an entry changed meanwhile stays on the form and says so", 
   expect(screen.getByLabelText("Titre en français")).toBeInTheDocument();
 });
 
+/** Deleted by a colleague after the page loaded: the card is still there, its read is not. */
 test("an entry that no longer exists says so instead of opening a form", async () => {
-  await renderAt("/history/99/edit");
+  server.use(
+    http.get("/api/v1/history/:id", () =>
+      HttpResponse.json(
+        {
+          title: "Not Found",
+          status: 404,
+          code: "not_found",
+          instance: "/api/v1/history/3",
+          errors: [],
+          requestId: "01JB3K7QW8ZX7VN4S2QK9J0M1P",
+          detail: "gone",
+        },
+        { status: 404 },
+      ),
+    ),
+  );
+  await renderAt(3);
 
   expect(await screen.findByRole("alert")).toHaveTextContent("L’entrée n’a pas pu être chargée.");
   expect(screen.queryByLabelText("Titre en français")).toBeNull();
 });
 
 test("the German form punctuates its labels the German way", async () => {
-  setMockUser("demo.direction");
-  await renderWithSession(
-    <Routes>
-      <Route path="/history/new" element={<HistoryNew />} />
-    </Routes>,
-    { route: "/history/new", locale: "de-CH" },
-  );
+  await renderAt("new", { locale: "de-CH" });
   expect(await screen.findByText("Auf der Zeitleiste:")).toBeInTheDocument();
   expect(screen.getByTestId("icon-chosen").parentElement).toHaveTextContent(/^: Keines$/);
 });
@@ -198,7 +226,7 @@ test("the German form punctuates its labels the German way", async () => {
 /** A missing month is reported at the month. */
 test("a month entry without its month says so at the month", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   await user.selectOptions(await screen.findByLabelText("Précision de la date"), "month");
   await user.type(screen.getByLabelText(/^Année/), "2002");
   await user.type(screen.getByLabelText("Titre en français"), "Premier cortège");
@@ -216,7 +244,7 @@ test("a month entry without its month says so at the month", async () => {
  */
 test("narrowing an exact date keeps its month and year, and widening it back keeps the day", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   const precision = await screen.findByLabelText("Précision de la date");
   await user.selectOptions(precision, "day");
   await user.type(screen.getByLabelText(/^Date/), "2016-11-11");
@@ -232,20 +260,20 @@ test("narrowing an exact date keeps its month and year, and widening it back kee
 
 test("widening a year entry offers no day it does not know", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/3/edit");
+  await renderAt(3);
   await user.selectOptions(await screen.findByLabelText("Précision de la date"), "day");
   expect(screen.getByLabelText(/^Date/)).toHaveValue("");
 });
 
 test("the form keys its required marks", async () => {
-  await renderAt("/history/new");
+  await renderAt("new");
   expect(await screen.findByText(/champ obligatoire/)).toBeInTheDocument();
 });
 
 /** One message: the rule itself turns into the error. */
 test("an empty save turns the rule into the error rather than repeating it", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   await user.type(await screen.findByLabelText(/^Année/), "2024");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
@@ -255,7 +283,7 @@ test("an empty save turns the rule into the error rather than repeating it", asy
 
 test("nothing is read out as punctuation while the date is incomplete", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   await user.selectOptions(await screen.findByLabelText("Précision de la date"), "month");
 
   expect(screen.getByRole("option", { name: "Choisir le mois" })).toBeInTheDocument();
@@ -264,7 +292,7 @@ test("nothing is read out as punctuation while the date is incomplete", async ()
 
 test("saving says so on the timeline", async () => {
   const user = userEvent.setup();
-  await renderAt("/history/new");
+  await renderAt("new");
   await user.type(await screen.findByLabelText(/^Année/), "2024");
   await user.type(screen.getByLabelText("Titre en français"), "Nouveau");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
@@ -274,13 +302,7 @@ test("saving says so on the timeline", async () => {
 });
 
 test("the German form names the months in German", async () => {
-  setMockUser("demo.direction");
-  await renderWithSession(
-    <Routes>
-      <Route path="/history/new" element={<HistoryNew />} />
-    </Routes>,
-    { route: "/history/new", locale: "de-CH" },
-  );
+  await renderAt("new", { locale: "de-CH" });
   const user = userEvent.setup();
   await user.selectOptions(await screen.findByLabelText("Genauigkeit des Datums"), "month");
   expect(screen.getByRole("option", { name: "Oktober" })).toBeInTheDocument();
@@ -311,7 +333,7 @@ function recordHistoryWrites(): { method: string; path: string; body: Record<str
 test("a new entry with a photo is saved first, then its photo by its own write", async () => {
   const user = userEvent.setup();
   const writes = recordHistoryWrites();
-  await renderAt("/history/new");
+  await renderAt("new");
 
   await user.type(await screen.findByLabelText(/^Année/), "2024");
   await user.type(screen.getByLabelText("Titre en français"), "Le cortège");
@@ -341,7 +363,7 @@ test("a new entry with a photo is saved first, then its photo by its own write",
 test("clearing the photo saves the entry, then empties its photo", async () => {
   const user = userEvent.setup();
   const writes = recordHistoryWrites();
-  await renderAt("/history/4/edit");
+  await renderAt(4);
 
   await user.click(await screen.findByRole("button", { name: "Retirer" }));
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
@@ -359,7 +381,7 @@ test("clearing the photo saves the entry, then empties its photo", async () => {
 test("an untouched photo is not written at all", async () => {
   const user = userEvent.setup();
   const writes = recordHistoryWrites();
-  await renderAt("/history/4/edit");
+  await renderAt(4);
   await screen.findByTestId("photo-field");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
@@ -370,14 +392,7 @@ test("an untouched photo is not written at all", async () => {
 test("an editor without images.manage sees the photo, cannot change it, and writes only the entry", async () => {
   const user = userEvent.setup();
   const writes = recordHistoryWrites();
-  setMockUser("demo.roster");
-  await renderWithSession(
-    <Routes>
-      <Route path="/history" element={<History />} />
-      <Route path="/history/:id/edit" element={<HistoryEdit />} />
-    </Routes>,
-    { route: "/history/4/edit" },
-  );
+  await renderAt(4, { as: "demo.roster" });
   const field = await screen.findByTestId("photo-field");
   expect(within(field).queryByRole("button")).toBeNull();
 
@@ -394,7 +409,7 @@ test("a photo that fails to save after its entry did is reported on the timeline
   const user = userEvent.setup();
   const writes = recordHistoryWrites();
   server.use(http.put("/api/v1/photo-slots/:slot", () => HttpResponse.json({}, { status: 503 })));
-  await renderAt("/history/4/edit");
+  await renderAt(4);
 
   await user.click(await screen.findByRole("button", { name: "Retirer" }));
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
@@ -408,4 +423,97 @@ test("a photo that fails to save after its entry did is reported on the timeline
   );
   await timeline();
   expect(writes.filter((write) => write.path === "/api/v1/history/4")).toHaveLength(1);
+});
+
+/** The titles on the timeline, top to bottom, as the page shows them. */
+function titlesOnPage(): string[] {
+  return [...screen.getByTestId("history-timeline").querySelectorAll("li")].map(
+    (item) => item.querySelector("h2")?.textContent ?? "",
+  );
+}
+
+/**
+ * #419: the page is the preview. The card shows what is typed, and Annuler,
+ * once the question is answered, gives back the stored entry. Nothing is
+ * written.
+ */
+test("the card shows what is typed, and Annuler gives the stored entry back", async () => {
+  const user = userEvent.setup();
+  const writes = recordHistoryWrites();
+  await renderAt(3);
+  const title = await screen.findByLabelText("Titre en français");
+  await user.clear(title);
+  await user.type(title, "Les nouvelles directrices");
+
+  await waitFor(() => expect(titlesOnPage()).toContain("2019, Les nouvelles directrices"));
+  // The panel names the entry as typed, as a card's editor does.
+  expect(
+    screen.getByRole("dialog", { name: "Histoire · Les nouvelles directrices" }),
+  ).toBeVisible();
+
+  await user.click(screen.getByRole("button", { name: "Annuler" }));
+  await user.click(await screen.findByRole("button", { name: "Abandonner" }));
+  const line = await timeline();
+  expect(within(line).getByText("Delphine Maillard et Laura Mantel")).toBeInTheDocument();
+  expect(within(line).queryByText("Les nouvelles directrices")).toBeNull();
+  expect(writes).toEqual([]);
+});
+
+test("a new entry appears at its date while it is written, and is gone if abandoned", async () => {
+  const user = userEvent.setup();
+  const writes = recordHistoryWrites();
+  await renderAt("new");
+  await user.type(await screen.findByLabelText(/^Année/), "2010");
+  await user.type(screen.getByLabelText("Titre en français"), "Premier voyage");
+
+  // Between 2007 and 2019, as the server will sort it.
+  await waitFor(() =>
+    expect(titlesOnPage()).toEqual([
+      expect.stringMatching(/octobre 2002, Les débuts$/),
+      "2007",
+      "2010, Premier voyage",
+      "2019, Delphine Maillard et Laura Mantel",
+      "2026, Le flambeau passe",
+    ]),
+  );
+
+  await user.click(screen.getByRole("button", { name: "Annuler" }));
+  await user.click(await screen.findByRole("button", { name: "Abandonner" }));
+  await timeline();
+  expect(titlesOnPage()).not.toContain("2010, Premier voyage");
+  expect(writes).toEqual([]);
+});
+
+test("a changed year moves the card to its new place on the timeline", async () => {
+  const user = userEvent.setup();
+  await renderAt(4);
+  const year = await screen.findByLabelText(/^Année/);
+  await user.clear(year);
+  await user.type(year, "2005");
+
+  await waitFor(() => expect(titlesOnPage()[1]).toBe("2005, Le flambeau passe"));
+});
+
+/** While the panel is open, what shows is what a visitor would see. */
+test("the page's own edit controls step aside while the panel is open", async () => {
+  await renderAt(3);
+  expect(screen.queryAllByRole("toolbar")).toEqual([]);
+  expect(screen.queryByRole("button", { name: "Ajouter à l’histoire" })).toBeNull();
+});
+
+test("Supprimer in the panel's ⋯ deletes the entry once asked, and closes the panel", async () => {
+  const user = userEvent.setup();
+  await renderAt(4);
+  await user.click(
+    await screen.findByRole("button", { name: "Plus d’actions : Le flambeau passe" }),
+  );
+  await user.click(await screen.findByRole("menuitem", { name: "Supprimer" }));
+  const question = await screen.findByRole("alertdialog");
+  await user.click(within(question).getByRole("button", { name: "Supprimer" }));
+
+  const line = await timeline();
+  await waitFor(() => expect(within(line).queryByText("Le flambeau passe")).toBeNull());
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Ajouter à l’histoire" })).toHaveFocus(),
+  );
 });

@@ -182,20 +182,6 @@
     "heading": "Rôles"
   },
   {
-    "route": "/history/new",
-    "path": "/history/new",
-    "as": "demo.direction",
-    "name": "history-new",
-    "heading": "Nouvelle entrée"
-  },
-  {
-    "route": "/history/:id/edit",
-    "path": "/history/1/edit",
-    "as": "demo.direction",
-    "name": "history-edit",
-    "heading": "Modifier l’entrée"
-  },
-  {
     "route": "/media",
     "path": "/media",
     "as": "demo.direction",

@@ -172,6 +172,6 @@ test("a history.manage-only account gets the switch and the history controls, bu
   cleanup();
 
   await renderWithSession(<History />, { route: "/history" });
-  expect(await screen.findByRole("link", { name: "Ajouter à l’histoire" })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Ajouter à l’histoire" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /^Modifier : / })).toBeNull();
 });

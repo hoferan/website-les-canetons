@@ -63,8 +63,6 @@ const VISITS: { as: string | null; paths: string[] }[] = [
       "/events/7/book/edit",
       "/event-tags",
       "/history",
-      "/history/new",
-      "/history/3/edit",
     ],
   },
 ];

@@ -1,7 +1,10 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * The history's two layout guards, which jsdom cannot see (#104's review).
+ * The history's layout guards, which jsdom cannot see (#104's review), and
+ * its side panel (#419), which axe checks here because the panel is not a
+ * page of its own that a11y.spec.ts could visit.
  *
  * Against the MOCKED backend, like every spec here; see playwright.config.ts.
  */
@@ -14,6 +17,20 @@ async function logIn(page: Page, username: string) {
 }
 
 /**
+ * /history in edit mode, with the side panel open on a new entry, at the
+ * given size. The log-in comes first, at the default size: on a phone the
+ * account button it waits for is inside the menu.
+ */
+async function openNewEntry(page: Page, size?: { width: number; height: number }) {
+  await page.addInitScript(() => sessionStorage.setItem("canetons.editMode", "1"));
+  await logIn(page, "demo.direction");
+  if (size) await page.setViewportSize(size);
+  await page.goto("/history");
+  await page.getByRole("button", { name: "Ajouter à l’histoire" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+}
+
+/**
  * A PASTED URL OR A GERMAN COMPOUND IS ONE UNBROKEN WORD, and at 390px it made
  * the whole page scroll sideways: 551px wide in the review.
  *
@@ -21,9 +38,7 @@ async function logIn(page: Page, username: string) {
  * History.tsx and the overflow comes back.
  */
 test("a long unbroken word does not push the phone page sideways", async ({ page }) => {
-  await logIn(page, "demo.direction");
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/history/new");
+  await openNewEntry(page, { width: 390, height: 844 });
 
   await page.getByLabel(/^Année/).fill("2024");
   await page
@@ -34,6 +49,7 @@ test("a long unbroken word does not push the phone page sideways", async ({ page
     .fill("Voir https://www.example.org/une/tres/longue/adresse/sans/aucune/espace/du/tout");
   await page.getByRole("button", { name: "Enregistrer" }).click();
 
+  await expect(page.getByRole("dialog")).toBeHidden();
   await expect(page.getByTestId("history-timeline")).toContainText("Donaudampf");
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -58,8 +74,7 @@ test("a long unbroken word does not push the phone page sideways", async ({ page
  * labels and the offset shadow disappears.
  */
 test("focus on the selected icon is drawn apart from its fill", async ({ page }) => {
-  await logIn(page, "demo.direction");
-  await page.goto("/history/new");
+  await openNewEntry(page);
 
   const checked = page.getByRole("radio", { name: "Aucune" });
   await expect(checked).toBeChecked();
@@ -72,3 +87,33 @@ test("focus on the selected icon is drawn apart from its fill", async ({ page })
   expect(shadow).toMatch(/rgb\(255, 255, 255\) 0px 0px 0px 2px/);
   expect(shadow).toMatch(/rgb\(75, 46, 214\) 0px 0px 0px 4px/);
 });
+
+/**
+ * THE PANEL PASSES AXE, at both widths, on a new entry and on a stored one
+ * with its ⋯ menu. a11y.spec.ts audited the old /history/new and
+ * /history/:id/edit pages; this keeps the same form under the same rules.
+ */
+for (const size of [
+  { name: "phone", width: 390, height: 844 },
+  { name: "desktop", width: 1280, height: 900 },
+]) {
+  test(`axe: the history panel at ${size.name}`, async ({ page }) => {
+    await openNewEntry(page, { width: size.width, height: size.height });
+    const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
+    let { violations } = await new AxeBuilder({ page })
+      .include("[role='dialog']")
+      .withTags(tags)
+      .analyze();
+    expect(violations.map((violation) => violation.id)).toEqual([]);
+
+    await page.getByRole("button", { name: "Annuler" }).click();
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await page.getByRole("button", { name: "Modifier Delphine Maillard et Laura Mantel" }).click();
+    await expect(page.getByLabel("Titre en français", { exact: true })).toBeVisible();
+    ({ violations } = await new AxeBuilder({ page })
+      .include("[role='dialog']")
+      .withTags(tags)
+      .analyze());
+    expect(violations.map((violation) => violation.id)).toEqual([]);
+  });
+}
