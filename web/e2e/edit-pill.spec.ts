@@ -5,16 +5,20 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  *
  * A pill floating over the page covered the end of a title or a line of card
  * text on every public page at 390px, at between 15 and 67 percent of scroll
- * positions, while the bottom of each page was clear. A check made only at the
- * bottom passed on the broken page, so this one walks the whole page.
+ * positions, while the bottom of each page was clear (#417). A check made only
+ * at the bottom passed on the broken page, so this one walks the whole page.
  *
- * Two rules, because a docked bar and a floating pill differ in what they do:
+ * Two rules, because a bar that holds the switch and a button floating on its
+ * own differ in what they do:
  *
  * 1. At every scroll position the switch never lies directly on text. Text
  *    behind an opaque bar that holds the switch is out of view the way text
- *    below the screen's edge is, and the reader scrolls it into view.
- * 2. At the bottom of the page nothing more can scroll into view, so there the
- *    switch's fixed container overlaps no text at all.
+ *    behind the header is, and the reader scrolls it into view.
+ * 2. Every line that the switch's container (the fixed or sticky bar holding
+ *    it, or the switch itself) ever overlaps is, at some other scroll
+ *    position, wholly on screen and clear of it. A line that never is can
+ *    only be read by guessing, like a footer's last line under a bar docked
+ *    at the bottom.
  */
 
 const PUBLIC_PAGES = ["/", "/agenda", "/band", "/committee", "/history", "/join", "/contact"];
@@ -36,16 +40,29 @@ async function coveredText(toggle: Locator): Promise<Covered[]> {
   return toggle.evaluate(async (button) => {
     const covered: { text: string; scrollY: number; rule: 1 | 2 }[] = [];
 
-    // The switch's fixed container: the pill itself, or the bar it sits in.
+    // The switch's container: the fixed or sticky bar it sits in, or itself.
     let holder: Element = button;
-    while (holder.parentElement && getComputedStyle(holder).position !== "fixed") {
+    while (
+      holder.parentElement &&
+      !["fixed", "sticky"].includes(getComputedStyle(holder).position)
+    ) {
       holder = holder.parentElement;
     }
+    if (holder === document.documentElement) holder = button;
+
+    // Rule 2's bookkeeping, per line: each text node's n-th rectangle.
+    const ids = new Map<Text, number>();
+    const lineKey = (node: Text, index: number) => {
+      if (!ids.has(node)) ids.set(node, ids.size + 1);
+      return `${ids.get(node)}:${index}`;
+    };
+    const underHolder = new Map<string, { text: string; scrollY: number }>();
+    const seenClear = new Set<string>();
 
     // Each text node's rectangles that overlap `box`, with the point at the
     // middle of each overlap.
     const overlaps = (box: DOMRect) => {
-      const found: { node: Text; x: number; y: number }[] = [];
+      const found: { node: Text; index: number; x: number; y: number }[] = [];
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       for (
         let node = walker.nextNode() as Text | null;
@@ -57,13 +74,13 @@ async function coveredText(toggle: Locator): Promise<Covered[]> {
         if (parent.closest(".sr-only, [aria-hidden='true']")) continue;
         const range = document.createRange();
         range.selectNodeContents(node);
-        for (const rect of range.getClientRects()) {
+        for (const [index, rect] of [...range.getClientRects()].entries()) {
           const left = Math.max(rect.left, box.left);
           const right = Math.min(rect.right, box.right);
           const top = Math.max(rect.top, box.top);
           const bottom = Math.min(rect.bottom, box.bottom);
           if (right > left && bottom > top) {
-            found.push({ node, x: (left + right) / 2, y: (top + bottom) / 2 });
+            found.push({ node, index, x: (left + right) / 2, y: (top + bottom) / 2 });
           }
         }
       }
@@ -90,9 +107,35 @@ async function coveredText(toggle: Locator): Promise<Covered[]> {
         }
       }
 
+      // Rule 2: note the lines under the container, and every line wholly on
+      // screen and clear of it.
+      const holderBox = holder.getBoundingClientRect();
+      const under = new Set<string>();
+      for (const { node, index } of overlaps(holderBox)) {
+        const key = lineKey(node, index);
+        under.add(key);
+        if (!underHolder.has(key)) {
+          underHolder.set(key, { text: node.data.trim().slice(0, 60), scrollY: y });
+        }
+      }
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (
+        let node = walker.nextNode() as Text | null;
+        node;
+        node = walker.nextNode() as Text | null
+      ) {
+        if (!node.data.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const [index, rect] of [...range.getClientRects()].entries()) {
+          const key = lineKey(node, index);
+          if (!under.has(key) && rect.top >= 0 && rect.bottom <= innerHeight) seenClear.add(key);
+        }
+      }
+
       if (y === document.documentElement.scrollHeight - innerHeight) {
-        for (const { node } of overlaps(holder.getBoundingClientRect())) {
-          covered.push({ text: node.data.trim().slice(0, 60), scrollY: y, rule: 2 });
+        for (const [key, line] of underHolder) {
+          if (!seenClear.has(key)) covered.push({ ...line, rule: 2 });
         }
         return covered;
       }
@@ -114,10 +157,11 @@ for (const editing of [false, true]) {
       await page.goto(path);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await page.waitForLoadState("networkidle");
-      if (editing && (await toggle.textContent())?.includes("Modifier la page")) {
-        await toggle.click();
-      }
-      await expect(toggle).toHaveText(editing ? "Terminer la modification" : "Modifier la page");
+      const start = page.getByRole("button", { name: "Modifier la page" });
+      if (editing && (await start.isVisible())) await start.click();
+      await expect(toggle).toHaveAccessibleName(
+        editing ? "Terminer la modification" : "Modifier la page",
+      );
 
       const covered = await coveredText(toggle);
       if (covered.length > 0) found[path] = covered.slice(0, 5);

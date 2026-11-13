@@ -35,17 +35,9 @@ import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 import { WEBSITE_PERMISSIONS } from "@/lib/websitePermissions";
 
-import { EditModePill, useEditPillShown } from "../content/EditMode";
+import { EditModeAnnouncer, EditModeBar, EditModeStart } from "../content/EditMode";
 import { PUBLIC_NAV } from "../content/publicPages";
 import { useSite } from "../content/blocks/SiteBlock";
-
-/**
- * Where toasts stand while the edit-mode bar is shown: above it, not on it.
- * The bar is 69px tall, plus any safe-area inset beyond 12px, so this clears
- * it with a gap. Over the switch, a toast took the click that ends edit mode
- * for as long as the pointer rested on it.
- */
-const ABOVE_THE_PILL = { bottom: "calc(max(1rem, env(safe-area-inset-bottom)) + 4rem)" };
 
 /**
  * The committee's screens, each gated by the permission that gates the API
@@ -83,7 +75,6 @@ export function Layout() {
   const { config, user, can } = useSession();
   const site = useSite();
   const { pathname } = useLocation();
-  const pillShown = useEditPillShown();
   const [open, setOpen] = useState(false);
   // The colour the page ends on, for the footer's scalloped edge. Null is the
   // cream; see carnival/footerEdge.ts.
@@ -223,7 +214,8 @@ export function Layout() {
           <Logo />
           {/* Desktop only. The phone's copy sits in the Menu bar below; see
               LanguageSwitch for why the two differ. */}
-          <div className="hidden md:block">
+          <div className="hidden md:flex md:items-center md:gap-4">
+            <EditModeStart />
             <LanguageSwitch />
           </div>
         </div>
@@ -285,6 +277,10 @@ export function Layout() {
       </nav>
 
       {/* Renders nothing; keeps the head's alternates in step with the page. */}
+      {/* A sibling of the nav, like it, so it can stick below the Menu bar. */}
+      <EditModeBar />
+      <EditModeAnnouncer />
+
       <Hreflang />
 
       {/* tabIndex -1 so the skip link can move focus here; it is never a tab stop.
@@ -293,7 +289,6 @@ export function Layout() {
           pushed down when a page's data arrives (a layout shift, #236). The
           cost is a footer one scroll away on a page shorter than the screen. */}
       <main id="main" tabIndex={-1} className="min-h-dvh outline-none">
-        <EditModePill />
         <FooterEdgeContext.Provider value={setFooterEdge}>
           <Outlet />
         </FooterEdgeContext.Provider>
@@ -303,10 +298,7 @@ export function Layout() {
 
       {/* Mounted once here, so a toast raised by a mutation survives the
           redirect that follows it. */}
-      <Toaster
-        offset={pillShown ? ABOVE_THE_PILL : undefined}
-        mobileOffset={pillShown ? ABOVE_THE_PILL : undefined}
-      />
+      <Toaster />
     </>
   );
 }

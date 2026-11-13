@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
 import { cn } from "@/lib/utils";
-import { useEditPillShown } from "../content/EditMode";
 import { ActionLink, shownActions } from "../content/blocks/ActionLink";
 import { useSite } from "../content/blocks/SiteBlock";
 import { SiteEditor } from "../content/blocks/SiteEditor";
@@ -58,21 +57,13 @@ export function Footer({ above }: { above: string | null }) {
   const site = useSite();
   const editing = useBlockEditing();
   const [editingSite, setEditingSite] = useState(false);
-  // The edit-mode bar covers the bottom of the screen, 69px tall plus any
-  // safe-area inset beyond 12px. Padding the footer's end past it lets the
-  // last line scroll clear.
-  const pillShown = useEditPillShown();
   const follow = networksOf(site.networks);
   const actions = shownActions(site.actions);
 
   return (
     <footer
       data-edit-block="site"
-      className={cn(
-        "relative bg-stage text-white",
-        above === null && "mt-16",
-        pillShown && "pb-[calc(5rem+env(safe-area-inset-bottom))]",
-      )}
+      className={cn("relative bg-stage text-white", above === null && "mt-16")}
     >
       <Scallop from={above ?? "var(--color-ground)"} />
       {editing ? (

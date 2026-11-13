@@ -1453,6 +1453,8 @@ export const de: typeof fr = {
   editMode: {
     start: "Seite bearbeiten",
     done: "Bearbeitung beenden",
+    end: "Beenden",
+    bar: "Bearbeitungsmodus",
     announceOn:
       "Bearbeitungsmodus aktiv: Jeder Block hat eine Schaltfläche Bearbeiten. Besucher sehen sie nicht.",
     announceOff: "Bearbeitungsmodus beendet.",
