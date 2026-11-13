@@ -1,5 +1,5 @@
 import { Check, Pencil } from "lucide-react";
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, use, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useLocation } from "react-router-dom";
 
 import { Button } from "@ds";
@@ -33,12 +33,27 @@ type EditMode = {
   setOn: (on: boolean) => void;
 };
 
-type Stored = { available: boolean; stored: boolean; setOn: (on: boolean) => void };
+/** Which button takes focus when it mounts: the one that replaced the button just pressed. */
+type FocusNext = "start" | "done" | null;
+
+type Stored = {
+  available: boolean;
+  stored: boolean;
+  setOn: (on: boolean) => void;
+  /** Turns the mode on or off from one of its buttons: announces it and hands focus over. */
+  press: (on: boolean) => void;
+  focusNext: RefObject<FocusNext>;
+  /** What EditModeAnnouncer says: the mode just switched to. */
+  announcement: string;
+};
 
 const EditModeContext = createContext<Stored>({
   available: false,
   stored: false,
   setOn: () => {},
+  press: () => {},
+  focusNext: { current: null },
+  announcement: "",
 });
 
 /**
@@ -69,6 +84,8 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
   // blocks and photos still ask for their own permission.
   const available = can("content.manage") || can("images.manage") || can("history.manage");
   const [stored, setStored] = useState(readStored);
+  const [announcement, setAnnouncement] = useState("");
+  const focusNext = useRef<FocusNext>(null);
 
   const setOn = (on: boolean) => {
     setStored(on);
@@ -80,7 +97,36 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  return <EditModeContext value={{ available, stored, setOn }}>{children}</EditModeContext>;
+  const press = (on: boolean) => {
+    focusNext.current = on ? "done" : "start";
+    setOn(on);
+    setAnnouncement(t(on ? "editMode.announceOn" : "editMode.announceOff"));
+  };
+
+  return (
+    <EditModeContext value={{ available, stored, setOn, press, focusNext, announcement }}>
+      {children}
+    </EditModeContext>
+  );
+}
+
+/**
+ * The polite live region that says what the mode now is, since the page change
+ * is mostly silent. Its own component, mounted once by Layout, because the
+ * button pressed is gone after the press: "Modifier la page" leaves the header
+ * and "Terminer" leaves with the bar.
+ */
+export function EditModeAnnouncer() {
+  const { announcement } = use(EditModeContext);
+  // Only where the switch is, so no other page carries a second status region.
+  if (!useSwitchShown()) {
+    return null;
+  }
+  return (
+    <div role="status" className="sr-only">
+      {announcement}
+    </div>
+  );
 }
 
 function readStored(): boolean {
@@ -91,55 +137,100 @@ function readStored(): boolean {
   }
 }
 
-/**
- * Whether the floating pill is shown: an editor, on a public page. Layout uses
- * it to keep the pill clear of the footer.
- */
-export function useEditPillShown(): boolean {
+/** Whether this account may switch the mode on this page: an editor, on a public page. */
+function useSwitchShown(): boolean {
   const { available } = use(EditModeContext);
   const { pathname } = useLocation();
   return available && PUBLIC_PAGES.has(pathname);
 }
 
 /**
- * The switch itself: a pill fixed at the bottom right of every public page an
- * editor may change, ink in both states. It is one element whose
- * label changes, so focus stays on it after a toggle; a polite live region
- * says what the mode now is, since the page change is mostly silent.
+ * A ref that focuses the button when it mounts in place of the one just
+ * pressed. The header renders the start button twice, one per breakpoint, so
+ * only the copy that is displayed takes it.
  */
-export function EditModePill() {
-  const { on, setOn } = useEditMode();
-  const shown = useEditPillShown();
-  const [announcement, setAnnouncement] = useState("");
+function useFocusOnArrival(mine: FocusNext) {
+  const { focusNext } = use(EditModeContext);
+  return (button: HTMLButtonElement | null) => {
+    if (!button || focusNext.current !== mine) return;
+    if (button.checkVisibility && !button.checkVisibility()) return;
+    focusNext.current = null;
+    button.focus();
+  };
+}
 
-  if (!shown) {
+/**
+ * The way into edit mode: a yellow stage button in the header, beside the
+ * language switch, shown only while the mode is off. Layout places it on the
+ * desktop header's top row and PhoneNav in the phone's Menu bar. It stays out
+ * of the desktop nav row, which would fold its links into "Plus" to make room.
+ */
+export function EditModeStart({ className }: { className?: string }) {
+  const { on } = useEditMode();
+  const { press } = use(EditModeContext);
+  const shown = useSwitchShown();
+  const focusOnArrival = useFocusOnArrival("start");
+
+  if (!shown || on) {
     return null;
   }
 
-  const toggle = () => {
-    setOn(!on);
-    setAnnouncement(t(on ? "editMode.announceOff" : "editMode.announceOn"));
-  };
+  return (
+    <Button
+      ref={focusOnArrival}
+      variant="accent"
+      surface="stage"
+      onClick={() => press(true)}
+      className={cn("border-2 px-3.5", className)}
+    >
+      <Pencil aria-hidden="true" />
+      {t("editMode.start")}
+    </Button>
+  );
+}
+
+/**
+ * The bar shown while edit mode is on, under the header, with the way out. It
+ * sticks below the phone's Menu bar (44px) and to the top on desktop, where
+ * the nav scrolls away, so "Terminer" is always in reach. Yellow under an ink
+ * rule, so the page reads as being in another state.
+ *
+ * Anything floating over the page lies on its text as it scrolls past: a pill
+ * at the bottom right covered a title or a line of card text at up to two
+ * thirds of scroll positions at 390px (#417). The bar sits in the flow under
+ * the header, so at the top of the page it covers nothing, and once stuck it
+ * hides the page the way the header does (edit-pill.spec.ts).
+ *
+ * The button reads "Terminer" because "Terminer la modification" does not fit
+ * beside the bar's title at 390px; its name keeps the whole phrase.
+ */
+export function EditModeBar() {
+  const { on } = useEditMode();
+  const { press } = use(EditModeContext);
+  const focusOnArrival = useFocusOnArrival("done");
+
+  if (!on) {
+    return null;
+  }
 
   return (
-    <>
-      <Button
-        onClick={toggle}
-        className={cn(
-          "fixed right-4 z-40 px-5",
-          "bottom-[max(1rem,env(safe-area-inset-bottom))]",
-          // Ink with a white ring reads on the yellow band, the cream, the
-          // violet hero and the footer alike; yellow or white vanished on one
-          // of them.
-          "bg-ink text-white ring-2 shadow-raised ring-white hover:bg-ink-hover",
-        )}
-      >
-        {on ? <Check aria-hidden="true" /> : <Pencil aria-hidden="true" />}
-        {on ? t("editMode.done") : t("editMode.start")}
-      </Button>
-      <div role="status" className="sr-only">
-        {announcement}
+    <div className="sticky top-11 z-30 border-b-2 border-ink bg-yellow text-ink md:top-0">
+      <div className="mx-auto flex max-w-shell items-center justify-between gap-3 px-4 py-1">
+        <p className="flex items-center gap-2 font-display text-sm uppercase">
+          <Pencil aria-hidden="true" className="size-4" />
+          {t("editMode.bar")}
+        </p>
+        <Button
+          ref={focusOnArrival}
+          variant="secondary"
+          onClick={() => press(false)}
+          aria-label={t("editMode.done")}
+          className="border-2"
+        >
+          <Check aria-hidden="true" />
+          {t("editMode.end")}
+        </Button>
       </div>
-    </>
+    </div>
   );
 }

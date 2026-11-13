@@ -3,6 +3,7 @@ import { Dialog } from "radix-ui";
 import { type ReactNode } from "react";
 
 import { Confetti } from "../carnival/Confetti";
+import { EditModeStart } from "../content/EditMode";
 import { useSite } from "../content/blocks/SiteBlock";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
@@ -90,7 +91,14 @@ export function PhoneNav({
           <Menu aria-hidden="true" className="size-6" />
           {t("nav.menu")}
         </Dialog.Trigger>
-        <LanguageSwitch />
+        <div className="flex items-center gap-3">
+          {/* The margin grows the bar to 56px while the button is in it, so
+              the button and its shadow stay inside. With edit mode on the
+              button is gone and the bar is 44px again, which EditModeBar's
+              top-11 counts on. */}
+          <EditModeStart className="my-1.5" />
+          <LanguageSwitch />
+        </div>
       </div>
 
       <Dialog.Content

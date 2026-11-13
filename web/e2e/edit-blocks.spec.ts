@@ -39,14 +39,20 @@ test("the booking number is stored from the contact card on /committee, and Term
   const toast = page.locator("[data-sonner-toast]");
   await expect(toast.getByText("Modifié")).toBeVisible();
 
-  // Both sit at the bottom right. A toast over the pill swallows the click
-  // that ends edit mode, for as long as the pointer rests on it. Polled,
-  // because the toast is still sliding in when it becomes visible.
-  const pill = page.getByRole("button", { name: "Terminer la modification" });
+  // A toast over the button swallows the click that ends edit mode, for as
+  // long as the pointer rests on it. Polled, because the toast is still
+  // sliding in when it becomes visible.
+  const done = page.getByRole("button", { name: "Terminer la modification" });
   await expect
     .poll(async () => {
-      const [toastBox, pillBox] = [await toast.boundingBox(), await pill.boundingBox()];
-      return toastBox !== null && pillBox !== null && toastBox.y + toastBox.height <= pillBox.y;
+      const [toastBox, doneBox] = [await toast.boundingBox(), await done.boundingBox()];
+      if (toastBox === null || doneBox === null) return false;
+      return (
+        toastBox.y >= doneBox.y + doneBox.height ||
+        toastBox.y + toastBox.height <= doneBox.y ||
+        toastBox.x >= doneBox.x + doneBox.width ||
+        toastBox.x + toastBox.width <= doneBox.x
+      );
     })
     .toBe(true);
 
@@ -56,7 +62,8 @@ test("the booking number is stored from the contact card on /committee, and Term
   // A phone number is no text, so the card still has all its German (#359).
   await expect(chip.locator("[data-flag]")).toHaveCount(0);
 
-  // One element whose label changes, so it is the same button that ends it.
+  // The bar's button ends it, and focus moves to the header's button that
+  // takes its place.
   await page.getByRole("button", { name: "Terminer la modification" }).click();
   await expect(page.getByRole("button", { name: "Modifier la page" })).toBeFocused();
   await expect(page.getByRole("button", { name: /^Modifier : / })).toHaveCount(0);

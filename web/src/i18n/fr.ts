@@ -1826,10 +1826,16 @@ export const fr = {
     agenda: { hero: "Où nous voir · en-tête" },
   },
 
-  /** The floating pill that turns edit mode on and off on a public page (#106). */
+  /**
+   * The header button that turns edit mode on, and the bar shown while it is
+   * on, with the button that ends it (#106, #417).
+   */
   editMode: {
     start: "Modifier la page",
+    // The bar's button: `end` is what it shows, `done` its accessible name.
     done: "Terminer la modification",
+    end: "Terminer",
+    bar: "Mode édition",
     announceOn:
       "Mode édition activé : chaque bloc a un bouton Modifier. Les visiteurs ne le voient pas.",
     announceOff: "Mode édition désactivé.",

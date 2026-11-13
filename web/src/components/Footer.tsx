@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
 import { cn } from "@/lib/utils";
-import { useEditPillShown } from "../content/EditMode";
 import { ActionLink, shownActions } from "../content/blocks/ActionLink";
 import { useSite } from "../content/blocks/SiteBlock";
 import { SiteEditor } from "../content/blocks/SiteEditor";
@@ -58,19 +57,13 @@ export function Footer({ above }: { above: string | null }) {
   const site = useSite();
   const editing = useBlockEditing();
   const [editingSite, setEditingSite] = useState(false);
-  // The floating pill sits over the last 4rem of the page; keep it off the footer's own buttons.
-  const pillShown = useEditPillShown();
   const follow = networksOf(site.networks);
   const actions = shownActions(site.actions);
 
   return (
     <footer
       data-edit-block="site"
-      className={cn(
-        "relative bg-stage text-white",
-        above === null && "mt-16",
-        pillShown && "pb-20",
-      )}
+      className={cn("relative bg-stage text-white", above === null && "mt-16")}
     >
       <Scallop from={above ?? "var(--color-ground)"} />
       {editing ? (
