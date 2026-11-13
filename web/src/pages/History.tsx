@@ -1,14 +1,16 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { ACTION_STRIP_ROOM, ActionBar, ActionBarList } from "@ds";
 import { PageSection } from "@/components/PageSection";
 import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useHistoryEntryIndex } from "../api/generated/endpoints";
 import type { HistoryEntryResource } from "../api/generated/model";
+import { RAISED_CARD } from "../carnival/raised";
 import { HeroBlock } from "../content/blocks/HeroBlock";
-import { ChipButton, ChipLink, CHIP_ROOM } from "../content/editor/EditChip";
+import { ChipLink } from "../content/editor/EditChip";
 import { useEditMode } from "../content/EditMode";
 import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
 import { dateWithPreposition, historyDate, shownIn } from "../history/entry";
@@ -43,10 +45,10 @@ export type HistorySavedState = { historySaved: true; photoFailed?: boolean };
  * untitled entry still gets a heading. There is no date column, because the
  * page is text-width and a second column only narrows the text.
  *
- * The controls show in edit mode only, as chips like every other edit control
- * on the public pages (#106), and only with the permission: absent rather than
- * refused, like the planning's, because a link that leads to "Accès refusé"
- * reads as a broken site.
+ * The controls show in edit mode only, and only with the permission: absent
+ * rather than refused, like the planning's, because a link that leads to
+ * "Accès refusé" reads as a broken site. In edit mode each entry becomes a
+ * raised tile wearing an action strip (ADR 0043), as cards do.
  *
  * The longest page on the site, so the carnival look stops at the hero (ADR
  * 0029): the entries stay on plain cream, and the only colour below it is the
@@ -59,6 +61,8 @@ export function History() {
   const { on: editing } = useEditMode();
   const mayEdit = can("history.manage") && editing;
   const [deleting, setDeleting] = useState<HistoryEntryResource | null>(null);
+  // The entry last asked about, kept past the dialog's close for its focus.
+  const asked = useRef<number | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [photoFailed, setPhotoFailed] = useState(false);
   const location = useLocation();
@@ -122,16 +126,23 @@ export function History() {
         ) : null}
 
         {entries.length > 0 ? (
-          <ol data-testid="history-timeline" className="ml-5 border-l-2 border-line">
-            {entries.map((entry) => (
-              <TimelineEntry
-                key={entry.id}
-                entry={entry}
-                mayEdit={mayEdit}
-                onDelete={() => setDeleting(entry)}
-              />
-            ))}
-          </ol>
+          // One column, so every strip is as wide as the text and either all
+          // of their words fit or none.
+          <ActionBarList stacked>
+            <ol data-testid="history-timeline" className="ml-5 border-l-2 border-line">
+              {entries.map((entry) => (
+                <TimelineEntry
+                  key={entry.id}
+                  entry={entry}
+                  mayEdit={mayEdit}
+                  onDelete={() => {
+                    asked.current = entry.id;
+                    setDeleting(entry);
+                  }}
+                />
+              ))}
+            </ol>
+          </ActionBarList>
         ) : null}
 
         <DeleteHistoryEntry
@@ -142,6 +153,14 @@ export function History() {
           afterDelete={() => {
             document.getElementById(ADD_ID)?.focus();
             setAnnouncement(t("history.deleted"));
+          }}
+          // The dialog opens from ⋯'s menu, whose item is gone by then, so
+          // focus goes back to the ⋯ by hand.
+          afterCancel={() => {
+            if (asked.current === null) return;
+            document
+              .querySelector<HTMLElement>(`[data-entry-id="${asked.current}"] [data-action="more"]`)
+              ?.focus();
           }}
         />
       </PageSection>
@@ -171,20 +190,10 @@ function TimelineEntry({
   // and the controls are page copy, and would otherwise be read in the
   // entry's language.
   const textLang = shown.fallback ? shown.lang : undefined;
+  const navigate = useNavigate();
 
-  return (
-    // data-chip-scope: the block the chips are measured against (edit-blocks.spec.ts).
-    <li data-chip-scope className={cn("relative mb-block pl-8", mayEdit && CHIP_ROOM)}>
-      <TimelineMarker
-        important={entry.important}
-        icon={entry.icon}
-        className={cn(
-          "absolute left-0 -translate-x-[calc(50%+1px)]",
-          // Moves down with the entry's own text, which the chips' room pushes.
-          mayEdit ? "top-14" : "top-0",
-        )}
-      />
-
+  const text = (
+    <>
       {/* wrap-anywhere: a pasted URL or a German compound is one unbroken
           word that pushes the page sideways at 390px. Hyphenation only on
           the title, where Bungee's wide capitals need it; on ragged-right
@@ -225,25 +234,96 @@ function TimelineEntry({
           {shown.lang === "fr" ? t("history.inFrench") : t("history.inGerman")}
         </p>
       ) : null}
+    </>
+  );
 
+  return (
+    <li className="relative mb-block pl-8" data-entry-id={entry.id}>
+      <TimelineMarker
+        important={entry.important}
+        icon={entry.icon}
+        className={cn(
+          "absolute left-0 -translate-x-[calc(50%+1px)]",
+          // Level with the date, which the tile's border and strip push down.
+          mayEdit ? "top-[calc(4rem+3px)]" : "top-0",
+        )}
+      />
       {mayEdit ? (
-        <div className="absolute top-2 right-2 z-10 flex gap-tight">
-          <ChipLink
-            to={`/history/${entry.id}/edit`}
-            label={t("history.edit")}
-            ariaLabel={t("history.editAria", { name: rowName })}
-            icon={Pencil}
-            corner={false}
-            reveal
+        // data-chip-scope: the block the strip is measured against (edit-blocks.spec.ts).
+        <div data-chip-scope className={cn(RAISED_CARD, "relative p-5", ACTION_STRIP_ROOM)}>
+          <EntryStrip
+            name={rowName}
+            missingGerman={lacksGerman(entry)}
+            onEdit={() => void navigate(`/history/${entry.id}/edit`)}
+            onDelete={onDelete}
           />
-          <ChipButton
-            label={t("history.deleteAria", { name: rowName })}
-            word={t("history.delete")}
-            icon={Trash2}
-            onClick={onDelete}
-          />
+          {text}
         </div>
-      ) : null}
+      ) : (
+        text
+      )}
     </li>
   );
+}
+
+/**
+ * An entry's action strip in edit mode (ADR 0043): ⋯ ✎, with ✎ labelled.
+ * There are no arrows, because the year orders the entries. ⋯ holds
+ * Supprimer, which still asks first.
+ */
+function EntryStrip({
+  name,
+  missingGerman,
+  onEdit,
+  onDelete,
+}: {
+  name: string;
+  missingGerman: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const edit = t("history.editAria", { name });
+  return (
+    <ActionBar
+      look="strip"
+      label={name}
+      main="edit"
+      actions={[
+        {
+          id: "more",
+          label: t("history.more", { name }),
+          menu: [
+            {
+              id: "delete",
+              label: t("history.delete"),
+              icon: Trash2,
+              destructive: true,
+              onSelect: onDelete,
+            },
+          ],
+        },
+        {
+          id: "edit",
+          icon: Pencil,
+          word: t("history.edit"),
+          label: missingGerman ? t("blockEditor.missingGerman", { text: edit }) : edit,
+          flag: missingGerman,
+          onSelect: onEdit,
+        },
+      ]}
+      // A raised card's corner is 18px; the strip meets the inner edge of
+      // its 3px border.
+      className="rounded-t-[15px]"
+    />
+  );
+}
+
+/**
+ * Whether a text of the entry has French and no German. A German-only entry
+ * lacks nothing: the German page shows it as it is.
+ */
+function lacksGerman(entry: HistoryEntryResource): boolean {
+  const missing = (fr: string | null, de: string | null) =>
+    (fr ?? "").trim() !== "" && (de ?? "").trim() === "";
+  return missing(entry.titleFr, entry.titleDe) || missing(entry.bodyFr, entry.bodyDe);
 }

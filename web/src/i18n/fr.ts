@@ -1638,7 +1638,8 @@ export const fr = {
     delete: "Supprimer",
     // The accessible names, which carry the entry, in each language's word order.
     editAria: "Modifier {{name}}",
-    deleteAria: "Supprimer {{name}}",
+    // The entry's ⋯, which holds Supprimer.
+    more: "Plus d’actions : {{name}}",
     // Non-breaking spaces inside the guillemets and before the question mark,
     // so neither is ever left alone at the start of a line.
     deleteHeadingNamed: "Supprimer « {{title}} » ({{date}}) ?",

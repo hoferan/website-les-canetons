@@ -1236,7 +1236,7 @@ export const de: typeof fr = {
     edit: "Bearbeiten",
     delete: "Löschen",
     editAria: "{{name}} bearbeiten",
-    deleteAria: "{{name}} löschen",
+    more: "Weitere Aktionen: {{name}}",
     deleteHeadingNamed: "«{{title}}» ({{date}}) löschen?",
     deleteHeadingUntitled: "Den Eintrag {{of}} löschen?",
     deleteDescription: "Er verschwindet von der öffentlichen Seite.",
