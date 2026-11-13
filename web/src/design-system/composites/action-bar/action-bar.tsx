@@ -72,6 +72,12 @@ export type ActionBarProps = {
   main?: string;
   /** The black stage: a chip's shadow turns pink. */
   surface?: "page" | "stage";
+  /**
+   * A chip keeps its word on a phone too. By default a chip shows only icons
+   * below `sm`, since it floats over the block it edits; one placed in room
+   * of its own, such as at the end of a short line, can keep the word.
+   */
+  wordOnPhone?: boolean;
   className?: string;
 };
 
@@ -294,6 +300,7 @@ export function ActionBar({
   actions,
   main,
   surface = "page",
+  wordOnPhone = false,
   className,
 }: ActionBarProps) {
   const list = React.useContext(ListContext);
@@ -406,7 +413,10 @@ export function ActionBar({
                 : open
                   ? OPEN[look]
                   : cn(CLOSED[look], "px-0"),
-              open && action.flag && "justify-start pl-4",
+              // Only a segment wider than its content has room to give the
+              // flag. A chip's is as wide as its content, so the flag sits in
+              // its padding and the chip keeps its width.
+              open && action.flag && look !== "chip" && "justify-start pl-4",
               action.disabled ? "cursor-default" : HOVER[look],
               // Last, so it beats the hover colour: keyboard focus wins.
               "data-[focused]:bg-content data-[focused]:text-action-accent",
@@ -435,7 +445,7 @@ export function ActionBar({
                 className={cn(
                   "truncate",
                   action.disabled && "opacity-30",
-                  look === "chip" && "max-sm:hidden",
+                  look === "chip" && !wordOnPhone && "max-sm:hidden",
                 )}
               >
                 {action.word}

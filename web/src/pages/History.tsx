@@ -1,14 +1,13 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { ACTION_STRIP_ROOM, ActionBar, ActionBarList } from "@ds";
+import { ActionBar } from "@ds";
 import { PageSection } from "@/components/PageSection";
 import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useHistoryEntryIndex } from "../api/generated/endpoints";
 import type { HistoryEntryResource } from "../api/generated/model";
-import { RAISED_CARD } from "../carnival/raised";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { ChipLink } from "../content/editor/EditChip";
 import { useEditMode } from "../content/EditMode";
@@ -47,8 +46,9 @@ export type HistorySavedState = { historySaved: true; photoFailed?: boolean };
  *
  * The controls show in edit mode only, and only with the permission: absent
  * rather than refused, like the planning's, because a link that leads to
- * "Accès refusé" reads as a broken site. In edit mode each entry becomes a
- * raised tile wearing an action strip (ADR 0043), as cards do.
+ * "Accès refusé" reads as a broken site. In edit mode each entry gets a chip
+ * at the end of its date line (ADR 0043) and otherwise keeps the look a
+ * visitor sees.
  *
  * The longest page on the site, so the carnival look stops at the hero (ADR
  * 0029): the entries stay on plain cream, and the only colour below it is the
@@ -126,23 +126,19 @@ export function History() {
         ) : null}
 
         {entries.length > 0 ? (
-          // One column, so every strip is as wide as the text and either all
-          // of their words fit or none.
-          <ActionBarList stacked>
-            <ol data-testid="history-timeline" className="ml-5 border-l-2 border-line">
-              {entries.map((entry) => (
-                <TimelineEntry
-                  key={entry.id}
-                  entry={entry}
-                  mayEdit={mayEdit}
-                  onDelete={() => {
-                    asked.current = entry.id;
-                    setDeleting(entry);
-                  }}
-                />
-              ))}
-            </ol>
-          </ActionBarList>
+          <ol data-testid="history-timeline" className="ml-5 border-l-2 border-line">
+            {entries.map((entry) => (
+              <TimelineEntry
+                key={entry.id}
+                entry={entry}
+                mayEdit={mayEdit}
+                onDelete={() => {
+                  asked.current = entry.id;
+                  setDeleting(entry);
+                }}
+              />
+            ))}
+          </ol>
         ) : null}
 
         <DeleteHistoryEntry
@@ -200,7 +196,15 @@ function TimelineEntry({
           text it splits ordinary words at every width. */}
       <h2 className="wrap-anywhere">
         {entry.important ? <span className="sr-only">{t("history.importantPrefix")}</span> : null}
-        <span className="block text-sm font-semibold text-violet">
+        <span
+          className={cn(
+            "block text-sm font-semibold text-violet",
+            // The date line is as tall as the chip at its right end, so the
+            // title starts below it and the chip covers nothing. The date
+            // keeps to the bottom, next to its title.
+            mayEdit && "flex min-h-11 items-end",
+          )}
+        >
           {historyDate(entry.occurredOn, entry.precision, locale)}
         </span>
         {shown.title !== null ? (
@@ -238,40 +242,39 @@ function TimelineEntry({
   );
 
   return (
-    <li className="relative mb-block pl-8" data-entry-id={entry.id}>
+    // data-chip-scope: the entry's text, which edit-blocks.spec.ts checks the chip against.
+    <li className="relative mb-block pl-8" data-entry-id={entry.id} data-chip-scope>
       <TimelineMarker
         important={entry.important}
         icon={entry.icon}
         className={cn(
           "absolute left-0 -translate-x-[calc(50%+1px)]",
-          // Level with the date, which the tile's border and strip push down.
-          mayEdit ? "top-[calc(4rem+3px)]" : "top-0",
+          // Level with the date, which sits at the bottom of the chip's height.
+          mayEdit ? "top-6" : "top-0",
         )}
       />
       {mayEdit ? (
-        // data-chip-scope: the block the strip is measured against (edit-blocks.spec.ts).
-        <div data-chip-scope className={cn(RAISED_CARD, "relative p-5", ACTION_STRIP_ROOM)}>
-          <EntryStrip
+        <div className="absolute top-0 right-0">
+          <EntryChip
             name={rowName}
             missingGerman={lacksGerman(entry)}
             onEdit={() => void navigate(`/history/${entry.id}/edit`)}
             onDelete={onDelete}
           />
-          {text}
         </div>
-      ) : (
-        text
-      )}
+      ) : null}
+      {text}
     </li>
   );
 }
 
 /**
- * An entry's action strip in edit mode (ADR 0043): ⋯ ✎, with ✎ labelled.
- * There are no arrows, because the year orders the entries. ⋯ holds
- * Supprimer, which still asks first.
+ * An entry's chip in edit mode (ADR 0043): ⋯ ✎, with ✎ labelled, at the
+ * right end of the date line. A chip rather than a strip, so edit mode keeps
+ * the page a visitor reads. There are no arrows, because the year orders
+ * the entries. ⋯ holds Supprimer, which still asks first.
  */
-function EntryStrip({
+function EntryChip({
   name,
   missingGerman,
   onEdit,
@@ -285,9 +288,11 @@ function EntryStrip({
   const edit = t("history.editAria", { name });
   return (
     <ActionBar
-      look="strip"
+      look="chip"
       label={name}
       main="edit"
+      // The date is short, so the word fits beside it on a phone too.
+      wordOnPhone
       actions={[
         {
           id: "more",
@@ -311,9 +316,6 @@ function EntryStrip({
           onSelect: onEdit,
         },
       ]}
-      // A raised card's corner is 18px; the strip meets the inner edge of
-      // its 3px border.
-      className="rounded-t-[15px]"
     />
   );
 }

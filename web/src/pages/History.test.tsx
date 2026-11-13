@@ -23,7 +23,7 @@ async function renderHistory(
   return screen.findByTestId("history-timeline");
 }
 
-/** An entry's ⋯ on its action strip. */
+/** An entry's ⋯ on its chip. */
 const more = (name: string) =>
   screen.getByRole("button", { name: `Plus d’actions\u00a0: ${name}` });
 
@@ -166,7 +166,7 @@ test("a German-only entry on the French page is German, marked", async () => {
   expect(within(only).getByText("2020").closest('[lang="de-CH"]')).toBeNull();
 });
 
-test("the strip is named in the page's language and word order", async () => {
+test("the chip is named in the page's language and word order", async () => {
   const user = userEvent.setup();
   await renderHistory("de-CH", "demo.direction");
   expect(screen.getByRole("toolbar", { name: "Le flambeau passe" })).toBeInTheDocument();
@@ -260,16 +260,18 @@ test("no editing controls without history.manage", async () => {
   expect(screen.queryByRole("toolbar")).toBeNull();
 });
 
-test("an editor sees Ajouter, and a strip of ⋯ ✎ on every entry, with no arrows", async () => {
+test("an editor sees Ajouter, and a chip of ⋯ ✎ on every entry, with no arrows", async () => {
   await renderHistory("fr", "demo.direction");
   expect(screen.getByRole("link", { name: /Ajouter/ })).toHaveAttribute("href", "/history/new");
-  const strips = screen.getAllByRole("toolbar");
-  expect(strips).toHaveLength(4);
-  for (const strip of strips) {
-    expect(strip).toHaveAttribute("data-action-bar", "strip");
+  const chips = screen.getAllByRole("toolbar");
+  expect(chips).toHaveLength(4);
+  for (const chip of chips) {
+    expect(chip).toHaveAttribute("data-action-bar", "chip");
     expect(
-      [...strip.querySelectorAll("[data-action]")].map((b) => b.getAttribute("data-action")),
+      [...chip.querySelectorAll("[data-action]")].map((b) => b.getAttribute("data-action")),
     ).toEqual(["more", "edit"]);
+    // The date line has room for it, so a phone shows the word too.
+    expect(within(chip).getByText("Modifier")).not.toHaveClass("max-sm:hidden");
   }
   expect(screen.getByRole("toolbar", { name: "l’entrée de 2007" })).toBeInTheDocument();
 });

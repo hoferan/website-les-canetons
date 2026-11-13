@@ -38,8 +38,8 @@ The mock-ups are in [`0043/`](0043/): [`study.html`](0043/study.html) is the int
 
 `ActionBar` takes an ordered list of actions, the one that is the main action, and the items of its ⋯ menu. It renders one of three looks:
 
-- `chip`: a floating frame for a single block. In practice it holds only ✎, so it looks as it does today.
-- `strip`: a list item's top edge, a yellow strip under the item's top border with a dashed "perforation" below it. Used for cards (← → ⋯ ✎) and history entries (⋯ ✎, since their order is fixed by year).
+- `chip`: a floating frame for a single block, or for an item with no frame of its own, such as a history entry (⋯ ✎ at the end of its date line). Below `sm` a chip shows only its icons, since it floats over its block. One placed in room of its own keeps its word (`wordOnPhone`).
+- `strip`: a list item's top edge, a yellow strip under the item's top border with a dashed "perforation" below it. Used for cards (← → ⋯ ✎).
 - `row`: a quiet white bar inside an editor, for a line's ↑ ↓ ⋯.
 
 Every look follows the same rules:
@@ -115,3 +115,4 @@ The ink diagonal carries all of the contrast. Cyan on the bar's yellow is 1.08:1
 - ADR 0040 gives the buttons and the roll-up word that the bar's segments reuse. ADR 0042 gives the undo toast. ADR 0029 gives the look.
 - #360 (Dupliquer in the editor) is PR #374, which puts Dupliquer and Supprimer in the editor's header menu.
 - #379 builds `ActionBar` and the move hook. Then #380 moves the cards onto it, #381 the history entries, #382 the editor's lines and #383 the single blocks' pencils.
+- Amended on 2026-11-13 by #381: history entries wear a chip in place of a strip. A strip needs a framed item, so the entries had become raised tiles in edit mode, and the page the editor saw was no longer the one visitors read: the text narrowed and wrapped differently. Raising the entries for visitors as well was weighed and rejected, because ADR 0029 keeps the long pages calm and a card's padding narrows the text on a phone. A flagged chip is now as wide as an unflagged one, so a column of chips lines up.

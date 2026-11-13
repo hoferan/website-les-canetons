@@ -369,6 +369,39 @@ describe("the list", () => {
   });
 });
 
+describe("a chip", () => {
+  function Chip({ flag = false, wordOnPhone }: { flag?: boolean; wordOnPhone?: boolean }) {
+    return (
+      <ActionBar
+        look="chip"
+        label="Notre histoire"
+        main="edit"
+        actions={cardActions({ flag }).slice(2)}
+        wordOnPhone={wordOnPhone}
+      />
+    );
+  }
+
+  // jsdom applies no media query, so these read the classes that do.
+  test("hides its word on a phone, where it floats over its block", () => {
+    render(<Chip />);
+    expect(screen.getByText("Modifier")).toHaveClass("max-sm:hidden");
+  });
+
+  test("keeps its word on a phone when it has room of its own", () => {
+    render(<Chip wordOnPhone />);
+    expect(screen.getByText("Modifier")).not.toHaveClass("max-sm:hidden");
+  });
+
+  test("is as wide with the flag as without it, so a column of chips lines up", () => {
+    const { unmount } = render(<Chip />);
+    const plain = segment(/^Modifier/).className;
+    unmount();
+    render(<Chip flag />);
+    expect(segment(/^Modifier/).className).toBe(plain);
+  });
+});
+
 describe("accessibility", () => {
   test.each(["chip", "strip", "row"] as const)("the %s look has no axe violation", async (look) => {
     const { container } = render(<Card look={look} flag />);

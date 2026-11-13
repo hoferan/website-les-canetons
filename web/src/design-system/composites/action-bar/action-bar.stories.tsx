@@ -97,6 +97,11 @@ export const HistoryEntry: Story = { args: { actions: [more, edit()] } };
 /** A single block's chip. Below `sm` it shows only the pencil. */
 export const Chip: Story = { args: { look: "chip", actions: [edit()] } };
 
+/** A history entry's chip, at the end of its date line: it keeps its word on a phone. */
+export const ChipWithItsWord: Story = {
+  args: { look: "chip", actions: [more, edit(true)], wordOnPhone: true },
+};
+
 /** On the black stage the chip's shadow turns pink. */
 export const ChipOnTheStage: Story = {
   args: { look: "chip", surface: "stage", actions: [edit(true)] },
