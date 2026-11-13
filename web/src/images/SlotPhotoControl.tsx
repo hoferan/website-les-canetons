@@ -12,8 +12,8 @@ import {
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError } from "../components/FormField";
 import { buttonVariants } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
+import { EditChip } from "../content/editor/EditChip";
 import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 import { Photo, PHOTO_SIZES, type PhotoData } from "./Photo";
@@ -109,6 +109,10 @@ export function SlotPhotoControl({
   const [dropped, setDropped] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<string | null>(null);
   const control = useRef<HTMLButtonElement>(null);
+  // The placed photo's pencil is an action bar, which takes no ref; its
+  // button is found in the slot instead. Not on the dropzone's root, whose
+  // own ref a passed one would replace.
+  const frame = useRef<HTMLDivElement>(null);
   const refocus = useRef(false);
   const manages = can("images.manage");
   const placed = photo !== null;
@@ -121,7 +125,10 @@ export function SlotPhotoControl({
     refocus.current = false;
     const active = document.activeElement;
     if (active === null || active === document.body || !active.isConnected) {
-      control.current?.focus();
+      (
+        control.current ??
+        frame.current?.querySelector<HTMLButtonElement>("[data-action-bar] button")
+      )?.focus();
     }
   }, [placed]);
 
@@ -242,7 +249,7 @@ export function SlotPhotoControl({
   const name = t(photo === null ? "photos.addSlot" : "photos.changeSlot", { label });
 
   return (
-    <div className="mt-related">
+    <div ref={frame} className="mt-related">
       <div
         className="relative"
         {...(photo ? { "data-photo-frame": "" } : { "data-photo-pending": slot })}
@@ -282,22 +289,16 @@ export function SlotPhotoControl({
               sizes={PHOTO_SIZES.textColumn}
               className="block h-auto w-full rounded-lg"
             />
-            {/* Icon only on a phone (ADR 0025): the pencil means one thing and
-                the name says which slot. From sm up, hovering or focusing the
-                pencil rolls the word out. The raised yellow chip of every
-                block's "Modifier" (EditChip), whose ink outline reads on a
-                dark or a light photograph. */}
-            <IconButton
-              ref={control}
-              type="button"
-              icon={Pencil}
-              label={name}
+            {/* Every block's chip (ADR 0043), in the photo's bottom corner:
+                icon only on a phone, the word beside it from sm up. Its ink
+                outline reads on a dark or a light photograph. */}
+            <EditChip
+              label={label}
+              text={name}
               word={t("photos.change")}
-              mode="grow"
-              variant="accent"
-              aria-disabled={busy}
+              disabled={busy}
               onClick={open}
-              className="absolute right-2 bottom-2"
+              className="absolute right-2 bottom-2 z-10"
             />
           </>
         ) : (
@@ -312,7 +313,7 @@ export function SlotPhotoControl({
             className="group/add flex aspect-[3/2] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-violet/70 bg-violet/5 px-4 text-center text-ink outline-none transition-colors hover:border-violet hover:bg-violet/10 focus-visible:border-violet focus-visible:bg-violet/10 focus-visible:ring-[3px] focus-visible:ring-ring/40"
           >
             {/* The whole frame is the button; the chip inside it wears
-                EditChip's look, so an empty slot reads as one more thing to
+                the chip's yellow, so an empty slot reads as one more thing to
                 change in edit mode. A span, not a button: one control. */}
             <span
               className={cn(

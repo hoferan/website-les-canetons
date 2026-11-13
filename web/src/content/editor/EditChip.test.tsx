@@ -1,76 +1,43 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { Plus } from "lucide-react";
 import { expect, test, vi } from "vitest";
 
-import { ChipButton, ChipLink, EditChip } from "./EditChip";
+import { EditChip } from "./EditChip";
 
-test("a chip names the block it opens and shows 'Modifier' only on hover or focus from sm", () => {
+test("a chip is the action bar's chip, with one pencil that names the block it opens", () => {
   render(<EditChip label="Texte d'accueil" onClick={() => {}} />);
 
+  const bar = screen.getByRole("toolbar", { name: "Texte d'accueil" });
+  expect(bar).toHaveAttribute("data-action-bar", "chip");
   const chip = screen.getByRole("button", { name: "Modifier : Texte d'accueil" });
-  expect(chip).toHaveTextContent("Modifier");
+  expect(bar).toContainElement(chip);
+  expect(screen.getAllByRole("button")).toHaveLength(1);
+  // The main action: its word shows at rest, from sm up.
+  expect(chip).toHaveAttribute("data-main");
+  expect(screen.getByText("Modifier")).toHaveClass("max-sm:hidden");
   expect(chip.textContent).not.toContain(":");
-
-  // Closed to nothing, and opened from sm by hover or keyboard focus only.
-  const wrapper = screen.getByText("Modifier").parentElement;
-  expect(wrapper).toHaveClass(
-    "max-w-0",
-    "sm:group-hover/icon:max-w-56",
-    "sm:group-focus-visible/icon:max-w-56",
-  );
   expect(chip.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
 });
 
-test("a chip grows in place rather than showing a tip", () => {
-  render(<EditChip label="Texte d'accueil" onClick={() => {}} />);
-
-  expect(screen.getByRole("button")).toHaveAttribute("data-mode", "grow");
-});
-
-test("a reveal chip link is an icon-only link chip that grows", () => {
-  render(
-    <MemoryRouter>
-      <ChipLink
-        to="/history/1/edit"
-        label="Modifier"
-        ariaLabel="Modifier Carnaval 1990"
-        icon={Plus}
-        corner={false}
-        reveal
-      />
-    </MemoryRouter>,
-  );
-
-  const link = screen.getByRole("link", { name: "Modifier Carnaval 1990" });
-  expect(link).toHaveAttribute("href", "/history/1/edit");
-  expect(link).toHaveAttribute("data-mode", "grow");
-  expect(link).toHaveAttribute("data-chip", "link");
-  expect(link).not.toHaveClass("absolute");
-});
-
-test("the text prop is both the visible text and the accessible name", () => {
+test("the text prop is both the visible word and the accessible name", () => {
   render(<EditChip label="Infos du site" text="Modifier les infos du site" onClick={() => {}} />);
 
   const chip = screen.getByRole("button", { name: "Modifier les infos du site" });
   expect(chip).toHaveTextContent("Modifier les infos du site");
 });
 
-test("a block with a text missing its German wears the dot and says so", () => {
+test("a block with a text missing its German wears the corner flag and says so", () => {
   const { rerender } = render(<EditChip label="Texte d'accueil" onClick={() => {}} />);
   const plain = screen.getByRole("button", { name: "Modifier : Texte d'accueil" });
-  expect(plain).not.toHaveAttribute("data-missing-german");
-  expect(plain.parentElement!.querySelector("[aria-hidden].bg-cyan")).toBeNull();
+  expect(plain.querySelector("[data-flag]")).toBeNull();
 
   rerender(<EditChip label="Texte d'accueil" missingGerman onClick={() => {}} />);
   const chip = screen.getByRole("button", {
     name: "Modifier : Texte d'accueil (sans allemand)",
   });
-  expect(chip).toHaveAttribute("data-missing-german");
-  // The visible word stays short: a longer one pushed a card's arrows out.
+  // The visible word stays short; the name carries the flag's meaning.
   expect(chip.textContent).toBe("Modifier");
-  expect(chip.parentElement!.querySelector("[aria-hidden].bg-cyan")).not.toBeNull();
+  expect(chip.querySelector("[data-flag]")).toHaveAttribute("aria-hidden", "true");
 });
 
 test("a chip with its own text adds 'sans allemand' to it", () => {
@@ -83,57 +50,39 @@ test("a chip with its own text adds 'sans allemand' to it", () => {
     />,
   );
 
-  expect(
-    screen.getByRole("button", { name: "Modifier les infos du site (sans allemand)" }),
-  ).toHaveAttribute("data-missing-german");
+  const chip = screen.getByRole("button", {
+    name: "Modifier les infos du site (sans allemand)",
+  });
+  expect(chip.querySelector("[data-flag]")).not.toBeNull();
 });
 
-test("a chip sits inside its block's top right corner and calls onClick", async () => {
+test("a chip sits inside its block's top right corner unless placed, and calls onClick", async () => {
   const onClick = vi.fn();
-  render(<EditChip label="Bloc" onClick={onClick} />);
+  const { rerender } = render(<EditChip label="Bloc" onClick={onClick} />);
 
-  // The Indicator wrapper is the box the block lays out, so it takes the corner.
+  const bar = screen.getByRole("toolbar");
+  expect(bar).toHaveClass("absolute", "top-2", "right-2", "z-10");
+  await userEvent.click(screen.getByRole("button"));
+  expect(onClick).toHaveBeenCalledTimes(1);
+
+  rerender(<EditChip label="Bloc" className="absolute right-2 bottom-2" onClick={onClick} />);
+  expect(screen.getByRole("toolbar")).toHaveClass("bottom-2");
+  expect(screen.getByRole("toolbar")).not.toHaveClass("top-2");
+});
+
+test("on the black stage the chip's shadow turns pink", () => {
+  render(<EditChip label="Bloc" surface="stage" onClick={() => {}} />);
+
+  expect(screen.getByRole("toolbar")).toHaveClass("shadow-raised-stage");
+});
+
+test("a busy chip is marked rather than disabled, and ignores its clicks", async () => {
+  const onClick = vi.fn();
+  render(<EditChip label="Bloc" disabled onClick={onClick} />);
+
   const chip = screen.getByRole("button");
-  expect(chip.parentElement).toHaveClass("absolute", "top-2", "right-2");
-  expect(chip.parentElement).not.toHaveClass("-top-3");
+  expect(chip).toHaveAttribute("aria-disabled", "true");
+  expect(chip).toBeEnabled();
   await userEvent.click(chip);
-  expect(onClick).toHaveBeenCalledTimes(1);
-});
-
-test("a chip link shows its label and goes to its target", () => {
-  render(
-    <MemoryRouter>
-      <ChipLink label="Ajouter une entrée" to="/history/new" />
-    </MemoryRouter>,
-  );
-
-  const link = screen.getByRole("link", { name: "Ajouter une entrée" });
-  expect(link).toHaveAttribute("href", "/history/new");
-  expect(link).toHaveTextContent("Ajouter une entrée");
-  expect(link.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-});
-
-test("a chip button is icon only, named by its label, and clickable unless disabled", async () => {
-  const onClick = vi.fn();
-  const { rerender } = render(
-    <ChipButton label="Déplacer « Cloches » avant" word="Avant" icon={Plus} onClick={onClick} />,
-  );
-
-  const button = screen.getByRole("button", { name: "Déplacer « Cloches » avant" });
-  // Only the short word, which grows out on hover or focus.
-  expect(button.textContent).toBe("Avant");
-  expect(button).toHaveAttribute("data-mode", "grow");
-  expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-  await userEvent.click(button);
-  expect(onClick).toHaveBeenCalledTimes(1);
-
-  rerender(<ChipButton label="Monter" icon={Plus} onClick={onClick} disabled />);
-  const waiting = screen.getByRole("button", { name: "Monter" });
-  // Marked rather than disabled, so it keeps the keyboard's focus.
-  expect(waiting).toHaveAttribute("aria-disabled", "true");
-  expect(waiting).toBeEnabled();
-  waiting.focus();
-  await userEvent.keyboard("{Enter}");
-  expect(waiting).toHaveFocus();
-  expect(onClick).toHaveBeenCalledTimes(1);
+  expect(onClick).not.toHaveBeenCalled();
 });

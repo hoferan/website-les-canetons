@@ -113,8 +113,10 @@ test("the hero chip says when a text of the hero has no German", async () => {
     route: "/join",
   });
   expect(
-    screen.getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" }),
-  ).not.toHaveAttribute("data-missing-german");
+    screen
+      .getByRole("button", { name: "Modifier : Nous rejoindre · en-tête" })
+      .querySelector("[data-flag]"),
+  ).toBeNull();
   unmount();
 
   storeBlock("join.hero", {
@@ -122,11 +124,10 @@ test("the hero chip says when a text of the hero has no German", async () => {
     intro: { fr: "Viens !" },
   });
   await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
-  expect(
-    await screen.findByRole("button", {
-      name: "Modifier : Nous rejoindre · en-tête (sans allemand)",
-    }),
-  ).toHaveAttribute("data-missing-german");
+  const chip = await screen.findByRole("button", {
+    name: "Modifier : Nous rejoindre · en-tête (sans allemand)",
+  });
+  expect(chip.querySelector("[data-flag]")).not.toBeNull();
 });
 
 test("the hero chip edits title and intro together", async () => {

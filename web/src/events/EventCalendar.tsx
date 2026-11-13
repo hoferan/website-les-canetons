@@ -122,7 +122,6 @@ export function EventCalendar({
           type="button"
           icon={ChevronLeft}
           label={t("events.calendarGrid.previousMonth")}
-          mode="tip"
           size="sm"
           onClick={() => setMonth(shiftMonth(month, -1))}
         />
@@ -135,7 +134,6 @@ export function EventCalendar({
           type="button"
           icon={ChevronRight}
           label={t("events.calendarGrid.nextMonth")}
-          mode="tip"
           size="sm"
           onClick={() => setMonth(shiftMonth(month, 1))}
         />

@@ -135,39 +135,15 @@ export function DevUi() {
       </Block>
 
       <Block
-        title="Icône seule, puce qui s'ouvre (grow)"
-        note="Sur le fond sombre. La première puce montre son mot, la seconde est fermée."
+        title="EditChip"
+        note="Le crayon d'un bloc seul en mode édition : la puce de la barre d'actions (ADR 0043), en haut à droite du bloc. Son mot se montre dès sm, l'icône seule sur un téléphone."
       >
-        <Stage>
-          <div className="flex flex-wrap items-center gap-4">
-            <IconButton
-              icon={Pencil}
-              label="Modifier le bloc"
-              word="Modifier"
-              mode="grow"
-              variant="accent"
-              surface="stage"
-              showWord
-            />
-            <IconButton
-              icon={Pencil}
-              label="Modifier le titre"
-              word="Modifier"
-              mode="grow"
-              variant="accent"
-              surface="stage"
-            />
-          </div>
-        </Stage>
-        <p className="mt-4 text-sm text-muted-foreground">
-          EditChip, en haut à droite d&apos;un bloc (il montre son mot au survol) :
-        </p>
-        <div className="relative mt-2 min-h-24 rounded-xl border-3 border-dashed border-ink bg-white p-4 pt-14">
+        <div className="relative min-h-24 rounded-xl border-3 border-dashed border-ink bg-white p-4 pt-14">
           Un bloc éditable.
           <EditChip label="Bloc d'essai" onClick={() => undefined} />
         </div>
         <p className="mt-4 text-sm text-muted-foreground">
-          Le même, sur un bloc dont un texte n'a pas d'allemand (le point) :
+          Le même, sur un bloc dont un texte n'a pas d'allemand (le fanion) :
         </p>
         <div className="relative mt-2 min-h-24 rounded-xl border-3 border-dashed border-ink bg-white p-4 pt-14">
           Un bloc sans allemand.
@@ -187,7 +163,7 @@ export function DevUi() {
             <div className="flex flex-wrap items-center gap-5">
               {INDICATOR_COLORS.map((color) => (
                 <Indicator key={color} color={color}>
-                  <IconButton icon={Pencil} label={color} mode="grow" variant="accent" />
+                  <IconButton icon={Pencil} label={color} variant="accent" />
                 </Indicator>
               ))}
             </div>
@@ -199,14 +175,14 @@ export function DevUi() {
             <div className="flex flex-wrap items-center gap-5">
               {INDICATOR_SIZES.map((size) => (
                 <Indicator key={size} size={size}>
-                  <IconButton icon={Pencil} label={size} mode="grow" variant="accent" />
+                  <IconButton icon={Pencil} label={size} variant="accent" />
                 </Indicator>
               ))}
               <Indicator ring="white" color="danger">
-                <IconButton icon={Pencil} label="anneau blanc" mode="grow" variant="accent" />
+                <IconButton icon={Pencil} label="anneau blanc" variant="accent" />
               </Indicator>
               <Indicator ring="none" color="ink">
-                <IconButton icon={Pencil} label="sans anneau" mode="grow" variant="accent" />
+                <IconButton icon={Pencil} label="sans anneau" variant="accent" />
               </Indicator>
             </div>
           </div>
