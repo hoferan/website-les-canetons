@@ -49,7 +49,7 @@ export type HistorySavedState = { historySaved: true; photoFailed?: boolean };
  *
  * Each entry is a raised card like every other card on the site, opening on
  * its icon tile and its year, large, the landmark a reader scans by. A short
- * cord joins one card to the next under their tiles, in the gaps only, so the
+ * cord joins one card to the next down the middle, in the gaps only, so the
  * timeline starts at the first entry and ends at the last. There is no date
  * column, because the page is text-width and a second column only narrows
  * the text.
@@ -265,10 +265,9 @@ function TimelineEntry({
       data-entry-id={entry.id}
       className={cn(
         "relative",
-        // The cord to the next card: down from under this card's tile, in
-        // the gap only, so the timeline starts at the first card and ends at
-        // the last. 45px is the tile's centre: border, padding, half a tile.
-        "not-last:after:absolute not-last:after:top-full not-last:after:left-[43px] not-last:after:h-block not-last:after:w-1 not-last:after:bg-ink",
+        // The cord to the next card: down the middle, in the gap only, so
+        // the timeline starts at the first card and ends at the last.
+        "not-last:after:absolute not-last:after:top-full not-last:after:left-1/2 not-last:after:h-block not-last:after:w-1 not-last:after:-translate-x-1/2 not-last:after:bg-ink",
       )}
     >
       {/* data-chip-scope: the card whose text edit-blocks.spec.ts checks the strip against. */}
