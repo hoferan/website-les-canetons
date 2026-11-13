@@ -1,7 +1,7 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { ACTION_STRIP_ROOM, ActionBar, ActionBarList } from "@ds";
+import { ACTION_STRIP_ROOM, ActionBar, ActionBarList, Button } from "@ds";
 import { PageSection } from "@/components/PageSection";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,6 @@ import { useHistoryEntryIndex } from "../api/generated/endpoints";
 import type { HistoryEntryResource } from "../api/generated/model";
 import { RAISED_CARD } from "../carnival/raised";
 import { HeroBlock } from "../content/blocks/HeroBlock";
-import { ChipLink } from "../content/editor/EditChip";
 import { useEditMode } from "../content/EditMode";
 import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
 import {
@@ -22,22 +21,23 @@ import {
   shownIn,
 } from "../history/entry";
 import { EntryTile } from "../history/EntryTile";
+import type { HistoryDraft } from "../history/HistoryForm";
+import {
+  HistoryPanel,
+  historyEditTarget,
+  type HistoryOpened,
+  PANEL_MENU,
+} from "../history/HistoryPanel";
 import { currentLocale, t } from "../i18n";
-import { useNavigate } from "../i18n/routing";
-import { Photo, PHOTO_SIZES } from "../images/Photo";
+import { Photo, PHOTO_SIZES, type PhotoData } from "../images/Photo";
 import { historySlot, usePhotoSlots } from "../images/photoSlots";
-import { useLocation } from "react-router-dom";
 
 import { useSession } from "../session/SessionProvider";
 
 const ADD_ID = "history-add";
 
-/**
- * Set by the history form on its way back here. `photoFailed` means the entry
- * saved and its photo did not, which the form cannot report itself: it has
- * closed, because saving again would write the entry twice.
- */
-export type HistorySavedState = { historySaved: true; photoFailed?: boolean };
+/** The id the page gives a new entry while it is being written, so it sorts last on its date. */
+const NEW_ID = Number.MAX_SAFE_INTEGER;
 
 /**
  * The band's history as a vertical timeline (#104).
@@ -58,6 +58,12 @@ export type HistorySavedState = { historySaved: true; photoFailed?: boolean };
  * rather than refused, like the planning's, because a link that leads to
  * "Accès refusé" reads as a broken site. In edit mode each card wears the
  * action strip every card wears (ADR 0043).
+ *
+ * An entry is edited in the side panel every public page edits in (#419):
+ * ✎ opens it on the entry, "Ajouter" on a new one. While it is open the page
+ * is its preview: the card shows what is typed, a new one appears at its
+ * place on the timeline, a changed date moves it, and the page's own controls
+ * go, so what shows is what a visitor would see.
  */
 export function History() {
   const { can } = useSession();
@@ -65,30 +71,59 @@ export function History() {
   const entries = rowsOf<HistoryEntryResource>(list.data);
   const { on: editing } = useEditMode();
   const mayEdit = can("history.manage") && editing;
+  const [opened, setOpened] = useState<HistoryOpened | null>(null);
+  const [draft, setDraft] = useState<HistoryDraft | null>(null);
+  const controls = mayEdit && opened === null;
   const [deleting, setDeleting] = useState<HistoryEntryResource | null>(null);
   // The entry last asked about, kept past the dialog's close for its focus.
   const asked = useRef<number | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [photoFailed, setPhotoFailed] = useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
+  // What takes focus once the panel has closed and the page's controls are
+  // back: the card's ✎, or "Ajouter" for a new entry or a deleted one.
+  const returnTo = useRef<string | null>(null);
 
-  // A save arrives as history state from the form. It is set after mount into
-  // a live region that already exists, which is what gets it read out, then
-  // cleared from the history entry so a reload or Back does not repeat it.
-  // SeriesCreatedNotice does the same for the planning.
+  const open = (next: HistoryOpened) => {
+    setPhotoFailed(false);
+    setDraft(null);
+    setOpened(next);
+  };
+  const close = () => {
+    returnTo.current =
+      opened?.kind === "edit"
+        ? `[data-entry-id="${opened.id}"] [data-action="edit"]`
+        : `#${ADD_ID}`;
+    setOpened(null);
+    setDraft(null);
+  };
+
   useEffect(() => {
-    const saved = location.state as HistorySavedState | null;
-    if (saved?.historySaved !== true) {
-      return;
-    }
-    setAnnouncement(t("history.saved"));
-    setPhotoFailed(saved.photoFailed === true);
-    void navigate(
-      { pathname: location.pathname, search: location.search },
-      { replace: true, state: null },
-    );
-  }, [location, navigate]);
+    if (opened !== null || returnTo.current === null) return;
+    document.querySelector<HTMLElement>(returnTo.current)?.focus();
+    returnTo.current = null;
+  }, [opened]);
+
+  // The entries as the page shows them: the one being edited as typed, or a
+  // new one at its date, sorted as the server sorts them.
+  const rows = useMemo(() => {
+    if (opened === null || draft === null) return entries;
+    const fields = {
+      occurredOn: draft.occurredOn,
+      precision: draft.precision,
+      titleFr: draft.titleFr,
+      bodyFr: draft.bodyFr,
+      titleDe: draft.titleDe,
+      bodyDe: draft.bodyDe,
+      important: draft.important,
+      icon: draft.icon,
+    };
+    const next =
+      opened.kind === "edit"
+        ? entries.map((entry) => (entry.id === opened.id ? { ...entry, ...fields } : entry))
+        : [...entries, { ...fields, id: NEW_ID, createdAt: "", updatedAt: "" }];
+    return next.sort((a, b) => a.occurredOn.localeCompare(b.occurredOn) || a.id - b.id);
+  }, [entries, opened, draft]);
+  const draftId = opened === null ? null : opened.kind === "edit" ? opened.id : NEW_ID;
 
   return (
     <>
@@ -100,17 +135,20 @@ export function History() {
         </p>
         {/* The committee's tool, so it sits on the cream under the hero rather
             than on the poster with the heading a visitor reads. */}
-        {mayEdit ? (
+        {controls ? (
           <div className="mb-block flex justify-end">
-            <ChipLink
-              to="/history/new"
-              label={t("history.add")}
-              ariaLabel={t("history.addAria")}
-              icon={Plus}
-              corner={false}
-              iconFirst
+            <Button
               id={ADD_ID}
-            />
+              type="button"
+              variant="accent"
+              size="sm"
+              className="px-3"
+              aria-label={t("history.addAria")}
+              onClick={() => open({ kind: "new" })}
+            >
+              <Plus aria-hidden="true" />
+              {t("history.add")}
+            </Button>
           </div>
         ) : null}
 
@@ -126,19 +164,22 @@ export function History() {
             {t("history.loadFailed")}
           </p>
         ) : null}
-        {list.isSuccess && entries.length === 0 ? (
+        {list.isSuccess && rows.length === 0 ? (
           <p className="text-ink-muted">{t("history.empty")}</p>
         ) : null}
 
-        {entries.length > 0 ? (
+        {rows.length > 0 ? (
           // One column, so the strips decide together whether their words fit.
           <ActionBarList stacked>
             <ol data-testid="history-timeline" className="flex flex-col gap-block">
-              {entries.map((entry) => (
+              {rows.map((entry) => (
                 <TimelineEntry
                   key={entry.id}
                   entry={entry}
-                  mayEdit={mayEdit}
+                  mayEdit={controls}
+                  // As picked in the panel; undefined keeps the entry's slot.
+                  photo={entry.id === draftId ? draft?.photo : undefined}
+                  onEdit={() => open({ kind: "edit", id: entry.id })}
                   onDelete={() => {
                     asked.current = entry.id;
                     setDeleting(entry);
@@ -149,21 +190,47 @@ export function History() {
           </ActionBarList>
         ) : null}
 
+        <HistoryPanel
+          opened={opened}
+          onClose={close}
+          onSaved={(failed) => {
+            close();
+            setAnnouncement(t("history.saved"));
+            setPhotoFailed(failed);
+          }}
+          onDraft={setDraft}
+          onDelete={(entry) => {
+            asked.current = entry.id;
+            setDeleting(entry);
+          }}
+        />
+
         <DeleteHistoryEntry
           entry={deleting}
           onClose={() => setDeleting(null)}
           // The entry and its button are gone, so focus goes to the one
-          // control that is always there for an editor.
+          // control that is always there for an editor, once the panel the
+          // delete may have been asked from has closed.
           afterDelete={() => {
-            document.getElementById(ADD_ID)?.focus();
             setAnnouncement(t("history.deleted"));
+            if (opened === null) {
+              document.getElementById(ADD_ID)?.focus();
+              return;
+            }
+            returnTo.current = `#${ADD_ID}`;
+            setOpened(null);
+            setDraft(null);
           }}
-          // The dialog opens from ⋯'s menu, whose item is gone by then, so
-          // focus goes back to the ⋯ by hand.
+          // The dialog opens from a ⋯ menu, whose item is gone by then, so
+          // focus goes back to that ⋯ by hand: the panel's, or the card's.
           afterCancel={() => {
             if (asked.current === null) return;
             document
-              .querySelector<HTMLElement>(`[data-entry-id="${asked.current}"] [data-action="more"]`)
+              .querySelector<HTMLElement>(
+                opened === null
+                  ? `[data-entry-id="${asked.current}"] [data-action="more"]`
+                  : `[data-history-menu="${PANEL_MENU}"]`,
+              )
               ?.focus();
           }}
         />
@@ -175,16 +242,22 @@ export function History() {
 function TimelineEntry({
   entry,
   mayEdit,
+  photo: picked,
+  onEdit,
   onDelete,
 }: {
   entry: HistoryEntryResource;
   mayEdit: boolean;
+  /** The photo picked in the open panel; undefined shows the entry's slot. */
+  photo: PhotoData | null | undefined;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const locale = currentLocale();
   const shown = shownIn(entry, locale);
   // The entry's photo is its photo slot's; the slots are read once per page.
-  const photo = usePhotoSlots().photoOf(historySlot(entry.id));
+  const stored = usePhotoSlots().photoOf(historySlot(entry.id));
+  const photo = picked === undefined ? stored : picked;
   const rowName =
     shown.title ??
     t("history.untitledEntry", {
@@ -194,7 +267,6 @@ function TimelineEntry({
   // and the controls are page copy, and would otherwise be read in the
   // entry's language.
   const textLang = shown.fallback ? shown.lang : undefined;
-  const navigate = useNavigate();
 
   const date = historyDate(entry.occurredOn, entry.precision, locale);
   const detail = historyDetail(entry.occurredOn, entry.precision, locale);
@@ -273,13 +345,17 @@ function TimelineEntry({
       {/* data-chip-scope: the card whose text edit-blocks.spec.ts checks the strip against. */}
       <Card
         data-chip-scope
+        // What the open panel keeps clear of its fade.
+        data-edit-block={historyEditTarget(
+          entry.id === NEW_ID ? { kind: "new" } : { kind: "edit", id: entry.id },
+        )}
         className={cn(RAISED_CARD, "relative gap-0 p-5", mayEdit && ACTION_STRIP_ROOM)}
       >
         {mayEdit ? (
           <EntryStrip
             name={rowName}
             missingGerman={lacksGerman(entry)}
-            onEdit={() => void navigate(`/history/${entry.id}/edit`)}
+            onEdit={onEdit}
             onDelete={onDelete}
           />
         ) : null}

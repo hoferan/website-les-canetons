@@ -1678,7 +1678,7 @@ export const fr = {
     },
   },
 
-  /** The history editor, /history/new and /history/:id/edit. Field labels are `fields.*`. */
+  /** The history editor, in the side panel on /history (#419). Field labels are `fields.*`. */
   historyForm: {
     newHeading: "Nouvelle entrée",
     editHeading: "Modifier l’entrée",

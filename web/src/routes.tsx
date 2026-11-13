@@ -23,8 +23,6 @@ import { EventSeriesNew } from "./pages/EventSeriesNew";
 import { EventTags } from "./pages/EventTags";
 import { Events } from "./pages/Events";
 import { History } from "./pages/History";
-import { HistoryEdit } from "./pages/HistoryEdit";
-import { HistoryNew } from "./pages/HistoryNew";
 import { Home } from "./pages/Home";
 import { Inbox } from "./pages/Inbox";
 import { Join } from "./pages/Join";
@@ -163,11 +161,6 @@ export function AppRoutes() {
             <Route path="/members" element={<Members />} />
             {/* Whoever puts somebody in a register decides which exist. */}
             <Route path="/registers" element={<Registers />} />
-          </Route>
-
-          <Route element={<RequirePermission permission="history.manage" />}>
-            <Route path="/history/new" element={<HistoryNew />} />
-            <Route path="/history/:id/edit" element={<HistoryEdit />} />
           </Route>
 
           {/* The worklist across every open source, for anybody who may see

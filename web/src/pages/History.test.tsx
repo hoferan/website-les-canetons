@@ -87,14 +87,14 @@ test("the importance is announced in the page's own punctuation", async () => {
 
 test("Ajouter says what it adds to", async () => {
   await renderHistory("fr", "demo.direction");
-  expect(screen.getByRole("link", { name: "Ajouter à l’histoire" })).toHaveTextContent("Ajouter");
+  expect(screen.getByRole("button", { name: "Ajouter à l’histoire" })).toHaveTextContent("Ajouter");
 });
 
 test("Ajouter leads with its plus, as every add control does", async () => {
   await renderHistory("fr", "demo.direction");
-  const add = screen.getByRole("link", { name: "Ajouter à l’histoire" });
-  expect(add.firstElementChild?.tagName.toLowerCase()).toBe("svg");
-  expect(add.lastElementChild).toHaveTextContent("Ajouter");
+  const add = screen.getByRole("button", { name: "Ajouter à l’histoire" });
+  expect(add.firstChild?.nodeName.toLowerCase()).toBe("svg");
+  expect(add.lastChild).toHaveTextContent("Ajouter");
 });
 
 test("the delete dialog names the entry it deletes", async () => {
@@ -126,7 +126,7 @@ test("cancelling a delete gives focus back to the entry's ⋯, and a delete to A
   const dialog = await screen.findByRole("alertdialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
   await expect.poll(() => screen.queryByText("Le flambeau passe")).toBeNull();
-  expect(screen.getByRole("link", { name: "Ajouter à l’histoire" })).toHaveFocus();
+  expect(screen.getByRole("button", { name: "Ajouter à l’histoire" })).toHaveFocus();
 });
 
 test("an important entry says so to a screen reader", async () => {
@@ -277,13 +277,13 @@ test("a delete confirmed after somebody changed the entry is refused, and says s
 
 test("no editing controls without history.manage", async () => {
   await renderHistory("fr", "demo.player");
-  expect(screen.queryByRole("link", { name: /Ajouter/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Ajouter/ })).toBeNull();
   expect(screen.queryByRole("toolbar")).toBeNull();
 });
 
 test("an editor sees Ajouter, and a strip of ⋯ ✎ on every card, with no arrows", async () => {
   await renderHistory("fr", "demo.direction");
-  expect(screen.getByRole("link", { name: /Ajouter/ })).toHaveAttribute("href", "/history/new");
+  expect(screen.getByRole("button", { name: /Ajouter/ })).toBeInTheDocument();
   const strips = screen.getAllByRole("toolbar");
   expect(strips).toHaveLength(4);
   for (const strip of strips) {
@@ -295,7 +295,8 @@ test("an editor sees Ajouter, and a strip of ⋯ ✎ on every card, with no arro
   expect(screen.getByRole("toolbar", { name: "l’entrée de 2007" })).toBeInTheDocument();
 });
 
-test("✎ leads to the entry's own edit page", async () => {
+/** #419: the entry is edited in the side panel, on this page, like every block. */
+test("✎ opens the entry in the side panel, on the page itself", async () => {
   const user = userEvent.setup();
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   setMockUser("demo.direction");
@@ -304,7 +305,11 @@ test("✎ leads to the entry's own edit page", async () => {
   await user.click(
     screen.getByRole("button", { name: "Modifier l’entrée de 2007 (sans allemand)" }),
   );
-  expect(router.state.location.pathname).toBe("/history/2/edit");
+  expect(await screen.findByRole("dialog", { name: /Histoire · l’entrée de 2007/ })).toBeVisible();
+  expect(await screen.findByLabelText("Texte en français")).toHaveValue(
+    "Dès la saison 2007/2008, les Directeurs (tous d’anciens Canetons) se sont succédé.",
+  );
+  expect(router.state.location.pathname).toBe("/history");
 });
 
 test("deleting an entry removes it after the confirmation", async () => {
@@ -401,19 +406,8 @@ test("an entry with a photo shows it named after the entry, and the others show 
   expect(within(timeline).getAllByRole("img")).toHaveLength(1);
 });
 
-test("an entry saved without its photo says so where the editor lands", async () => {
-  setMockUser("demo.direction");
-  await renderWithSession(<History />, {
-    route: "/history",
-    state: { historySaved: true, photoFailed: true },
-  });
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "L’entrée est enregistrée, mais pas sa photo.",
-  );
-});
-
 test("an editor outside edit mode sees the timeline and none of its controls", async () => {
   await renderHistory("fr", "demo.direction", false);
-  expect(screen.queryByRole("link", { name: /Ajouter/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Ajouter/ })).toBeNull();
   expect(screen.queryByRole("toolbar")).toBeNull();
 });
