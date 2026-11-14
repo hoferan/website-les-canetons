@@ -46,8 +46,8 @@ const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
  * The front door.
  *
  * The hero copy condenses /history; nothing factual is invented anywhere on
- * this site (hence `<Tbd />`). If the band writes a few sentences about
- * themselves, those replace it.
+ * this site. If the band writes a few sentences about themselves, those
+ * replace it.
  *
  * No tutoiement. /join addresses children directly ("Tu veux commencer la
  * guggen ?"), but the front door is read by parents and children both.

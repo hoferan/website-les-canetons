@@ -222,7 +222,8 @@ What this fixes:
   transaction, or its image would stay in use by a slot no page shows.
 - Every photograph the site shows is in a slot, the godparents' included;
   only the logo is a static file. An empty slot shows the one-line
-  placeholder to visitors.
+  placeholder to visitors. *Amended by ADR 0048: a visitor gets nothing in
+  an empty slot, and the placeholder shows in edit mode only.*
 - One shared library, and a photo can be in several slots. Deleting a photo
   that any slot still shows is refused with `image_in_use`, whatever the slot
   is; the RESTRICT foreign key from `photo_slots` to `images` is the backstop.
