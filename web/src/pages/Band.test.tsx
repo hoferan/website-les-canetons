@@ -144,13 +144,30 @@ test("keeps the French name on the French page", async () => {
   expect(await screen.findByRole("article", { name: "Lyre" })).toBeInTheDocument();
 });
 
-test("shows the German photo placeholder in every empty slot", async () => {
+test("a visitor reads no photo placeholder in any empty slot", async () => {
+  server.use(
+    http.get("/api/v1/photo-slots", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
+  const { container } = await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
+
+  await screen.findByRole("article", { name: "Lyre" });
+  await waitFor(() => expect(container.querySelector("[data-photo-reserved]")).toBeNull());
+  expect(container.querySelector("[data-photo-pending]")).toBeNull();
+  expect(container).not.toHaveTextContent(/Foto folgt/);
+});
+
+/** Changing the page but not its photos, so the line rather than the add frame. */
+test("in edit mode, shows the German photo placeholder in every empty slot", async () => {
   // The mock places a band photo, which would replace the placeholder.
   server.use(
     http.get("/api/v1/photo-slots", () =>
       HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
     ),
   );
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
   await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
 
   // One sentence for every slot, so the band and each register read the same.
@@ -170,7 +187,7 @@ test("shows the placed band photo and no band placeholder", async () => {
   expect(container.querySelector('[data-photo-pending="band"]')).toBeNull();
 });
 
-test("shows a register's photo in place of its placeholder, and keeps the placeholder elsewhere", async () => {
+test("shows a register's photo, and a visitor nothing where none is placed", async () => {
   await renderWithSession(<Band />, { route: "/band" });
 
   const trumpets = await screen.findByRole("article", { name: "Trompettes" });
@@ -179,15 +196,18 @@ test("shows a register's photo in place of its placeholder, and keeps the placeh
 
   const bells = screen.getByRole("article", { name: "Cloches" });
   expect(within(bells).queryByRole("img")).not.toBeInTheDocument();
-  expect(bells.querySelector('[data-photo-pending="register-4"]')).not.toBeNull();
+  expect(bells.querySelector("[data-photo-pending]")).toBeNull();
+  expect(bells.querySelector("[data-photo-reserved]")).toBeNull();
 });
 
-test("keeps the band placeholder when no band photo is placed", async () => {
+test("in edit mode, keeps the band placeholder when no band photo is placed", async () => {
   server.use(
     http.get("/api/v1/photo-slots", () =>
       HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
     ),
   );
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
   const { container } = await renderWithSession(<Band />, { route: "/band" });
 
   await screen.findByRole("article", { name: "Cloches" });
@@ -208,13 +228,14 @@ test("reserves the band frame, without a caption, while the photo slots are stil
   expect(reserved).toBeEmptyDOMElement();
 });
 
-test("keeps the band placeholder when the photo slots cannot be read", async () => {
+/** A failed read must not leave the reserved frame standing for good. */
+test("a visitor gets nothing, not a frame, when the photo slots cannot be read", async () => {
   server.use(http.get("/api/v1/photo-slots", () => HttpResponse.error()));
   const { container } = await renderWithSession(<Band />, { route: "/band" });
 
-  await waitFor(() =>
-    expect(container.querySelector('[data-photo-pending="band"]')).not.toBeNull(),
-  );
+  await screen.findByRole("article", { name: "Cloches" });
+  await waitFor(() => expect(container.querySelector("[data-photo-reserved]")).toBeNull());
+  expect(container.querySelector("[data-photo-pending]")).toBeNull();
 });
 
 /**
@@ -263,6 +284,18 @@ test("the godparents' card is a card with its title, photo slot and names", asyn
   expect(
     within(card as HTMLElement).getByText("Richard Hertig et Annick Bürgisser"),
   ).toBeInTheDocument();
+  // No photo placed: a visitor reads nothing where it would go.
+  await waitFor(() => expect(card.querySelector("[data-photo-reserved]")).toBeNull());
+  expect(card.querySelector("[data-photo-pending]")).toBeNull();
+});
+
+test("in edit mode the godparents' card shows its empty photo slot", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
+  await renderWithSession(<Band />, { route: "/band" });
+
+  const heading = await screen.findByRole("heading", { name: "Le parrain et la marraine" });
+  const card = heading.closest("[data-slot='card']")!;
   await waitFor(() =>
     expect(card.querySelector("[data-photo-pending='band.godparents.godparents']")).not.toBeNull(),
   );

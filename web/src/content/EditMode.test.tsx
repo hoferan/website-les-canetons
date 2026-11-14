@@ -125,10 +125,9 @@ test("with edit mode off, a photo manager sees the visitor's page", async () => 
   setMockUser("demo.direction");
   await renderWithSession(<Band />, { route: "/band" });
 
-  await screen.findAllByText("Photo à venir");
-  expect(
-    document.querySelector("[data-photo-pending='band.godparents.godparents']"),
-  ).not.toBeNull();
+  // The placed Trompettes photo says the slots have answered.
+  await screen.findByRole("img", { name: "Trompettes" });
+  expect(document.querySelector("[data-photo-pending]")).toBeNull();
   expect(screen.queryByRole("button", { name: /Ajouter une photo/ })).toBeNull();
 });
 

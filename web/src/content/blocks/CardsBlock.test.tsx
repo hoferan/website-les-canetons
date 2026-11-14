@@ -710,6 +710,10 @@ test("a card with a photo shows the slot named by its block and id, and others d
       BLOCKS["join.facts"].defaults().cards[1],
     ],
   });
+  // The empty slot shows as its placeholder line, which needs edit mode, and
+  // no images.manage, which would draw the add frame instead (ADR 0048).
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
   await screen.findByRole("heading", { name: "Instruments recherchés" });
