@@ -1891,6 +1891,13 @@ export const fr = {
     up: "Monter",
     down: "Descendre",
     remove: "Supprimer",
+    // A line inside a block's editor wears the action bar's row look (ADR 0043).
+    lineActions: "Actions de la ligne",
+    lineMore: "Plus d’actions",
+    duplicateLine: "Dupliquer la ligne",
+    removeLine: "Supprimer la ligne",
+    // Said once a line has moved.
+    lineMoved: "Position {{n}} sur {{count}}",
     addRow: "Ajouter une ligne",
     addCard: "Ajouter une carte",
     // Beside the add button once a grid holds as many cards as the server takes.

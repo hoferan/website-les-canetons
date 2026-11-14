@@ -6,6 +6,7 @@ import { afterEach, expect, test } from "vitest";
 
 import { setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";
+import { removeLine } from "../../test/lineControls";
 import { recordBlockPuts, storeBlock } from "../../test/renderBlockEditor";
 import { renderWithSession } from "../../test/renderWithSession";
 import { EDIT_MODE_KEY } from "../EditMode";
@@ -305,7 +306,7 @@ test("the editor offers two buttons at most", async () => {
   const dialog = await openEditor(user);
 
   expect(within(dialog).queryByRole("button", { name: "Ajouter un bouton" })).toBeNull();
-  await user.click(within(dialog).getAllByRole("button", { name: "Supprimer" })[1]!);
+  await removeLine(user, within(dialog).getAllByRole("listitem")[1]!);
   expect(within(dialog).getByRole("button", { name: "Ajouter un bouton" })).toBeInTheDocument();
 });
 
@@ -346,7 +347,7 @@ test("removing every button stores a hero without any", async () => {
   const dialog = await openEditor(user);
 
   for (let i = 0; i < 2; i++) {
-    await user.click(within(dialog).getAllByRole("button", { name: "Supprimer" })[0]!);
+    await removeLine(user, within(dialog).getAllByRole("listitem")[0]!);
   }
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
@@ -366,7 +367,7 @@ test("removing the home hero's shipped buttons stores an empty list, not the shi
   await user.click(screen.getByRole("button", { name: "Modifier : Accueil · en-tête" }));
   const dialog = await screen.findByRole("dialog");
   for (let i = 0; i < 2; i++) {
-    await user.click(within(dialog).getAllByRole("button", { name: "Supprimer" })[0]!);
+    await removeLine(user, within(dialog).getAllByRole("listitem")[0]!);
   }
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 

@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 
 import { setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";
+import { removeLine } from "../../test/lineControls";
 import { recordBlockPuts, storeBlock } from "../../test/renderBlockEditor";
 import { renderWithSession } from "../../test/renderWithSession";
 import { BLOCKS } from "../registry";
@@ -68,7 +69,7 @@ test("the site editor changes the name, drops a network and saves", async () => 
   const facebook = within(within(dialog).getByRole("group", { name: "Réseaux" })).getAllByRole(
     "listitem",
   )[1]!;
-  await user.click(within(facebook).getByRole("button", { name: "Supprimer" }));
+  await removeLine(user, facebook);
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
   await expect.poll(() => puts).toHaveLength(1);
