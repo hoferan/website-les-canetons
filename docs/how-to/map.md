@@ -74,14 +74,15 @@ what it cannot, such as the ESLint access rule below.
 | `tests-api` | The Laravel suite on MariaDB 10.3 | Regressions, and every contract test below |
 | `assets` | Node tests, `tsc`, Vitest, ESLint, Stylelint, Prettier, the image budget | Front-end and tooling regressions |
 | `e2e` | Playwright against the mocked backend, including an accessibility pass | Broken routing, route guards and rendering in a real browser |
-| `guard` | `tools/secret-guard.mjs` | A committed `config.php`, `.env` or database dump. Runs even on docs-only changes |
+| `guard` | `tools/secret-guard.mjs` | A committed `config.php`, `.env` or database dump. Runs even on changes that skip the rest (`tools/ci-changes.mjs`) |
 | `build` | `npm run build`, then checks both halves exist | The build-order bug that drops `_api/` from the artifact |
 | `openapi-drift` | Regenerates `openapi.json` and the client, `git diff --exit-code`, Redocly lint | A contract or client that is stale or was edited by hand |
 | `pr-title` | Conventional Commits check | A title that would make a bad merge subject |
 | `all-green` | `tools/all-green.mjs` | The only required check. Fails if any job is not green, so nothing merges past a red or cancelled job |
 | `deploy-test` | Checks the artifact's checksums, then deploys TEST | Files lost between the build and the upload, which the mirror would otherwise delete from TEST |
 
-A change that touches only `docs/` skips most jobs. `preview.yml` and
+A change that touches only `docs/`, `.claude/` or GitHub's templates skips
+most jobs; the full list is `SKIPPABLE` in `tools/ci-changes.mjs`. `preview.yml` and
 `lighthouse.yml` run on pull requests too, but they only report and never
 block. `preview.yml` publishes the PR's SPA against the mocked backend on
 GitHub Pages and links it from a comment on the PR.

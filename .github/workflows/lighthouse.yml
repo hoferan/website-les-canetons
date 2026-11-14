@@ -11,14 +11,30 @@ name: Lighthouse
 # ci.yml, and is a decision of its own.
 #
 # `paths-ignore` is safe here, unlike in ci.yml: nothing waits on this check,
-# so a docs-only change that never starts it leaves nothing pending.
+# so a change that never starts it leaves nothing pending.
 
+# The same paths ci.yml's `changes` job skips on: SKIPPABLE in
+# tools/ci-changes.mjs, whose test keeps both lists equal.
 on:
   push:
     branches: [main]
-    paths-ignore: ["docs/**"]
+    paths-ignore:
+      - "docs/**"
+      - ".claude/**"
+      - ".husky/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".github/labels.md"
+      - ".github/dependabot.yml"
   pull_request:
-    paths-ignore: ["docs/**"]
+    paths-ignore:
+      - "docs/**"
+      - ".claude/**"
+      - ".husky/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".github/labels.md"
+      - ".github/dependabot.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

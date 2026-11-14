@@ -25,27 +25,27 @@ permissions:
 # default is six hours and a hung FTP session or browser would use all of it.
 
 jobs:
-  # Is there anything outside docs/ in this change?
+  # Does this change touch anything the pipeline could catch a mistake in?
   #
-  # A docs-only change cannot break the build, the API or the browser, so making
-  # it wait through six jobs and then DEPLOY TO TEST is pure cost — one
-  # handover update was a 136-line Markdown diff that redeployed a byte-identical
-  # artifact.
+  # A change to docs/, the Claude Code skills or GitHub's templates cannot break
+  # the build, the API or the browser, so making it wait through six jobs and
+  # then DEPLOY TO TEST is pure cost — one handover update was a 136-line
+  # Markdown diff that redeployed a byte-identical artifact. The list of such
+  # paths, and what stays off it, is SKIPPABLE in tools/ci-changes.mjs.
   #
   # WHY THIS IS A JOB RATHER THAN `paths-ignore:` ON THE TRIGGER ABOVE, which is
   # the shorter way to write it and is a trap:
   #
   #   1. `paths-ignore` stops the workflow existing at all, so `guard` would not
   #      run either. That job greps the WHOLE tracked tree for prod dumps and
-  #      credentials, and `docs/prod-2026.sql` is a docs-only change. It is 10
+  #      credentials, and `docs/prod-2026.sql` is a skippable change. It is 10
   #      seconds; it stays unconditional.
   #   2. A job skipped by `if:` still REPORTS, as "skipped". A workflow that
-  #      never triggers reports nothing at all, so a docs PR would wait forever
+  #      never triggers reports nothing at all, so such a PR would wait forever
   #      for all-green, the required check on main, and could never be merged.
   #
-  # all-green accepts those skips only when this job says docs-only, and
-  # deploy-test reads the same output, so a docs-only push to main does not
-  # deploy.
+  # all-green accepts those skips only when this job says so, and deploy-test
+  # reads the same output, so a skippable push to main does not deploy.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -56,6 +56,9 @@ jobs:
         with:
           # The default shallow clone has no base commit to diff against.
           fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
       - id: filter
         env:
           EVENT: ${{ github.event_name }}
@@ -84,20 +87,8 @@ jobs:
           echo "Changed files:"
           echo "$files" | sed 's/^/  /'
 
-          if [ -z "$files" ]; then
-            echo "Empty diff — running the full pipeline."
-            echo "code=true" >> "$GITHUB_OUTPUT"
-          elif printf '%s\n' "$files" | grep -qvE '^docs/'; then
-            echo "Result: changes outside docs/ — running the full pipeline."
-            echo "code=true" >> "$GITHUB_OUTPUT"
-          else
-            # Note this is docs/ ONLY. CLAUDE.md, README.md and staging/README.md
-            # sit outside it and still run everything, deliberately: CLAUDE.md is
-            # the instructions every session loads, and being wrong about it is
-            # not the same kind of cheap as being wrong about a file under docs/.
-            echo "Result: docs/ only — skipping the build, the suites and the deploy."
-            echo "code=false" >> "$GITHUB_OUTPUT"
-          fi
+          # The verdict, and the list of paths that may skip, is tested there.
+          printf '%s\n' "$files" | node tools/ci-changes.mjs
 
   # Laravel is the only PHP left, so this is Pint and nothing else. It used to
   # also run `php -l` over app/ and PHP_CodeSniffer against phpcs.xml; both went
@@ -595,7 +586,7 @@ jobs:
   deploy-test:
     runs-on: ubuntu-latest
     needs: [changes, all-green]
-    # all-green passes a docs-only change, so the skip is decided here.
+    # all-green passes a skippable change, so the skip is decided here.
     #
     # The status check is spelled out because the implicit success() would
     # fail this job. It requires every job upstream to have succeeded, not

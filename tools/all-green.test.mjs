@@ -37,8 +37,8 @@ test("a cancelled job fails the check", () => {
   assert.equal(ok, false);
 });
 
-// A docs-only change skips the suites on purpose (see the `changes` job).
-test("skipped jobs pass when the change touched docs/ only", () => {
+// A change only to SKIPPABLE paths skips the suites on purpose (tools/ci-changes.mjs).
+test("skipped jobs pass when the change touched only skippable paths", () => {
   const { ok } = verdict({
     event: "pull_request",
     needs: { changes: code(false), guard: result("success"), e2e: result("skipped") },
@@ -46,7 +46,7 @@ test("skipped jobs pass when the change touched docs/ only", () => {
   assert.equal(ok, true);
 });
 
-// The skip must be the docs-only one. A job skipped on a code change means a
+// The skip must be the `changes` one. A job skipped on a code change means a
 // job it depends on did not succeed, and passing that would be a green light
 // over a suite that never ran.
 test("a skipped job on a code change fails the check", () => {
