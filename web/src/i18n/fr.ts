@@ -434,6 +434,9 @@ export const fr = {
     // the band's name, kept in German too ("Die Canetons", never "Die
     // Entlein"), and "Guggenmusik" is already German.
     title: "Guggenmusik Les Canetons de Fribourg",
+    // Every other page's title (#389): its own name first, so tabs and
+    // history tell pages apart, then the band's. Identical in de.ts.
+    pageTitle: "{{page}} – Les Canetons de Fribourg",
     // This one translates; it is what a search result shows.
     description:
       "La guggenmusik des enfants de Fribourg, fondée en 2002. De 7 à 18 ans, sans savoir lire la musique — répétitions en général le samedi matin.",

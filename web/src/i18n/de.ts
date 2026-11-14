@@ -351,6 +351,8 @@ export const de: typeof fr = {
   meta: {
     // Identical to the French on purpose; see the note in fr.ts.
     title: "Guggenmusik Les Canetons de Fribourg",
+    // Identical to the French on purpose; see the note in fr.ts.
+    pageTitle: "{{page}} – Les Canetons de Fribourg",
     // "Freiburg", the city's German name, as everywhere else in this file.
     // The band's own name keeps its French spelling above.
     description:

@@ -22,7 +22,7 @@ const MANIFEST: Record<Locale, string> = {
  *
  * Who reads each tag decides what this can fix:
  *
- *   <title>           a person, in their tab: fixed
+ *   <title>           a person, in their tab: set by each page (pageTitle.ts)
  *   description       Google, which renders JavaScript: fixed
  *   manifest          the browser at install time, after JS has run: fixed
  *   og:*              WhatsApp, Facebook, Signal, with no JavaScript: untouched
@@ -35,12 +35,10 @@ const MANIFEST: Record<Locale, string> = {
  * One code path for both locales, rewriting identical values for French, so
  * the French path is exercised too.
  *
- * A German page paints the shell's French <title> first and then replaces
- * it. The two titles are identical today (documentMeta.test.ts).
+ * The title is not written here: this runs after the page's own layout
+ * effect, and would put the band's name back over the page's.
  */
 export function applyDocumentMeta(locale: Locale): void {
-  document.title = t("meta.title");
-
   const description = document.querySelector('meta[name="description"]');
   if (description) {
     description.setAttribute("content", t("meta.description"));

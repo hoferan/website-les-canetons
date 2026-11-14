@@ -26,20 +26,18 @@ function mountShellHead() {
 
 function head() {
   return {
-    title: document.title,
     description: document.querySelector('meta[name="description"]')?.getAttribute("content"),
     manifest: document.querySelector('link[rel="manifest"]')?.getAttribute("href"),
   };
 }
 
-test("German replaces all three, manifest included", async () => {
+test("German replaces both, manifest included", async () => {
   mountShellHead();
   await setLocale("de-CH");
 
   applyDocumentMeta("de-CH");
 
   expect(head()).toEqual({
-    title: de.meta.title,
     description: de.meta.description,
     manifest: "/assets/icons/manifest.de.json",
   });
@@ -54,10 +52,24 @@ test("French leaves the shell exactly as it shipped", async () => {
   applyDocumentMeta("fr");
 
   expect(head()).toEqual({
-    title: fr.meta.title,
     description: fr.meta.description,
     manifest: "/assets/icons/manifest.json",
   });
+});
+
+/**
+ * Each page sets its own title (components/pageTitle.ts). This runs in
+ * LocaleFromUrl's layout effect, after the page's, so writing the title here
+ * would put the band's name back over the page's on every change of language.
+ */
+test("leaves the title to the page", async () => {
+  mountShellHead();
+  document.title = "Contact – Les Canetons de Fribourg";
+  await setLocale("de-CH");
+
+  applyDocumentMeta("de-CH");
+
+  expect(document.title).toBe("Contact – Les Canetons de Fribourg");
 });
 
 /**
@@ -79,7 +91,8 @@ test("repoints the manifest link rather than replacing it", async () => {
 
 /**
  * The French title and description exist twice: in the static shell (a
- * crawler and the first paint) and in fr.ts (what applyDocumentMeta writes).
+ * crawler and the first paint) and in fr.ts (what the home page and
+ * applyDocumentMeta write).
  * If they diverge, a French visitor sees the title change on every page load,
  * and only comparing the two files catches it.
  */
