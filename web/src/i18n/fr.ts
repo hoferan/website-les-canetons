@@ -1254,6 +1254,9 @@ export const fr = {
 
   /** What a guest may book, and at what price (/events/:id/registration-options). */
   registrationOptions: {
+    // The editor's tab title (#389): the booking page is titled with the
+    // event alone, and the two must not read the same.
+    pageTitle: "Formulaire d’inscription\u00a0: {{title}}",
     saveFailed: "L’enregistrement a échoué.",
     loadFailedReload: "La liste n’a pas pu être chargée. Rechargez la page.",
 

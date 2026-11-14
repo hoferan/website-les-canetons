@@ -7,6 +7,7 @@ import { HeroBlock } from "../content/blocks/HeroBlock";
 import { ManagedElsewhere } from "../content/editor/ManagedElsewhere";
 import { AgendaEntry, BADGE_TINTS } from "../events/PublicAgenda";
 import { t } from "../i18n";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * Every upcoming public appearance, where a visitor can come and watch.
@@ -21,6 +22,7 @@ import { t } from "../i18n";
  * and other private planning never show here.
  */
 export function Agenda() {
+  usePageTitle(t("nav.agenda"));
   const agenda = useAgendaIndex();
   const upcoming = rowsOf<PublicEventResource>(agenda.data);
 

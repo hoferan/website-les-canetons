@@ -928,6 +928,7 @@ export const de: typeof fr = {
   },
 
   registrationOptions: {
+    pageTitle: "Anmeldeformular: {{title}}",
     saveFailed: "Das Speichern ist fehlgeschlagen.",
     loadFailedReload: "Die Liste konnte nicht geladen werden. Laden Sie die Seite neu.",
 

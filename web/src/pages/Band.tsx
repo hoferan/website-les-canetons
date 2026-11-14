@@ -11,6 +11,7 @@ import { ManagedElsewhere } from "../content/editor/ManagedElsewhere";
 import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { registerName, t } from "../i18n";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * The anchor a jump link points at. Built from the register's ID, because a
@@ -82,6 +83,7 @@ function Register({ register }: { register: PublicSectionResource }) {
  * are not public, and whoever holds it appears on /committee.
  */
 export function Band() {
+  usePageTitle(t("nav.band"));
   const band = useBandIndex();
   const registers = rowsOf<PublicSectionResource>(band.data);
 

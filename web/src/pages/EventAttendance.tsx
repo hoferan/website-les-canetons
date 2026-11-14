@@ -23,6 +23,7 @@ import { registerName, t, translateApiError } from "../i18n";
 import { Link } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * Who still has to be chased about an event.
@@ -34,6 +35,7 @@ import { OUTLINED_CARD } from "../carnival/raised";
  * sentence (`answerLine`), so the reason travels with the name.
  */
 export function EventAttendance() {
+  usePageTitle(t("attendance.heading"));
   const { id } = useParams();
   const eventId = Number(id);
   const { user, can } = useSession();

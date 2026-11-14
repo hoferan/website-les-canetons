@@ -13,6 +13,7 @@ import { LibraryGrid } from "../images/LibraryGrid";
 import { UploadCards, unlisted } from "../images/UploadCards";
 import type { Card, ShrinkFn, UploadFn } from "../images/uploadQueue";
 import { useUploadQueue } from "../images/useUploadQueue";
+import { usePageTitle } from "../components/pageTitle";
 
 const BYTES_PER_MEGABYTE = 1024 * 1024;
 
@@ -61,6 +62,7 @@ type Props = {
  * takes no place, and only the server can tell which those are.
  */
 export function Media({ upload, shrinker }: Props = {}) {
+  usePageTitle(t("photos.heading"));
   const summary = useImageSummary();
   const library = useImageIndex();
   const images = rowsOf<ImageResource>(library.data);

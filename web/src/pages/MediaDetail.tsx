@@ -41,6 +41,7 @@ import type { ShrinkFn } from "../images/uploadQueue";
 import { UsageLinks, usageLabel } from "../images/usages";
 import { type ReplaceFn, replaceViaApi } from "../images/useUploadQueue";
 import { formatDay } from "../lib/date";
+import { usePageTitle } from "../components/pageTitle";
 
 type Props = {
   /** Injected by tests: jsdom has no canvas and cannot send a multipart body. */
@@ -90,6 +91,7 @@ export function MediaDetail({
   });
   const read = show.data?.status === 200 ? show.data : null;
   const image = read?.data ?? null;
+  usePageTitle(image ? image.name : t("photos.heading"));
   const etag = read ? entityTagOf(read) : null;
 
   const [work, setWork] = useState<Work | null>(null);

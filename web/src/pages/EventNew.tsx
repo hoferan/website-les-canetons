@@ -10,6 +10,7 @@ import { publishEvent } from "../events/publishEvent";
 import { saveEventPoster, type PosterChange } from "../events/saveEventPoster";
 import { t, translateApiError } from "../i18n";
 import { useNavigate } from "../i18n/routing";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * Adding one event to the planning.
@@ -28,6 +29,7 @@ import { useNavigate } from "../i18n/routing";
  * permission check in here.
  */
 export function EventNew() {
+  usePageTitle(t("eventForm.newHeading"));
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const form = useApiFormError(t("eventForm.saveFailed"));

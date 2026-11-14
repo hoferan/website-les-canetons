@@ -12,6 +12,7 @@ import { HeroBlock } from "../content/blocks/HeroBlock";
 import { ManagedElsewhere } from "../content/editor/ManagedElsewhere";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * The committee: who to write to, and who holds which seat.
@@ -29,6 +30,7 @@ import { Link } from "../i18n/routing";
  * guessed number sends a caller to a stranger.
  */
 export function Committee() {
+  usePageTitle(t("nav.committee"));
   const committee = useCommitteeIndex();
   const seats = rowsOf<CommitteeMemberResource>(committee.data);
 

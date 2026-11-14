@@ -8,6 +8,7 @@ import { POSTER_CONFETTI } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
 import { SCALLOP_CLIP, Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * A soft 404: the server answers 200 with the shell, because the .htaccess
@@ -24,6 +25,7 @@ import { t } from "../i18n";
  * the colour its own Scallop paints along the bottom.
  */
 export function NotFound() {
+  usePageTitle(t("notFound.heading"));
   useFooterEdge("var(--color-stage)");
 
   return (

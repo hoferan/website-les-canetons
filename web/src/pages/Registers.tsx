@@ -33,6 +33,7 @@ import { FormError, FormField, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { registerName, t } from "../i18n";
 import { OUTLINED_CARD } from "../carnival/raised";
+import { usePageTitle } from "../components/pageTitle";
 
 type RegisterDraft = { name: string; nameDe: string };
 
@@ -51,6 +52,7 @@ function bodyOf(draft: RegisterDraft) {
  * the write quotes back. Moving sends the whole order, so it needs no tag.
  */
 export function Registers() {
+  usePageTitle(t("registers.heading"));
   const queryClient = useQueryClient();
   const list = useSectionIndex();
   const registers = rowsOf<SectionResource>(list.data);

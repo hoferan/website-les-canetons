@@ -15,6 +15,7 @@ import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * Change my own password, at /account/password.
@@ -27,6 +28,7 @@ import { useSession } from "../session/SessionProvider";
  * the missing back link.
  */
 export function AccountPassword() {
+  usePageTitle(t("account.password"));
   const { user } = useSession();
 
   const [currentPassword, setCurrentPassword] = useState("");
