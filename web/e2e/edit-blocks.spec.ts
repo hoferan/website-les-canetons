@@ -23,13 +23,16 @@ test("the booking number is stored from the contact card on /committee, and Term
 }) => {
   await logIn(page, "demo.direction");
   await page.locator('a[href="/committee"]:visible').first().click();
-  await expect(page.locator("[data-tbd='booking-number']")).toBeVisible();
 
   const chip = page.getByRole("button", {
     name: /^Modifier : Contact des Canetons, carte 1 sur 1$/,
   });
+  // Outside edit mode an editor reads the page as a visitor does: no gap (ADR 0048).
+  await expect(page.getByRole("heading", { name: "Contact des Canetons" })).toBeVisible();
+  await expect(page.locator("[data-tbd]")).toHaveCount(0);
   await expect(chip).toHaveCount(0);
   await page.getByRole("button", { name: "Modifier la page" }).click();
+  await expect(page.locator("[data-tbd='booking-number']")).toBeVisible();
   await chip.click();
 
   const dialog = page.getByRole("dialog", { name: "Comité · contact" });
