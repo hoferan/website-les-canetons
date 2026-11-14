@@ -27,6 +27,7 @@ import { AccountDropdown, type AccountTool } from "../session/AccountMenu";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { Footer } from "./Footer";
+import { RouteFocus } from "./RouteFocus";
 import { ScrollToTop } from "./ScrollToTop";
 import { NETWORK_MARKS, networksOf } from "./social";
 import { buttonVariants } from "@ds";
@@ -195,8 +196,9 @@ export function Layout() {
 
   return (
     <>
-      {/* Mounted here rather than per route, so it survives navigation. */}
+      {/* Mounted here rather than per route, so they survive navigation. */}
       <ScrollToTop />
+      <RouteFocus />
 
       {/* The skip link, first in the tab order (#15). Hidden until focused.
           Following it focuses <main>, which is why that carries tabIndex -1. */}

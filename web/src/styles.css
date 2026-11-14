@@ -268,6 +268,12 @@
   [role="button"]:not(:disabled, [aria-disabled="true"]) {
     cursor: pointer;
   }
+
+  /* RouteFocus moves focus to the page's h1 after a navigation. A heading is
+     not a control, so it shows no ring, like <main> for the skip link. */
+  h1[tabindex="-1"]:focus {
+    outline: none;
+  }
 }
 
 /* The page's own ground and default face. Everything else is a utility class. */
