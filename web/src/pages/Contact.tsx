@@ -19,6 +19,7 @@ import { FormError, FormField, RequiredLegend, formIsValid } from "../components
 import { Notice } from "../components/Notice";
 import { type TranslationKey, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * `website` is the honeypot and is always the empty string. It must arrive
@@ -72,6 +73,7 @@ const FIELDS: {
  * bookmark would say a message was sent when none was.
  */
 export function Contact() {
+  usePageTitle(t("nav.contact"));
   const { user } = useSession();
   const [values, setValues] = useState<ContactRequest>(EMPTY);
   const [sent, setSent] = useState(false);

@@ -22,6 +22,7 @@ import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor";
 import { BLOCKS } from "../content/registry";
 import { lacksGerman, tr, trMark } from "../content/translated";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * The badge's frame: the sticker look and the sizes, for the badge and for a
@@ -56,6 +57,7 @@ const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
  * still reading wants to go somewhere. The agenda may render nothing.
  */
 export function Home() {
+  usePageTitle();
   // The same query PublicAgenda reads, so React Query asks for it once.
   const agenda = useAgendaIndex();
   // The yellow band is the page's last surface once it renders, and the

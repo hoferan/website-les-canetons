@@ -12,6 +12,7 @@ import { publishEvent } from "../events/publishEvent";
 import { saveEventPoster, type PosterChange } from "../events/saveEventPoster";
 import { t, type TranslatedError } from "../i18n";
 import { useNavigate } from "../i18n/routing";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * Correcting one event.
@@ -28,6 +29,7 @@ import { useNavigate } from "../i18n/routing";
  * together or not at all.
  */
 export function EventEdit() {
+  usePageTitle(t("eventForm.editHeading"));
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

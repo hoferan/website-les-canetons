@@ -34,6 +34,7 @@ import { t } from "../i18n";
 import { formatInstant } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
+import { usePageTitle } from "../components/pageTitle";
 
 type Filter = "all" | "open" | "handled";
 
@@ -97,6 +98,7 @@ function matchesFilter(filter: Filter, message: ContactMessageResource): boolean
  * with it.
  */
 export function ContactMessages() {
+  usePageTitle(t("contactMessages.heading"));
   const { can } = useSession();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();

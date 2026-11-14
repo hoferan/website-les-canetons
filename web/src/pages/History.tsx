@@ -33,6 +33,7 @@ import { Photo, PHOTO_SIZES, type PhotoData } from "../images/Photo";
 import { historySlot, usePhotoSlots } from "../images/photoSlots";
 
 import { useSession } from "../session/SessionProvider";
+import { usePageTitle } from "../components/pageTitle";
 
 const ADD_ID = "history-add";
 
@@ -66,6 +67,7 @@ const NEW_ID = Number.MAX_SAFE_INTEGER;
  * go, so what shows is what a visitor would see.
  */
 export function History() {
+  usePageTitle(t("nav.history"));
   const { can } = useSession();
   const list = useHistoryEntryIndex();
   const entries = rowsOf<HistoryEntryResource>(list.data);

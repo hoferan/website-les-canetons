@@ -11,6 +11,7 @@ import { notify, ToastCard, type ToastLevel } from "@/components/ui/toast";
 import { PageSection } from "../components/PageSection";
 import { EditChip } from "../content/editor/EditChip";
 import { ActionBarShowcase } from "./DevUiActionBar";
+import { usePageTitle } from "../components/pageTitle";
 
 // A developer page, mounted only under `import.meta.env.DEV` (routes.tsx).
 // Its copy is French and written inline on purpose: it never reaches a visitor,
@@ -49,6 +50,8 @@ function Stage({ children }: { children: ReactNode }) {
 }
 
 export function DevUi() {
+  // Its h1 is not translated either: the catalogue is for developers.
+  usePageTitle("Catalogue des composants");
   return (
     <PageSection>
       <h1 className="font-display text-4xl">Catalogue des composants</h1>

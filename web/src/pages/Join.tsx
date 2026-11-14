@@ -5,6 +5,7 @@ import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * How to join: the page a parent or a curious child lands on.
@@ -19,6 +20,7 @@ import { Link } from "../i18n/routing";
  * the contacts card until the band gives a number.
  */
 export function Join() {
+  usePageTitle(t("nav.join"));
   const facts = useBlock("join.facts");
   const contacts = facts.cards.find((card) => card.id === "contacts");
   const reachable =

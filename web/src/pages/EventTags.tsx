@@ -33,6 +33,7 @@ import { TagChip } from "../events/TagChip";
 import { TAG_COLOURS } from "../events/tagColours";
 import { t, tagLabel } from "../i18n";
 import { OUTLINED_CARD } from "../carnival/raised";
+import { usePageTitle } from "../components/pageTitle";
 
 const COLOURS = Object.keys(TAG_COLOURS) as TagColour[];
 
@@ -59,6 +60,7 @@ function bodyOf(draft: TagDraft) {
  * other without being told.
  */
 export function EventTags() {
+  usePageTitle(t("eventTags.heading"));
   const queryClient = useQueryClient();
   const list = useEventTagIndex();
   const tags = rowsOf<EventTagResource>(list.data);

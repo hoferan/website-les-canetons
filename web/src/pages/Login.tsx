@@ -16,6 +16,7 @@ import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
 import { useNavigate } from "../i18n/routing";
 import { safeReturnTo } from "../lib/returnTo";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * The one way in.
@@ -38,6 +39,7 @@ import { safeReturnTo } from "../lib/returnTo";
  * password is committee-issued (ADR 0016).
  */
 export function Login() {
+  usePageTitle(t("nav.login"));
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 

@@ -32,6 +32,7 @@ import { FormError, FormField, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { permissionHint, permissionLabel, roleName, roleNamesForEditing, t } from "../i18n";
 import { OUTLINED_CARD } from "../carnival/raised";
+import { usePageTitle } from "../components/pageTitle";
 
 /** Every permission, in the order the API's enum declares them. */
 const PERMISSIONS: string[] = Object.values(StoreRoleRequestPermissionsItem);
@@ -53,6 +54,7 @@ const sameSet = (a: string[], b: string[]) =>
  * confirmation did not name.
  */
 export function Roles() {
+  usePageTitle(t("rolesPage.heading"));
   const queryClient = useQueryClient();
   const list = useRoleIndex();
   const roles = rowsOf<RoleResource>(list.data);

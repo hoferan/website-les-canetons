@@ -19,6 +19,7 @@ import { uploadViaApi } from "../images/useUploadQueue";
 import { formatDay } from "../lib/date";
 import { buildBundle, readBundle, type Bundle, type BundledSite } from "../website/bundle";
 import { ImportRefused, runImport, type ImportOutcome } from "../website/importRunner";
+import { usePageTitle } from "../components/pageTitle";
 
 const CARD = cn(RAISED_CARD, "mt-block p-5");
 
@@ -45,6 +46,7 @@ export function Website({
   /** Injected by tests: jsdom's File turns a typed array from Node's realm into text. */
   readFile?: (file: File) => Promise<Uint8Array>;
 }) {
+  usePageTitle(t("website.heading"));
   return (
     <PageSection width="form">
       <h1 className="font-display text-3xl">{t("website.heading")}</h1>

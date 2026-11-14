@@ -37,6 +37,7 @@ import { GeneratedPasswordDialog } from "../members/GeneratedPasswordDialog";
 import { LoginState } from "../members/LoginState";
 import { MemberForm, type MemberDraft } from "../members/MemberForm";
 import { OUTLINED_CARD } from "../carnival/raised";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * The roster: everybody in the band.
@@ -62,6 +63,7 @@ import { OUTLINED_CARD } from "../carnival/raised";
  * the rule, which would drift; it renders what the API says, translated.
  */
 export function Members() {
+  usePageTitle(t("members.heading"));
   // What is typed, and what has been asked for. The box follows every
   // keystroke; the request follows the box once it has been still for 250ms.
   const [typed, setTyped] = useState("");

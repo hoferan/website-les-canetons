@@ -434,6 +434,9 @@ export const fr = {
     // the band's name, kept in German too ("Die Canetons", never "Die
     // Entlein"), and "Guggenmusik" is already German.
     title: "Guggenmusik Les Canetons de Fribourg",
+    // Every other page's title (#389): its own name first, so tabs and
+    // history tell pages apart, then the band's. Identical in de.ts.
+    pageTitle: "{{page}} – Les Canetons de Fribourg",
     // This one translates; it is what a search result shows.
     description:
       "La guggenmusik des enfants de Fribourg, fondée en 2002. De 7 à 18 ans, sans savoir lire la musique — répétitions en général le samedi matin.",
@@ -1251,6 +1254,9 @@ export const fr = {
 
   /** What a guest may book, and at what price (/events/:id/registration-options). */
   registrationOptions: {
+    // The editor's tab title (#389): the booking page is titled with the
+    // event alone, and the two must not read the same.
+    pageTitle: "Formulaire d’inscription\u00a0: {{title}}",
     saveFailed: "L’enregistrement a échoué.",
     loadFailedReload: "La liste n’a pas pu être chargée. Rechargez la page.",
 

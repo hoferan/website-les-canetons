@@ -46,6 +46,7 @@ import { Link } from "../i18n/routing";
 import { formatCents } from "../money";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * The four downloads, in the order the committee reaches for them. Markdown
@@ -104,6 +105,7 @@ const AMENDABLE: {
  * server and protect nobody.
  */
 export function EventRegistrations() {
+  usePageTitle(t("events.registrations"));
   const { id } = useParams();
   const eventId = Number(id);
   const { can } = useSession();

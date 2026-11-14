@@ -52,6 +52,7 @@ import { formatEventWhen } from "../events/formatEventWhen";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { parseFrancs } from "../money";
+import { usePageTitle } from "../components/pageTitle";
 
 /** What the screen compares to tell an unsaved edit, ignoring React's keys. */
 function snapshotOf(drafts: Draft[], settings: FormSettings | null): string {
@@ -117,6 +118,10 @@ export function EventFormEditor() {
 
   const dirty = settings !== null && snapshotOf(drafts, settings) !== baseline;
   useLeaveGuard(dirty, t("registrationOptions.leave"));
+  // Qualified, so the tab does not read the same as the booking page it edits.
+  usePageTitle(
+    event ? t("registrationOptions.pageTitle", { title: event.title }) : t("booking.editForm"),
+  );
 
   useEffect(() => {
     let cancelled = false;

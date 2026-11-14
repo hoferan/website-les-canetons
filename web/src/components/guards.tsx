@@ -5,6 +5,7 @@ import { PageSection } from "./PageSection";
 import { t } from "../i18n";
 import { Navigate } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
+import { usePageTitle } from "./pageTitle";
 
 /**
  * Route guards, for UX only.
@@ -76,6 +77,7 @@ export function RequirePermission({
  * page they asked for is not there.
  */
 function AccessDenied() {
+  usePageTitle(t("guards.deniedHeading"));
   return (
     <PageSection width="text" className="py-16 text-center">
       <h1 className="font-display text-3xl">{t("guards.deniedHeading")}</h1>

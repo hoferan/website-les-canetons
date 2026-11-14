@@ -9,6 +9,7 @@ import { type SeriesCreatedState } from "../events/SeriesCreatedNotice";
 import { SeriesForm } from "../events/SeriesForm";
 import { t } from "../i18n";
 import { useNavigate } from "../i18n/routing";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * A whole season in one request.
@@ -23,6 +24,7 @@ import { useNavigate } from "../i18n/routing";
  * ticked dates, so it describes what exists.
  */
 export function EventSeriesNew() {
+  usePageTitle(t("seriesForm.newHeading"));
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const form = useApiFormError(t("seriesForm.createFailed"));

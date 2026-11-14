@@ -33,6 +33,7 @@ import { t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { formatDay } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * Book a place at an event.
@@ -79,6 +80,8 @@ export function EventBooking() {
   });
 
   const offer: RegistrationFormResource | null = form.data?.status === 200 ? form.data.data : null;
+  // The event once it has loaded; before, and on a closed form, what the hero says.
+  usePageTitle(offer ? offer.event.title : t("events.registrations"));
   const typed = useAnswers(offer);
 
   // Pinned as the contact form's is: the server refuses a token under two

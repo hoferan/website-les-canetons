@@ -39,6 +39,7 @@ import { isDraft } from "../events/eventDates";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * The planning: what the band is doing, and when.
@@ -66,6 +67,7 @@ import { useSession } from "../session/SessionProvider";
  * under the heading carries the to-do meaning.
  */
 export function Events() {
+  usePageTitle(t("events.heading"));
   const { can, config } = useSession();
   const queryClient = useQueryClient();
   const [showingPast, setShowingPast] = useState(false);

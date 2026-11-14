@@ -6,6 +6,7 @@ import { PageSection } from "../components/PageSection";
 import { registerName, roleName, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * Who I am, at /account.
@@ -19,6 +20,7 @@ import { OUTLINED_CARD } from "../carnival/raised";
  * roster data the committee owns.
  */
 export function Account() {
+  usePageTitle(t("account.heading"));
   const { user } = useSession();
 
   return (

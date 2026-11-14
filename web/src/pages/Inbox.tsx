@@ -17,6 +17,7 @@ import { t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { formatDay, formatInstant } from "../lib/date";
 import { OUTLINED_CARD } from "../carnival/raised";
+import { usePageTitle } from "../components/pageTitle";
 
 /**
  * The `kind` tokens this screen knows how to name.
@@ -51,6 +52,7 @@ function kindLabel(kind: string): string {
  * not a list; see Layout.tsx.
  */
 export function Inbox() {
+  usePageTitle(t("inbox.heading"));
   const list = useInboxIndex();
   const items = rowsOf<InboxItemResource>(list.data);
 
