@@ -8,7 +8,8 @@
 // A job passes when it succeeded. It may also be skipped in two cases, both of
 // which the workflow does on purpose:
 //
-//   - the `changes` job found a docs-only change, which skips the suites, and
+//   - the `changes` job found nothing the pipeline could catch a mistake in
+//     (tools/ci-changes.mjs), which skips the suites, and
 //   - `pr-title` on a push, where there is no pull request title to check.
 //
 // Any other skip means a job it depended on did not succeed, so it fails.
@@ -20,14 +21,14 @@ import { pathToFileURL } from "node:url";
  * @returns {{ ok: boolean, lines: string[] }}
  */
 export function verdict({ event, needs }) {
-  const docsOnly = needs.changes?.result === "success" && needs.changes.outputs?.code === "false";
+  const skippable = needs.changes?.result === "success" && needs.changes.outputs?.code === "false";
   const lines = [];
   // An empty `needs` is a broken workflow, not a clean run.
   let ok = Object.keys(needs).length > 0;
 
   for (const [job, { result }] of Object.entries(needs)) {
     const excused =
-      result === "skipped" && (docsOnly || (job === "pr-title" && event !== "pull_request"));
+      result === "skipped" && (skippable || (job === "pr-title" && event !== "pull_request"));
     const passed = result === "success" || excused;
     ok &&= passed;
     lines.push(`${passed ? "ok  " : "FAIL"} ${job}: ${result}${excused ? " (expected)" : ""}`);
