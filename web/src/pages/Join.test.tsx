@@ -32,8 +32,8 @@ test("says how to join, in German", async () => {
   ).toBeInTheDocument();
   expect(screen.getByText("Gesuchte Instrumente")).toBeInTheDocument();
   expect(screen.getByText("Trompete")).toBeInTheDocument();
-  // The two joining contacts are placeholders, one per seat.
-  expect(screen.getAllByText(/Name und Nummer/)).toHaveLength(2);
+  // The two joining contacts are empty, and a visitor reads no gap (ADR 0048).
+  expect(screen.queryByText(/Name und Nummer/)).toBeNull();
   expect(screen.getByRole("link", { name: "Kontaktseite" })).toHaveAttribute("href", "/de/contact");
 });
 
@@ -49,7 +49,16 @@ function contact(name: string, number: string) {
   return { type: "phone" as const, label: { fr: name }, number, tbd: "join-contact" };
 }
 
-test("the two contact placeholders stay until the band stores its contacts", async () => {
+test("a visitor gets the meanwhile line and no placeholder until the band stores its contacts", async () => {
+  await renderWithSession(<Join />, { route: "/join" });
+
+  expect(screen.getByText(/En attendant/)).toBeInTheDocument();
+  expect(document.querySelectorAll("[data-tbd]")).toHaveLength(0);
+});
+
+test("in edit mode the two contact placeholders stay until the band stores its contacts", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<Join />, { route: "/join" });
 
   expect(document.querySelectorAll("[data-tbd='join-contact']")).toHaveLength(2);
@@ -85,6 +94,8 @@ test("one stored number is enough to drop the meanwhile line", async () => {
     "join.facts",
     withContacts([contact("Anne Dupont", "079 123 45 67"), contact("", "")]),
   );
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<Join />, { route: "/join" });
 
   expect(document.querySelectorAll("[data-tbd='join-contact']")).toHaveLength(1);

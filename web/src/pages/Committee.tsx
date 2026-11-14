@@ -9,6 +9,7 @@ import type { CommitteeMemberResource } from "../api/generated/model";
 import { RAISED_CARD } from "../carnival/raised";
 import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroBlock } from "../content/blocks/HeroBlock";
+import { useShowsGaps } from "../content/EditMode";
 import { ManagedElsewhere } from "../content/editor/ManagedElsewhere";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
@@ -33,6 +34,7 @@ export function Committee() {
   usePageTitle(t("nav.committee"));
   const committee = useCommitteeIndex();
   const seats = rowsOf<CommitteeMemberResource>(committee.data);
+  const showsGaps = useShowsGaps();
 
   return (
     <>
@@ -71,32 +73,35 @@ export function Committee() {
 
         {/* The seats are the roster's, so they carry no pencil: the notice
             above says where they are changed. */}
-        <div className="mt-block">
-          {seats.length > 0 ? (
-            <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {seats.map((seat) => (
-                <Card key={seat.id} asChild className={cn(RAISED_CARD, "gap-0 p-4")}>
-                  <li>
-                    {/* The seat, then the person: a visitor looks for "the
+        {seats.length > 0 || showsGaps ? (
+          <div className="mt-block">
+            {seats.length > 0 ? (
+              <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {seats.map((seat) => (
+                  <Card key={seat.id} asChild className={cn(RAISED_CARD, "gap-0 p-4")}>
+                    <li>
+                      {/* The seat, then the person: a visitor looks for "the
                       person who handles costumes", not a name they know. */}
-                    <p className="text-xs font-semibold tracking-wide text-violet uppercase">
-                      {seat.function}
-                    </p>
-                    <p className="mt-tight">
-                      {seat.firstName} {seat.lastName}
-                    </p>
-                  </li>
-                </Card>
-              ))}
-            </ul>
-          ) : (
-            // A gap, in the voice of every other gap on the public site.
-            // "Aucun membre du comité" would be a false claim about the band.
-            <p>
-              <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
-            </p>
-          )}
-        </div>
+                      <p className="text-xs font-semibold tracking-wide text-violet uppercase">
+                        {seat.function}
+                      </p>
+                      <p className="mt-tight">
+                        {seat.firstName} {seat.lastName}
+                      </p>
+                    </li>
+                  </Card>
+                ))}
+              </ul>
+            ) : (
+              // A gap, in the voice of every other gap on the public site, and
+              // for an editor only: a visitor gets nothing here rather than
+              // "Aucun membre du comité", a false claim about the band (ADR 0048).
+              <p>
+                <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
+              </p>
+            )}
+          </div>
+        ) : null}
       </PageSection>
     </>
   );

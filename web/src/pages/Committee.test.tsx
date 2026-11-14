@@ -36,6 +36,9 @@ test("omits a member holding no seat", async () => {
 
 test("omits somebody who has withdrawn their consent to appear", async () => {
   setMemberVisibility(4, false); // Camille, the one seat in the seeded roster.
+  // In edit mode, so the gap says the roster has answered.
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<Committee />, { route: "/committee" });
 
   expect(await screen.findByText(/les fonctions et les noms du comité/)).toBeInTheDocument();
@@ -44,10 +47,12 @@ test("omits somebody who has withdrawn their consent to appear", async () => {
 
 /**
  * A committee nobody has been entered for says so as a gap, not as a fact
- * about the band.
+ * about the band, and only to an editor (ADR 0048).
  */
-test("writes the gap out when nobody has been given a seat", async () => {
+test("in edit mode, writes the gap out when nobody has been given a seat", async () => {
   setMemberSeat(4, null);
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<Committee />, { route: "/committee" });
 
   expect(await screen.findByText(/les fonctions et les noms du comité/)).toBeInTheDocument();
@@ -84,7 +89,9 @@ test("sends people to the contact form rather than publishing an address", async
   expect(screen.queryByText(/@lescanetons\.org/)).not.toBeInTheDocument();
 });
 
-test("renders the page and the booking placeholder in German", async () => {
+test("renders the page and, in edit mode, the booking placeholder in German", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
 
   expect(screen.getByRole("heading", { name: "Der Vorstand" })).toBeInTheDocument();
@@ -95,14 +102,35 @@ test("renders the page and the booking placeholder in German", async () => {
   expect(screen.getByText(/Nummer für Auftritte/)).toBeInTheDocument();
 });
 
-test("writes the gap out in German when nobody has been given a seat", async () => {
+test("a visitor reads no gap when nobody has been given a seat", async () => {
   setMemberSeat(4, null);
+  await renderWithSession(<Committee />, { route: "/committee" });
+
+  await screen.findByRole("heading", { name: "Contact des Canetons" });
+  expect(document.querySelector("[data-tbd='committee-seats']")).toBeNull();
+  expect(screen.queryByText(/les fonctions et les noms du comité/)).toBeNull();
+});
+
+test("in edit mode, writes the gap out in German when nobody has been given a seat", async () => {
+  setMemberSeat(4, null);
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
 
   expect(await screen.findByText(/die Ämter und Namen des Vorstands/)).toBeInTheDocument();
 });
 
-test("the booking number is a placeholder until the band stores one", async () => {
+test("a visitor gets no booking line until the band stores a number", async () => {
+  await renderWithSession(<Committee />, { route: "/committee" });
+
+  await screen.findByRole("heading", { name: "Contact des Canetons" });
+  expect(document.querySelector("[data-tbd]")).toBeNull();
+  expect(screen.queryByText(/Pour réserver/)).toBeNull();
+});
+
+test("in edit mode the booking number is a placeholder until the band stores one", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<Committee />, { route: "/committee" });
 
   expect(document.querySelector("[data-tbd='booking-number']")).not.toBeNull();
@@ -133,6 +161,8 @@ test("a stored booking number replaces the placeholder in both languages, as a t
 });
 
 test("the write link sits between the card's heading and the booking line", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<Committee />, { route: "/committee" });
 
   const heading = screen.getByRole("heading", { name: "Contact des Canetons" });

@@ -77,7 +77,8 @@ test("the default join cards render as today", async () => {
   );
   expect(map).toHaveAttribute("target", "_blank");
   expect(screen.getByText("Basse-Ville de Fribourg")).toBeInTheDocument();
-  expect(document.querySelectorAll("[data-tbd='join-contact']")).toHaveLength(2);
+  // The two contacts ship empty, and a visitor reads no gap for them (ADR 0048).
+  expect(document.querySelectorAll("[data-tbd]")).toHaveLength(0);
   // A visitor sees no edit control.
   expect(screen.queryByRole("button")).toBeNull();
 });
@@ -653,6 +654,18 @@ test("deleting a card while another holds a refused number says which card", asy
 });
 
 test("page code goes inside a card, before or after its rows, and a wide block spans the page", async () => {
+  // A stored number, so the booking row renders for a visitor (ADR 0048).
+  const [contactCard] = BLOCKS["committee.contact"].defaults().cards;
+  storeBlock("committee.contact", {
+    cards: [
+      {
+        ...contactCard!,
+        rows: contactCard!.rows.map((row) =>
+          row.type === "phone" ? { ...row, number: "026 123 45 67" } : row,
+        ),
+      },
+    ],
+  });
   await renderWithSession(
     <CardsBlock
       blockKey="committee.contact"
@@ -674,7 +687,9 @@ test("page code goes inside a card, before or after its rows, and a wide block s
   const order = Array.from(card!.querySelectorAll("a, p"), (node) => node.textContent);
   expect(order[0]).toBe("Écrire au comité");
   expect(order[1]).toMatch(/^Pour réserver les Canetons :/);
-  expect(order[2]).toBe("En attendant, écrivez-nous.");
+  // The number is a link inside the booking line.
+  expect(order[2]).toBe("026 123 45 67");
+  expect(order[3]).toBe("En attendant, écrivez-nous.");
   expect(screen.queryByText("Nowhere")).toBeNull();
   // One column at every width, so the single card is as wide as the page.
   expect(card!.parentElement).toHaveClass("grid");

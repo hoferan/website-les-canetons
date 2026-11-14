@@ -1,7 +1,11 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { expect, test } from "vitest";
 
 import { setLocale, t } from "../../i18n";
+import { setMockUser } from "../../mocks/handlers";
+import { renderWithSession } from "../../test/renderWithSession";
+import { EDIT_MODE_KEY } from "../EditMode";
 import type { Row } from "../types";
 import { RowView } from "./RowView";
 
@@ -59,18 +63,48 @@ test.each(["26 123 45 67", "79 123 45 67", "à demander"])(
   },
 );
 
-test("an empty phone row shows its placeholder token", () => {
-  rows(
-    { type: "phone", label: { fr: "" }, number: "", tbd: "join-contact" },
-    {
-      type: "phone",
-      label: { fr: "Pour réserver les Canetons :" },
-      number: "",
-      tbd: "booking-number",
-    },
+test("a visitor gets nothing for an empty phone row, label included", () => {
+  render(
+    <MemoryRouter>
+      <div data-testid="card">
+        <RowView
+          row={{
+            type: "phone",
+            label: { fr: "Pour réserver les Canetons :" },
+            number: "",
+            tbd: "booking-number",
+          }}
+        />
+        <RowView
+          row={{ type: "phone", label: { fr: "Contact" }, number: "", tbd: "join-contact" }}
+          plain
+        />
+      </div>
+    </MemoryRouter>,
   );
 
-  const [contact, booking] = Array.from(document.querySelectorAll("p"));
+  expect(screen.getByTestId("card")).toBeEmptyDOMElement();
+});
+
+test("in edit mode an empty phone row shows its label and placeholder token", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
+  await renderWithSession(
+    <div data-testid="card">
+      <RowView row={{ type: "phone", label: { fr: "" }, number: "", tbd: "join-contact" }} />
+      <RowView
+        row={{
+          type: "phone",
+          label: { fr: "Pour réserver les Canetons :" },
+          number: "",
+          tbd: "booking-number",
+        }}
+      />
+    </div>,
+    { route: "/committee" },
+  );
+
+  const [contact, booking] = Array.from(screen.getByTestId("card").querySelectorAll("p"));
   // No label, so no stray colon in front of the placeholder.
   expect(contact?.textContent).toBe(placeholder("joinContact"));
   expect(contact?.querySelector("[data-tbd='join-contact']")).not.toBeNull();

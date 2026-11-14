@@ -51,8 +51,9 @@ test("drops somebody who has withdrawn their consent to appear", async () => {
 
   const bells = await screen.findByRole("article", { name: "Cloches" });
   expect(within(bells).queryByText(/Perrine/)).not.toBeInTheDocument();
-  // And the register stays, with its gap written out.
-  expect(within(bells).getByText(/à compléter/)).toBeInTheDocument();
+  // And the register stays, with no gap shown to a visitor (ADR 0048).
+  expect(within(bells).getByRole("heading", { name: "Cloches" })).toBeInTheDocument();
+  expect(bells.querySelector("[data-tbd]")).toBeNull();
 });
 
 /**
@@ -64,7 +65,20 @@ test("keeps a register whose members have all withheld consent", async () => {
   await renderWithSession(<Band />, { route: "/band" });
 
   const lyre = await screen.findByRole("article", { name: "Lyre" });
-  expect(within(lyre).getByText(/à compléter/)).toBeInTheDocument();
+  expect(within(lyre).getByRole("heading", { name: "Lyre" })).toBeInTheDocument();
+});
+
+/** A gap is for an editor to fill, so a visitor reads none (#393, ADR 0048). */
+test("a visitor sees an empty register's heading and no gap under it", async () => {
+  await renderWithSession(<Band />, { route: "/band" });
+
+  const lyre = await screen.findByRole("article", { name: "Lyre" });
+  expect(lyre.querySelector("[data-tbd]")).toBeNull();
+  expect(lyre.textContent).not.toMatch(/à compléter/);
+  // No empty paragraph left behind where the names would go.
+  expect(Array.from(lyre.querySelectorAll("p")).filter((p) => p.textContent === "")).toHaveLength(
+    0,
+  );
 });
 
 /**
@@ -101,7 +115,9 @@ test("publishes first names and no account details", async () => {
   expect(screen.queryByText(/Sansconnexion/)).not.toBeInTheDocument();
 });
 
-test("renders the heading, the register index and a placeholder gap in German", async () => {
+test("renders the heading, the register index and, in edit mode, a placeholder gap in German", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
 
   expect(screen.getByRole("heading", { name: "Unsere Canetons" })).toBeInTheDocument();
@@ -285,7 +301,9 @@ test("a godparents block stored in the old fields shape falls back to the defaul
 });
 
 /** The first names come from the roster, so the gap says where to fill it. */
-test("an empty register's gap points at the members page, in both languages", async () => {
+test("in edit mode, an empty register's gap points at the members page, in both languages", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUser("demo.direction");
   const { unmount } = await renderWithSession(<Band />, { route: "/band" });
 
   const lyre = await screen.findByRole("article", { name: "Lyre" });

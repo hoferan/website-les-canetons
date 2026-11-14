@@ -1,20 +1,24 @@
+import { useShowsGaps } from "../content/EditMode";
 import { t } from "../i18n";
 
 /**
- * A visible placeholder for content the band has not yet confirmed.
+ * A placeholder for content the band has not yet supplied, shown to an
+ * editor in edit mode and to nobody else (ADR 0048).
  *
- * A stale name is worse than an obvious gap: a parent who rings the wrong
- * person gets a wrong answer, whereas a parent who sees a gap asks. So facts
- * the band has not confirmed render as something no reader can mistake for
+ * A stale name is worse than a gap: a parent who rings the wrong person gets
+ * a wrong answer. So a fact the band has not confirmed is never guessed. A
+ * visitor reads nothing in its place, since a placeholder reads to them as an
+ * unfinished site (#393); the editor reads this, which no one can mistake for
  * real content. Some come from a content block's default: a phone row that
  * ships with an empty number renders this until the Direction types one into
- * the block's editor, in edit mode (ADR 0038). The others stand in for what
- * the roster does not hold yet. What is still missing is counted by rendering
- * the public pages: a grep over call sites miscounts, because some sit in a
+ * the block's editor (ADR 0038). The others stand in for what the roster does
+ * not hold yet. What is still missing is counted by rendering the public
+ * pages in edit mode: a grep over call sites miscounts, because some sit in a
  * loop and others render only for an empty roster.
  *
- * None may remain before PROD. TEST and QA are behind HTTP Basic Auth, so only
- * the band sees placeholders there; PROD is public.
+ * Renders nothing outside edit mode, so no caller can leak one to a visitor.
+ * A caller that wraps it in an element of its own asks `useShowsGaps()` too,
+ * and drops the wrapper.
  *
  * `what` is an already-translated string, never a fragment glued together
  * outside the catalogue. A caller resolves its own
@@ -36,6 +40,9 @@ export function Tbd({
   token?: string;
   onMembersPage?: boolean;
 }) {
+  if (!useShowsGaps()) {
+    return null;
+  }
   return (
     <span
       // Italic and muted so it reads as unfinished rather than broken, with a
