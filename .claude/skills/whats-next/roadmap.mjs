@@ -17,38 +17,49 @@ const gh = (...args) => JSON.parse(run("gh", args));
 run("git", ["fetch", "--quiet", "origin"]);
 const head = run("git", ["log", "-1", "--format=%h %cs %s", "origin/main"]);
 
-const prs = gh(
-  "pr",
-  "list",
-  "--state",
-  "open",
-  "--limit",
-  "50",
-  "--json",
-  "number,title,headRefName,isDraft,statusCheckRollup",
-);
-const milestones = gh("api", "repos/{owner}/{repo}/milestones?state=open&per_page=100");
-const open = gh(
-  "issue",
-  "list",
-  "--state",
-  "open",
-  "--limit",
-  "500",
-  "--json",
-  "number,title,labels,milestone,body",
-);
-// gh lists by creation date, so sort by closedAt here to find the latest close.
-const closed = gh(
-  "issue",
-  "list",
-  "--state",
-  "closed",
-  "--limit",
-  "200",
-  "--json",
-  "number,title,closedAt,milestone",
-).sort((a, b) => b.closedAt.localeCompare(a.closedAt));
+// REST only: `gh pr list` and `gh issue list` go through GraphQL, which
+// Claude Code web sessions refuse with a 403.
+const api = (path) => gh("api", path);
+// `gh api --paginate` prints one JSON array per page, back to back, so walk
+// the pages here instead.
+function pages(path, maxPages) {
+  const rows = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const batch = api(`${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`);
+    rows.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return rows;
+}
+// The issues endpoint also returns pull requests.
+const issuesOnly = (rows) => rows.filter((i) => !i.pull_request);
+
+// Shaped like GraphQL's statusCheckRollup: check runs plus commit statuses.
+function rollup(sha) {
+  const runs = api(`repos/{owner}/{repo}/commits/${sha}/check-runs?per_page=100`).check_runs;
+  const statuses = api(`repos/{owner}/{repo}/commits/${sha}/status`).statuses;
+  return [
+    ...runs.map((r) => ({ name: r.name, conclusion: r.conclusion ?? "", status: r.status })),
+    ...statuses.map((s) => ({ name: s.context, state: s.state })),
+  ];
+}
+
+const prs = pages("repos/{owner}/{repo}/pulls?state=open", 1).map((pr) => ({
+  number: pr.number,
+  title: pr.title,
+  headRefName: pr.head.ref,
+  isDraft: pr.draft,
+  statusCheckRollup: rollup(pr.head.sha),
+}));
+const milestones = api("repos/{owner}/{repo}/milestones?state=open&per_page=100");
+const open = issuesOnly(pages("repos/{owner}/{repo}/issues?state=open", 5));
+// Closing an issue updates it, so the most recently updated pages hold the
+// latest close; sort by closedAt to find it.
+const closed = issuesOnly(
+  pages("repos/{owner}/{repo}/issues?state=closed&sort=updated&direction=desc", 2),
+)
+  .map((i) => ({ ...i, closedAt: i.closed_at }))
+  .sort((a, b) => b.closedAt.localeCompare(a.closedAt));
 
 const rNumber = (title) => Number(/^R(\d+)\b/.exec(title ?? "")?.[1] ?? Infinity);
 const labelsOf = (i) => i.labels.map((l) => l.name);
@@ -191,6 +202,6 @@ const alternative = high.find(
 if (alternative && !toRead.includes(alternative.number)) toRead.push(alternative.number);
 if (toRead.length) {
   console.log(
-    `\nREAD THE BODIES: for n in ${toRead.join(" ")}; do echo "== #$n"; gh issue view $n --json body --jq .body; done`,
+    `\nREAD THE BODIES: for n in ${toRead.join(" ")}; do echo "== #$n"; gh api "repos/{owner}/{repo}/issues/$n" --jq .body; done`,
   );
 }
