@@ -1,9 +1,13 @@
 import { Camera } from "lucide-react";
 
+import { useShowsGaps } from "../content/EditMode";
 import { t } from "../i18n";
 
 /**
- * Stands in for a photograph the band has yet to retake.
+ * Stands in, in edit mode only, for a photograph the band has yet to place
+ * (ADR 0048). A visitor gets nothing in an empty slot. An editor who may
+ * place photos gets `SlotPhotoControl`'s add frame instead, so this line is
+ * for an editor who may change the page but not its photos.
  *
  * A youth band turns over yearly, so a group photograph is a claim about who
  * is in the band, and a wrong claim is worse than an honest gap. The header
@@ -21,6 +25,9 @@ import { t } from "../i18n";
  * tell the slots apart in either locale.
  */
 export function PhotoPending({ token }: { token: string }) {
+  if (!useShowsGaps()) {
+    return null;
+  }
   return (
     <p
       className="mt-related flex items-center gap-2 text-sm text-ink-muted"

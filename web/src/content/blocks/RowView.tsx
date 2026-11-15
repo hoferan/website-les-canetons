@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Tbd } from "@/components/Tbd";
 
 import { mailtoHref, swissTelHref } from "../../lib/contactHref";
+import { useShowsGaps } from "../EditMode";
 import { type TranslationKey, t } from "../../i18n";
 import { tr } from "../translated";
 import { isHttpsUrl, type Row } from "../types";
@@ -35,14 +36,13 @@ export function RowView({ row, plain = false }: { row: Row; plain?: boolean }) {
     case "labelValue":
       return <Labelled label={tr(row.label)}>{tr(row.value)}</Labelled>;
     case "phone": {
+      if (row.number.trim() === "") return <EmptyPhone label={tr(row.label)} token={row.tbd} />;
       // A read does not check the number (see types.ts), so one the editor
       // would refuse renders as text: a guessed prefix can ring abroad.
       const href = swissTelHref(row.number);
       return (
         <Labelled label={tr(row.label)}>
-          {row.number.trim() === "" ? (
-            <Placeholder token={row.tbd} />
-          ) : href ? (
+          {href ? (
             <a href={href} className={`whitespace-nowrap ${LINK}`}>
               {row.number}
             </a>
@@ -100,11 +100,8 @@ export function RowView({ row, plain = false }: { row: Row; plain?: boolean }) {
 function PlainRow({ row }: { row: Exclude<Row, { type: "text" | "labelValue" }> }) {
   switch (row.type) {
     case "phone":
-      return (
-        <Labelled label={tr(row.label)}>
-          {row.number.trim() === "" ? <Placeholder token={row.tbd} /> : row.number}
-        </Labelled>
-      );
+      if (row.number.trim() === "") return <EmptyPhone label={tr(row.label)} token={row.tbd} />;
+      return <Labelled label={tr(row.label)}>{row.number}</Labelled>;
     case "email":
       return <Labelled label={tr(row.label)}>{row.address}</Labelled>;
     case "address":
@@ -129,7 +126,24 @@ function Labelled({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** A phone row still waiting for its number, counted by its `data-tbd` token. */
+/**
+ * A phone row still waiting for its number. A visitor gets no row at all, not
+ * a label with nothing after it; an editor sees the gap in edit mode (ADR
+ * 0048). Its own component, so only an empty row asks for edit mode, and a
+ * row with a number renders anywhere, router or not.
+ */
+function EmptyPhone({ label, token }: { label: string; token: string | undefined }) {
+  if (!useShowsGaps()) {
+    return null;
+  }
+  return (
+    <Labelled label={label}>
+      <Placeholder token={token} />
+    </Labelled>
+  );
+}
+
+/** The gap in a phone row, counted by its `data-tbd` token. */
 function Placeholder({ token }: { token: string | undefined }) {
   const what = token === undefined ? undefined : TBD_WHAT[token];
   return <Tbd {...(what ? { what: t(what) } : {})} {...(token ? { token } : {})} />;

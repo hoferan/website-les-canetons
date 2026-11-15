@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 
 import userEvent from "@testing-library/user-event";
 import { EDIT_MODE_KEY } from "../content/EditMode";
-import { setMockUser } from "../mocks/handlers";
+import { setMockUser, setMockUserWithPermissions } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { recordBlockPuts, storeBlock } from "../test/renderBlockEditor";
 import { renderWithSession } from "../test/renderWithSession";
@@ -137,13 +137,27 @@ test("describes the band's badge in German", async () => {
   ).toBeInTheDocument();
 });
 
-test("shows the concert photo placeholder in German", async () => {
+/** Changing the page but not its photos, so the line rather than the add frame. */
+test("in edit mode, shows the concert photo placeholder in German", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
   await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
 
   expect(await screen.findByText(/Foto folgt/)).toBeInTheDocument();
 });
 
-test("keeps the concert placeholder while no concert photo is placed", async () => {
+test("a visitor gets nothing in the concert slot while no concert photo is placed", async () => {
+  const { container } = await renderWithSession(<Home />, { route: "/" });
+
+  // The reserved frame goes once the slots have answered.
+  await waitFor(() => expect(container.querySelector("[data-photo-reserved]")).toBeNull());
+  expect(container.querySelector("[data-photo-pending]")).toBeNull();
+  expect(container).not.toHaveTextContent(/Photo à venir/);
+});
+
+test("in edit mode, keeps the concert placeholder while no concert photo is placed", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
   const { container } = await renderWithSession(<Home />, { route: "/" });
 
   await waitFor(() =>
@@ -163,13 +177,14 @@ test("reserves the concert frame, without a caption, while the photo slots are s
   expect(reserved).toBeEmptyDOMElement();
 });
 
-test("keeps the concert placeholder when the photo slots cannot be read", async () => {
+/** A failed read must not leave the reserved frame standing for good. */
+test("a visitor gets nothing, not a frame, when the photo slots cannot be read", async () => {
   server.use(http.get("/api/v1/photo-slots", () => HttpResponse.error()));
   const { container } = await renderWithSession(<Home />, { route: "/" });
 
-  await waitFor(() =>
-    expect(container.querySelector('[data-photo-pending="concert"]')).not.toBeNull(),
-  );
+  await screen.findByRole("img", { name: "Le logo des Canetons de Fribourg" });
+  await waitFor(() => expect(container.querySelector("[data-photo-reserved]")).toBeNull());
+  expect(container.querySelector("[data-photo-pending]")).toBeNull();
 });
 
 test("shows the placed concert photo and drops its placeholder", async () => {

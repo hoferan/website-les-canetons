@@ -35,12 +35,13 @@ type Props = {
  * they turn edit mode on (content/EditMode.tsx). It reads the slots itself, so a
  * page passes no photo.
  *
- * A visitor gets the photo or the one-line placeholder, with no
- * control, no drop handling and no wrapper. An editor gets `SlotPhotoControl`,
+ * A visitor gets the photo or nothing (ADR 0048), with no control, no drop
+ * handling and no wrapper; an editor who may not place photos gets the
+ * one-line placeholder in edit mode. An editor gets `SlotPhotoControl`,
  * which draws the same photo with a way to change it.
  *
  * While the slots are on their way the frame is reserved without a caption, so
- * the placeholder does not flash and nothing below moves when a photo arrives.
+ * nothing below moves when a photo arrives.
  * The same goes while an editor's control is loading: the fallback is the box
  * the control draws, the photo in its wrapper or the empty 3:2 frame, and the
  * pencil or the add button then appears inside it.

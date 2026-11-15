@@ -7,6 +7,7 @@ import { useBandIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
 import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroBlock } from "../content/blocks/HeroBlock";
+import { useShowsGaps } from "../content/EditMode";
 import { ManagedElsewhere } from "../content/editor/ManagedElsewhere";
 import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
@@ -24,6 +25,7 @@ function anchorOf(register: PublicSectionResource): string {
 
 /** One register: its heading, its photograph slot, and who is in it. */
 function Register({ register }: { register: PublicSectionResource }) {
+  const showsGaps = useShowsGaps();
   return (
     // scroll-mt keeps a jumped-to heading off the viewport edge; the header
     // is not sticky, so this is not an offset for it.
@@ -45,17 +47,19 @@ function Register({ register }: { register: PublicSectionResource }) {
         alt={registerName(register.name, register.nameDe)}
       />
 
-      <p className="mt-tight text-ink-muted">
-        {register.members.length > 0 ? (
-          register.members.map((member) => member.firstName).join(", ")
-        ) : (
+      {register.members.length > 0 ? (
+        <p className="mt-tight text-ink-muted">
+          {register.members.map((member) => member.firstName).join(", ")}
+        </p>
+      ) : showsGaps ? (
+        <p className="mt-tight text-ink-muted">
           <Tbd
             what={t("placeholders.registerFirstNames")}
             token="register-first-names"
             onMembersPage
           />
-        )}
-      </p>
+        </p>
+      ) : null}
 
       {register.instructors.length > 0 ? (
         <p className="mt-tight text-sm text-ink-muted">
@@ -74,8 +78,9 @@ function Register({ register }: { register: PublicSectionResource }) {
  * their own child. The API also sends the surname, because the committee page
  * needs it and one public member shape is easier to keep honest than two.
  *
- * An empty register still gets its heading, with the gap written out by
- * `<Tbd />`. Consent is opt-in and defaults to off; hiding empty registers
+ * An empty register still gets its heading; the gap under it is written out
+ * by `<Tbd />` in edit mode only (ADR 0048). Consent is opt-in and defaults
+ * to off; hiding empty registers
  * would say the band has no drummers, and would let a reader infer that a
  * particular child said no.
  *

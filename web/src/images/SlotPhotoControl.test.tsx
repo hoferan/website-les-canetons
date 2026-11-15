@@ -4,7 +4,7 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import { ApiError } from "../api/http";
-import { setMockUser } from "../mocks/handlers";
+import { setMockUser, setMockUserWithPermissions } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { Band } from "../pages/Band";
 import { Home } from "../pages/Home";
@@ -47,13 +47,14 @@ function recordPuts(): Put[] {
 test("a visitor and a member without images.manage see no control", async () => {
   setMockUser(null);
   const { unmount } = await renderWithSession(<Band />, { route: "/band" });
-  await screen.findAllByText("Photo à venir");
+  // The placed Trompettes photo says the slots have answered.
+  await screen.findByRole("img", { name: "Trompettes" });
   expect(screen.queryByRole("button", { name: /^(Changer|Ajouter) (la|une) photo/ })).toBeNull();
   unmount();
 
   setMockUser("demo.player");
   await renderWithSession(<Band />, { route: "/band" });
-  await screen.findAllByText("Photo à venir");
+  await screen.findByRole("img", { name: "Trompettes" });
   expect(screen.queryByRole("button", { name: /^(Changer|Ajouter) (la|une) photo/ })).toBeNull();
 });
 
@@ -244,7 +245,7 @@ test("the picker opens from the pencil and removing the photo empties the slot",
   await within(trumpets).findByRole("button", { name: "Ajouter une photo — Trompettes" });
 });
 
-test("a visitor sees the photo and the placeholder without any control", async () => {
+test("a visitor sees the photo, and nothing in an empty slot, without any control", async () => {
   setMockUser(null);
   await renderWithSession(<Band />, { route: "/band" });
 
@@ -253,14 +254,18 @@ test("a visitor sees the photo and the placeholder without any control", async (
   const bells = screen.getByRole("article", { name: "Cloches" });
   expect(within(trumpets).queryByRole("button")).toBeNull();
   expect(within(bells).queryByRole("button")).toBeNull();
-  expect(within(bells).getByText(/Photo à venir/)).toBeInTheDocument();
+  expect(bells.querySelector("[data-photo-pending]")).toBeNull();
   // No wrapper around a visitor's photo.
   expect(trumpets.querySelector("[data-photo-frame]")).toBeNull();
 });
 
-/** Give PhotoPending a 3:2 frame and this fails. */
-test("a visitor's empty slot is one quiet line, not a photo-sized box", async () => {
-  setMockUser(null);
+/**
+ * Give PhotoPending a 3:2 frame and this fails. Edit mode without
+ * images.manage, the one case that shows the line (ADR 0048).
+ */
+test("an editor who cannot place photos sees an empty slot as one quiet line, not a photo-sized box", async () => {
+  sessionStorage.setItem(EDIT_MODE_KEY, "1");
+  setMockUserWithPermissions("demo.direction", ["content.manage"]);
   await renderWithSession(<Band />, { route: "/band" });
 
   const bells = await screen.findByRole("article", { name: "Cloches" });
@@ -454,19 +459,18 @@ test("an upload the server refuses says why and places nothing", async () => {
   expect(puts).toHaveLength(0);
 });
 
-test("a visitor's slot ignores a drop", async () => {
+test("a visitor's empty slot renders nothing, and a drop on the page does nothing", async () => {
   setMockUser(null);
   const { shrinker, upload } = injected();
   await renderWithSession(
     <SlotPhoto slot={cloches} label="Cloches" alt="Cloches" upload={upload} shrinker={shrinker} />,
   );
 
-  const frame = (await screen.findByText("Photo à venir")).closest<HTMLElement>(
-    "[data-photo-pending]",
-  );
-  expect(frame).not.toBeNull();
-  fireEvent.dragEnter(frame as HTMLElement, dropEvent([jpeg()]));
-  fireEvent.drop(frame as HTMLElement, dropEvent([jpeg()]));
+  const booted = screen.getByTestId("booted");
+  await waitFor(() => expect(booted.querySelector("[data-photo-reserved]")).toBeNull());
+  expect(booted).toBeEmptyDOMElement();
+  fireEvent.dragEnter(booted, dropEvent([jpeg()]));
+  fireEvent.drop(booted, dropEvent([jpeg()]));
 
   expect(screen.queryByText("Déposer pour ajouter")).toBeNull();
   expect(screen.queryByRole("alert")).toBeNull();
@@ -495,7 +499,7 @@ test("while an editor's slot is on the page, a file dropped beside it does not o
 test("a visitor's page keeps the browser's own handling of a dropped file", async () => {
   setMockUser(null);
   await renderWithSession(<SlotPhoto slot={cloches} label="Cloches" alt="Cloches" />);
-  await screen.findByText("Photo à venir");
+  await waitFor(() => expect(document.querySelector("[data-photo-reserved]")).toBeNull());
 
   expect(fireEvent.dragOver(document.body, dropEvent([jpeg()]))).toBe(true);
   expect(fireEvent.drop(document.body, dropEvent([jpeg()]))).toBe(true);
@@ -506,15 +510,13 @@ test("a visitor's page keeps the browser's own handling of a dropped file", asyn
  * stands in for it.
  * ------------------------------------------------------------------------ */
 
-test("with nothing placed, the godparents' slot shows the placeholder like any other", async () => {
+test("with nothing placed, the godparents' slot shows a visitor nothing, like any other", async () => {
   setMockUser(null);
   await renderWithSession(<Band />, { route: "/band" });
 
-  await waitFor(() =>
-    expect(
-      document.querySelector('[data-photo-pending="band.godparents.godparents"]'),
-    ).not.toBeNull(),
-  );
+  await screen.findByRole("heading", { name: "Le parrain et la marraine" });
+  await waitFor(() => expect(document.querySelector("[data-photo-reserved]")).toBeNull());
+  expect(document.querySelector("[data-photo-pending]")).toBeNull();
   expect(screen.queryByRole("img", { name: "Le parrain et la marraine" })).toBeNull();
   // Nothing on the band page is served from the static images.
   expect(document.querySelector('img[src^="/assets/img/"]')).toBeNull();

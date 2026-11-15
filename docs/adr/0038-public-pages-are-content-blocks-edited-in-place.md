@@ -84,7 +84,9 @@ lose and reorder cards with nothing new on the server.
 - A card's rows are typed: text, label and value, phone, e-mail, address, link. A phone
   number has its own row type, so nothing guesses a number inside prose, and a row that
   ships with an empty number shows the `<Tbd>` placeholder until the band types one, so
-  the count of what is missing before PROD (#106) still works by rendering the pages. The
+  the count of what is missing before PROD (#106) still works by rendering the pages.
+  *Amended by ADR 0048: the placeholder, and with it the whole empty row, shows in edit
+  mode only, so the count is taken in edit mode.* The
   editor refuses a number that cannot be dialled (it needs a leading `+`, `00` or `0`)
   and a link that is not https. A read only checks the shape, so one odd value from an
   import does not hide the whole block, and a renderer checks a number or a URL again

@@ -69,6 +69,16 @@ export function useEditMode(): EditMode {
 }
 
 /**
+ * Whether a gap in the public content shows: the placeholder for a photo, a
+ * name or a number the band has not supplied yet. Only in edit mode, so a
+ * visitor never reads an unfinished page and an editor sees what is left to
+ * fill (ADR 0048).
+ */
+export function useShowsGaps(): boolean {
+  return useEditMode().on;
+}
+
+/**
  * One switch for every edit control on the public pages, blocks and photos
  * alike (#106). Off, an editor sees a page exactly as a visitor does, which is
  * how they check what they changed; on, each block and photo they may change
