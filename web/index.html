@@ -27,6 +27,17 @@
       type="font/woff2"
       crossorigin
     />
+    <!-- Karla, the text face, for the same reason: on most pages the largest
+         thing on the first screen is a paragraph, and without this the font
+         is only asked for once the page has drawn it (#396). Latin only,
+         the upright variable file. -->
+    <link
+      rel="preload"
+      href="../node_modules/@fontsource-variable/karla/files/karla-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
 
     <!-- SOCIAL PREVIEW. Without these a link shared on WhatsApp or Facebook —
          which is how this band's site actually gets passed around — previews as
