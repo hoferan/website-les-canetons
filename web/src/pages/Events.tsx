@@ -195,7 +195,7 @@ export function Events() {
   const showHeading =
     planned.length > 0 && (showingPast || awaiting.length > 0 || drafts.length > 0);
 
-  function card(event: EventResource, inOwed: boolean) {
+  function card(event: EventResource, inOwed: boolean, level: 2 | 3 = 3) {
     // What this reader may do to this event, as data. The screen decides which
     // actions exist; RowActions decides only which one stays inline and which
     // go behind the "...". Neither the card nor RowActions calls can().
@@ -292,6 +292,7 @@ export function Events() {
       <EventCard
         key={event.id}
         event={event}
+        level={level}
         // The card decides nothing about permissions. A player is passed no
         // actions, so their card has no empty control row.
         actions={
@@ -604,8 +605,10 @@ export function Events() {
             {showingPast ? t("events.pastHeading") : t("events.restHeading")}
           </h2>
         ) : null}
+        {/* Under the h1 alone when the heading is dropped, so the titles
+            take its level rather than skip one (#392). */}
         <div className="mt-related grid gap-related">
-          {planned.map((event) => card(event, false))}
+          {planned.map((event) => card(event, false, showHeading ? 3 : 2))}
         </div>
       </section>
 

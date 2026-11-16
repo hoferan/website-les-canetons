@@ -33,13 +33,20 @@ export const BADGE_TINTS = ["bg-yellow", "bg-cyan", "bg-lime"];
  */
 export function AgendaEntry({
   event,
+  level,
   tint = "bg-yellow",
 }: {
   event: PublicEventResource;
+  /**
+   * The title's heading level: h3 under the front page's agenda h2, h2 on
+   * /agenda, where the list sits under the h1 (#392).
+   */
+  level: 2 | 3;
   /** The date badge's carnival colour, as a `bg-*` class. */
   tint?: string;
 }) {
   const { day, month } = formatEventDay(event.startsAt);
+  const Title = level === 2 ? "h2" : "h3";
 
   return (
     <li
@@ -59,7 +66,7 @@ export function AgendaEntry({
         <span className="mt-1 text-xs font-bold tracking-widest uppercase">{month}</span>
       </div>
       <div className="min-w-0">
-        <h3 className="font-display text-xl text-ink">{event.title}</h3>
+        <Title className="font-display text-xl text-ink">{event.title}</Title>
         {event.tags.length > 0 ? (
           <div className="mt-tight flex flex-wrap gap-tight text-sm">
             {event.tags.map((tag) => (
@@ -134,6 +141,7 @@ export function PublicAgenda() {
           <AgendaEntry
             key={event.id}
             event={event}
+            level={3}
             tint={BADGE_TINTS[index % BADGE_TINTS.length]}
           />
         ))}
