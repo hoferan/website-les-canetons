@@ -93,6 +93,13 @@ export function historyDate(occurredOn: string, precision: string, locale: Local
   return formatter(locale, precision === "month" ? "month" : "day").format(date);
 }
 
+/** `2019`, `2002-10` or `2023-11-11`: the date for a `<time>`, as precise as the entry. */
+export function historyDateTime(occurredOn: string, precision: string): string {
+  if (precision === "year") return occurredOn.slice(0, 4);
+  if (precision === "month") return occurredOn.slice(0, 7);
+  return occurredOn;
+}
+
 /** The entry's year, which the card shows large. */
 export function historyYear(occurredOn: string): string {
   return occurredOn.slice(0, 4);
