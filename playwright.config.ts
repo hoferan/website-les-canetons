@@ -18,6 +18,12 @@ import { defineConfig } from "@playwright/test";
 // server". A port of its own removes the collision entirely.
 const PORT = 5174;
 
+// Under the mocked backend MSW's service worker makes the page's requests, and
+// without this a context route never sees them: a held font is silently not
+// held (font-swap.spec.ts). Set here, before any worker starts, so every
+// browser launches with it.
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS ??= "1";
+
 export default defineConfig({
   testDir: "web/e2e",
 

@@ -14,6 +14,20 @@
     <link rel="manifest" href="/assets/icons/manifest.json" crossorigin="use-credentials" />
     <meta name="theme-color" content="#e0201a" />
 
+    <!-- Bungee, the headings' face, fetched while the bundle downloads, so
+         it is there when the first heading is drawn and nothing swaps (#395). Only the latin subset: every heading the band writes in
+         French or German is in it. Vite rewrites the path to the hashed file
+         the stylesheet asks for, under any base, so this is one request.
+         crossorigin is required: a font is fetched in CORS mode, and a
+         preload without it is not reused and the font downloads twice. -->
+    <link
+      rel="preload"
+      href="../node_modules/@fontsource/bungee/files/bungee-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
     <!-- SOCIAL PREVIEW. Without these a link shared on WhatsApp or Facebook —
          which is how this band's site actually gets passed around — previews as
          a bare URL with no image and no description.
