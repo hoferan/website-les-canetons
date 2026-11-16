@@ -7,6 +7,55 @@
 /* The design system's semantic tokens (ADR 0045). They alias the palette below. */
 @import "./design-system/tokens/tokens.css";
 
+/* What a heading is set in until Bungee arrives: Arial, scaled to Bungee's
+   width and line metrics, so the swap redraws the glyphs without rewrapping
+   a line. Unscaled, the home hero's title took one line more in Bungee and
+   pushed the page down 57px when it loaded (#395).
+
+   Bungee draws its lowercase as its capitals, so no one scale fits every
+   word: over the site's headings it runs 1.2 to 1.7 times Arial's width,
+   1.36 on average. 140% came out of a sweep of web/e2e/font-swap.spec.ts:
+   139 to 142% keep every page it checks still, 138% rewraps the German home
+   title at 390px and 143% the French one at 1280px. The window is narrow,
+   so a retitled heading can fall outside it; that spec is what says so.
+
+   Bungee's ascent is 1.02em and its descent 0.30em. Size-adjust scales the
+   overrides too, so they are divided by it here.
+
+   Text set in capitals (the nav, the cards' titles) gets its own face below,
+   since Arial's capitals are much wider than its lowercase.
+
+   Liberation Sans and Helvetica have Arial's widths. Android has none of
+   them, so there the face fails and the heading falls through to Karla, as
+   before; the preload in index.html is what keeps Bungee there first. */
+@font-face {
+  font-family: "Bungee Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("Helvetica");
+  size-adjust: 140%;
+  ascent-override: 72.9%;
+  descent-override: 21.4%;
+  line-gap-override: 0%;
+}
+
+/* The same for display text with `uppercase`, where the fallback draws
+   capitals too. Bungee is 1.00 to 1.15 times as wide as Arial's capitals over
+   the nav and card labels, 1.04 overall. At 140% the desktop nav overflowed
+   and put "Galerie" under "Plus" until Bungee came. */
+@font-face {
+  font-family: "Bungee Caps Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("Helvetica");
+  size-adjust: 104%;
+  ascent-override: 98.1%;
+  descent-override: 28.8%;
+  line-gap-override: 0%;
+}
+
+@layer utilities {
+  .font-display.uppercase {
+    font-family: var(--font-display-caps);
+  }
+}
+
 /**
  * The "Scène" palette.
  *
@@ -190,7 +239,10 @@
   /* The display face. Before changing it, check its glyph data: several
      display faces ship incorrect glyf bounding boxes, which Firefox logs for
      every glyph drawn. The check is in docs/traps.md. */
-  --font-display: "Bungee", "Karla Variable", system-ui, sans-serif;
+  --font-display: "Bungee", "Bungee Fallback", "Karla Variable", system-ui, sans-serif;
+
+  /* Only for `font-display uppercase`, which picks it up on its own (above). */
+  --font-display-caps: "Bungee", "Bungee Caps Fallback", "Karla Variable", system-ui, sans-serif;
 }
 
 /**
