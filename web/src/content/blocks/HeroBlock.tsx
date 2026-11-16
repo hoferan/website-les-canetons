@@ -1,19 +1,21 @@
 import { useState, type ReactNode } from "react";
 
 import { PageHero } from "../../carnival/PageHero";
+import { onDemand } from "../../lib/lazy";
 import { t } from "../../i18n";
 import { useBlock } from "../BlocksProvider";
-import { ActionsField, BlockEditor, EditChip, MarkPicker, TranslatedField } from "../editor";
-import { BLOCKS, type BlockKey } from "../registry";
+import { EditChip } from "../editor/EditChip";
+import { BLOCKS } from "../registry";
 import { lacksGerman, tr, trMark } from "../translated";
-import type { Action, heroBlock } from "../types";
+import type { Action } from "../types";
 import { ActionLink, shownActions } from "./ActionLink";
 import { useBlockEditing } from "./useBlockEditing";
+import type { HeroKey } from "./hero";
 
-/** The blocks that are a page's hero. */
-export type HeroKey = {
-  [K in BlockKey]: (typeof BLOCKS)[K]["schema"] extends typeof heroBlock ? K : never;
-}[BlockKey];
+export type { HeroKey };
+
+/** Only for an editor in edit mode, so it is not in a visitor's bundle (#396). */
+export const HeroEditor = onDemand(() => import("./HeroEditor"), "HeroEditor");
 
 /**
  * A public page's poster hero, its heading and the paragraph under it read
@@ -89,32 +91,5 @@ export function HeroActions({ actions }: { actions: readonly Action[] | undefine
         />
       ))}
     </div>
-  );
-}
-
-/**
- * A hero's editor: heading, highlighted words, paragraph and up to two
- * buttons. For a page that lays its hero out itself, as the home page does.
- */
-export function HeroEditor({
-  blockKey,
-  open,
-  onClose,
-}: {
-  blockKey: HeroKey;
-  open: boolean;
-  onClose: () => void;
-}) {
-  return (
-    <BlockEditor blockKey={blockKey} open={open} onClose={onClose}>
-      {() => (
-        <>
-          <TranslatedField name="title" label={t("blockEditor.field.title")} required />
-          <MarkPicker titleName="title" markName="mark" />
-          <TranslatedField name="intro" label={t("blockEditor.field.intro")} multiline />
-          <ActionsField name="actions" />
-        </>
-      )}
-    </BlockEditor>
   );
 }

@@ -6,19 +6,10 @@ import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 
 import { t } from "../../i18n";
-import { TINTS, type Tint } from "../types";
+import { TINT_BACKGROUNDS } from "../cardLook";
+import { TINTS } from "../types";
 
-/**
- * Each carnival colour's background, spelled out whole so Tailwind finds it.
- * The checked state repeats it, or the segment's own checked fill would win.
- */
-export const TINT_BACKGROUNDS: Record<Tint, string> = {
-  pink: "bg-pink data-[state=checked]:bg-pink",
-  cyan: "bg-cyan data-[state=checked]:bg-cyan",
-  lime: "bg-lime data-[state=checked]:bg-lime",
-  yellow: "bg-yellow data-[state=checked]:bg-yellow",
-  lilac: "bg-lilac data-[state=checked]:bg-lilac",
-};
+export { TINT_BACKGROUNDS };
 
 /**
  * The colour a card's picture sits on, one round swatch per tint. The picked

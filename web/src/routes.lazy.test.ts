@@ -5,14 +5,35 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 
 /**
- * Screens only an administrator opens load as chunks of their own, so no
- * visitor downloads their code: the photo library's upload queue (#294) and
- * the website's zip library (#336). An eager import in routes.tsx would put
- * them back into the bundle every public page loads.
+ * Every page behind the login loads as a chunk of its own, so no visitor
+ * downloads its code (#396): among them the photo library's upload queue
+ * (#294) and the website's zip library (#336). An eager import in routes.tsx
+ * would put it back into the bundle every public page loads.
  */
-test.each(["Media", "MediaDetail", "Website"])("%s is loaded lazily", (page) => {
+const LAZY = [
+  "Account",
+  "AccountPassword",
+  "ContactMessages",
+  "EventAttendance",
+  "EventEdit",
+  "EventFormEditor",
+  "EventNew",
+  "EventRegistrations",
+  "EventSeriesNew",
+  "EventTags",
+  "Events",
+  "Inbox",
+  "Login",
+  "Members",
+  "Registers",
+  "Roles",
+  "Media",
+  "MediaDetail",
+  "Website",
+];
+test.each(LAZY)("%s is loaded lazily", (page) => {
   const routes = readFileSync(join(process.cwd(), "web", "src", "routes.tsx"), "utf8");
 
   expect(routes).not.toMatch(new RegExp(`^import \\{[^}]*\\b${page}\\b[^}]*\\} from`, "m"));
-  expect(routes).toMatch(new RegExp(`const ${page} = lazy\\(`));
+  expect(routes).toMatch(new RegExp(`const ${page} = lazyNamed\\(`));
 });

@@ -23,18 +23,17 @@ import {
 } from "../history/entry";
 import { EntryTile } from "../history/EntryTile";
 import type { HistoryDraft } from "../history/HistoryForm";
-import {
-  HistoryPanel,
-  historyEditTarget,
-  type HistoryOpened,
-  PANEL_MENU,
-} from "../history/HistoryPanel";
+import { historyEditTarget, type HistoryOpened, PANEL_MENU } from "../history/panel";
 import { currentLocale, t } from "../i18n";
 import { Photo, PHOTO_SIZES, type PhotoData } from "../images/Photo";
+import { onDemand } from "../lib/lazy";
 import { historySlot, usePhotoSlots } from "../images/photoSlots";
 
 import { useSession } from "../session/SessionProvider";
 import { usePageTitle } from "../components/pageTitle";
+
+/** Only for an editor in edit mode, so it is not in a visitor's bundle (#396). */
+const HistoryPanel = onDemand(() => import("../history/HistoryPanel"), "HistoryPanel");
 
 const ADD_ID = "history-add";
 
@@ -193,20 +192,23 @@ export function History() {
           </ActionBarList>
         ) : null}
 
-        <HistoryPanel
-          opened={opened}
-          onClose={close}
-          onSaved={(failed) => {
-            close();
-            setAnnouncement(t("history.saved"));
-            setPhotoFailed(failed);
-          }}
-          onDraft={setDraft}
-          onDelete={(entry) => {
-            asked.current = entry.id;
-            setDeleting(entry);
-          }}
-        />
+        {/* Mounted for an editor only, so a visitor never loads it. */}
+        {mayEdit || opened !== null ? (
+          <HistoryPanel
+            opened={opened}
+            onClose={close}
+            onSaved={(failed) => {
+              close();
+              setAnnouncement(t("history.saved"));
+              setPhotoFailed(failed);
+            }}
+            onDraft={setDraft}
+            onDelete={(entry) => {
+              asked.current = entry.id;
+              setDeleting(entry);
+            }}
+          />
+        ) : null}
 
         <DeleteHistoryEntry
           entry={deleting}
