@@ -23,13 +23,15 @@ import { BUDGET } from "./lighthouse.mjs";
 
 /** Every script the shell loads at once: its module scripts and modulepreloads. */
 export function shellScripts(html) {
-  const tags = html.match(/<(script|link)\b[^>]*>/g) ?? [];
+  // HTML tag and attribute names are case-insensitive, so the matches are too.
+  const tags = html.match(/<(script|link)\b[^>]*>/gi) ?? [];
   const urls = [];
   for (const tag of tags) {
-    const attr = (name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
-    if (tag.startsWith("<script") && attr("type") === "module" && attr("src")) {
+    const name = tag.slice(1, tag.search(/[\s>]/)).toLowerCase();
+    const attr = (key) => tag.match(new RegExp(`\\s${key}="([^"]*)"`, "i"))?.[1];
+    if (name === "script" && attr("type")?.toLowerCase() === "module" && attr("src")) {
       urls.push(attr("src"));
-    } else if (tag.startsWith("<link") && attr("rel") === "modulepreload" && attr("href")) {
+    } else if (name === "link" && attr("rel")?.toLowerCase() === "modulepreload" && attr("href")) {
       urls.push(attr("href"));
     }
   }

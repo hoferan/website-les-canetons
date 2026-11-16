@@ -20,6 +20,15 @@ test("counts the module script and every modulepreload, nothing else", () => {
   assert.deepEqual(shellScripts(SHELL), ["/assets/index-abc.js", "/assets/visitor-def.js"]);
 });
 
+test("reads tag and attribute names in any case, as HTML does", () => {
+  assert.deepEqual(
+    shellScripts(
+      `<SCRIPT TYPE="Module" SRC="/assets/a.js"></SCRIPT><LINK REL="ModulePreload" HREF="/assets/b.js">`,
+    ),
+    ["/assets/a.js", "/assets/b.js"],
+  );
+});
+
 test("ignores a classic script, which a build never writes for the app", () => {
   assert.deepEqual(shellScripts(`<script src="/legacy.js"></script>`), []);
 });

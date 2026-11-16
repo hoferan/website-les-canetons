@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, mergeConfig, type Plugin, type Rolldown, type UserConfig } from "vite";
 
-import { BOOT_READS } from "./web/src/api/bootReads.ts";
+import { BOOT_READS } from "./web/src/api/bootReads.js";
 
 /**
  * The SPA build.
