@@ -54,6 +54,7 @@
     "format:write": "prettier --write \"web/**/*.{ts,tsx,css,html}\"",
     "guard": "node tools/secret-guard.mjs",
     "guard:images": "node tools/image-budget.mjs",
+    "budget:js": "node tools/bundle-budget.mjs",
     "check": "npm run lint:api && npm run lint:types && npm run typecheck && npm run test:js && npm run test:web && npm run lint:js && npm run lint:boundaries && npm run lint:css && npm run format:check && npm run guard && npm run guard:images",
     "fix": "npm run fix:api && eslint web --fix && stylelint \"web/src/**/*.css\" --fix && npm run format:write",
     "prepare": "husky"

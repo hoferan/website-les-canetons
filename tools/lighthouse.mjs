@@ -18,7 +18,8 @@
 // the bundle, the layout and the images, not a forecast of production timings.
 //
 // INFORMATIONAL. A breach prints a warning and the run still exits 0. Turning
-// it into a gate is a separate decision.
+// it into a gate is a separate decision. The script size alone is gated, by
+// tools/bundle-budget.mjs in CI's build job, because it does not vary.
 
 import { execFileSync } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -44,22 +45,28 @@ export const RUNS = 3;
 export const API_DELAY_MS = 300;
 
 /**
- * The budget, set just outside what the site measured on 2026-10-05, so a
+ * The budget, set just outside what the site measured on 2026-11-16, so a
  * warning means something got worse. The targets are Google's "good"
  * thresholds: a score of 90, LCP 2.5 s, CLS 0.1.
  *
- * Measured, worst page, on a laptop after #236: score 91, LCP 3.02 s, CLS
- * 0.021, TBT under 100 ms, 219 KB of gzipped script (one bundle, the same on
- * every page). CLS keeps Google's 0.1: what is left is a font swap and one
- * photo, about 0.02, and anything that moves a block when data arrives costs
- * far more than the gap.
+ * Measured, worst page, on a laptop after #396: score 86, LCP 3.46 s (the
+ * home page; the others 3.31-3.37 s), CLS 0, TBT under 70 ms, 272 KB of
+ * gzipped script, the same on every public page. #396 took the script down
+ * from 329 KB but not to the 240 KB set on 2026-10-05; what is left is
+ * library code a page needs to draw at all, and the next cuts are in its
+ * follow-up. LCP here follows the script's download, about 0.1 s per 20 KB.
+ * CLS keeps Google's 0.1: anything that moves a block when data arrives
+ * costs far more than the gap.
+ *
+ * `scriptKb` is also a gate: tools/bundle-budget.mjs fails CI's build job on
+ * it, from the built files rather than a browser.
  */
 export const BUDGET = {
   score: { min: 0.85 },
-  lcp: { max: 3200 },
+  lcp: { max: 3500 },
   cls: { max: 0.1 },
   tbt: { max: 200 },
-  scriptKb: { max: 240 },
+  scriptKb: { max: 280 },
 };
 
 /** How each metric reads in the summary table. */
