@@ -49,6 +49,7 @@ export function Agenda() {
               <AgendaEntry
                 key={event.id}
                 event={event}
+                level={2}
                 tint={BADGE_TINTS[index % BADGE_TINTS.length]}
               />
             ))}

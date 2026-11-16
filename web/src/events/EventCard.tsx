@@ -21,18 +21,26 @@ import { OUTLINED_CARD } from "../carnival/raised";
  * else came for, full width at the bottom, under the detail it answers. `meta`
  * is the committee's read-only summary (visibility, answer and booking
  * counts), under the date line.
+ *
+ * `level` is the title's heading level, which the screen knows and the card
+ * does not: an h3 under a group's h2, an h2 when the list has no group
+ * heading (#392).
  */
 export function EventCard({
   event,
+  level,
   actions,
   answer,
   meta,
 }: {
   event: EventResource;
+  level: 2 | 3;
   actions?: ReactNode;
   answer?: ReactNode;
   meta?: ReactNode;
 }) {
+  const Title = level === 2 ? "h2" : "h3";
+
   return (
     <article
       data-testid="event-card"
@@ -49,9 +57,9 @@ export function EventCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-start justify-between gap-related">
             <div className="min-w-0">
-              <h2 data-testid="event-title" className="font-display text-xl text-ink">
+              <Title data-testid="event-title" className="font-display text-xl text-ink">
                 {event.title}
-              </h2>
+              </Title>
 
               {/* The badge states the draft outright. A search or a chosen day can
                   show this card without the group heading in view. */}

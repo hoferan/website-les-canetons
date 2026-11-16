@@ -16,6 +16,7 @@ import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
 import {
   dateWithPreposition,
   historyDate,
+  historyDateTime,
   historyDetail,
   historyYear,
   shownIn,
@@ -270,14 +271,20 @@ function TimelineEntry({
   // entry's language.
   const textLang = shown.fallback ? shown.lang : undefined;
 
-  const date = historyDate(entry.occurredOn, entry.precision, locale);
   const detail = historyDetail(entry.occurredOn, entry.precision, locale);
+  const importance = entry.important ? t("history.importantPrefix") : null;
+  const when = (
+    <time dateTime={historyDateTime(entry.occurredOn, entry.precision)}>
+      {historyDate(entry.occurredOn, entry.precision, locale)}
+    </time>
+  );
 
   const text = (
     <>
       {/* The card opens on its year, large, with the month or the day
           beside it: the landmark a reader scans the timeline by. A picture
-          of the date, so a screen reader skips it and hears the heading. */}
+          of the date, so a screen reader skips it and hears the date in
+          words beside the heading instead. */}
       <div aria-hidden="true" className="flex items-center gap-3">
         <EntryTile important={entry.important} icon={entry.icon} />
         <span className="flex flex-wrap items-baseline gap-x-2 text-violet">
@@ -288,27 +295,32 @@ function TimelineEntry({
         </span>
       </div>
 
-      {/* The heading says the date in words before the title, so heading
-          navigation reaches the landmark and an untitled entry still has a
-          heading. wrap-anywhere: a pasted URL or a German compound is one
-          unbroken word that pushes the page sideways at 390px. Hyphenation
-          only on the title, where Bungee's wide capitals need it; on
-          ragged-right text it splits ordinary words at every width. */}
-      <h2 className={cn("wrap-anywhere", shown.title !== null && "mt-related")}>
-        {entry.important ? <span className="sr-only">{t("history.importantPrefix")}</span> : null}
-        <span className="sr-only">
-          {date}
-          {shown.title !== null ? ", " : null}
-        </span>
-        {shown.title !== null ? (
-          <span
+      {/* The heading is the title alone, and the date in words follows it
+          for a screen reader, so the heading list reads as a list of titles
+          (#392). An untitled entry is headed by its date instead.
+          wrap-anywhere: a pasted URL or a German compound is one unbroken
+          word that pushes the page sideways at 390px. Hyphenation only on
+          the title, where Bungee's wide capitals need it; on ragged-right
+          text it splits ordinary words at every width. */}
+      {shown.title !== null ? (
+        <>
+          <h2
             lang={textLang}
-            className={`block font-display hyphens-auto ${entry.important ? "text-xl sm:text-2xl" : "text-xl"}`}
+            className={`mt-related font-display wrap-anywhere hyphens-auto ${entry.important ? "text-xl sm:text-2xl" : "text-xl"}`}
           >
             {shown.title}
-          </span>
-        ) : null}
-      </h2>
+          </h2>
+          <p className="sr-only">
+            {importance}
+            {when}
+          </p>
+        </>
+      ) : (
+        <h2 className="sr-only">
+          {importance}
+          {when}
+        </h2>
+      )}
 
       {/* Described by the entry's title: no photo carries alt text. */}
       {photo ? (

@@ -445,7 +445,7 @@ test("the card shows what is typed, and Annuler gives the stored entry back", as
   await user.clear(title);
   await user.type(title, "Les nouvelles directrices");
 
-  await waitFor(() => expect(titlesOnPage()).toContain("2019, Les nouvelles directrices"));
+  await waitFor(() => expect(titlesOnPage()).toContain("Les nouvelles directrices"));
   // The panel names the entry as typed, as a card's editor does.
   expect(
     screen.getByRole("dialog", { name: "Histoire · Les nouvelles directrices" }),
@@ -469,11 +469,11 @@ test("a new entry appears at its date while it is written, and is gone if abando
   // Between 2007 and 2019, as the server will sort it.
   await waitFor(() =>
     expect(titlesOnPage()).toEqual([
-      expect.stringMatching(/octobre 2002, Les débuts$/),
+      "Les débuts",
       "2007",
-      "2010, Premier voyage",
-      "2019, Delphine Maillard et Laura Mantel",
-      "2026, Le flambeau passe",
+      "Premier voyage",
+      "Delphine Maillard et Laura Mantel",
+      "Le flambeau passe",
     ]),
   );
 
@@ -491,7 +491,8 @@ test("a changed year moves the card to its new place on the timeline", async () 
   await user.clear(year);
   await user.type(year, "2005");
 
-  await waitFor(() => expect(titlesOnPage()[1]).toBe("2005, Le flambeau passe"));
+  // Second, after 2002 and before the untitled 2007.
+  await waitFor(() => expect(titlesOnPage()[1]).toBe("Le flambeau passe"));
 });
 
 /** While the panel is open, what shows is what a visitor would see. */

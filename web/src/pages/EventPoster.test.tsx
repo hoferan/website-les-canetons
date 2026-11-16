@@ -253,7 +253,7 @@ test("the planning's card shows the event's poster", async () => {
     myAttendance: null,
     myRegistration: null,
   } satisfies EventResource;
-  await renderWithSession(<EventCard event={event} />);
+  await renderWithSession(<EventCard event={event} level={2} />);
 
   await waitFor(() =>
     expect(screen.getByRole("link", { name: "Affiche : Concert annuel" })).toHaveAttribute(

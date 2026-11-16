@@ -126,9 +126,10 @@ export function EventCalendar({
           onClick={() => setMonth(shiftMonth(month, -1))}
         />
 
-        <h3 data-testid="calendar-month" className="font-display text-lg">
+        {/* h2: the calendar sits under the page's h1, above the groups. */}
+        <h2 data-testid="calendar-month" className="font-display text-lg">
           {formatter("month").format(firstOfMonth)}
-        </h3>
+        </h2>
 
         <IconButton
           type="button"

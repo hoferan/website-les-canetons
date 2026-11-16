@@ -254,8 +254,11 @@ export function EventBooking() {
             <Card asChild className={cn(RAISED_CARD, "mt-related gap-0 p-5")}>
               <form onSubmit={submit} noValidate className="space-y-related">
                 <fieldset className="flex flex-col gap-related">
+                  {/* A heading inside the legend, as GOV.UK does: still the
+                      group's name, and now in the heading list too, with the
+                      form's own heading blocks one level under it (#392). */}
                   <legend className="mb-tight heading-wave w-fit font-display text-xl">
-                    {t("booking.contactLegend")}
+                    <h2>{t("booking.contactLegend")}</h2>
                   </legend>
                   <RequiredLegend />
                   {/* Address and table are the form's to ask for (ADR 0033);

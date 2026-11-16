@@ -42,8 +42,8 @@ test("the entries render oldest first, with dates in the page's language", async
 });
 
 /**
- * The date is in the heading: on a timeline the year is the landmark, so
- * heading navigation has to reach it, and an untitled entry still gets one.
+ * A titled entry is headed by its title alone (#392); an untitled one still
+ * needs a heading, and its date is all it has.
  */
 test("an entry without a title has its date as its heading, and its text", async () => {
   const timeline = await renderHistory();
@@ -52,20 +52,27 @@ test("an entry without a title has its date as its heading, and its text", async
   expect(second).toHaveTextContent("Dès la saison 2007/2008");
 });
 
-test("a titled entry's heading carries its date too, apart from the title", async () => {
-  await renderHistory();
+test("a titled entry's heading is its title, and the date in words follows it", async () => {
+  const timeline = await renderHistory();
+  const first = within(timeline).getAllByRole("listitem")[0] as HTMLElement;
+  const heading = within(first).getByRole("heading", { level: 2 });
+  expect(heading).toHaveAccessibleName("Les débuts");
+
+  // Next in reading order, so the heading's next line says when.
+  const when = heading.nextElementSibling;
+  expect(when).toHaveClass("sr-only");
+  expect(when).toHaveTextContent("octobre 2002");
+  expect(when?.querySelector("time")).toHaveAttribute("datetime", "2002-10");
+
   expect(
-    screen.getByRole("heading", { name: /^Étape importante.+octobre 2002, Les débuts$/ }),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole("heading", { name: "2019, Delphine Maillard et Laura Mantel" }),
+    screen.getByRole("heading", { name: "Delphine Maillard et Laura Mantel" }),
   ).toBeInTheDocument();
 });
 
 /**
  * The card opens on its year, large, with the month or the day beside it.
- * That picture is a screen reader's too much: the heading already says the
- * date in words.
+ * That picture is a screen reader's too much: the line after the heading
+ * already says the date in words.
  */
 test("a card shows its year large, with the month beside it, hidden from a screen reader", async () => {
   const timeline = await renderHistory();
@@ -80,9 +87,8 @@ test("a card shows its year large, with the month beside it, hidden from a scree
 
 test("the importance is announced in the page's own punctuation", async () => {
   await renderHistory("de-CH");
-  expect(
-    screen.getByRole("heading", { name: /^Wichtiger Meilenstein: Oktober 2002/ }),
-  ).toBeInTheDocument();
+  const when = screen.getByText("Oktober 2002", { selector: "time" });
+  expect(when.parentElement).toHaveTextContent(/^Wichtiger Meilenstein: Oktober 2002$/);
 });
 
 test("Ajouter says what it adds to", async () => {
@@ -132,9 +138,8 @@ test("cancelling a delete gives focus back to the entry's ⋯, and a delete to A
 test("an important entry says so to a screen reader", async () => {
   const timeline = await renderHistory();
   const first = within(timeline).getAllByRole("listitem")[0] as HTMLElement;
-  expect(
-    within(first).getByRole("heading", { name: /Étape importante.*Les débuts/ }),
-  ).toBeInTheDocument();
+  const when = within(first).getByText("octobre 2002", { selector: "time" });
+  expect(when.parentElement).toHaveTextContent(/^Étape importante : octobre 2002$/);
 });
 
 test("on the German page, an entry with German is German and one without is French, marked", async () => {
@@ -184,7 +189,7 @@ test("a German-only entry on the French page is German, marked", async () => {
   expect(within(only).getByText("Nur Deutsch").closest("[lang]")).toHaveAttribute("lang", "de-CH");
   // lang on the entry's text only: the date is in the page's language and
   // must not be read with a German voice.
-  expect(within(only).getByText("2020").closest('[lang="de-CH"]')).toBeNull();
+  expect(within(only).getByText("2020", { selector: "time" }).closest('[lang="de-CH"]')).toBeNull();
 });
 
 test("the strip is named in the page's language and word order", async () => {
