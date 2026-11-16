@@ -20,9 +20,12 @@ import { translated } from "./translated";
  * content would then delete the stored one.
  */
 
+/** The most items a list may hold: the server refuses a longer one. */
+export const MAX_ITEMS = 24;
+
 /**
- * The pictures a card can carry, each a lucide-react icon (glyphs and names in
- * `editor/IconPicker.tsx`). The first ten are the original set: a stored card
+ * The pictures a card can carry, each a lucide-react icon (glyphs in
+ * `cardLook.ts`, names in `editor/IconPicker.tsx`). The first ten are the original set: a stored card
  * keeps its icon, so none is ever renamed or dropped.
  */
 export const ICONS = [

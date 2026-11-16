@@ -2,7 +2,9 @@ import { fileURLToPath } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, mergeConfig, type Plugin, type UserConfig } from "vite";
+import { defineConfig, mergeConfig, type Plugin, type Rolldown, type UserConfig } from "vite";
+
+import { BOOT_READS } from "./web/src/api/bootReads.js";
 
 /**
  * The SPA build.
@@ -83,10 +85,70 @@ function previewMode(): UserConfig {
   };
 }
 
+/**
+ * The boot reads, preloaded by the shell so they travel while the bundle
+ * downloads (web/src/api/bootReads.ts).
+ *
+ * The production build only. The dev server's /api may be a proxy to nothing
+ * (`npm run dev:mock`), and a PR preview has no API at all: its service worker
+ * answers, and only once the bundle has started it.
+ *
+ * crossorigin="use-credentials" because the app fetches with credentials:
+ * "include", and a preload is used only by a request in the same mode. The
+ * API answers JSON on /api/* whatever the Accept header says, so the
+ * preload's generic Accept gets the same answer the app's own request would.
+ */
+function bootPreloads(): Plugin {
+  return {
+    name: "boot-preloads",
+    apply: (_, { command, mode }) => command === "build" && mode !== "preview",
+    transformIndexHtml: () =>
+      BOOT_READS.map((href) => ({
+        tag: "link",
+        attrs: { rel: "preload", href, as: "fetch", crossorigin: "use-credentials" },
+        injectTo: "head",
+      })),
+  };
+}
+
+/** The SPA's entry module, the root of what every visitor downloads. */
+const ENTRY = fileURLToPath(new URL("./web/src/main.tsx", import.meta.url));
+
+/** A module id as rolldown spells it on any platform. */
+const normalized = (id: string) => id.replace(/\\/g, "/");
+
+/**
+ * Every module the entry imports statically, in one chunk (#396).
+ *
+ * The members' pages and the editors are loaded on demand (routes.tsx,
+ * lib/lazy.tsx), and each shares modules with the entry. Left alone,
+ * rolldown cuts every such set of shared modules into a chunk of its own: a
+ * public page then fetches seventeen scripts, and on a slow phone the extra
+ * requests cost more than the splitting saves. With this group a lazy chunk
+ * imports from the one chunk the visitor already has.
+ */
+function visitorChunk(): (id: string, ctx: Rolldown.ChunkingContext) => string | null {
+  let visitor: Set<string> | undefined;
+
+  return (id, ctx) => {
+    if (visitor === undefined) {
+      visitor = new Set();
+      const queue = [ENTRY];
+      for (const next of queue) {
+        const key = normalized(next);
+        if (visitor.has(key)) continue;
+        visitor.add(key);
+        queue.push(...(ctx.getModuleInfo(next)?.importedIds ?? []));
+      }
+    }
+    return visitor.has(normalized(id)) ? "visitor" : null;
+  };
+}
+
 const config: UserConfig = {
   root: "web",
   base: "/",
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), bootPreloads()],
   // `@/` -> web/src. Note root is "web" below, so this is resolved from the
   // REPO root and not from the Vite root. It must agree with tsconfig.json's
   // paths and with vitest.config.ts, which is a separate config file in this
@@ -102,6 +164,9 @@ const config: UserConfig = {
     outDir: "../dist/build",
     emptyOutDir: true,
     sourcemap: false,
+    rolldownOptions: {
+      output: { codeSplitting: { groups: [{ name: visitorChunk() }] } },
+    },
   },
   server: {
     // PORT, when something upstream assigns one.

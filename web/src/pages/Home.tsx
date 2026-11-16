@@ -19,7 +19,7 @@ import { useBlock } from "../content/BlocksProvider";
 import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroActions, HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
-import { EditChip } from "../content/editor";
+import { EditChip } from "../content/editor/EditChip";
 import { BLOCKS } from "../content/registry";
 import { lacksGerman, tr, trMark } from "../content/translated";
 import { usePageTitle } from "../components/pageTitle";

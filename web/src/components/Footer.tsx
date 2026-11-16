@@ -5,11 +5,14 @@ import { t } from "../i18n";
 import { cn } from "@/lib/utils";
 import { ActionLink, shownActions } from "../content/blocks/ActionLink";
 import { useSite } from "../content/blocks/SiteBlock";
-import { SiteEditor } from "../content/blocks/SiteEditor";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor/EditChip";
 import { lacksGerman, tr } from "../content/translated";
+import { onDemand } from "@/lib/lazy";
 import { NetworkMark, networksOf } from "./social";
+
+/** Only for an editor in edit mode, so it is not in a visitor's bundle (#396). */
+const SiteEditor = onDemand(() => import("../content/blocks/SiteEditor"), "SiteEditor");
 
 /**
  * Where the pencil sits in edit mode. The scallops reach 22px into the footer

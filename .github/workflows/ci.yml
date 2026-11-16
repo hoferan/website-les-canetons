@@ -435,6 +435,11 @@ jobs:
       # _api/ would be missing here.
       - name: Verify dist/build/ was produced
         run: test -f dist/build/index.html && test -d dist/build/_api/vendor
+      # The script every visitor downloads, gzipped, against BUDGET.scriptKb in
+      # tools/lighthouse.mjs. From the built files, so it is the same on every
+      # run; the Lighthouse workflow reports the rest and only warns (#396).
+      - name: Check the visitor's script against its budget
+        run: npm run budget:js
       # deploy-test ships this tree and builds none of its own, so what was
       # built and checked here is what reaches TEST. The checksum list goes
       # with it and deploy-test verifies every file against it before any

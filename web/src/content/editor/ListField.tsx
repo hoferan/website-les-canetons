@@ -14,9 +14,9 @@ import {
 } from "@ds";
 
 import { t } from "../../i18n";
+import { MAX_ITEMS } from "../types";
 
-/** The most items a list may hold: the server refuses a longer one. */
-export const MAX_ITEMS = 24;
+export { MAX_ITEMS };
 
 type Choice<T> = { label: string; newItem: () => T };
 

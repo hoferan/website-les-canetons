@@ -9,7 +9,7 @@ import {
   Tags,
   Users,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
 import { Logo } from "./Logo";
@@ -292,7 +292,12 @@ export function Layout() {
           cost is a footer one scroll away on a page shorter than the screen. */}
       <main id="main" tabIndex={-1} className="min-h-dvh outline-none">
         <FooterEdgeContext.Provider value={setFooterEdge}>
-          <Outlet />
+          {/* For the pages routes.tsx loads on demand. Only a fresh load of
+              such a URL shows it, an empty main under the chrome; a
+              navigation keeps the previous page up until the chunk is in. */}
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
         </FooterEdgeContext.Provider>
       </main>
 

@@ -24,16 +24,7 @@ import {
   type PhotoChange,
 } from "./HistoryForm";
 import { invalidateHistory, saveHistoryPhoto } from "./saveHistoryPhoto";
-
-/** Which entry the panel is open on: a new one, or a stored one by id. */
-export type HistoryOpened = { kind: "new" } | { kind: "edit"; id: number };
-
-/** What the open panel's element on the page is found by (`EditorPanel`'s `target`). */
-export const historyEditTarget = (opened: HistoryOpened) =>
-  opened.kind === "new" ? "history/new" : `history/${opened.id}`;
-
-/** Marks the panel's ⋯, which focus goes back to when a delete asked from it is cancelled. */
-export const PANEL_MENU = "history-panel-menu";
+import { historyEditTarget, type HistoryOpened, PANEL_MENU } from "./panel";
 
 /** An entry's name, as its card's controls say it: its title, or its date. */
 function nameOf(entry: HistoryEntryResource): string {

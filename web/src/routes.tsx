@@ -1,4 +1,3 @@
-import { lazy, Suspense } from "react";
 import { Route, Routes, useParams } from "react-router-dom";
 
 import { Navigate, useLocale } from "./i18n/routing";
@@ -6,53 +5,56 @@ import { Navigate, useLocale } from "./i18n/routing";
 import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
 import { RequirePermission } from "./components/guards";
-import { Account } from "./pages/Account";
-import { AccountPassword } from "./pages/AccountPassword";
 import { Agenda } from "./pages/Agenda";
 import { Band } from "./pages/Band";
 import { Committee } from "./pages/Committee";
 import { Contact } from "./pages/Contact";
-import { ContactMessages } from "./pages/ContactMessages";
-import { EventAttendance } from "./pages/EventAttendance";
 import { EventBooking } from "./pages/EventBooking";
-import { EventEdit } from "./pages/EventEdit";
-import { EventFormEditor } from "./pages/EventFormEditor";
-import { EventNew } from "./pages/EventNew";
-import { EventRegistrations } from "./pages/EventRegistrations";
-import { EventSeriesNew } from "./pages/EventSeriesNew";
-import { EventTags } from "./pages/EventTags";
-import { Events } from "./pages/Events";
 import { History } from "./pages/History";
 import { Home } from "./pages/Home";
-import { Inbox } from "./pages/Inbox";
 import { Join } from "./pages/Join";
-import { Login } from "./pages/Login";
-import { Registers } from "./pages/Registers";
-import { Roles } from "./pages/Roles";
-import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
 import { INBOX_PERMISSIONS } from "./lib/inboxPermissions";
+import { lazyNamed } from "./lib/lazy";
 import { WEBSITE_PERMISSIONS } from "./lib/websitePermissions";
 
-// The library's two pages are a chunk of their own: only `images.manage` opens
-// them, and they bring the upload queue and the shrink step. A navigation here
-// is a transition, so the previous page stays up while the chunk loads; only a
-// fresh load of the URL shows the empty fallback.
-const Media = lazy(() => import("./pages/Media").then((module) => ({ default: module.Media })));
-const MediaDetail = lazy(() =>
-  import("./pages/MediaDetail").then((module) => ({ default: module.MediaDetail })),
+// Only the public pages above are in the entry. Every page behind the login
+// is a chunk of its own, loaded the first time its route renders, so a
+// visitor never downloads the member roster, the editors or the inbox (#396).
+// Login is here too: most visitors never open it.
+//
+// A navigation is a transition, so the previous page stays up while the chunk
+// loads. Only a fresh load of the URL shows the empty fallback, the Suspense
+// around the Outlet in Layout.
+const Account = lazyNamed(() => import("./pages/Account"), "Account");
+const AccountPassword = lazyNamed(() => import("./pages/AccountPassword"), "AccountPassword");
+const ContactMessages = lazyNamed(() => import("./pages/ContactMessages"), "ContactMessages");
+const EventAttendance = lazyNamed(() => import("./pages/EventAttendance"), "EventAttendance");
+const EventEdit = lazyNamed(() => import("./pages/EventEdit"), "EventEdit");
+const EventFormEditor = lazyNamed(() => import("./pages/EventFormEditor"), "EventFormEditor");
+const EventNew = lazyNamed(() => import("./pages/EventNew"), "EventNew");
+const EventRegistrations = lazyNamed(
+  () => import("./pages/EventRegistrations"),
+  "EventRegistrations",
 );
+const EventSeriesNew = lazyNamed(() => import("./pages/EventSeriesNew"), "EventSeriesNew");
+const EventTags = lazyNamed(() => import("./pages/EventTags"), "EventTags");
+const Events = lazyNamed(() => import("./pages/Events"), "Events");
+const Inbox = lazyNamed(() => import("./pages/Inbox"), "Inbox");
+const Login = lazyNamed(() => import("./pages/Login"), "Login");
+const Members = lazyNamed(() => import("./pages/Members"), "Members");
+const Registers = lazyNamed(() => import("./pages/Registers"), "Registers");
+const Roles = lazyNamed(() => import("./pages/Roles"), "Roles");
+// The library's two pages bring the upload queue and the shrink step.
+const Media = lazyNamed(() => import("./pages/Media"), "Media");
+const MediaDetail = lazyNamed(() => import("./pages/MediaDetail"), "MediaDetail");
 // The website export and import pull in a zip library and the upload queue,
 // which only an administrator ever needs (#336).
-const Website = lazy(() =>
-  import("./pages/Website").then((module) => ({ default: module.Website })),
-);
+const Website = lazyNamed(() => import("./pages/Website"), "Website");
 
 // The button catalogue is for developers. `import.meta.env.DEV` is a literal
 // in a build, so the import and the route below are dropped from the bundle.
-const DevUi = import.meta.env.DEV
-  ? lazy(() => import("./pages/DevUi").then((module) => ({ default: module.DevUi })))
-  : null;
+const DevUi = import.meta.env.DEV ? lazyNamed(() => import("./pages/DevUi"), "DevUi") : null;
 
 /**
  * The route table.
@@ -184,46 +186,16 @@ export function AppRoutes() {
               looking after the site's pictures is not the same job as editing
               the roster or the history. */}
           <Route element={<RequirePermission permission="images.manage" />}>
-            <Route
-              path="/media"
-              element={
-                <Suspense fallback={null}>
-                  <Media />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/media/:id"
-              element={
-                <Suspense fallback={null}>
-                  <MediaDetail />
-                </Suspense>
-              }
-            />
+            <Route path="/media" element={<Media />} />
+            <Route path="/media/:id" element={<MediaDetail />} />
           </Route>
 
           {/* The whole public site, carried between servers (#336). */}
           <Route element={<RequirePermission permission={WEBSITE_PERMISSIONS} every />}>
-            <Route
-              path="/website"
-              element={
-                <Suspense fallback={null}>
-                  <Website />
-                </Suspense>
-              }
-            />
+            <Route path="/website" element={<Website />} />
           </Route>
 
-          {DevUi ? (
-            <Route
-              path="/dev/ui"
-              element={
-                <Suspense fallback={null}>
-                  <DevUi />
-                </Suspense>
-              }
-            />
-          ) : null}
+          {DevUi ? <Route path="/dev/ui" element={<DevUi />} /> : null}
 
           <Route path="*" element={<NotFound />} />
         </Route>
