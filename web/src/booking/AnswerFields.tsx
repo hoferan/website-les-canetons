@@ -21,8 +21,11 @@ export function AnswerFields({
 
   return (
     <fieldset className="flex flex-col gap-related">
+      {/* An h2 in the legend, so the committee's heading blocks (h3, see
+          BlockView) sit under a heading rather than straight under the
+          page's h1 (#392). */}
       <legend className="mb-tight heading-wave w-fit font-display text-xl">
-        {t("booking.choiceLegend")}
+        <h2>{t("booking.choiceLegend")}</h2>
       </legend>
 
       {offer.options.length === 0 ? (
