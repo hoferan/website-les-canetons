@@ -112,21 +112,30 @@ function bootPreloads(): Plugin {
 }
 
 /**
- * A German URL fetches the German catalogue while the bundle downloads (#476).
+ * What only some pages need, fetched while the bundle downloads. One static
+ * shell serves every page, so a script in it reads the path and adds the
+ * preloads.
  *
- * French is in the bundle; German is a chunk the app asks for only once the
- * bundle runs (web/src/i18n/catalogues.ts), a round trip later, and a German
- * page renders nothing until it is in. One static shell serves both
- * languages, so a script in it reads the path and adds the modulepreload:
- * French pages never fetch it.
+ * A German URL gets the German catalogue (#476). French is in the bundle;
+ * German is a chunk the app asks for only once the bundle runs
+ * (web/src/i18n/catalogues.ts), a round trip later, and a German page renders
+ * nothing until it is in. French pages never fetch it.
  *
- * The test mirrors web/src/i18n/locale.ts: the path below the app's base,
- * then `/de` as a whole segment.
+ * The home page gets its two images, the header's duck and the badge in its
+ * hero (#479). The app asks for them only once the bundle has run, the moment
+ * its heading paints, and Lighthouse then counts a whole image request after
+ * the bundle into the home page's LCP: 0.2 s. Other pages do not show the
+ * badge, and a preload never used is a console warning. They do not get the
+ * duck either: where the first screen waits for a read the bundle starts, as
+ * on /history, the duck downloading beside the bundle delayed it by 0.08 s.
+ *
+ * The tests mirror web/src/i18n/locale.ts: the path below the app's base,
+ * then `/de` as a whole segment. The home page is `/` in either language.
  */
-function germanPreload(): Plugin {
+function pathPreloads(): Plugin {
   let base = "/";
   return {
-    name: "german-preload",
+    name: "path-preloads",
     apply: "build",
     configResolved: (config) => {
       base = config.base;
@@ -147,15 +156,22 @@ function germanPreload(): Plugin {
         }
         const app = JSON.stringify(base.replace(/\/$/, ""));
         const href = JSON.stringify(`${base}${german.fileName}`);
+        // web/src/components/Logo.tsx shows both.
+        const images = JSON.stringify(
+          ["duck-white.png", "Les_Canetons_Fribourg_logo_2.jpg"].map(
+            (file) => `${base}assets/img/${file}`,
+          ),
+        );
         return [
           {
             tag: "script",
             children:
               `(function(){var p=location.pathname,b=${app};` +
               `if(b&&p.indexOf(b)===0)p=p.slice(b.length);` +
-              `if(!/^\\/de(\\/|$)/.test(p))return;` +
-              `var l=document.createElement("link");l.rel="modulepreload";l.href=${href};` +
-              `document.head.appendChild(l)})()`,
+              `function a(r,h,s){var l=document.createElement("link");l.rel=r;l.href=h;` +
+              `if(s)l.as=s;document.head.appendChild(l)}` +
+              `if(/^\\/de(\\/|$)/.test(p))a("modulepreload",${href});` +
+              `if(/^(\\/de)?\\/?$/.test(p))${images}.forEach(function(h){a("preload",h,"image")})})()`,
             injectTo: "head",
           },
         ];
@@ -196,7 +212,7 @@ function visitorChunk(): (id: string) => string | null {
 const config: UserConfig = {
   root: "web",
   base: "/",
-  plugins: [react(), tailwindcss(), bootPreloads(), germanPreload()],
+  plugins: [react(), tailwindcss(), bootPreloads(), pathPreloads()],
   // `@/` -> web/src. Note root is "web" below, so this is resolved from the
   // REPO root and not from the Vite root. It must agree with tsconfig.json's
   // paths and with vitest.config.ts, which is a separate config file in this
