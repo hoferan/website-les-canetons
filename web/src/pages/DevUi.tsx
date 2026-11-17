@@ -18,7 +18,7 @@ import { usePageTitle } from "../components/pageTitle";
 // so it has no catalogue keys.
 
 const VARIANTS = ["primary", "secondary", "danger", "quiet", "accent"] as const;
-const SIZES = ["default", "sm"] as const;
+const SIZES = ["sm", "md", "lg"] as const;
 const INDICATOR_COLORS = ["cyan", "pink", "lime", "yellow", "violet", "danger", "ink"] as const;
 const INDICATOR_SIZES = ["sm", "md", "lg"] as const;
 const LEVELS: Array<{ level: ToastLevel; message: string; frozenAt?: number }> = [
@@ -66,7 +66,7 @@ export function DevUi() {
 
       <Block
         title="Variantes et tailles"
-        note="Chaque variante en taille par défaut et sm, puis la même rangée désactivée (aria-disabled), puis un bouton en cours d'envoi."
+        note="Chaque variante en sm, md (par défaut) et lg, puis la même rangée désactivée (aria-disabled), puis un bouton en cours d'envoi. lg : héros et rangées d'actions des formulaires."
       >
         <div className="grid gap-6">
           {[false, true].map((disabled) => (
@@ -263,9 +263,13 @@ export function DevUi() {
                 <p className="text-sm text-muted-foreground">Une boîte rendue à plat.</p>
               </div>
               <DialogFooter>
-                <Button>Enregistrer</Button>
-                <Button variant="secondary">Annuler</Button>
-                <Button variant="quiet">Réinitialiser</Button>
+                <Button size="lg">Enregistrer</Button>
+                <Button size="lg" variant="secondary">
+                  Annuler
+                </Button>
+                <Button size="lg" variant="quiet">
+                  Réinitialiser
+                </Button>
               </DialogFooter>
             </div>
           </div>
@@ -280,11 +284,13 @@ export function DevUi() {
                 <input className="min-h-touch rounded-md border px-3 font-normal" />
               </label>
               <FormActions>
-                <Button type="submit">Enregistrer</Button>
-                <Button type="button" variant="secondary">
+                <Button size="lg" type="submit">
+                  Enregistrer
+                </Button>
+                <Button size="lg" type="button" variant="secondary">
                   Annuler
                 </Button>
-                <Button type="button" variant="quiet">
+                <Button size="lg" type="button" variant="quiet">
                   Réinitialiser
                 </Button>
               </FormActions>

@@ -362,6 +362,7 @@ function CardEditor({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button
+              size="lg"
               type="button"
               variant="danger"
               onClick={() => {

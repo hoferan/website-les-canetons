@@ -281,7 +281,7 @@ export function Layout() {
               <Link
                 to="/login"
                 aria-current={active === "/login" ? "page" : undefined}
-                className={cn(buttonVariants({ variant: "accent" }), "border-2 px-3.5")}
+                className={cn(buttonVariants({ variant: "accent", size: "sm" }), "border-2")}
               >
                 {t("nav.login")}
               </Link>

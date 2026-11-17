@@ -10,7 +10,7 @@ const meta = {
   args: { children: "Envoyer" },
   argTypes: {
     variant: { control: "select", options: ["primary", "secondary", "danger", "accent", "quiet"] },
-    size: { control: "select", options: ["default", "xs", "sm", "lg"] },
+    size: { control: "select", options: ["sm", "md", "lg"] },
     loading: { control: "boolean" },
   },
 } satisfies Meta<typeof Button>;
@@ -34,19 +34,36 @@ export const Variants: Story = {
 };
 
 /**
- * The sizes. They all render at least 44px tall: the touch floor beats the size's own height, so
- * they differ only in padding and text size (#397).
+ * The three sizes (#397). lg is for hero actions and form action rows, sm for compact rows, md for
+ * everything else. An icon leaves the padding unchanged.
  */
 export const Sizes: Story = {
   render: (args) => (
-    <div className="flex flex-wrap items-center gap-4">
-      {(["xs", "sm", "default", "lg"] as const).map((size) => (
-        <Button key={size} {...args} size={size}>
-          {size}
-        </Button>
+    <div className="grid gap-4">
+      {(["sm", "md", "lg"] as const).map((size) => (
+        <div key={size} className="flex flex-wrap items-center gap-4">
+          <Button {...args} size={size}>
+            {size}
+          </Button>
+          <Button {...args} size={size}>
+            <Plus aria-hidden="true" />
+            {`${size} icône`}
+          </Button>
+        </div>
       ))}
     </div>
   ),
+  play: async ({ canvas }) => {
+    const expected = { sm: [44, 12, 14], md: [44, 16, 14], lg: [48, 20, 16] } as const;
+    for (const [size, triple] of Object.entries(expected)) {
+      for (const name of [size, `${size} icône`]) {
+        const style = getComputedStyle(canvas.getByRole("button", { name }));
+        await expect([style.height, style.paddingLeft, style.fontSize]).toEqual(
+          triple.map((px) => `${px}px`),
+        );
+      }
+    }
+  },
 };
 
 /**

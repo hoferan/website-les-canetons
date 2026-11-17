@@ -199,7 +199,7 @@ export function PhoneNav({
               to="/login"
               onClick={close}
               aria-current={active === "/login" ? "page" : undefined}
-              className={cn(buttonVariants({ variant: "accent" }), "flex h-12 w-full text-base")}
+              className={cn(buttonVariants({ variant: "accent", size: "lg" }), "flex w-full")}
             >
               {t("nav.login")}
             </Link>

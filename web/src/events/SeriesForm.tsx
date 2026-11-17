@@ -340,6 +340,7 @@ export function SeriesForm({
             with "Annuler" as the only action the form reads as broken. With
             no count to name, it says what it will do. */}
         <Button
+          size="lg"
           type="submit"
           aria-disabled={busy || blockedBy !== null}
           aria-describedby={blockedBy ?? undefined}
@@ -350,7 +351,7 @@ export function SeriesForm({
               ? t("seriesForm.create", { count: chosen.length })
               : t("seriesForm.createNone")}
         </Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>
+        <Button size="lg" type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </FormActions>

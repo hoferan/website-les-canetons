@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+
 import { ButtonLink } from "@/components/ButtonLink";
 
 import { t } from "../../i18n";
@@ -25,10 +27,12 @@ export function shownActions(actions: readonly Action[] | undefined): Action[] {
 export function ActionLink({
   action,
   index,
+  size,
   className,
 }: {
   action: Action;
   index: number;
+  size?: ComponentProps<typeof ButtonLink>["size"];
   className?: string;
 }) {
   const external = !isPublicPage(action.to);
@@ -39,6 +43,7 @@ export function ActionLink({
       external={external}
       {...(external ? { ariaLabel: t("nav.newTab", { name: label }) } : {})}
       variant={index === 0 ? "accent" : "secondary"}
+      {...(size ? { size } : {})}
       {...(className ? { className } : {})}
     >
       {label}

@@ -302,10 +302,10 @@ function RegisterRow({
           />
           <FormError error={saving.error} />
           <FormActions>
-            <Button type="submit" aria-disabled={busy}>
+            <Button size="lg" type="submit" aria-disabled={busy}>
               {t("common.save")}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+            <Button size="lg" type="button" variant="secondary" onClick={() => setEditing(null)}>
               {t("common.cancel")}
             </Button>
           </FormActions>
@@ -342,6 +342,7 @@ function RegisterRow({
                 it anyway; offering the button would only earn a 409. */}
             {inUse ? null : (
               <Button
+                size="lg"
                 type="button"
                 variant="danger"
                 aria-disabled={busy}
@@ -400,7 +401,7 @@ function NewRegister({ onCreated }: { onCreated: () => Promise<void> }) {
       />
       <FormError error={creating.error} />
       <FormActions>
-        <Button type="submit" aria-disabled={busy}>
+        <Button size="lg" type="submit" aria-disabled={busy}>
           {t("registers.add")}
         </Button>
       </FormActions>

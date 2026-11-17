@@ -12,10 +12,11 @@ import { cn } from "../../internal/cn";
  *
  * What differs from stock shadcn:
  *
- * 1. `min-h-touch` (44px, --spacing-touch in styles.css) on the base, so every
- *    button has the touch floor. A consequence worth knowing: the `h-*` in the
- *    size variants are below 44px, so min-height wins and the sizes differ only
- *    in padding and text size (#397 tracks cleaning that up).
+ * 1. Three sizes (#397): sm and md are 44px tall (--spacing-touch in
+ *    styles.css), lg is 48px, and each fixes its padding and text size too.
+ *    The base keeps `min-h-touch` as the floor for a caller that sets its own
+ *    height. Call sites pick a size and pass no size classes of their own
+ *    (tools/button-sizes.test.mjs).
  * 2. A button is never given the `disabled` attribute: disabling the focused
  *    control blurs it to <body>, so an in-flight submit throws focus away. It
  *    uses `aria-disabled` plus an early return in the handler. `loading` is the
@@ -43,7 +44,7 @@ import { cn } from "../../internal/cn";
  * and amended by docs/adr/0040-one-button-system.md.
  */
 const buttonVariants = cva(
-  "focus-ring inline-flex min-h-touch shrink-0 items-center justify-center gap-2 cursor-pointer text-sm font-medium whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-feedback-error [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "focus-ring inline-flex min-h-touch shrink-0 items-center justify-center gap-2 cursor-pointer font-medium whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-feedback-error [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -61,20 +62,16 @@ const buttonVariants = cva(
         // Quiet stays flat: an icon inside a field, a link in a sentence.
         quiet: "relative rounded-control press-quiet",
       },
-      // No size sets a radius: tailwind-merge lets the size's class win over
-      // the variant's, which would square off the small raised buttons.
+      // An icon leaves a size's padding alone (#397). No size sets a radius:
+      // tailwind-merge lets the size's class win over the variant's, which
+      // would square off the small raised buttons.
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 px-6 has-[>svg]:px-4",
-        // The icon sizes carry `min-w-touch` because the base sets only a
-        // minimum height. A text button gets its width from padding; an
-        // icon-only one would render as a 32px-wide sliver.
-        icon: "size-9 min-w-touch",
-        "icon-xs": "size-6 min-w-touch [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8 min-w-touch",
-        "icon-lg": "size-10 min-w-touch",
+        sm: "h-touch px-3 text-sm",
+        md: "h-touch px-4 text-sm",
+        lg: "h-12 px-5 text-base",
+        icon: "size-touch text-sm",
+        "icon-sm": "size-touch text-sm",
+        "icon-lg": "size-12 text-sm",
       },
     },
     // A framed button presses onto its shadow: the offset minus 1px, and the
@@ -89,7 +86,7 @@ const buttonVariants = cva(
     ],
     defaultVariants: {
       variant: "primary",
-      size: "default",
+      size: "md",
     },
   },
 );
@@ -109,7 +106,7 @@ type ButtonProps = React.ComponentProps<"button"> &
 function Button({
   className,
   variant = "primary",
-  size = "default",
+  size = "md",
   asChild = false,
   loading = false,
   onClick,

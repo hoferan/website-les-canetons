@@ -144,7 +144,6 @@ export function History() {
               type="button"
               variant="accent"
               size="sm"
-              className="px-3"
               aria-label={t("history.addAria")}
               onClick={() => open({ kind: "new" })}
             >

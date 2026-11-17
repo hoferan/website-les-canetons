@@ -90,12 +90,7 @@ export function Footer({ above }: { above: string | null }) {
             {actions.length > 0 ? (
               <div className="mt-5 grid grid-cols-2 gap-3 sm:flex">
                 {actions.map((action, index) => (
-                  <ActionLink
-                    key={`${action.to}-${index}`}
-                    action={action}
-                    index={index}
-                    className="px-5"
-                  />
+                  <ActionLink key={`${action.to}-${index}`} action={action} index={index} />
                 ))}
               </div>
             ) : null}

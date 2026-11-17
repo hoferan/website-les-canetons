@@ -309,10 +309,11 @@ export function MediaDetail({
             </p>
           ) : null}
           <FormActions>
-            <Button type="submit" aria-disabled={savingName}>
+            <Button size="lg" type="submit" aria-disabled={savingName}>
               {savingName ? t("common.busy") : t("common.save")}
             </Button>
             <Button
+              size="lg"
               type="button"
               variant="secondary"
               onClick={() => {
@@ -484,6 +485,7 @@ export function MediaDetail({
           <AlertDialogFooter>
             {inUse ? null : (
               <Button
+                size="lg"
                 type="button"
                 variant="danger"
                 aria-disabled={deleteBusy}

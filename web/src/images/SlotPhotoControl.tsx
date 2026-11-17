@@ -272,7 +272,7 @@ export function SlotPhotoControl({
             aria-label={name}
             aria-disabled={busy}
             onClick={open}
-            className={cn(buttonVariants({ variant: "accent" }), "h-11 px-3")}
+            className={buttonVariants({ variant: "accent", size: "sm" })}
           >
             {photo ? (
               <Pencil aria-hidden="true" className="size-5 shrink-0" />
@@ -316,10 +316,7 @@ export function SlotPhotoControl({
                 the chip's yellow, so an empty slot reads as one more thing to
                 change in edit mode. A span, not a button: one control. */}
             <span
-              className={cn(
-                buttonVariants({ variant: "accent" }),
-                "px-4 group-hover/add:bg-yellow/85",
-              )}
+              className={cn(buttonVariants({ variant: "accent" }), "group-hover/add:bg-yellow/85")}
             >
               <ImagePlus aria-hidden="true" className="size-5" />
               {t("photos.addOne")}

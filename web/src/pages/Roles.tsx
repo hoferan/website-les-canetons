@@ -256,10 +256,10 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
           />
           <FormError error={saving.error} />
           <FormActions>
-            <Button type="submit" aria-disabled={busy}>
+            <Button size="lg" type="submit" aria-disabled={busy}>
               {t("common.save")}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+            <Button size="lg" type="button" variant="secondary" onClick={() => setEditing(null)}>
               {t("common.cancel")}
             </Button>
           </FormActions>
@@ -294,6 +294,7 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
           </div>
           <AlertDialogFooter>
             <Button
+              size="lg"
               type="button"
               variant="danger"
               aria-disabled={busy}
@@ -353,7 +354,7 @@ function NewRole({ onCreated }: { onCreated: () => Promise<void> }) {
       />
       <FormError error={creating.error} />
       <FormActions>
-        <Button type="submit" aria-disabled={busy}>
+        <Button size="lg" type="submit" aria-disabled={busy}>
           {t("rolesPage.add")}
         </Button>
       </FormActions>

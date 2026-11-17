@@ -294,12 +294,18 @@ export function EventForm({
       <FormActions>
         {isDraftMode ? (
           <>
-            <Button type="submit" aria-disabled={busy} onClick={() => (intent.current = "save")}>
+            <Button
+              size="lg"
+              type="submit"
+              aria-disabled={busy}
+              onClick={() => (intent.current = "save")}
+            >
               {busy ? t("eventForm.saving") : t("eventForm.saveDraft")}
             </Button>
             {/* Publishing is the deliberate act, so it comes second and is
                 outlined: Enter never reaches for it. */}
             <Button
+              size="lg"
               type="submit"
               variant="secondary"
               aria-disabled={busy}
@@ -309,11 +315,11 @@ export function EventForm({
             </Button>
           </>
         ) : (
-          <Button type="submit" aria-disabled={busy}>
+          <Button size="lg" type="submit" aria-disabled={busy}>
             {busy ? t("eventForm.saving") : t("common.save")}
           </Button>
         )}
-        <Button type="button" variant="secondary" onClick={onCancel}>
+        <Button size="lg" type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </FormActions>
