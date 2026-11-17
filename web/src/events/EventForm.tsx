@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-import { Button } from "@ds";
+import { Button, Checkbox } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import type { EventResource, StoreEventRequest } from "../api/generated/model";
@@ -263,9 +263,7 @@ export function EventForm({
       </p>
 
       <label className="flex min-h-touch items-center gap-2">
-        <input
-          type="checkbox"
-          className="size-5"
+        <Checkbox
           checked={draft.isPublic}
           onChange={(changed) => set("isPublic", changed.target.checked)}
         />

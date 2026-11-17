@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { Checkbox } from "@ds";
 import type {
   HistoryEntryResource,
   StoreHistoryEntryRequest,
@@ -431,9 +432,7 @@ export function HistoryForm({
         />
 
         <label className="flex min-h-touch items-center gap-2">
-          <input
-            type="checkbox"
-            className="size-5"
+          <Checkbox
             checked={draft.important}
             onChange={(changed) => set("important", changed.target.checked)}
           />

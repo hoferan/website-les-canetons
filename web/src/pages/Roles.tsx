@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@ds";
+import { Button, Checkbox } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import { rowsOf } from "../api/collection";
@@ -404,10 +404,9 @@ function RoleFields({
           const id = `${idPrefix}-${permission.replace(".", "-")}`;
           return (
             <div key={permission} className="flex min-h-touch items-start gap-2 py-1">
-              <input
+              <Checkbox
                 id={id}
-                type="checkbox"
-                className="mt-1 size-5"
+
                 aria-describedby={`${id}-hint`}
                 checked={draft.permissions.includes(permission)}
                 onChange={(event) =>

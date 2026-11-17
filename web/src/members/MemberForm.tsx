@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button } from "@ds";
+import { Button, Checkbox } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import type {
@@ -257,9 +257,7 @@ export function MemberForm({
       </div>
 
       <label className="flex min-h-touch items-center gap-2">
-        <input
-          type="checkbox"
-          className="size-5"
+        <Checkbox
           checked={draft.publicVisible}
           onChange={(event) => set("publicVisible", event.target.checked)}
         />
@@ -275,10 +273,8 @@ export function MemberForm({
             the name on every focus, and nothing could query by it.
           */
           <div key={role.id} className="flex min-h-touch items-start gap-2 py-1">
-            <input
+            <Checkbox
               id={`role-${role.id}`}
-              type="checkbox"
-              className="mt-1 size-5"
               // The baseline is fixed: the API refuses any role list without
               // it, so the box stays ticked rather than offering a save that
               // can only fail.

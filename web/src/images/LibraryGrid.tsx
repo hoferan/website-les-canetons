@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@ds";
+import { Button, Checkbox } from "@ds";
 import { SearchField } from "../components/SearchField";
 import { currentLocale, t, translateApiError } from "../i18n";
 import { Link } from "../i18n/routing";
@@ -304,9 +304,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
                     {t("photos.unused")}
                   </span>
                   <label className="mt-auto flex min-h-touch cursor-pointer items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="size-5"
+                    <Checkbox
                       aria-label={t("photos.selectPhoto", { name: image.name })}
                       checked={selected.has(image.id)}
                       onChange={(event) => toggle(image.id, event.target.checked)}

@@ -117,6 +117,14 @@ export default [
           selector: 'JSXAttribute[name.name="size"][value.value=/^icon/]',
           message: 'Use IconButton for an icon-only button (ADR 0040)',
         },
+        // A raw checkbox shrinks in a flex row beside a label that wraps: 13
+        // px wide on /roles (#390). The primitive keeps it at 20x20.
+        {
+          selector:
+            'JSXOpeningElement[name.name="input"] > JSXAttribute[name.name="type"][value.value="checkbox"]',
+          message:
+            'Use Checkbox from "@ds": a raw checkbox shrinks beside a wrapping label (#390).',
+        },
       ],
     },
   },
