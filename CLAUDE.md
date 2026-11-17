@@ -298,6 +298,7 @@ npm run fix           # auto-fix: Pint + eslint + stylelint + prettier
 npm run test:api      # the Laravel suite (needs a database, so not in check)
 npm run test:web      # Vitest (web/src)
 npm run test:e2e      # Playwright (web/e2e), against the mocked backend
+npm run test:storybook   # every design-system story in Chromium: play functions and axe (not in check)
 npm run test:js       # node:test over tools/
 npm run screenshots   # every route at 1280 and 390px into dist/screenshots/, plus index.html
 npm run storybook     # the design system's stories on :6006

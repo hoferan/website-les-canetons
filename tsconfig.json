@@ -29,6 +29,7 @@
     ".storybook",
     "orval.config.ts",
     "playwright.config.ts",
-    "playwright.screenshots.config.ts"
+    "playwright.screenshots.config.ts",
+    "vitest.storybook.config.ts"
   ]
 }

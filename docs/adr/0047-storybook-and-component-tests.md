@@ -27,7 +27,7 @@ Chosen option: "Storybook 10, unit and axe tests in Vitest, visual regression la
 
 - Storybook 10 with `@storybook/react-vite`, `@storybook/addon-a11y` and `@storybook/addon-docs`, configured in `.storybook/` with its own small Vite config (React, the Tailwind plugin, the `@ds` and `@` aliases). Stories sit next to their component and render with no providers.
 - Per component, Vitest and Testing Library cover role and name, `ref` and `className` forwarding, variants, keyboard, disabled and loading states, and ARIA wiring. `axe-core` runs in jsdom for structure, with the contrast rule off because jsdom cannot compute it.
-- Real contrast and layout stay with the Playwright axe sweep (`web/e2e/a11y.spec.ts`) and the Storybook a11y panel.
+- Real contrast and layout stay with the Playwright axe sweep (`web/e2e/a11y.spec.ts`), and with the stories, which Vitest runs in Chromium with axe on every one.
 - `/dev/ui` stays until stories cover all of it, then goes (#408).
 - Visual regression waits (#410). When it comes, baselines are generated and compared only in Linux CI.
 
@@ -39,12 +39,12 @@ This amends ADR 0040's choice of a hand-kept catalogue page for design-system co
 - Good, because the tests run in `npm run check` and need no baseline infrastructure.
 - Good, because `storybook build` runs in the `assets` CI job, so a story that no longer builds, or one that imports app code, fails `all-green`.
 - Bad, because Storybook is a heavy dev-only dependency tree with a second Vite config to keep aligned.
-- Bad, because story `play` functions and the a11y addon do not run in CI yet (#404); they are checked by hand with `npm run storybook`.
+- Good, because the `e2e` CI job runs every story in Chromium (`npm run test:storybook`, #404), so a failing `play` function or an axe violation, contrast included, fails `all-green`. It is not in `npm run check`, because it needs a browser.
 - Bad, because a pure style regression, a changed radius say, is not caught automatically until visual tests exist.
 
 ### Confirmation
 
-The `assets` job runs `npm run build:storybook`. Each component's test file calls `expectNoA11yViolations` for every state.
+The `assets` job runs `npm run build:storybook` and the `e2e` job runs `npm run test:storybook`. Each component's test file calls `expectNoA11yViolations` for every state.
 
 ## Pros and Cons of the Options
 

@@ -321,6 +321,7 @@ jobs:
         run: npm run lint:boundaries
       # Every story must still build: the playground is the design system's
       # documentation (ADR 0047), and a story that imports app code fails here.
+      # The stories run as tests in the `e2e` job, which has a browser.
       - name: Storybook build
         run: npm run build:storybook
       - name: Stylelint
@@ -393,6 +394,15 @@ jobs:
       # so this always gets a server of its own rather than adopting a stray.
       - name: End-to-end tests
         run: npm run test:e2e
+      # The design system's stories, run by Vitest in this job's Chromium: each
+      # story renders, its play function passes and axe finds nothing, contrast
+      # included, which jsdom cannot check (vitest.storybook.config.ts). It
+      # sits here and not in `assets` because this job already has the browser.
+      # `!cancelled()` runs it even when the end-to-end tests failed, so one
+      # red step does not hide the other.
+      - name: Storybook stories
+        if: ${{ !cancelled() }}
+        run: npm run test:storybook
 
   guard:
     runs-on: ubuntu-latest
