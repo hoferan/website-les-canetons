@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, mergeConfig, type Plugin, type Rolldown, type UserConfig } from "vite";
+import { defineConfig, mergeConfig, type Plugin, type UserConfig } from "vite";
 
 import { BOOT_READS } from "./web/src/api/bootReads.js";
 
@@ -171,7 +171,7 @@ const ENTRY = fileURLToPath(new URL("./web/src/main.tsx", import.meta.url));
 const normalized = (id: string) => id.replace(/\\/g, "/");
 
 /**
- * Every module the entry imports statically, in one chunk (#396).
+ * Every module the entry needs, in one chunk (#396).
  *
  * The members' pages and the editors are loaded on demand (routes.tsx,
  * lib/lazy.tsx), and each shares modules with the entry. Left alone,
@@ -179,23 +179,18 @@ const normalized = (id: string) => id.replace(/\\/g, "/");
  * public page then fetches seventeen scripts, and on a slow phone the extra
  * requests cost more than the splitting saves. With this group a lazy chunk
  * imports from the one chunk the visitor already has.
+ *
+ * The group names the entry alone, and rolldown brings in what it depends
+ * on. Rolldown follows a barrel's re-exports only to what is used, where a
+ * walk over `importedIds` follows all of them: through the design system's
+ * barrel and Radix's, that walk put the dropdown, the tooltip and their
+ * positioning in this chunk, 21 KB a visitor never runs (#476). Such a walk
+ * also behaved differently by platform, since the entry's Windows path finds
+ * no module.
  */
-function visitorChunk(): (id: string, ctx: Rolldown.ChunkingContext) => string | null {
-  let visitor: Set<string> | undefined;
-
-  return (id, ctx) => {
-    if (visitor === undefined) {
-      visitor = new Set();
-      const queue = [ENTRY];
-      for (const next of queue) {
-        const key = normalized(next);
-        if (visitor.has(key)) continue;
-        visitor.add(key);
-        queue.push(...(ctx.getModuleInfo(next)?.importedIds ?? []));
-      }
-    }
-    return visitor.has(normalized(id)) ? "visitor" : null;
-  };
+function visitorChunk(): (id: string) => string | null {
+  const entry = normalized(ENTRY);
+  return (id) => (normalized(id) === entry ? "visitor" : null);
 }
 
 const config: UserConfig = {
