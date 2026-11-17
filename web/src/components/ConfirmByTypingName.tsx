@@ -115,6 +115,7 @@ export function ConfirmByTypingName({
             must stay readable. The caller closes the dialog on success.
           */}
           <Button
+            size="lg"
             type="button"
             variant="danger"
             aria-disabled={busy || !armed}

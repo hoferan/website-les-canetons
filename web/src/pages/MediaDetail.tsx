@@ -485,6 +485,7 @@ export function MediaDetail({
           <AlertDialogFooter>
             {inUse ? null : (
               <Button
+                size="lg"
                 type="button"
                 variant="danger"
                 aria-disabled={deleteBusy}

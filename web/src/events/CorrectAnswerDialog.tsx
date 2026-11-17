@@ -120,6 +120,7 @@ export function CorrectAnswerDialog({
 
         <AlertDialogFooter>
           <Button
+            size="lg"
             type="button"
             aria-disabled={busy}
             onClick={() => {

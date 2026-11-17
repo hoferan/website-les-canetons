@@ -95,6 +95,7 @@ export function WithdrawDialog({
 
         <AlertDialogFooter>
           <Button
+            size="lg"
             type="button"
             variant="danger"
             aria-disabled={busy || !armed}

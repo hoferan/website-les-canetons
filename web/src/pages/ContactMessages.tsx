@@ -387,6 +387,7 @@ export function ContactMessages() {
             {/* A plain Button, not AlertDialogAction, which closes the dialog
                 on click: a 412 has to be readable where it happened. */}
             <Button
+              size="lg"
               type="button"
               variant="danger"
               aria-disabled={destroy.isPending}

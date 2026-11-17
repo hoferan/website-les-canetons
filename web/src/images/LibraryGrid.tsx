@@ -352,6 +352,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
             {/* A plain Button, not AlertDialogAction, which would close the
                 dialog before the deletes have run. */}
             <Button
+              size="lg"
               type="button"
               variant="danger"
               aria-disabled={tags === null || deleting}

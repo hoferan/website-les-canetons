@@ -96,20 +96,27 @@ export function sizeClassOffenders(root = ROOT) {
   return found;
 }
 
+// The dialog footers render a FormActions row of their own.
+const ROWS = new Set(["FormActions", "DialogFooter", "AlertDialogFooter"]);
+// These default to lg (components/ui/alert-dialog.tsx), so they may omit it.
+const LARGE_BY_DEFAULT = new Set(["AlertDialogAction", "AlertDialogCancel"]);
+
 /**
- * Buttons in a form's action row (`<FormActions>`) that are not `size="lg"`,
- * those behind a condition (`{draft ? <>…</> : …}`) included.
+ * Buttons in a form's action row that are not `size="lg"`, those behind a
+ * condition (`{draft ? <>…</> : …}`) included.
  */
 export function formActionOffenders(root = ROOT) {
   const found = [];
   for (const { name, source } of sources(root)) {
     walk(source, (node) => {
-      if (!ts.isJsxElement(node) || tagName(node.openingElement) !== "FormActions") return;
+      if (!ts.isJsxElement(node) || !ROWS.has(tagName(node.openingElement))) return;
       for (const child of node.children) {
         walk(child, (inner) => {
           if (!(ts.isJsxOpeningElement(inner) || ts.isJsxSelfClosingElement(inner))) return;
-          if (!BUTTONS.has(tagName(inner))) return;
+          const tag = tagName(inner);
+          if (!BUTTONS.has(tag) && !LARGE_BY_DEFAULT.has(tag)) return;
           const size = attribute(inner, "size")?.initializer;
+          if (!size && LARGE_BY_DEFAULT.has(tag)) return;
           if (size && ts.isStringLiteral(size) && size.text === "lg") return;
           const { line } = source.getLineAndCharacterOfPosition(inner.getStart());
           found.push(`${name}:${line + 1}`);
@@ -122,6 +129,13 @@ export function formActionOffenders(root = ROOT) {
 
 test("buttons take their height, padding and text size from `size`, not from classes", () => {
   assert.deepEqual(sizeClassOffenders(), [], "Pick a size: sm, md or lg (#397).");
+});
+
+test("the alert dialog's own buttons default to large", () => {
+  const text = readFileSync("web/src/components/ui/alert-dialog.tsx", "utf8");
+  for (const tag of LARGE_BY_DEFAULT) {
+    assert.match(text, new RegExp(`function ${tag}\\(\\{[^}]*size = "lg"`), tag);
+  }
 });
 
 test("every button in a form's action row is large", () => {

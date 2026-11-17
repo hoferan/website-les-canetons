@@ -294,6 +294,7 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
           </div>
           <AlertDialogFooter>
             <Button
+              size="lg"
               type="button"
               variant="danger"
               aria-disabled={busy}

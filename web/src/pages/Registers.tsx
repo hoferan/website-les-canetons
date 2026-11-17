@@ -342,6 +342,7 @@ function RegisterRow({
                 it anyway; offering the button would only earn a 409. */}
             {inUse ? null : (
               <Button
+                size="lg"
                 type="button"
                 variant="danger"
                 aria-disabled={busy}

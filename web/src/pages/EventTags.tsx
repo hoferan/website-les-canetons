@@ -329,6 +329,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
           </div>
           <AlertDialogFooter>
             <Button
+              size="lg"
               type="button"
               variant="danger"
               aria-disabled={busy}

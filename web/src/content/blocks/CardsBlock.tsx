@@ -286,6 +286,7 @@ export function CardsBlock({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button
+              size="lg"
               type="button"
               variant="danger"
               onClick={() => {

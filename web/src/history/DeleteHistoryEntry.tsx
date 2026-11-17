@@ -150,6 +150,7 @@ export function DeleteHistoryEntry({
 
         <AlertDialogFooter>
           <Button
+            size="lg"
             type="button"
             variant="danger"
             aria-disabled={busy}

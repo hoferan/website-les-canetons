@@ -263,9 +263,13 @@ export function DevUi() {
                 <p className="text-sm text-muted-foreground">Une boîte rendue à plat.</p>
               </div>
               <DialogFooter>
-                <Button>Enregistrer</Button>
-                <Button variant="secondary">Annuler</Button>
-                <Button variant="quiet">Réinitialiser</Button>
+                <Button size="lg">Enregistrer</Button>
+                <Button size="lg" variant="secondary">
+                  Annuler
+                </Button>
+                <Button size="lg" variant="quiet">
+                  Réinitialiser
+                </Button>
               </DialogFooter>
             </div>
           </div>
