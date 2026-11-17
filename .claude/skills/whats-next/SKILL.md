@@ -79,3 +79,11 @@ picked issue here, on a branch cut from `origin/main` and named after the issue.
 If its body asks for a brainstorm, start with the brainstorming skill. If the
 user picks several, keep the first and offer one new session per extra issue,
 with the issue number as the brief.
+
+Rename the session before the first step of the work, because the app titles
+it "What's next" or "Session" and the sidebar then can't tell the sessions
+apart. Call `mcp__ccd_session_mgmt__set_session_title` with `session_id`
+`"self"` (load it with ToolSearch first if it is deferred). The title is
+`#<number> <issue title>`, cut to about 50 characters. A picked pull request
+is named after its own number and title. If the app declines the rename, carry
+on without it. Each extra session you offer gets a title of the same form.
