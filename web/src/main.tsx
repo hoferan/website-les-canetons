@@ -11,10 +11,10 @@ import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
 import "./styles.css";
 
 // The boot awaits (the mocked backend, the German catalogue), so it runs in a
-// function and this module finishes evaluating at once. A top-level await
-// would hold this module unfinished, and a chunk it awaits that imports the
-// visitor chunk back, as the mocks' does, would wait for it forever: a blank
-// page with no error (#479). tools/top-level-await.test.mjs keeps it so.
+// function and this module finishes evaluating at once. Never await at this
+// module's top level: it would stay unfinished, and a chunk it awaits that
+// imports the visitor chunk back, as the mocks' does, would wait for it
+// forever. The page stays blank and nothing throws (#479).
 void boot();
 
 async function boot() {
