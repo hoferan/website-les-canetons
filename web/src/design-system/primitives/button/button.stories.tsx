@@ -34,9 +34,8 @@ export const Variants: Story = {
 };
 
 /**
- * The three sizes, each one height, one padding and one text size (#397). lg is for hero actions
- * and form action rows, sm for compact rows, md for everything else. An icon does not change the
- * padding.
+ * The three sizes (#397). lg is for hero actions and form action rows, sm for compact rows, md for
+ * everything else. An icon leaves the padding unchanged.
  */
 export const Sizes: Story = {
   render: (args) => (

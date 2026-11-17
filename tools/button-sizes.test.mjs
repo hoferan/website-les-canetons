@@ -1,7 +1,6 @@
 // A button's height, padding and text size come from its `size` (sm, md, lg),
-// never from classes at the call site (#397). Before this test, five pages
-// spelled out `h-12 px-5 text-base` for the same large button, and the same
-// "size" rendered three ways.
+// never from classes at the call site (#397). A class like `h-12 px-5` beside
+// a size makes that size render differently on one page.
 //
 // The design system itself and tests are exempt: the primitive defines the
 // sizes, and a test may pass anything to check the merge.

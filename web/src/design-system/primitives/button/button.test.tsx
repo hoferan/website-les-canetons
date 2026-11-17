@@ -61,8 +61,8 @@ test("the default is primary", () => {
   expect(buttonVariants({})).toBe(buttonVariants({ variant: "primary" }));
 });
 
-// One height, one padding and one text size per size (#397). jsdom computes no
-// layout, so the Sizes story measures the rendered pixels.
+// Each size is exactly one height, padding and text size (#397). jsdom computes
+// no layout, so the Sizes story measures the pixels.
 test.each([
   ["sm", "h-touch", "px-3", "text-sm"],
   ["md", "h-touch", "px-4", "text-sm"],

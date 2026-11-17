@@ -12,10 +12,10 @@ import { cn } from "../../internal/cn";
  *
  * What differs from stock shadcn:
  *
- * 1. Three sizes, each one height, one padding and one text size (#397): sm and
- *    md are 44px tall (--spacing-touch in styles.css), lg is 48px. The base
- *    keeps `min-h-touch` as the floor for a caller that sets its own height.
- *    Call sites pick a size and pass no size classes of their own
+ * 1. Three sizes (#397): sm and md are 44px tall (--spacing-touch in
+ *    styles.css), lg is 48px, and each fixes its padding and text size too.
+ *    The base keeps `min-h-touch` as the floor for a caller that sets its own
+ *    height. Call sites pick a size and pass no size classes of their own
  *    (tools/button-sizes.test.mjs).
  * 2. A button is never given the `disabled` attribute: disabling the focused
  *    control blurs it to <body>, so an in-flight submit throws focus away. It
@@ -62,10 +62,9 @@ const buttonVariants = cva(
         // Quiet stays flat: an icon inside a field, a link in a sentence.
         quiet: "relative rounded-control press-quiet",
       },
-      // One height, one padding and one text size per size (#397). An icon
-      // does not change the padding. No size sets a radius: tailwind-merge
-      // lets the size's class win over the variant's, which would square off
-      // the small raised buttons.
+      // An icon leaves a size's padding alone (#397). No size sets a radius:
+      // tailwind-merge lets the size's class win over the variant's, which
+      // would square off the small raised buttons.
       size: {
         sm: "h-touch px-3 text-sm",
         md: "h-touch px-4 text-sm",
