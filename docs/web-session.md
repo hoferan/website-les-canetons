@@ -132,6 +132,7 @@ session, which `npm run websession:init` does.
 | `npm run check` | Everything but Larastan, which is skipped (§1) |
 | `npm run test:api` | The Laravel suite, run natively |
 | `npm run test:e2e` | Needs `PW_CHROMIUM_PATH`, below |
+| `npm run test:storybook` | Same variable, read by `vitest.storybook.config.ts` |
 | `npm run openapi && npm run generate:api` | Needs `api/vendor` |
 
 **Playwright.** `npm run test:e2e` fails out of the box with `Executable
