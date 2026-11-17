@@ -58,6 +58,12 @@ test("an icon-only quiet button gets the patch and the drop but no line", async 
   await page.goto("/login");
   const toggle = page.getByRole("button", { name: /Afficher le mot de passe/ });
   await expect(toggle).toBeVisible();
+  // The button first renders bare. When the tip's chunk arrives, IconButton
+  // wraps it in Radix's tooltip and React replaces the element (#476), which
+  // can happen between finding the element and reading it. The removed button
+  // then reads "" for every style, and one replaced mid-press is never
+  // pressed. The trigger's data-state shows the wrapped one is in.
+  await expect(toggle).toHaveAttribute("data-state", "closed");
   const line = await toggle.evaluate(
     (element) => getComputedStyle(element, "::before").backgroundImage,
   );
