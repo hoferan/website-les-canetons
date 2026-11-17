@@ -10,46 +10,55 @@ import { APP_BASE, htmlLang, localeFromPath, pathInLocale } from "./i18n/locale"
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
 import "./styles.css";
 
-// The mocked backend, opted into with `npm run dev:mock`. Guarded on
-// import.meta.env.DEV as well, so the worker never starts in a built bundle
-// even if VITE_MOCK_API leaked into a production environment.
-//
-// The one built bundle that does start it is a PR preview, `vite build --mode
-// preview` (#353). MODE is a literal in a build, so in `npm run build` this
-// whole branch folds away and the mocks are never bundled.
-// tools/mock-leak.mjs fails the build if they are.
-//
-// Awaited before the first render, or the boot gate's GET /api/config races
-// it and sometimes reaches the network.
-if (
-  (import.meta.env.DEV && import.meta.env.VITE_MOCK_API === "1") ||
-  import.meta.env.MODE === "preview"
-) {
-  const { worker } = await import("./mocks/browser");
-  await worker.start({
-    // bypass, because Vite's own module and HMR requests must pass through.
-    onUnhandledRequest: "bypass",
-    // Under a preview's subpath, so it is that preview's own worker. Its
-    // scope is the directory it is served from: that PR's pages, and no
-    // other PR's.
-    serviceWorker: { url: `${import.meta.env.BASE_URL}mockServiceWorker.js` },
-  });
-}
+// The boot awaits (the mocked backend, the German catalogue), so it runs in a
+// function and this module finishes evaluating at once. A top-level await
+// would hold this module unfinished, and a chunk it awaits that imports the
+// visitor chunk back, as the mocks' does, would wait for it forever: a blank
+// page with no error (#479). tools/top-level-await.test.mjs keeps it so.
+void boot();
 
-// The one place a stored preference is read, and only for the bare root;
-// everywhere else the URL decides. Replace rather than assign, so the French
-// root does not sit in the back-stack. It cannot loop: /de is not "/".
-const redirecting = shouldRedirectToGerman(window.location.pathname, storedLocale());
+async function boot() {
+  // The mocked backend, opted into with `npm run dev:mock`. Guarded on
+  // import.meta.env.DEV as well, so the worker never starts in a built bundle
+  // even if VITE_MOCK_API leaked into a production environment.
+  //
+  // The one built bundle that does start it is a PR preview, `vite build --mode
+  // preview` (#353). MODE is a literal in a build, so in `npm run build` this
+  // whole branch folds away and the mocks are never bundled.
+  // tools/mock-leak.mjs fails the build if they are.
+  //
+  // Awaited before the first render, or the boot gate's GET /api/config races
+  // it and sometimes reaches the network.
+  if (
+    (import.meta.env.DEV && import.meta.env.VITE_MOCK_API === "1") ||
+    import.meta.env.MODE === "preview"
+  ) {
+    const { worker } = await import("./mocks/browser");
+    await worker.start({
+      // bypass, because Vite's own module and HMR requests must pass through.
+      onUnhandledRequest: "bypass",
+      // Under a preview's subpath, so it is that preview's own worker. Its
+      // scope is the directory it is served from: that PR's pages, and no
+      // other PR's.
+      serviceWorker: { url: `${import.meta.env.BASE_URL}mockServiceWorker.js` },
+    });
+  }
 
-if (redirecting) {
-  window.location.replace(
-    `${pathInLocale("/", "de-CH")}${window.location.search}${window.location.hash}`,
-  );
-} else {
-  // In an `else` because location.replace() schedules a navigation without
-  // stopping this script. Falling through would mount the French app, boot
-  // requests included, and flash the wrong language. A module has no
-  // top-level `return`.
+  // The one place a stored preference is read, and only for the bare root;
+  // everywhere else the URL decides. Replace rather than assign, so the French
+  // root does not sit in the back-stack. It cannot loop: /de is not "/".
+  const redirecting = shouldRedirectToGerman(window.location.pathname, storedLocale());
+
+  if (redirecting) {
+    window.location.replace(
+      `${pathInLocale("/", "de-CH")}${window.location.search}${window.location.hash}`,
+    );
+    // location.replace() schedules a navigation without stopping this script.
+    // Falling through would mount the French app, boot requests included, and
+    // flash the wrong language.
+    return;
+  }
+
   const locale = localeFromPath(window.location.pathname);
 
   // French is in the bundle; a German URL waits for its catalogue, so the
