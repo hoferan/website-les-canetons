@@ -11,6 +11,23 @@ set -euo pipefail
 
 SKILLS_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}/.claude/skills"
 
+# A desktop session in a worktree reads .claude/skills from the main checkout,
+# not from the worktree. Nothing updates that checkout when a PR merges, so a
+# skill added since then is missing from every session. Fast-forward it to
+# origin/main, but only when it is on main with no uncommitted changes to
+# tracked files; a local commit makes the --ff-only merge refuse. There is no
+# fetch, to keep the hook fast: worktrees share refs, so origin/main is as
+# fresh as the last fetch from any of them.
+fast_forward_main_checkout() {
+    local main_dir
+    main_dir=$(git -C "${CLAUDE_PROJECT_DIR:-.}" worktree list --porcelain | sed -n '1s/^worktree //p')
+    [ -n "$main_dir" ] || return 0
+    [ "$(git -C "$main_dir" symbolic-ref --short -q HEAD)" = main ] || return 0
+    [ -z "$(git -C "$main_dir" status --porcelain --untracked-files=no)" ] || return 0
+    git -C "$main_dir" merge --ff-only -q origin/main
+}
+fast_forward_main_checkout >/dev/null 2>&1 || true
+
 using_superpowers_content=$(cat "${SKILLS_DIR}/using-superpowers/SKILL.md" 2>&1 || echo "Error reading using-superpowers skill")
 
 escape_for_json() {
