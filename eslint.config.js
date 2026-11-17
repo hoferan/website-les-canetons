@@ -20,6 +20,14 @@ const SONNER_TOAST = {
   message: 'Raise a toast with notify from @/components/ui/toast (ADR 0042).',
 };
 
+// The block schemas are read on every public page, so zod is in the visitor's
+// bundle. Classic zod's methods cannot be tree-shaken, zod/mini's functions
+// can: the switch took 16 KB gzipped off that script (#479).
+const ZOD_CLASSIC = {
+  name: 'zod',
+  message: 'Import from "zod/mini": classic zod adds 16 KB to every visitor\'s script (#479).',
+};
+
 // See the router block below.
 const DS_DEEP_IMPORT = {
   group: ['@ds/*', '**/design-system/*'],
@@ -123,7 +131,7 @@ export default [
       'no-restricted-imports': [
         'error',
         {
-          paths: [ROUTER_IMPORTS, SONNER_TOAST],
+          paths: [ROUTER_IMPORTS, SONNER_TOAST, ZOD_CLASSIC],
           // The app reaches the design system through `@ds`, never past it
           // (ADR 0046). Inside the design system the next block replaces this.
           patterns: [DS_DEEP_IMPORT],

@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import type { z } from "zod/mini";
 
 import type { TranslationKey } from "../i18n";
 import { catalogueString, catalogueValue } from "../i18n/catalogueText";
@@ -26,15 +26,15 @@ import {
  * `editSchema` is what the editor saves against, where it checks more than a
  * read does (see types.ts); without one the editor uses `schema`.
  */
-type BlockDefinition<S extends z.ZodType> = {
+type BlockDefinition<S extends z.ZodMiniType> = {
   schema: S;
-  editSchema?: z.ZodType<z.output<S>, z.input<S>>;
+  editSchema?: z.ZodMiniType<z.output<S>, z.input<S>>;
   defaults: () => z.output<S>;
   label: TranslationKey;
 };
 
 /** Ties a default to its schema, so a default of the wrong shape fails the build. */
-function block<S extends z.ZodType>(definition: BlockDefinition<S>): BlockDefinition<S> {
+function block<S extends z.ZodMiniType>(definition: BlockDefinition<S>): BlockDefinition<S> {
   return definition;
 }
 

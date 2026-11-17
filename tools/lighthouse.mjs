@@ -49,13 +49,22 @@ export const API_DELAY_MS = 300;
  * warning means something got worse. The targets are Google's "good"
  * thresholds: a score of 90, LCP 2.5 s, CLS 0.1.
  *
- * Measured on a laptop after #476: on the French pages a score of 91-92,
- * LCP 3.01-3.17 s, CLS 0, TBT under 30 ms and 223 KB of gzipped script. The
- * German home page loads the German catalogue on top of that, 241 KB, and
- * reaches LCP at 3.31 s with a score of 89; #479 is about that page. #396 and #476 took the script from 329 KB to 223 KB by loading
- * on demand what a visitor does not need to see the page. LCP here follows
- * the script's download, about 0.1 s per 20 KB. CLS keeps Google's 0.1:
- * anything that moves a block when data arrives costs far more than the gap.
+ * Measured on a laptop after #479: a score of 91-93, LCP 3.01-3.11 s, CLS 0,
+ * TBT under 20 ms and 207 KB of gzipped script on every page; the German home
+ * page loads the 18 KB German catalogue beside it. #396 and #476 took the
+ * script from 329 KB to 223 KB by loading on demand what a visitor does not
+ * need to see the page, and #479 took 16 KB of zod out of it.
+ *
+ * LCP is simulated, not timed. Lighthouse shares the throttled link equally
+ * among the requests in flight, waiting ones included, and counts into LCP
+ * every request that started before the observed paint. So bytes off the
+ * script barely move it (#479's 16 KB moved it 8 ms), while a request in the
+ * same window does: the German catalogue cost /de/ 0.15 s, and an image the
+ * app asks for as its heading paints costs a whole request after the script.
+ * Read a page's path before cutting bytes for it.
+ *
+ * CLS keeps Google's 0.1: anything that moves a block when data arrives
+ * costs far more than the gap.
  *
  * `scriptKb` is also a gate: tools/bundle-budget.mjs fails CI's build job on
  * it, from the built files rather than a browser. It counts the shell's
@@ -64,7 +73,7 @@ export const API_DELAY_MS = 300;
  */
 export const BUDGET = {
   score: { min: 0.85 },
-  lcp: { max: 3400 },
+  lcp: { max: 3200 },
   cls: { max: 0.1 },
   tbt: { max: 200 },
   scriptKb: { max: 240 },
