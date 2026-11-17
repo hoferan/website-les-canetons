@@ -29,7 +29,8 @@
   --color-content-on-action: #fff;
 
   /* The single focus indicator (#391). Violet is 7:1 on the cream ground and on
-     white; the stage is black, where it would be 2.5:1, so it turns white. */
+     white; the stage is black, where it would be 2.5:1, so it turns white
+     there (the surfaces below). */
   --color-focus: var(--color-violet);
   --color-focus-stage: #fff;
 
@@ -45,4 +46,28 @@
      surface and pill radii come with Surface and Badge (#386, #385). */
   --radius-control: 0.375rem;
   --radius-button: 0.75rem;
+}
+
+/**
+ * Surfaces. The page is cream and the default; the stage is the black of the
+ * header, the footer and the phone menu, which say so with
+ * `data-surface="stage"`. A surface re-declares the roles that change on it,
+ * so a component never asks where it sits: a raised button turns its shadow
+ * pink and its focus ring white on the stage by itself.
+ *
+ * Only roles that a utility reads directly can be re-declared here. A theme
+ * variable built from another one is resolved on :root once, and a surface
+ * changing the inner one changes nothing (styles.css, the raised look).
+ */
+@layer base {
+  :root {
+    --raised-color: var(--color-ink);
+    --raised-offset: 3px;
+  }
+
+  [data-surface="stage"] {
+    --raised-color: var(--color-pink);
+    --raised-offset: 4px;
+    --color-focus: var(--color-focus-stage);
+  }
 }

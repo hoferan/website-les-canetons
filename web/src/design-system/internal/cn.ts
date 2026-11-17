@@ -14,7 +14,7 @@ import { extendTailwindMerge } from "tailwind-merge";
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      shadow: ["raised", "raised-sm", "raised-stage", "raised-pressed", "raised-stage-pressed"],
+      shadow: ["raised", "raised-sm", "raised-pressed"],
       radius: ["control", "button"],
     },
   },

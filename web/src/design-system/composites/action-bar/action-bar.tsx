@@ -70,8 +70,6 @@ export type ActionBarProps = {
   actions: ActionBarAction[];
   /** The id of the action that shows its word at rest and takes the Tab stop. */
   main?: string;
-  /** The black stage: a chip's shadow turns pink. */
-  surface?: "page" | "stage";
   className?: string;
 };
 
@@ -297,14 +295,7 @@ function moveIcon(move: "before" | "after", stacked: boolean): LucideIcon {
  * arrow keys, Home and End move along it. The focused segment inverts, ink
  * with yellow text, so no focus ring has to escape the clipped frame.
  */
-export function ActionBar({
-  look,
-  label,
-  actions,
-  main,
-  surface = "page",
-  className,
-}: ActionBarProps) {
+export function ActionBar({ look, label, actions, main, className }: ActionBarProps) {
   const list = React.useContext(ListContext);
   const frame = React.useRef<HTMLDivElement>(null);
   const buttons = React.useRef(new Map<string, HTMLButtonElement>());
@@ -361,7 +352,8 @@ export function ActionBar({
       className={cn(
         "overflow-hidden",
         FRAME[look],
-        look === "chip" && (surface === "stage" ? "shadow-raised-stage" : "shadow-raised-sm"),
+        // On the stage the surface turns this shadow pink (tokens/tokens.css).
+        look === "chip" && "shadow-raised-sm",
         className,
       )}
     >

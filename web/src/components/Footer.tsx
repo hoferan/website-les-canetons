@@ -66,6 +66,7 @@ export function Footer({ above }: { above: string | null }) {
   return (
     <footer
       data-edit-block="site"
+      data-surface="stage"
       className={cn("relative bg-stage text-white", above === null && "mt-16")}
     >
       <Scallop from={above ?? "var(--color-ground)"} />
@@ -73,7 +74,6 @@ export function Footer({ above }: { above: string | null }) {
         <EditChip
           label={t("blocks.site")}
           text={t("blockEditor.site.edit")}
-          surface="stage"
           className={cn("absolute right-2 z-10", CHIP_TOP)}
           missingGerman={lacksGerman(site)}
           onClick={() => setEditingSite(true)}
@@ -94,7 +94,6 @@ export function Footer({ above }: { above: string | null }) {
                     key={`${action.to}-${index}`}
                     action={action}
                     index={index}
-                    surface="stage"
                     className="px-5"
                   />
                 ))}

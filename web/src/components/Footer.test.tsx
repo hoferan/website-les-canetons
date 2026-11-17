@@ -159,10 +159,11 @@ test("the footer's chip floats over the footer, out of its flow", async () => {
   const chip = within(footer).getByRole("button", { name: "Modifier les infos du site" });
   expect(chip).toHaveTextContent("Modifier les infos du site");
   // The chip's bar is placed below the scallops, and its positioning parent
-  // is the footer. On the black stage its shadow is the pink one.
+  // is the footer, which is the stage and so turns the chip's shadow pink.
   const placed = chip.closest("[data-action-bar='chip']");
-  expect(placed).toHaveClass("absolute", "top-9", "shadow-raised-stage");
+  expect(placed).toHaveClass("absolute", "top-9", "shadow-raised-sm");
   expect(footer).toHaveClass("relative");
+  expect(footer).toHaveAttribute("data-surface", "stage");
   expect(placed?.parentElement).toBe(footer);
 });
 

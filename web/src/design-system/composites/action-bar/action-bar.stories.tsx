@@ -55,7 +55,6 @@ const meta = {
   args: { look: "strip", label: "Notre histoire", main: "edit", actions: CARD_ACTIONS },
   argTypes: {
     look: { control: "radio", options: ["chip", "strip", "row"] },
-    surface: { control: "radio", options: ["page", "stage"] },
   },
   // A strip sits along the top of a 237px card, the narrowest on the home band.
   decorators: [
@@ -97,10 +96,15 @@ export const HistoryEntry: Story = { args: { actions: [more, edit()] } };
 /** A single block's chip. Below `sm` it shows only the pencil. */
 export const Chip: Story = { args: { look: "chip", actions: [edit()] } };
 
-/** On the black stage the chip's shadow turns pink. */
+/** Inside a `data-surface="stage"` element the chip's shadow turns pink, with nothing passed to it. */
 export const ChipOnTheStage: Story = {
-  args: { look: "chip", surface: "stage", actions: [edit(true)] },
+  args: { look: "chip", actions: [edit(true)] },
   globals: { backgrounds: { value: "stage" } },
+  render: (args) => (
+    <div data-surface="stage" className="inline-block">
+      <ActionBar {...args} />
+    </div>
+  ),
 };
 
 /** A line inside an editor: a quiet row, ↑ ↓ ⋯, folded until hovered or focused. */

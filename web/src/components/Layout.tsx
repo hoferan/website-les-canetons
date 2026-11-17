@@ -211,7 +211,7 @@ export function Layout() {
 
       <EnvRibbon env={config.env} />
 
-      <header className="bg-stage text-white">
+      <header data-surface="stage" className="bg-stage text-white">
         <div className="mx-auto flex max-w-shell items-center justify-between gap-3 px-4 py-3 md:pb-0">
           <Logo />
           {/* Desktop only. The phone's copy sits in the Menu bar below; see
@@ -238,6 +238,7 @@ export function Layout() {
           nothing folds there. */}
       <nav
         aria-label={t("nav.primary")}
+        data-surface="stage"
         className="sticky top-0 z-30 bg-stage text-white md:static"
       >
         <PhoneNav
@@ -262,14 +263,11 @@ export function Layout() {
                 showAccount={mayManageAccount}
               />
             ) : (
-              // The yellow button on the stage, which gives it a pink shadow.
+              // The yellow button; the stage gives it a pink shadow.
               <Link
                 to="/login"
                 aria-current={active === "/login" ? "page" : undefined}
-                className={cn(
-                  buttonVariants({ variant: "accent", surface: "stage" }),
-                  "border-2 px-3.5",
-                )}
+                className={cn(buttonVariants({ variant: "accent" }), "border-2 px-3.5")}
               >
                 {t("nav.login")}
               </Link>

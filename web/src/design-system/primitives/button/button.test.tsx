@@ -22,23 +22,25 @@ test.each(ALL)("%s has the hand cursor", (variant) => {
   expect(buttonVariants({ variant }).split(" ")).toContain("cursor-pointer");
 });
 
-test.each(FRAMED)("%s presses in onto its shadow", (variant) => {
+// The offset is the surface's, 3px on the page and 4px on the stage, so the
+// press reads the same variable. The colours are checked in a browser by the
+// OnTheStage story; jsdom resolves no custom property.
+test.each(FRAMED)("%s presses in onto its shadow, by the surface's offset", (variant) => {
   const classes = buttonVariants({ variant }).split(" ");
-  expect(classes).toContain("active:translate-x-0.5");
-  expect(classes).toContain("active:translate-y-0.5");
+  expect(classes).toContain("shadow-raised-sm");
+  expect(classes).toContain("active:translate-x-[calc(var(--raised-offset)-1px)]");
+  expect(classes).toContain("active:translate-y-[calc(var(--raised-offset)-1px)]");
   expect(classes).toContain("active:shadow-raised-pressed");
   expect(classes).not.toContain("active:scale-[0.98]");
 });
 
-test("a stage button keeps a pink shadow when pressed", () => {
-  const classes = buttonVariants({ variant: "accent", surface: "stage" }).split(" ");
-  expect(classes).toContain("shadow-raised-stage");
-  expect(classes).toContain("active:translate-x-[3px]");
-  expect(classes).toContain("active:translate-y-[3px]");
-  expect(classes).toContain("active:shadow-raised-stage-pressed");
-  expect(classes).toContain("focus-ring-stage");
-  expect(classes).not.toContain("shadow-raised-sm");
-  expect(classes).not.toContain("active:shadow-raised-pressed");
+test.each(ALL)("%s carries the one focus ring, whatever the surface", (variant) => {
+  expect(buttonVariants({ variant }).split(" ")).toContain("focus-ring");
+});
+
+test("a button does not say which surface it sits on", () => {
+  render(<Button>Envoyer</Button>);
+  expect(screen.getByRole("button")).not.toHaveAttribute("data-surface");
 });
 
 // The press itself is CSS (press-quiet in styles.css), measured in a browser
@@ -136,8 +138,8 @@ describe("Button", () => {
 
   test("the stage surface and a loading state have none either", async () => {
     const { container } = render(
-      <div>
-        <Button surface="stage">Connexion</Button>
+      <div data-surface="stage">
+        <Button>Connexion</Button>
         <Button loading>Envoi</Button>
       </div>,
     );

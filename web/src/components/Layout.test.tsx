@@ -136,6 +136,25 @@ test("the phone menu names the networks beside their marks", async () => {
   expect(within(layer).getByRole("link", { name: /^Facebook/ })).toHaveTextContent("Facebook");
 });
 
+// A raised button takes its pink shadow and white ring from the surface it
+// sits in, so a black region that does not say it is the stage leaves ink
+// shadows and violet rings on black.
+test("every black region declares itself the stage", async () => {
+  const user = userEvent.setup();
+  const { container } = await renderWithSession(<AppRoutes />, { route: "/join" });
+  await openPhoneMenu(user);
+  await screen.findByRole("dialog", { name: "Menu" });
+
+  const black = [...document.querySelectorAll(".bg-stage")];
+  // The header, the nav bar, the phone layer and the footer. A member's phone
+  // layer adds a sticky foot, inside the layer.
+  expect(black.length).toBeGreaterThanOrEqual(4);
+  for (const region of black) {
+    expect(region.closest("[data-surface='stage']")).not.toBeNull();
+  }
+  expect(container.querySelector("footer")).toHaveAttribute("data-surface", "stage");
+});
+
 test("the auth link says Connexion when nobody is logged in", async () => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
   const link = screen.getByRole("link", { name: "Connexion" });
