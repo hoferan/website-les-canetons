@@ -1,7 +1,7 @@
 import i18next from "i18next";
 
 import type { ApiError, ApiErrorField } from "../api/http";
-import { de } from "./de";
+import { loadCatalogue } from "./catalogues";
 import { fr } from "./fr";
 import { DEFAULT_LOCALE, type Locale, localeFromPath } from "./locale";
 
@@ -24,10 +24,8 @@ i18next.init({
   // A safety net: de.ts is typed `typeof fr`, so key parity is enforced at
   // build time, and a miss renders French rather than its lookup path.
   fallbackLng: DEFAULT_LOCALE,
-  resources: {
-    fr: { translation: fr },
-    "de-CH": { translation: de },
-  },
+  // German joins when it loads (catalogues.ts).
+  resources: { fr: { translation: fr } },
   interpolation: {
     // This concerns interpolated values ({{max}}, {{n}} and the like), never
     // the catalogue string. React already escapes on render, so escaping here
@@ -48,13 +46,15 @@ export function currentLocale(): Locale {
  * routing.tsx calls `followLocale` on every navigation.
  */
 export async function setLocale(locale: Locale): Promise<void> {
+  await loadCatalogue(locale);
   await i18next.changeLanguage(locale);
 }
 
 /**
- * Puts the app in `locale` at once. Both catalogues are in memory from the
- * start, so i18next changes language synchronously, and the render that calls
- * this already reads the new language. No-op in the current one.
+ * Puts the app in `locale` at once. The caller has its catalogue in memory
+ * (`LocaleFromUrl` waits for it), so i18next changes language synchronously,
+ * and the render that calls this already reads the new language. No-op in
+ * the current one.
  */
 export function followLocale(locale: Locale): void {
   if (i18next.language !== locale) void i18next.changeLanguage(locale);

@@ -23,7 +23,7 @@ import { type TranslationKey, t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { Hreflang } from "../i18n/Hreflang";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
-import { AccountDropdown, type AccountTool } from "../session/AccountMenu";
+import { type AccountTool } from "../session/AccountMenu";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { Footer } from "./Footer";
@@ -31,7 +31,8 @@ import { RouteFocus } from "./RouteFocus";
 import { ScrollToTop } from "./ScrollToTop";
 import { NETWORK_MARKS, networksOf } from "./social";
 import { buttonVariants } from "@ds";
-import { Toaster } from "./ui/sonner";
+import { loadToasts, ToastOutlet } from "./ui/toast";
+import { lazyNamed } from "@/lib/lazy";
 import { cn } from "@/lib/utils";
 import { INBOX_PERMISSIONS } from "@/lib/inboxPermissions";
 import { WEBSITE_PERMISSIONS } from "@/lib/websitePermissions";
@@ -39,6 +40,9 @@ import { WEBSITE_PERMISSIONS } from "@/lib/websitePermissions";
 import { EditModeAnnouncer, EditModeBar, EditModeStart } from "../content/EditMode";
 import { PUBLIC_NAV } from "../content/publicPages";
 import { useSite } from "../content/blocks/SiteBlock";
+
+/** Only a member sees the avatar's menu, so a visitor never downloads it (#476). */
+const AccountDropdown = lazyNamed(() => import("../session/AccountMenu"), "AccountDropdown");
 
 /**
  * The committee's screens, each gated by the permission that gates the API
@@ -84,6 +88,12 @@ export function Layout() {
   // also come from Back or from a redirect, and the layer covers the whole
   // screen, so it must never outlive the page it was opened on.
   useEffect(() => setOpen(false), [pathname]);
+  // Only members raise toasts. Fetched once one is logged in, so the first
+  // toast does not wait for sonner; a visitor never downloads it (#476).
+  const loggedIn = user !== null;
+  useEffect(() => {
+    if (loggedIn) void loadToasts();
+  }, [loggedIn]);
   const active = pathname;
 
   const canAny = (permission: string | readonly string[]) =>
@@ -256,12 +266,16 @@ export function Layout() {
           active={active}
           trailing={
             user ? (
-              <AccountDropdown
-                member={user}
-                active={active}
-                tools={accountTools}
-                showAccount={mayManageAccount}
-              />
+              // A box the trigger's size while its chunk loads, so the bar
+              // does not refit its entries when the avatar arrives.
+              <Suspense fallback={<span className="block size-touch" />}>
+                <AccountDropdown
+                  member={user}
+                  active={active}
+                  tools={accountTools}
+                  showAccount={mayManageAccount}
+                />
+              </Suspense>
             ) : (
               // The yellow button; the stage gives it a pink shadow.
               <Link
@@ -303,7 +317,7 @@ export function Layout() {
 
       {/* Mounted once here, so a toast raised by a mutation survives the
           redirect that follows it. */}
-      <Toaster />
+      <ToastOutlet />
     </>
   );
 }

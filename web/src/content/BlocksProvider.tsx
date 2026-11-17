@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { rowsOf } from "../api/collection";
+import { useCatalogueLoaded } from "../i18n/catalogues";
 import { useBlockIndex } from "../api/generated/endpoints";
 import type { ContentBlockResource } from "../api/generated/model";
 import { BLOCKS, type BlockData, type BlockKey } from "./registry";
@@ -142,6 +143,9 @@ export function useBlock<K extends BlockKey>(key: K): BlockData<K> {
  */
 export function useSavedBlock<K extends BlockKey>(key: K): BlockData<K> {
   const stored = use(StoredBlocks).get(key);
+  // A default reads both catalogues, and German may arrive after the first
+  // render (i18n/catalogues.ts): the default is built again with it.
+  const german = useCatalogueLoaded("de-CH");
 
   return useMemo(() => {
     const definition = BLOCKS[key];
@@ -166,7 +170,8 @@ export function useSavedBlock<K extends BlockKey>(key: K): BlockData<K> {
       parsed.error,
     );
     return definition.defaults() as BlockData<K>;
-  }, [key, stored]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- german: see above
+  }, [key, stored, german]);
 }
 
 /**

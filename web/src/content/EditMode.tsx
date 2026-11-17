@@ -1,11 +1,20 @@
 import { Check, Pencil } from "lucide-react";
-import { createContext, use, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  createContext,
+  use,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useLocation } from "react-router-dom";
 
 import { Button } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { t } from "../i18n";
+import { loadCatalogue, useCatalogueLoaded } from "../i18n/catalogues";
 import { useSession } from "../session/SessionProvider";
 
 /** Where the switch is remembered, for this tab only. */
@@ -65,7 +74,10 @@ const EditModeContext = createContext<Stored>({
 export function useEditMode(): EditMode {
   const { available, stored, setOn } = use(EditModeContext);
   const { pathname } = useLocation();
-  return { available, on: available && stored && PUBLIC_PAGES.has(pathname), setOn };
+  // A block's default carries German too, and an editor opens on it and a
+  // save compares against it: no edit control before German is in.
+  const german = useCatalogueLoaded("de-CH");
+  return { available, on: available && stored && german && PUBLIC_PAGES.has(pathname), setOn };
 }
 
 /**
@@ -96,6 +108,12 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
   const [stored, setStored] = useState(readStored);
   const [announcement, setAnnouncement] = useState("");
   const focusNext = useRef<FocusNext>(null);
+
+  // Fetched as soon as the account may edit, so it is in before the mode is
+  // turned on (catalogues.ts).
+  useEffect(() => {
+    if (available) void loadCatalogue("de-CH");
+  }, [available]);
 
   const setOn = (on: boolean) => {
     setStored(on);

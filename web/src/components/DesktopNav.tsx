@@ -1,12 +1,20 @@
 import { ChevronDown, ExternalLink } from "lucide-react";
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  startTransition,
+  Suspense,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@ds";
+import { lazyNamed } from "@/lib/lazy";
 
 import { t } from "../i18n";
-import { Link } from "../i18n/routing";
 import { type NavEntry, EntryLink } from "./NavEntry";
 import { DESK_IDLE, DESK_LINK, NAV_HERE } from "./navStyles";
+
+const MoreMenu = lazyNamed(() => import("./MoreMenu"), "MoreMenu");
 
 /** Tailwind's gap-5, which the arithmetic below has to agree with. */
 const GAP = 20;
@@ -83,7 +91,6 @@ export function DesktopNav({
 
   const visible = entries.slice(0, shown);
   const folded = entries.slice(shown);
-  const foldedActive = folded.some((entry) => entry.to === active);
 
   return (
     <div
@@ -104,39 +111,7 @@ export function DesktopNav({
         ))}
       </ul>
 
-      {folded.length > 0 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger className={`${DESK_LINK} group ${DESK_IDLE}`}>
-            <span className={foldedActive ? NAV_HERE : undefined}>{t("nav.more")}</span>
-            <ChevronDown
-              aria-hidden="true"
-              className="size-4 transition-transform group-data-[state=open]:rotate-180"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {folded.map(({ icon: Icon, ...entry }) => (
-              <DropdownMenuItem key={entry.key} asChild>
-                {entry.href !== undefined ? (
-                  <a
-                    href={entry.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={entry.ariaLabel}
-                  >
-                    {Icon ? <Icon /> : null}
-                    {entry.label}
-                    {Icon ? null : <ExternalLink aria-hidden="true" />}
-                  </a>
-                ) : (
-                  <Link to={entry.to} aria-current={entry.to === active ? "page" : undefined}>
-                    {entry.label}
-                  </Link>
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
+      {folded.length > 0 ? <More folded={folded} active={active} /> : null}
 
       <div ref={tail} className="ml-auto flex shrink-0 items-center">
         {trailing}
@@ -192,4 +167,77 @@ export function fitting(widths: number[], more: number, available: number): numb
     count += 1;
   }
   return count;
+}
+
+/** The keys that open a Radix menu from its trigger. */
+const OPEN_KEYS = new Set(["Enter", " ", "ArrowDown"]);
+
+/**
+ * "Plus": a plain copy of the menu's trigger until the menu's chunk is in
+ * (#476). Most visitors never open it, and the menu brings Radix's menu and
+ * its positioning with it.
+ *
+ * The first hover or focus fetches the chunk, which is in long before a click
+ * follows. A click or key that comes first anyway is kept: the open state is
+ * held here, so the menu opens when it arrives. The fetch runs in a
+ * transition, so the copy stays on the page, focus and all, until the real
+ * trigger replaces it.
+ */
+export function More({ folded, active }: { folded: NavEntry[]; active: string }) {
+  const [wanted, setWanted] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const foldedActive = folded.some((entry) => entry.to === active);
+
+  const fetchMenu = () => startTransition(() => setWanted(true));
+  const openMenu = () => {
+    setOpen(true);
+    fetchMenu();
+  };
+
+  const copy = (
+    <button
+      type="button"
+      aria-haspopup="menu"
+      aria-expanded="false"
+      data-state="closed"
+      className={`${DESK_LINK} group ${DESK_IDLE}`}
+      onPointerEnter={fetchMenu}
+      onFocus={() => {
+        setFocused(true);
+        fetchMenu();
+      }}
+      onBlur={() => setFocused(false)}
+      onPointerDown={(event) => {
+        if (event.button === 0) openMenu();
+      }}
+      onKeyDown={(event) => {
+        if (!OPEN_KEYS.has(event.key)) return;
+        event.preventDefault();
+        openMenu();
+      }}
+    >
+      <span className={foldedActive ? NAV_HERE : undefined}>{t("nav.more")}</span>
+      <ChevronDown aria-hidden="true" className="size-4" />
+    </button>
+  );
+
+  // The boundary is there from the start, with the copy inside it: a
+  // transition keeps a mounted boundary's content up while it waits, where a
+  // boundary mounted with the menu would show its fallback, a fresh copy.
+  return (
+    <Suspense fallback={copy}>
+      {wanted ? (
+        <MoreMenu
+          folded={folded}
+          active={active}
+          open={open}
+          onOpenChange={setOpen}
+          focus={focused}
+        />
+      ) : (
+        copy
+      )}
+    </Suspense>
+  );
 }

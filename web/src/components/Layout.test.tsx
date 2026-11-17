@@ -174,7 +174,8 @@ const openPhoneMenu = (user: ReturnType<typeof userEvent.setup>) =>
 test("the desktop avatar opens the account menu once logged in", async () => {
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/login" });
-  const trigger = screen.getByRole("button", { name: /^Compte de demo\.direction/ });
+  // A chunk of its own, which a visitor never downloads (#476).
+  const trigger = await screen.findByRole("button", { name: /^Compte de demo\.direction/ });
   expect(trigger).toHaveAttribute("aria-haspopup", "menu");
   expect(screen.queryByRole("link", { name: "Connexion" })).toBeNull();
 });

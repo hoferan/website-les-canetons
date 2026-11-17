@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 
 import App, { createAppRouter } from "./App";
 import { AppProviders } from "./AppProviders";
+import { catalogueOf, loadCatalogue } from "./i18n/catalogues";
 import { applyDocumentMeta } from "./i18n/documentMeta";
 import { APP_BASE, htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
@@ -50,6 +51,10 @@ if (redirecting) {
   // requests included, and flash the wrong language. A module has no
   // top-level `return`.
   const locale = localeFromPath(window.location.pathname);
+
+  // French is in the bundle; a German URL waits for its catalogue, so the
+  // first render and the document's metadata below are already German.
+  if (catalogueOf(locale) === undefined) await loadCatalogue(locale);
 
   // The shell ships <html lang="fr"> for a crawler that runs no JavaScript.
   // This corrects it for the German mount; a screen reader picks its voice

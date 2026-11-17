@@ -3,13 +3,33 @@ import { flushSync } from "react-dom";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Ellipsis, type LucideIcon } from "lucide-react";
 
 import { cn } from "../../internal/cn";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../../primitives/dropdown-menu";
+
+type ActionMenuComponent = typeof import("./action-menu").ActionMenu;
+
+/**
+ * The ⋯ menu's component once its chunk is in (./action-menu.tsx). The first
+ * bar to mount fetches it; until then a menu action is its button alone.
+ */
+let ActionMenu: ActionMenuComponent | undefined;
+let menuLoading: Promise<void> | undefined;
+const menuListeners = new Set<() => void>();
+
+/** Fetches the ⋯ menu. The first bar to mount does; tests call it up front. */
+export function loadActionMenu(): Promise<void> {
+  menuLoading ??= import("./action-menu").then((module) => {
+    ActionMenu = module.ActionMenu;
+    for (const listener of menuListeners) listener();
+  });
+  return menuLoading;
+}
+
+function subscribeToMenu(onChange: () => void) {
+  menuListeners.add(onChange);
+  void loadActionMenu();
+  return () => menuListeners.delete(onChange);
+}
+
+const currentMenu = () => ActionMenu;
 
 /**
  * The one action bar every edit control wears (ADR 0043).
@@ -22,14 +42,9 @@ import {
  */
 export type ActionBarLook = "chip" | "strip" | "row";
 
-export type ActionBarMenuItem = {
-  id: string;
-  label: string;
-  icon?: LucideIcon;
-  onSelect: () => void;
-  /** Red, and set apart from the items above it by a rule. */
-  destructive?: boolean;
-};
+// With the menu, so that its chunk imports nothing from this module.
+import type { ActionBarMenuItem } from "./action-menu";
+export type { ActionBarMenuItem };
 
 export type ActionBarAction = {
   /** The slot's key. A screen that moves focus itself finds it as `data-action`. */
@@ -302,6 +317,9 @@ export function ActionBar({ look, label, actions, main, className }: ActionBarPr
   const [tabStop, setTabStop] = React.useState<string | null>(null);
   const [hovered, setHovered] = React.useState<string | null>(null);
   const [focused, setFocused] = React.useState<string | null>(null);
+  const Menu = React.useSyncExternalStore(subscribeToMenu, currentMenu, currentMenu);
+  // The action whose button had the focus when the menu's arrival replaced it.
+  const refocus = React.useRef<string | null>(null);
 
   React.useEffect(trackInputModality, []);
 
@@ -365,8 +383,19 @@ export function ActionBar({ look, label, actions, main, className }: ActionBarPr
           <button
             type="button"
             ref={(element) => {
-              if (element) buttons.current.set(action.id, element);
-              else buttons.current.delete(action.id);
+              if (element) {
+                buttons.current.set(action.id, element);
+                // React detaches the old button before removing it, so the
+                // focus was still on it: the new one takes it back.
+                if (refocus.current === action.id) {
+                  refocus.current = null;
+                  if (element !== document.activeElement) element.focus();
+                }
+              } else {
+                const gone = buttons.current.get(action.id);
+                if (gone && gone === document.activeElement) refocus.current = action.id;
+                buttons.current.delete(action.id);
+              }
             }}
             tabIndex={action.id === stop ? 0 : -1}
             aria-label={action.label}
@@ -455,29 +484,14 @@ export function ActionBar({ look, label, actions, main, className }: ActionBarPr
           </button>
         );
 
-        if (!action.menu) return <React.Fragment key={action.id}>{button}</React.Fragment>;
+        if (!action.menu || !Menu) {
+          return <React.Fragment key={action.id}>{button}</React.Fragment>;
+        }
 
-        const items = action.menu;
         return (
-          <DropdownMenu key={action.id}>
-            <DropdownMenuTrigger asChild>{button}</DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {items.map((item, n) => {
-                const Glyph = item.icon;
-                return (
-                  <React.Fragment key={item.id}>
-                    {item.destructive && n > 0 && !items[n - 1]?.destructive ? (
-                      <DropdownMenuSeparator />
-                    ) : null}
-                    <DropdownMenuItem destructive={item.destructive} onSelect={item.onSelect}>
-                      {Glyph ? <Glyph aria-hidden="true" /> : null}
-                      {item.label}
-                    </DropdownMenuItem>
-                  </React.Fragment>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Menu key={action.id} items={action.menu}>
+            {button}
+          </Menu>
         );
       })}
     </div>

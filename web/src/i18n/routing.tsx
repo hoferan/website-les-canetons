@@ -23,6 +23,7 @@ import {
   type To,
 } from "react-router-dom";
 
+import { catalogueOf, loadCatalogue } from "./catalogues";
 import { applyDocumentMeta } from "./documentMeta";
 import { currentLocale, followLocale } from "./index";
 import {
@@ -123,6 +124,9 @@ const LocaleContext = createContext<Locale>(DEFAULT_LOCALE);
 export function LocaleFromUrl({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { locale, path } = splitLocale(location.pathname);
+  // German is loaded on demand (catalogues.ts). A navigation is a transition,
+  // so the page that was up stays up until it is in.
+  if (catalogueOf(locale) === undefined) use(loadCatalogue(locale));
   followLocale(locale);
 
   useLayoutEffect(() => {

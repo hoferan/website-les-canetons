@@ -45,28 +45,29 @@ export const RUNS = 3;
 export const API_DELAY_MS = 300;
 
 /**
- * The budget, set just outside what the site measured on 2026-11-16, so a
+ * The budget, set just outside what the site measured on 2026-11-17, so a
  * warning means something got worse. The targets are Google's "good"
  * thresholds: a score of 90, LCP 2.5 s, CLS 0.1.
  *
- * Measured, worst page, on a laptop after #396: score 86, LCP 3.46 s (the
- * home page; the others 3.31-3.37 s), CLS 0, TBT under 70 ms, 272 KB of
- * gzipped script, the same on every public page. #396 took the script down
- * from 329 KB but not to the 240 KB set on 2026-10-05; what is left is
- * library code a page needs to draw at all, and the next cuts are in its
- * follow-up. LCP here follows the script's download, about 0.1 s per 20 KB.
- * CLS keeps Google's 0.1: anything that moves a block when data arrives
- * costs far more than the gap.
+ * Measured on a laptop after #476: on the French pages a score of 91-92,
+ * LCP 3.01-3.17 s, CLS 0, TBT under 30 ms and 223 KB of gzipped script. The
+ * German home page loads the German catalogue on top of that, 241 KB, and
+ * reaches LCP at 3.31 s with a score of 89; #479 is about that page. #396 and #476 took the script from 329 KB to 223 KB by loading
+ * on demand what a visitor does not need to see the page. LCP here follows
+ * the script's download, about 0.1 s per 20 KB. CLS keeps Google's 0.1:
+ * anything that moves a block when data arrives costs far more than the gap.
  *
  * `scriptKb` is also a gate: tools/bundle-budget.mjs fails CI's build job on
- * it, from the built files rather than a browser.
+ * it, from the built files rather than a browser. It counts the shell's
+ * scripts, so the German catalogue, which a German page fetches beside them,
+ * is not in it.
  */
 export const BUDGET = {
   score: { min: 0.85 },
-  lcp: { max: 3500 },
+  lcp: { max: 3400 },
   cls: { max: 0.1 },
   tbt: { max: 200 },
-  scriptKb: { max: 280 },
+  scriptKb: { max: 240 },
 };
 
 /** How each metric reads in the summary table. */

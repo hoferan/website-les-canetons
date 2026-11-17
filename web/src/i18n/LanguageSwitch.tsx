@@ -1,3 +1,4 @@
+import { loadCatalogue } from "./catalogues";
 import { currentLocale, t } from "./index";
 import { htmlLang, type Locale } from "./locale";
 import { rememberLocale } from "./preference";
@@ -79,6 +80,12 @@ export function LanguageSwitch() {
             title={ENDONYM[locale]}
             aria-label={t(locale === "de-CH" ? "nav.switchToGerman" : "nav.switchToFrench")}
             onClick={() => rememberLocale(locale)}
+            // German is a chunk of its own (catalogues.ts), fetched while the
+            // pointer or the focus is on its way here, so the switch does
+            // not wait for it.
+            onPointerEnter={() => void loadCatalogue(locale)}
+            onFocus={() => void loadCatalogue(locale)}
+            onTouchStart={() => void loadCatalogue(locale)}
             className="focus-ring-stage inline-flex min-h-touch min-w-touch items-center justify-center rounded text-white/70 hover:text-white"
           >
             <span className="px-2 py-1 leading-none font-semibold">{CODE[locale]}</span>
