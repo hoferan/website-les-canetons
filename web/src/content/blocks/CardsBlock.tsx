@@ -192,7 +192,6 @@ export function CardsBlock({
             type="button"
             variant="accent"
             size="sm"
-            className="px-3"
             // The server refuses a list longer than MAX_ITEMS. Disabled
             // rather than hidden, so the line beside it says why.
             aria-disabled={full || undefined}

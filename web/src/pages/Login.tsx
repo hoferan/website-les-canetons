@@ -120,12 +120,7 @@ export function Login() {
             <FormError error={error} />
 
             <FormActions>
-              <Button
-                type="submit"
-                variant="primary"
-                className="h-12 px-5 text-base"
-                aria-disabled={login.isPending}
-              >
+              <Button type="submit" variant="primary" size="lg" aria-disabled={login.isPending}>
                 {login.isPending ? t("auth.signingIn") : t("auth.signIn")}
               </Button>
             </FormActions>

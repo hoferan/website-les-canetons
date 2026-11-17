@@ -21,6 +21,7 @@ export function ButtonLink({
   children,
   external = false,
   variant = "primary",
+  size,
   className,
   ariaLabel,
   id,
@@ -29,6 +30,7 @@ export function ButtonLink({
   children: React.ReactNode;
   external?: boolean;
   variant?: React.ComponentProps<typeof Button>["variant"];
+  size?: React.ComponentProps<typeof Button>["size"];
   className?: string;
   /**
    * A fuller accessible name than the visible text, for a control repeated
@@ -41,7 +43,7 @@ export function ButtonLink({
   id?: string;
 }) {
   return (
-    <Button asChild variant={variant} className={className}>
+    <Button asChild variant={variant} size={size} className={className}>
       {external ? (
         <a id={id} href={to} target="_blank" rel="noreferrer" aria-label={ariaLabel}>
           {children}

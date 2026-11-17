@@ -83,12 +83,7 @@ export function HeroActions({ actions }: { actions: readonly Action[] | undefine
   return (
     <div data-confetti-avoid className="mt-block flex w-fit flex-wrap gap-3">
       {shown.map((action, index) => (
-        <ActionLink
-          key={`${action.to}-${index}`}
-          action={action}
-          index={index}
-          className="h-12 px-5 text-base"
-        />
+        <ActionLink key={`${action.to}-${index}`} action={action} index={index} size="lg" />
       ))}
     </div>
   );

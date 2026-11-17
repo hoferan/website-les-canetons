@@ -161,12 +161,7 @@ export function MemberBooking({
               <AnswerFields offer={offer} form={typed} messageFor={messageFor} />
 
               <FormActions>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="h-12 px-5 text-base"
-                  aria-disabled={save.isPending}
-                >
+                <Button type="submit" variant="primary" size="lg" aria-disabled={save.isPending}>
                   {save.isPending
                     ? t("booking.sending")
                     : mine

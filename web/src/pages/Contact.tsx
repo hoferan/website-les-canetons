@@ -203,12 +203,7 @@ export function Contact() {
                 the design system's Button), and drops the click. The submit
                 handler's early return stays the guard for Enter in a field. */}
             <FormActions>
-              <Button
-                type="submit"
-                variant="primary"
-                className="h-12 px-5 text-base"
-                loading={send.isPending}
-              >
+              <Button type="submit" variant="primary" size="lg" loading={send.isPending}>
                 {t("contact.submit")}
               </Button>
             </FormActions>

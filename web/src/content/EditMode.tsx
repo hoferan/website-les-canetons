@@ -207,8 +207,9 @@ export function EditModeStart({ className }: { className?: string }) {
     <Button
       ref={focusOnArrival}
       variant="accent"
+      size="sm"
       onClick={() => press(true)}
-      className={cn("border-2 px-3.5", className)}
+      className={cn("border-2", className)}
     >
       <Pencil aria-hidden="true" />
       {t("editMode.start")}
