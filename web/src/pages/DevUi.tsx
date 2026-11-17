@@ -18,7 +18,7 @@ import { usePageTitle } from "../components/pageTitle";
 // so it has no catalogue keys.
 
 const VARIANTS = ["primary", "secondary", "danger", "quiet", "accent"] as const;
-const SIZES = ["default", "sm"] as const;
+const SIZES = ["sm", "md", "lg"] as const;
 const INDICATOR_COLORS = ["cyan", "pink", "lime", "yellow", "violet", "danger", "ink"] as const;
 const INDICATOR_SIZES = ["sm", "md", "lg"] as const;
 const LEVELS: Array<{ level: ToastLevel; message: string; frozenAt?: number }> = [
@@ -66,7 +66,7 @@ export function DevUi() {
 
       <Block
         title="Variantes et tailles"
-        note="Chaque variante en taille par défaut et sm, puis la même rangée désactivée (aria-disabled), puis un bouton en cours d'envoi."
+        note="Chaque variante en sm, md (par défaut) et lg, puis la même rangée désactivée (aria-disabled), puis un bouton en cours d'envoi. lg : héros et rangées d'actions des formulaires."
       >
         <div className="grid gap-6">
           {[false, true].map((disabled) => (

@@ -61,6 +61,25 @@ test("the default is primary", () => {
   expect(buttonVariants({})).toBe(buttonVariants({ variant: "primary" }));
 });
 
+// One height, one padding and one text size per size (#397). jsdom computes no
+// layout, so the Sizes story measures the rendered pixels.
+test.each([
+  ["sm", "h-touch", "px-3", "text-sm"],
+  ["md", "h-touch", "px-4", "text-sm"],
+  ["lg", "h-12", "px-5", "text-base"],
+] as const)("%s is one height, one padding, one text size", (size, height, padding, text) => {
+  const classes = buttonVariants({ size }).split(" ");
+  expect(classes).toEqual(expect.arrayContaining([height, padding, text]));
+  expect(classes.filter((name) => /^(?:h-|px-|text-(?:xs|sm|base|lg))/.test(name))).toHaveLength(3);
+  expect(classes.some((name) => name.startsWith("has-[>svg]:px"))).toBe(false);
+});
+
+test("the default size is md", () => {
+  expect(buttonVariants({})).toBe(buttonVariants({ size: "md" }));
+  render(<Button>Envoyer</Button>);
+  expect(screen.getByRole("button")).toHaveAttribute("data-size", "md");
+});
+
 // ---- Rendered contract ------------------------------------------------------
 
 describe("Button", () => {
