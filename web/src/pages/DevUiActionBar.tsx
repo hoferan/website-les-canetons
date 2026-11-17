@@ -311,12 +311,11 @@ function HistoryEntries({ lang, columns }: { lang: Lang; columns: number }) {
 /** A single block's chip on each ground it meets, with and without the flag. */
 function Chips({ lang }: { lang: Lang }) {
   const w = WORDS[lang];
-  const chip = (flag: boolean, word = w.edit, surface: "page" | "stage" = "page") => (
+  const chip = (flag: boolean, word = w.edit) => (
     <ActionBar
       look="chip"
       label={word}
       main="edit"
-      surface={surface}
       actions={[
         {
           id: "edit",
@@ -339,9 +338,9 @@ function Chips({ lang }: { lang: Lang }) {
         {chip(false)}
         {chip(true)}
       </div>
-      <div className="flex gap-3 rounded-md bg-stage p-5">
-        {chip(false, w.editSite, "stage")}
-        {chip(true, w.edit, "stage")}
+      <div data-surface="stage" className="flex gap-3 rounded-md bg-stage p-5">
+        {chip(false, w.editSite)}
+        {chip(true, w.edit)}
       </div>
     </div>
   );

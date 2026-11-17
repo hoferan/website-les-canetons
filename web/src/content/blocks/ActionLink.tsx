@@ -25,12 +25,10 @@ export function shownActions(actions: readonly Action[] | undefined): Action[] {
 export function ActionLink({
   action,
   index,
-  surface,
   className,
 }: {
   action: Action;
   index: number;
-  surface?: "page" | "stage";
   className?: string;
 }) {
   const external = !isPublicPage(action.to);
@@ -41,7 +39,6 @@ export function ActionLink({
       external={external}
       {...(external ? { ariaLabel: t("nav.newTab", { name: label }) } : {})}
       variant={index === 0 ? "accent" : "secondary"}
-      {...(surface ? { surface } : {})}
       {...(className ? { className } : {})}
     >
       {label}

@@ -104,6 +104,7 @@ export function PhoneNav({
       <Dialog.Content
         id="nav-menu"
         aria-describedby={undefined}
+        data-surface="stage"
         className="fixed inset-0 z-40 flex animate-reveal flex-col overflow-y-auto bg-stage text-white md:hidden"
       >
         <Dialog.Title className="sr-only">{t("nav.menu")}</Dialog.Title>
@@ -198,10 +199,7 @@ export function PhoneNav({
               to="/login"
               onClick={close}
               aria-current={active === "/login" ? "page" : undefined}
-              className={cn(
-                buttonVariants({ variant: "accent", surface: "stage" }),
-                "flex h-12 w-full text-base",
-              )}
+              className={cn(buttonVariants({ variant: "accent" }), "flex h-12 w-full text-base")}
             >
               {t("nav.login")}
             </Link>

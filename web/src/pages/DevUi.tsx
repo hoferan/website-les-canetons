@@ -46,7 +46,11 @@ function Block({ title, note, children }: { title: string; note?: string; childr
 }
 
 function Stage({ children }: { children: ReactNode }) {
-  return <div className="rounded-xl bg-stage p-6 text-white">{children}</div>;
+  return (
+    <div data-surface="stage" className="rounded-xl bg-stage p-6 text-white">
+      {children}
+    </div>
+  );
 }
 
 export function DevUi() {
@@ -239,12 +243,8 @@ export function DevUi() {
       <Block title="Appel à l'action sur le fond sombre">
         <Stage>
           <div className="flex flex-wrap gap-3">
-            <Button variant="accent" surface="stage">
-              Nous rejoindre
-            </Button>
-            <Button variant="secondary" surface="stage">
-              Nous contacter
-            </Button>
+            <Button variant="accent">Nous rejoindre</Button>
+            <Button variant="secondary">Nous contacter</Button>
           </div>
         </Stage>
       </Block>

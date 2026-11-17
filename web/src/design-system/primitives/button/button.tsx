@@ -27,27 +27,29 @@ import { cn } from "../../internal/cn";
  *    as text, so a full example generates the class.
  * 4. Colours and radii are semantic tokens (`bg-action`, `rounded-button`,
  *    tokens/tokens.css), never hues. The focus indicator is the one
- *    `focus-ring` / `focus-ring-stage` utility, which replaces shadcn's 50 %
- *    alpha ring (2.5:1, #391).
+ *    `focus-ring` utility, which replaces shadcn's 50 % alpha ring (2.5:1,
+ *    #391).
  * 5. Pressing a framed button moves it onto its shadow: it translates by the
  *    shadow offset minus 1px and the shadow shrinks to 1px, the colour
  *    unchanged. `quiet` has no frame, so its word drops 3px onto its line
  *    (`press-quiet` in styles.css). `transition-all` animates it and the
  *    reduced-motion block in styles.css zeroes it; do not add a duration here.
- * 6. Variants are named by role (primary, secondary, danger, quiet, accent), a
- *    `surface` for the black stage, and sizes that set no radius of their own.
+ * 6. Variants are named by role (primary, secondary, danger, quiet, accent),
+ *    and sizes set no radius of their own. There is no variant for the black
+ *    stage: the shadow's colour and offset and the ring's colour come from the
+ *    surface the button sits in (`data-surface`, tokens/tokens.css).
  *
  * Which controls carry an icon is decided in docs/adr/0025-icons-on-controls.md
  * and amended by docs/adr/0040-one-button-system.md.
  */
 const buttonVariants = cva(
-  "inline-flex min-h-touch shrink-0 items-center justify-center gap-2 cursor-pointer text-sm font-medium whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-feedback-error [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "focus-ring inline-flex min-h-touch shrink-0 items-center justify-center gap-2 cursor-pointer text-sm font-medium whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-feedback-error [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         // The framed variants (ADR 0029): an ink outline and a hard offset
         // shadow. The shadow and the press live in compoundVariants below,
-        // because they depend on the surface.
+        // shared by all four.
         primary:
           "rounded-button border-3 border-ink bg-action font-bold text-content-on-action hover:bg-action-hover",
         secondary:
@@ -58,12 +60,6 @@ const buttonVariants = cva(
           "rounded-button border-3 border-ink bg-action-accent font-bold text-content hover:bg-action-accent-hover",
         // Quiet stays flat: an icon inside a field, a link in a sentence.
         quiet: "relative rounded-control press-quiet",
-      },
-      // The page is cream, the stage is black. Ink on black vanishes, so on the
-      // stage the shadow and the focus ring turn pink and white.
-      surface: {
-        page: "focus-ring",
-        stage: "focus-ring-stage",
       },
       // No size sets a radius: tailwind-merge lets the size's class win over
       // the variant's, which would square off the small raised buttons.
@@ -82,25 +78,18 @@ const buttonVariants = cva(
       },
     },
     // A framed button presses onto its shadow: the offset minus 1px, and the
-    // shadow shrinks to 1px.
+    // shadow shrinks to 1px. The offset is the surface's (3px on the page,
+    // 4px on the stage), so the press reads it too.
     compoundVariants: [
       {
         variant: ["primary", "secondary", "danger", "accent"],
-        surface: "page",
         class:
-          "shadow-raised-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-raised-pressed",
-      },
-      {
-        variant: ["primary", "secondary", "danger", "accent"],
-        surface: "stage",
-        class:
-          "shadow-raised-stage active:translate-x-[3px] active:translate-y-[3px] active:shadow-raised-stage-pressed",
+          "shadow-raised-sm active:translate-x-[calc(var(--raised-offset)-1px)] active:translate-y-[calc(var(--raised-offset)-1px)] active:shadow-raised-pressed",
       },
     ],
     defaultVariants: {
       variant: "primary",
       size: "default",
-      surface: "page",
     },
   },
 );
@@ -121,7 +110,6 @@ function Button({
   className,
   variant = "primary",
   size = "default",
-  surface = "page",
   asChild = false,
   loading = false,
   onClick,
@@ -136,8 +124,7 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      data-surface={surface}
-      className={cn(buttonVariants({ variant, size, surface, className }))}
+      className={cn(buttonVariants({ variant, size, className }))}
       aria-busy={busy}
       aria-disabled={busy ?? props["aria-disabled"]}
       // aria-disabled alone does not stop a click, so the handler is dropped.

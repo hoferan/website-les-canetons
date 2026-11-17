@@ -112,19 +112,22 @@
   --color-ink-hover: #3a364c;
 
   /* The raised look: a hard offset shadow under a 3px ink outline, on the
-     things a visitor can press. Ink on light surfaces; on the stage, where ink
-     would vanish, the -stage shadow is pink. */
-  --shadow-raised: 5px 5px 0 var(--color-ink);
-  --shadow-raised-sm: 3px 3px 0 var(--color-ink);
-  --shadow-raised-stage: 4px 4px 0 var(--color-pink);
+     things a visitor can press. Its colour and the small offset come from the
+     surface it sits on (tokens/tokens.css): ink and 3px on the page, pink and
+     4px on the stage, where ink would vanish.
+
+     This works only because Tailwind writes a shadow's value into each
+     utility, so the var() resolves on the element. A theme variable that
+     another one reads would resolve once on :root and ignore the surface. */
+  --shadow-raised: 5px 5px 0 var(--raised-color);
+  --shadow-raised-sm: var(--raised-offset) var(--raised-offset) 0 var(--raised-color);
 
   /* A toast's lift (ADR 0042): the raised shadow, plus a soft one nothing on
      the page has, so a toast reads as above the cards and not as one more. */
   --shadow-toast: 6px 6px 0 var(--color-ink), 0 14px 34px rgba(20, 18, 28, 0.32);
 
   /* What the shadow shrinks to while a button is pressed in. */
-  --shadow-raised-pressed: 1px 1px 0 var(--color-ink);
-  --shadow-raised-stage-pressed: 1px 1px 0 var(--color-pink);
+  --shadow-raised-pressed: 1px 1px 0 var(--raised-color);
 
   /* Event tag chips: a tint and an ink per name in App\Support\TagColour.
      Each ink is at least 7:1 on its tint. None is the brand violet or the

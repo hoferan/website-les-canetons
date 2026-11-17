@@ -8,5 +8,5 @@ import { cn } from "./utils";
  */
 test("a raised shadow replaces the one a vendored component set", () => {
   expect(cn("shadow-sm", "shadow-raised")).toBe("shadow-raised");
-  expect(cn("shadow-raised-sm", "shadow-raised-stage")).toBe("shadow-raised-stage");
+  expect(cn("shadow-raised", "shadow-raised-sm")).toBe("shadow-raised-sm");
 });

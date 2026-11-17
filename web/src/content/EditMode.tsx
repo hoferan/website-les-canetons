@@ -189,7 +189,6 @@ export function EditModeStart({ className }: { className?: string }) {
     <Button
       ref={focusOnArrival}
       variant="accent"
-      surface="stage"
       onClick={() => press(true)}
       className={cn("border-2 px-3.5", className)}
     >

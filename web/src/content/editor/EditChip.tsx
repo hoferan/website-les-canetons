@@ -40,7 +40,6 @@ export function EditChip({
   onClick,
   missingGerman = false,
   disabled = false,
-  surface = "page",
   className = CORNER,
 }: {
   label: string;
@@ -51,8 +50,6 @@ export function EditChip({
   onClick: () => void;
   missingGerman?: boolean;
   disabled?: boolean;
-  /** The black stage: the shadow turns pink. */
-  surface?: "page" | "stage";
   className?: string;
 }) {
   const name = text ?? t("blockEditor.edit", { label });
@@ -61,7 +58,6 @@ export function EditChip({
       look="chip"
       label={label}
       main="edit"
-      surface={surface}
       className={className}
       actions={[
         {

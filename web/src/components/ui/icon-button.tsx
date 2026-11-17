@@ -17,7 +17,6 @@ type IconButtonProps = Omit<React.ComponentProps<"button">, "children"> & {
   word?: string;
   variant?: Variant;
   size?: "default" | "sm";
-  surface?: "page" | "stage";
   /** Renders the single child, a `<Link>`, with the look, the icon and the word. */
   asChild?: boolean;
   /** Keeps the tip open, for the catalogue's screenshot. */
@@ -41,7 +40,6 @@ export function IconButton({
   word = label,
   variant = "secondary",
   size = "default",
-  surface = "page",
   asChild = false,
   showWord = false,
   className,
@@ -53,7 +51,7 @@ export function IconButton({
     <Comp
       aria-label={label}
       className={cn(
-        buttonVariants({ variant, surface, size: size === "sm" ? "icon-sm" : "icon" }),
+        buttonVariants({ variant, size: size === "sm" ? "icon-sm" : "icon" }),
         className,
       )}
       {...props}

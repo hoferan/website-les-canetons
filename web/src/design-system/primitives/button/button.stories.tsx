@@ -11,7 +11,6 @@ const meta = {
   argTypes: {
     variant: { control: "select", options: ["primary", "secondary", "danger", "accent", "quiet"] },
     size: { control: "select", options: ["default", "xs", "sm", "lg"] },
-    surface: { control: "radio", options: ["page", "stage"] },
     loading: { control: "boolean" },
   },
 } satisfies Meta<typeof Button>;
@@ -50,10 +49,35 @@ export const Sizes: Story = {
   ),
 };
 
-/** On the black stage the shadow turns pink and the focus ring white. */
+/**
+ * The same button on the cream page and on the black stage. The stage is any element with
+ * `data-surface="stage"` (the header, the footer, the phone menu): inside it the shadow turns pink
+ * and 4px and the focus ring white, and the button is passed nothing.
+ */
 export const OnTheStage: Story = {
-  args: { surface: "stage", variant: "accent" },
-  globals: { backgrounds: { value: "stage" } },
+  args: { variant: "accent" },
+  render: (args) => (
+    <div className="flex flex-wrap gap-4">
+      <div className="rounded-xl bg-ground p-6">
+        <Button {...args}>Sur la page</Button>
+      </div>
+      <div data-surface="stage" className="rounded-xl bg-stage p-6">
+        <Button {...args}>Sur la scène</Button>
+      </div>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const page = canvas.getByRole("button", { name: "Sur la page" });
+    const stage = canvas.getByRole("button", { name: "Sur la scène" });
+    await expect(getComputedStyle(page).boxShadow).toContain("rgb(20, 18, 28) 3px 3px");
+    await expect(getComputedStyle(stage).boxShadow).toContain("rgb(255, 61, 154) 4px 4px");
+    // The colour `focus-ring` paints with. The ring itself needs :focus-visible, which a
+    // simulated Tab does not set.
+    const focus = (button: HTMLElement) =>
+      getComputedStyle(button).getPropertyValue("--color-focus").trim();
+    await expect(focus(page)).toBe("#4b2ed6");
+    await expect(focus(stage)).toBe("#fff");
+  },
 };
 
 export const WithIcon: Story = {

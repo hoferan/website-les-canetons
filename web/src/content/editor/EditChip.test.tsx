@@ -70,12 +70,6 @@ test("a chip sits inside its block's top right corner unless placed, and calls o
   expect(screen.getByRole("toolbar")).not.toHaveClass("top-2");
 });
 
-test("on the black stage the chip's shadow turns pink", () => {
-  render(<EditChip label="Bloc" surface="stage" onClick={() => {}} />);
-
-  expect(screen.getByRole("toolbar")).toHaveClass("shadow-raised-stage");
-});
-
 test("a busy chip is marked rather than disabled, and ignores its clicks", async () => {
   const onClick = vi.fn();
   render(<EditChip label="Bloc" disabled onClick={onClick} />);

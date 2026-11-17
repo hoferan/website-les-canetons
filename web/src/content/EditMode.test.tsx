@@ -141,13 +141,14 @@ test("with edit mode on, the photo controls appear", async () => {
   ).toBeGreaterThan(0);
 });
 
-test("the header button has the stage look, and the bar sticks in the flow with a white button", async () => {
+// The stage look (pink shadow, white ring) comes from the header around it;
+// Layout.test.tsx checks the header says it is the stage.
+test("the header button is the yellow one, and the bar sticks in the flow with a white button", async () => {
   const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<EditModeSwitch />, { route: "/join" });
 
   expect(editButton()).toHaveAttribute("data-variant", "accent");
-  expect(editButton()).toHaveAttribute("data-surface", "stage");
 
   await user.click(editButton()!);
   // Sticky: in the flow at the top of the page it covers nothing, and once
