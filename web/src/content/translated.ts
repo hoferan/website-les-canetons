@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/mini";
 
 import { currentLocale } from "../i18n";
 
@@ -12,9 +12,9 @@ export { fromCatalogue } from "../i18n/catalogueText";
  */
 export type Translated = { fr: string; de?: string };
 
-export const translated: z.ZodType<Translated> = z.object({
+export const translated: z.ZodMiniType<Translated> = z.object({
   fr: z.string(),
-  de: z.string().optional(),
+  de: z.optional(z.string()),
 });
 
 /**

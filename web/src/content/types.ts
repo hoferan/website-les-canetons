@@ -1,4 +1,6 @@
-import { z } from "zod";
+// zod/mini, because a read checks blocks on every public page: classic zod
+// cannot be tree-shaken and cost every visitor 16 KB of script (#479).
+import { z } from "zod/mini";
 
 import { swissTelHref } from "../lib/contactHref";
 import { isPublicPage } from "./publicPages";
@@ -131,12 +133,12 @@ export function isActionTarget(value: string): boolean {
 
 /** The strings an editor checks further than a read does. */
 type Checks = {
-  phone: z.ZodType<string, string>;
-  url: z.ZodType<string, string>;
-  name: z.ZodType<string, string>;
-  target: z.ZodType<string, string>;
-  cardTarget: z.ZodType<string | undefined, string>;
-  cardIcon: z.ZodType<Icon | undefined, string>;
+  phone: z.ZodMiniType<string, string>;
+  url: z.ZodMiniType<string, string>;
+  name: z.ZodMiniType<string, string>;
+  target: z.ZodMiniType<string, string>;
+  cardTarget: z.ZodMiniType<string | undefined, string>;
+  cardIcon: z.ZodMiniType<Icon | undefined, string>;
 };
 
 function schemas(checks: Checks) {
@@ -155,7 +157,7 @@ function schemas(checks: Checks) {
     type: z.literal("phone"),
     label: translated,
     number: checks.phone,
-    tbd: z.string().optional(),
+    tbd: z.optional(z.string()),
   });
 
   const emailRow = z.object({ type: z.literal("email"), label: translated, address: z.string() });
@@ -163,7 +165,7 @@ function schemas(checks: Checks) {
   // A street address, shown under its label (the place's name) as a map link.
   const addressRow = z.object({
     type: z.literal("address"),
-    label: translated.optional(),
+    label: z.optional(translated),
     address: z.string(),
   });
 
@@ -185,15 +187,15 @@ function schemas(checks: Checks) {
     // A card may go without a picture: the title already says what it is
     // about. The colour stays stored while there is none, since it tints
     // only the picture's tile, so choosing one again brings it back.
-    icon: checks.cardIcon.optional(),
+    icon: z.optional(checks.cardIcon),
     tint: z.enum(TINTS),
     title: translated,
     rows: z.array(row),
     // A photo slot under the title, keyed by the block and this id (`cardSlot`).
-    photo: z.boolean().optional(),
+    photo: z.optional(z.boolean()),
     // Where the whole card leads, on a grid that offers links (the home
     // page's band): a public page or an https address, as a button's target.
-    to: checks.cardTarget.optional(),
+    to: z.optional(checks.cardTarget),
   });
 
   const cardsBlock = z.object({ cards: z.array(card) });
@@ -201,10 +203,9 @@ function schemas(checks: Checks) {
   // Up to two buttons, each a label and where it leads: what a hero and the
   // footer have room for, side by side on a phone. Optional, because a block
   // stored before it carried buttons has none (see `useBlock`).
-  const actions = z
-    .array(z.object({ label: translated, to: checks.target }))
-    .max(2)
-    .optional();
+  const actions = z.optional(
+    z.array(z.object({ label: translated, to: checks.target })).check(z.maxLength(2)),
+  );
 
   // What the header and the footer of every page show, the footer's two
   // buttons included. The band's name and legal name are typed once and never
@@ -225,8 +226,8 @@ function schemas(checks: Checks) {
   // The highlight shows only while the heading still contains those words.
   const heroBlock = z.object({
     title: translated,
-    mark: translated.optional(),
-    intro: translated.optional(),
+    mark: z.optional(translated),
+    intro: z.optional(translated),
     actions,
   });
 
@@ -244,19 +245,28 @@ export const { row, card, cardsBlock, siteBlock, heroBlock } = schemas({
 
 /** The same blocks as an editor saves them: a number dials, a link is https. */
 export const forEditor = schemas({
-  phone: z.string().refine(isPhoneNumber),
-  url: z.string().refine(isHttpsUrl),
+  phone: z.string().check(z.refine(isPhoneNumber)),
+  url: z.string().check(z.refine(isHttpsUrl)),
   // Spaces alone are no name: the page would drop the entry without a word.
-  name: z.string().refine((value) => value.trim() !== ""),
-  target: z.string().refine(isActionTarget),
+  name: z.string().check(z.refine((value) => value.trim() !== "")),
+  target: z.string().check(z.refine(isActionTarget)),
   // The editor holds a card without a link as "", since an undefined value
   // would bring back the one the form opened with. It is saved as absent.
   cardTarget: z.union([
-    z.literal("").transform(() => undefined),
-    z.string().refine(isActionTarget),
+    z.pipe(
+      z.literal(""),
+      z.transform(() => undefined),
+    ),
+    z.string().check(z.refine(isActionTarget)),
   ]),
   // Likewise a card without a picture, held as "" by the editor's icon switch.
-  cardIcon: z.union([z.literal("").transform(() => undefined), z.enum(ICONS)]),
+  cardIcon: z.union([
+    z.pipe(
+      z.literal(""),
+      z.transform(() => undefined),
+    ),
+    z.enum(ICONS),
+  ]),
 });
 
 export type Row = z.infer<typeof row>;

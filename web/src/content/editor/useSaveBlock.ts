@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { useRef } from "react";
 import { Undo2 } from "lucide-react";
-import type { z } from "zod";
+import type { z } from "zod/mini";
 
 import { notify } from "@/components/ui/toast";
 
@@ -259,7 +259,7 @@ function canonical(value: unknown): string {
  * leaves a block the type refuses (a required text, left blank), the block
  * goes as typed and the refusal stays where it was.
  */
-function withoutBlankTexts<T>(schema: z.ZodType, data: T): T {
+function withoutBlankTexts<T>(schema: z.ZodMiniType, data: T): T {
   const pruned = prune(data) as T;
   return schema.safeParse(pruned).success ? pruned : data;
 }
