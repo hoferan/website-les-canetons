@@ -1,4 +1,4 @@
-export { ACTION_STRIP_ROOM, ActionBar, ActionBarList } from "./action-bar";
+export { ACTION_STRIP_ROOM, ActionBar, ActionBarList, loadActionMenu } from "./action-bar";
 export type {
   ActionBarAction,
   ActionBarLook,

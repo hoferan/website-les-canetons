@@ -1,6 +1,5 @@
 import { Check, createLucideIcon, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
@@ -202,6 +201,66 @@ export function ToastCard({ level, message, action, onClose, frozenAt }: ToastCa
   );
 }
 
+type Sonner = typeof import("sonner");
+type ToasterComponent = typeof import("./sonner").Toaster;
+
+/**
+ * Sonner and the stack it draws, fetched by the first toast (#476), or ahead
+ * of it once a member is logged in (Layout). Only members raise toasts, so a
+ * visitor never downloads them.
+ */
+let sonner: Sonner | undefined;
+let Toaster: ToasterComponent | undefined;
+let loading: Promise<Sonner> | undefined;
+
+/** Whether a toast has been raised, which is when `ToastOutlet` mounts the stack. */
+let wanted = false;
+const listeners = new Set<() => void>();
+
+function changed() {
+  for (const listener of listeners) listener();
+}
+
+/** Fetches sonner and the stack. Layout does for a member; tests do up front. */
+export function loadToasts(): Promise<Sonner> {
+  loading ??= Promise.all([import("sonner"), import("./sonner")]).then(([module, stack]) => {
+    sonner = module;
+    Toaster = stack.Toaster;
+    changed();
+    return module;
+  });
+  return loading;
+}
+
+/** Runs at once when sonner is in, else once it is. */
+function withSonner(run: (module: Sonner) => void) {
+  if (sonner) run(sonner);
+  else void loadToasts().then(run);
+}
+
+function want() {
+  if (wanted) return;
+  wanted = true;
+  changed();
+}
+
+/**
+ * Where the toasts stack, rendered once by Layout. It draws nothing until the
+ * first toast. Sonner replays the toasts raised before its stack subscribed,
+ * so a toast raised while it loads is not lost.
+ */
+export function ToastOutlet() {
+  const Stack = useSyncExternalStore(
+    (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    () => (wanted ? Toaster : undefined),
+    () => undefined,
+  );
+  return Stack ? <Stack /> : null;
+}
+
 /**
  * A fresh key for every raise. A toast raised under the id of one on screen
  * replaces it in place, and without a new key React would keep the old card,
@@ -211,18 +270,24 @@ let raised = 0;
 
 function raise(level: ToastLevel, message: string, { id, action }: ToastOptions = {}) {
   const key = ++raised;
-  return toast.custom(
-    (toastId) => (
-      <ToastCard
-        key={key}
-        level={level}
-        message={message}
-        action={action}
-        onClose={() => toast.dismiss(toastId)}
-      />
+  // Ours rather than sonner's, which only exists once sonner has loaded.
+  const toastId = id ?? `toast-${key}`;
+  want();
+  withSonner(({ toast }) =>
+    toast.custom(
+      () => (
+        <ToastCard
+          key={key}
+          level={level}
+          message={message}
+          action={action}
+          onClose={() => toast.dismiss(toastId)}
+        />
+      ),
+      { id: toastId, duration: Infinity },
     ),
-    { id, duration: Infinity },
   );
+  return toastId;
 }
 
 export const notify = {
@@ -230,6 +295,11 @@ export const notify = {
   info: (message: string, options?: ToastOptions) => raise("info", message, options),
   warning: (message: string, options?: ToastOptions) => raise("warning", message, options),
   error: (message: string, options?: ToastOptions) => raise("error", message, options),
-  /** Closes one toast, or every toast when no id is given. */
-  dismiss: (id?: string | number) => toast.dismiss(id),
+  /**
+   * Closes one toast, or every toast when no id is given. Before the first
+   * toast there is nothing to close, and nothing to fetch.
+   */
+  dismiss: (id?: string | number) => {
+    if (loading) withSonner(({ toast }) => toast.dismiss(id));
+  },
 };

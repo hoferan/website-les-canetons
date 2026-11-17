@@ -1,17 +1,15 @@
 import type { TranslationKey } from ".";
-import { de } from "./de";
-import { fr } from "./fr";
+import { catalogueOf } from "./catalogues";
 import type { Locale } from "./locale";
-
-const CATALOGUES: Record<Locale, unknown> = { fr, "de-CH": de };
 
 /**
  * A text as the code ships it, read from the catalogue itself. Undefined for a
- * key the catalogue does not have, or one that names a section rather than a
- * text.
+ * key the catalogue does not have, for one that names a section rather than a
+ * text, and for a catalogue not loaded yet (German, until catalogues.ts has
+ * it).
  */
 export function catalogueValue(locale: Locale, key: string): string | undefined {
-  let node: unknown = CATALOGUES[locale];
+  let node: unknown = catalogueOf(locale);
   for (const part of key.split(".")) {
     if (typeof node !== "object" || node === null) return undefined;
     node = (node as Record<string, unknown>)[part];
@@ -24,6 +22,10 @@ export function catalogueValue(locale: Locale, key: string): string | undefined 
  * stores. German is kept even when it reads the same as French ("Werkhof" is
  * Werkhof in both): it is still the German wording, and a text without one
  * wears the pencil's "sans allemand" dot (#359).
+ *
+ * French only while German is not loaded. Only a French page renders then,
+ * and it reads the French alone; everything that edits or saves a block runs
+ * in edit mode, which waits for German.
  */
 export function fromCatalogue(key: TranslationKey): { fr: string; de?: string } {
   const french = catalogueValue("fr", key) ?? "";

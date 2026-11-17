@@ -9,7 +9,6 @@ import { Agenda } from "./pages/Agenda";
 import { Band } from "./pages/Band";
 import { Committee } from "./pages/Committee";
 import { Contact } from "./pages/Contact";
-import { EventBooking } from "./pages/EventBooking";
 import { History } from "./pages/History";
 import { Home } from "./pages/Home";
 import { Join } from "./pages/Join";
@@ -21,7 +20,8 @@ import { WEBSITE_PERMISSIONS } from "./lib/websitePermissions";
 // Only the public pages above are in the entry. Every page behind the login
 // is a chunk of its own, loaded the first time its route renders, so a
 // visitor never downloads the member roster, the editors or the inbox (#396).
-// Login is here too: most visitors never open it.
+// Login is here too: most visitors never open it, and so is the booking
+// form, which none of the landing pages needs (#476).
 //
 // A navigation is a transition, so the previous page stays up while the chunk
 // loads. Only a fresh load of the URL shows the empty fallback, the Suspense
@@ -39,6 +39,7 @@ const EventRegistrations = lazyNamed(
 );
 const EventSeriesNew = lazyNamed(() => import("./pages/EventSeriesNew"), "EventSeriesNew");
 const EventTags = lazyNamed(() => import("./pages/EventTags"), "EventTags");
+const EventBooking = lazyNamed(() => import("./pages/EventBooking"), "EventBooking");
 const Events = lazyNamed(() => import("./pages/Events"), "Events");
 const Inbox = lazyNamed(() => import("./pages/Inbox"), "Inbox");
 const Login = lazyNamed(() => import("./pages/Login"), "Login");

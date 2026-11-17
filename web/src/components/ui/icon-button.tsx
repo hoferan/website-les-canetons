@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { VariantProps } from "class-variance-authority";
 import type { LucideIcon } from "lucide-react";
-import { Slot, Tooltip } from "radix-ui";
+import { Slot } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
@@ -24,13 +24,42 @@ type IconButtonProps = Omit<React.ComponentProps<"button">, "children"> & {
   children?: React.ReactElement;
 };
 
+type Tip = typeof import("./icon-button-tip").IconButtonTip;
+
+/**
+ * The tip's component once its chunk is in (#476). The first icon button to
+ * mount fetches it; every one mounted after that renders with it at once.
+ */
+let tip: Tip | undefined;
+let tipLoading: Promise<void> | undefined;
+const tipListeners = new Set<() => void>();
+
+/** Fetches the tip. The first icon button to mount does; tests call it up front. */
+export function loadIconButtonTip(): Promise<void> {
+  tipLoading ??= import("./icon-button-tip").then((module) => {
+    tip = module.IconButtonTip;
+    for (const listener of tipListeners) listener();
+  });
+  return tipLoading;
+}
+
+function subscribeToTip(onChange: () => void) {
+  tipListeners.add(onChange);
+  void loadIconButtonTip();
+  return () => tipListeners.delete(onChange);
+}
+
+const currentTip = () => tip;
+
 /**
  * The only way to render an icon-only button (ADR 0025 decides where one
  * goes). On hover and keyboard focus its word shows as a small ink label
- * above the button, so nobody has to guess what the icon does and a row's
- * neighbours stay put. It is a Radix tooltip in a portal, because a row sits
- * inside scrolling dialogs and clipped cards that would cut it off. Radix
- * already ignores touch, since a tap is not a hover.
+ * above the button (./icon-button-tip.tsx), so nobody has to guess what the
+ * icon does and a row's neighbours stay put.
+ *
+ * Until the tip's chunk is in, the button renders without it. Wrapping it
+ * then replaces the button element, so a button that had the focus takes it
+ * back.
  *
  * Edit controls on the page use the action bar instead (ADR 0043).
  */
@@ -44,11 +73,15 @@ export function IconButton({
   showWord = false,
   className,
   children,
+  ref,
   ...props
 }: IconButtonProps) {
+  const Tip = React.useSyncExternalStore(subscribeToTip, currentTip, currentTip);
+  const keepFocus = useFocusAcrossRemount(ref);
   const Comp = asChild ? Slot.Root : "button";
   const button = (
     <Comp
+      ref={keepFocus}
       aria-label={label}
       className={cn(
         buttonVariants({ variant, size: size === "sm" ? "icon-sm" : "icon" }),
@@ -68,62 +101,41 @@ export function IconButton({
     </Comp>
   );
 
-  return (
-    <Tooltip.Provider delayDuration={150}>
-      <Tooltip.Root open={showWord || undefined}>
-        <Tooltip.Trigger asChild onFocus={keyboardFocusOnly}>
-          {button}
-        </Tooltip.Trigger>
-        <Tooltip.Portal>
-          <Tooltip.Content
-            side="top"
-            sideOffset={8}
-            className="z-50 animate-roll-up rounded-lg bg-ink px-2.5 py-1.5 text-[13px] leading-none font-medium whitespace-nowrap text-white"
-          >
-            {word}
-          </Tooltip.Content>
-        </Tooltip.Portal>
-      </Tooltip.Root>
-    </Tooltip.Provider>
+  return Tip ? (
+    <Tip word={word} open={showWord}>
+      {button}
+    </Tip>
+  ) : (
+    button
   );
 }
 
 /**
- * Radix opens a tooltip on any focus, but only focus the user moved with Tab
- * or an arrow key opens it here.
+ * A ref that hands the focus from a removed element to the one that replaces
+ * it, and passes every element on to the caller's ref.
  *
- * Focus that a dialog or menu moves itself would otherwise open one: onto the
- * opener after a click, where the tip would hang, or onto a dialog's first
- * control after Enter opened it. A tip there is a dismissable layer above the
- * dialog, so the first Escape would close the tip and leave the dialog open.
- * (jsdom never matches :focus-visible on a button, so it cannot decide this.)
+ * React runs the old element's ref cleanup before it removes the element, so
+ * the focus is still on it then.
  */
-const FOCUS_KEYS = new Set(["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
-
-const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta"]);
-
-let focusMovedByKey = false;
-
-const onKeyDown = (event: KeyboardEvent) => {
-  // Shift and the other modifiers come before the Tab they modify.
-  if (MODIFIERS.has(event.key)) return;
-  focusMovedByKey = FOCUS_KEYS.has(event.key);
-};
-const onPointerDown = () => {
-  focusMovedByKey = false;
-};
-
-if (typeof document !== "undefined") {
-  document.addEventListener("keydown", onKeyDown, true);
-  document.addEventListener("pointerdown", onPointerDown, true);
-  // A hot reload runs this module again; drop the old listeners first.
-  import.meta.hot?.dispose(() => {
-    document.removeEventListener("keydown", onKeyDown, true);
-    document.removeEventListener("pointerdown", onPointerDown, true);
-  });
+function useFocusAcrossRemount(outer: React.Ref<HTMLButtonElement> | undefined) {
+  const hadFocus = React.useRef(false);
+  return React.useCallback(
+    (element: HTMLButtonElement | null) => {
+      setRef(outer, element);
+      if (element && hadFocus.current) {
+        hadFocus.current = false;
+        element.focus();
+      }
+      return () => {
+        if (element && element === document.activeElement) hadFocus.current = true;
+        setRef(outer, null);
+      };
+    },
+    [outer],
+  );
 }
 
-function keyboardFocusOnly(event: React.FocusEvent<HTMLButtonElement>) {
-  // Radix skips its own handler once the event is marked prevented.
-  if (!focusMovedByKey) event.preventDefault();
+function setRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
+  if (typeof ref === "function") ref(value);
+  else if (ref) ref.current = value;
 }

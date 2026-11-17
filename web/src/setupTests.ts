@@ -3,7 +3,12 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
+import { loadActionMenu } from "@ds";
+
+import { loadIconButtonTip } from "./components/ui/icon-button";
+import { loadToasts } from "./components/ui/toast";
 import { setLocale } from "./i18n";
+import { loadCatalogue } from "./i18n/catalogues";
 import { resetMockState } from "./mocks/handlers";
 import { server } from "./mocks/node";
 
@@ -27,6 +32,15 @@ if (typeof window !== "undefined") {
 // In a test an unhandled request is a missing handler; letting it reach the
 // network gives a confusing timeout instead of a clear failure.
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+
+// German, sonner, the icon button's tip and the action bar's ⋯ menu are
+// loaded on demand in the app (#476). Loaded up front here, so a test sees a
+// German page, a block default with its German, a toast, a tip or a menu as
+// the app does once they are in; loadCatalogue.test.tsx and onDemand.test.tsx
+// cover the wait itself. At the top level rather than in a beforeAll,
+// because test files build expected defaults when they are imported, before
+// any hook runs.
+await Promise.all([loadCatalogue("de-CH"), loadToasts(), loadIconButtonTip(), loadActionMenu()]);
 
 afterEach(async () => {
   // Testing Library registers its auto-cleanup only with `globals: true`,

@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, mergeConfig, type Plugin, type Rolldown, type UserConfig } from "vite";
+import { defineConfig, mergeConfig, type Plugin, type UserConfig } from "vite";
 
 import { BOOT_READS } from "./web/src/api/bootReads.js";
 
@@ -111,6 +111,59 @@ function bootPreloads(): Plugin {
   };
 }
 
+/**
+ * A German URL fetches the German catalogue while the bundle downloads (#476).
+ *
+ * French is in the bundle; German is a chunk the app asks for only once the
+ * bundle runs (web/src/i18n/catalogues.ts), a round trip later, and a German
+ * page renders nothing until it is in. One static shell serves both
+ * languages, so a script in it reads the path and adds the modulepreload:
+ * French pages never fetch it.
+ *
+ * The test mirrors web/src/i18n/locale.ts: the path below the app's base,
+ * then `/de` as a whole segment.
+ */
+function germanPreload(): Plugin {
+  let base = "/";
+  return {
+    name: "german-preload",
+    apply: "build",
+    configResolved: (config) => {
+      base = config.base;
+    },
+    transformIndexHtml: {
+      order: "post",
+      handler: (_, { bundle }) => {
+        const german = Object.values(bundle ?? {}).find(
+          (item) =>
+            item.type === "chunk" &&
+            item.facadeModuleId !== null &&
+            normalized(item.facadeModuleId).endsWith("/web/src/i18n/de.ts"),
+        );
+        if (!german) {
+          throw new Error(
+            "No chunk holds web/src/i18n/de.ts; the German preload has nothing to name.",
+          );
+        }
+        const app = JSON.stringify(base.replace(/\/$/, ""));
+        const href = JSON.stringify(`${base}${german.fileName}`);
+        return [
+          {
+            tag: "script",
+            children:
+              `(function(){var p=location.pathname,b=${app};` +
+              `if(b&&p.indexOf(b)===0)p=p.slice(b.length);` +
+              `if(!/^\\/de(\\/|$)/.test(p))return;` +
+              `var l=document.createElement("link");l.rel="modulepreload";l.href=${href};` +
+              `document.head.appendChild(l)})()`,
+            injectTo: "head",
+          },
+        ];
+      },
+    },
+  };
+}
+
 /** The SPA's entry module, the root of what every visitor downloads. */
 const ENTRY = fileURLToPath(new URL("./web/src/main.tsx", import.meta.url));
 
@@ -118,7 +171,7 @@ const ENTRY = fileURLToPath(new URL("./web/src/main.tsx", import.meta.url));
 const normalized = (id: string) => id.replace(/\\/g, "/");
 
 /**
- * Every module the entry imports statically, in one chunk (#396).
+ * Every module the entry needs, in one chunk (#396).
  *
  * The members' pages and the editors are loaded on demand (routes.tsx,
  * lib/lazy.tsx), and each shares modules with the entry. Left alone,
@@ -126,29 +179,24 @@ const normalized = (id: string) => id.replace(/\\/g, "/");
  * public page then fetches seventeen scripts, and on a slow phone the extra
  * requests cost more than the splitting saves. With this group a lazy chunk
  * imports from the one chunk the visitor already has.
+ *
+ * The group names the entry alone, and rolldown brings in what it depends
+ * on. Rolldown follows a barrel's re-exports only to what is used, where a
+ * walk over `importedIds` follows all of them: through the design system's
+ * barrel and Radix's, that walk put the dropdown, the tooltip and their
+ * positioning in this chunk, 21 KB a visitor never runs (#476). Such a walk
+ * also behaved differently by platform, since the entry's Windows path finds
+ * no module.
  */
-function visitorChunk(): (id: string, ctx: Rolldown.ChunkingContext) => string | null {
-  let visitor: Set<string> | undefined;
-
-  return (id, ctx) => {
-    if (visitor === undefined) {
-      visitor = new Set();
-      const queue = [ENTRY];
-      for (const next of queue) {
-        const key = normalized(next);
-        if (visitor.has(key)) continue;
-        visitor.add(key);
-        queue.push(...(ctx.getModuleInfo(next)?.importedIds ?? []));
-      }
-    }
-    return visitor.has(normalized(id)) ? "visitor" : null;
-  };
+function visitorChunk(): (id: string) => string | null {
+  const entry = normalized(ENTRY);
+  return (id) => (normalized(id) === entry ? "visitor" : null);
 }
 
 const config: UserConfig = {
   root: "web",
   base: "/",
-  plugins: [react(), tailwindcss(), bootPreloads()],
+  plugins: [react(), tailwindcss(), bootPreloads(), germanPreload()],
   // `@/` -> web/src. Note root is "web" below, so this is resolved from the
   // REPO root and not from the Vite root. It must agree with tsconfig.json's
   // paths and with vitest.config.ts, which is a separate config file in this
@@ -166,6 +214,16 @@ const config: UserConfig = {
     sourcemap: false,
     rolldownOptions: {
       output: { codeSplitting: { groups: [{ name: visitorChunk() }] } },
+      // The design system's modules do nothing when imported, which Radix
+      // declares for its own. Once the build knows it, the barrel no longer
+      // pulls every component into the chunk of whatever imports one of
+      // them, and the action bar's menu and the dropdown stay out of the
+      // visitor's bundle (#476). web/src/design-system/index.ts keeps it true.
+      treeshake: {
+        moduleSideEffects: [
+          { test: /[\\/]web[\\/]src[\\/]design-system[\\/]/, sideEffects: false },
+        ],
+      },
     },
   },
   server: {
