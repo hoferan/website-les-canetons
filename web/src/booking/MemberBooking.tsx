@@ -169,7 +169,12 @@ export function MemberBooking({
                       : t("booking.memberSubmit")}
                 </Button>
                 {mine ? (
-                  <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
+                  <Button
+                    size="lg"
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setEditing(false)}
+                  >
                     {t("common.cancel")}
                   </Button>
                 ) : null}

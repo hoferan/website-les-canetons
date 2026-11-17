@@ -242,10 +242,10 @@ export function EditorPanelForm({
       {/* The one footer, Save first (ADR 0040), as two columns rather than a
           stack on a phone, so the row that stays in view stays low. */}
       <FormActions className="sticky bottom-0 z-10 grid grid-cols-2 gap-3 border-t-2 border-ink/10 bg-panel px-4 pt-3 pb-4 sm:px-6 sm:pb-6">
-        <Button type="submit" aria-disabled={pending}>
+        <Button size="lg" type="submit" aria-disabled={pending}>
           {pending ? t("blockEditor.saving") : t("blockEditor.save")}
         </Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>
+        <Button size="lg" type="button" variant="secondary" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </FormActions>

@@ -280,11 +280,13 @@ export function DevUi() {
                 <input className="min-h-touch rounded-md border px-3 font-normal" />
               </label>
               <FormActions>
-                <Button type="submit">Enregistrer</Button>
-                <Button type="button" variant="secondary">
+                <Button size="lg" type="submit">
+                  Enregistrer
+                </Button>
+                <Button size="lg" type="button" variant="secondary">
                   Annuler
                 </Button>
-                <Button type="button" variant="quiet">
+                <Button size="lg" type="button" variant="quiet">
                   Réinitialiser
                 </Button>
               </FormActions>

@@ -163,7 +163,7 @@ export function AccountPassword() {
         </div>
 
         <FormActions>
-          <Button type="submit" aria-disabled={change.isPending}>
+          <Button size="lg" type="submit" aria-disabled={change.isPending}>
             {change.isPending ? t("account.changing") : t("account.change")}
           </Button>
         </FormActions>

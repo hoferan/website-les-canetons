@@ -97,6 +97,34 @@ export function sizeClassOffenders(root = ROOT) {
   return found;
 }
 
+/**
+ * Buttons in a form's action row (`<FormActions>`) that are not `size="lg"`,
+ * those behind a condition (`{draft ? <>…</> : …}`) included.
+ */
+export function formActionOffenders(root = ROOT) {
+  const found = [];
+  for (const { name, source } of sources(root)) {
+    walk(source, (node) => {
+      if (!ts.isJsxElement(node) || tagName(node.openingElement) !== "FormActions") return;
+      for (const child of node.children) {
+        walk(child, (inner) => {
+          if (!(ts.isJsxOpeningElement(inner) || ts.isJsxSelfClosingElement(inner))) return;
+          if (!BUTTONS.has(tagName(inner))) return;
+          const size = attribute(inner, "size")?.initializer;
+          if (size && ts.isStringLiteral(size) && size.text === "lg") return;
+          const { line } = source.getLineAndCharacterOfPosition(inner.getStart());
+          found.push(`${name}:${line + 1}`);
+        });
+      }
+    });
+  }
+  return found;
+}
+
 test("buttons take their height, padding and text size from `size`, not from classes", () => {
   assert.deepEqual(sizeClassOffenders(), [], "Pick a size: sm, md or lg (#397).");
+});
+
+test("every button in a form's action row is large", () => {
+  assert.deepEqual(formActionOffenders(), [], 'A form\'s action row is size="lg" (#397).');
 });
