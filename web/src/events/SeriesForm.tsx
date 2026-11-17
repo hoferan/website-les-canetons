@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { Button } from "@ds";
+import { Button, Checkbox } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import type { StoreEventSeriesRequest } from "../api/generated/model";
@@ -272,9 +272,7 @@ export function SeriesForm({
       />
 
       <label className="flex min-h-touch items-center gap-2">
-        <input
-          type="checkbox"
-          className="size-5"
+        <Checkbox
           checked={draft.isPublic}
           onChange={(changed) => set("isPublic", changed.target.checked)}
         />
@@ -301,9 +299,7 @@ export function SeriesForm({
           <legend>{t("seriesForm.datesLegend")}</legend>
           {dates.map((date) => (
             <label key={date} className="flex min-h-touch items-center gap-2">
-              <input
-                type="checkbox"
-                className="size-5"
+              <Checkbox
                 checked={!skipped.includes(date)}
                 onChange={(changed) =>
                   setSkipped((current) =>
