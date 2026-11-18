@@ -35,14 +35,14 @@ function pillsOnPage(page: Page): Promise<Pill[]> {
     const channels = (colour: string) =>
       (colour.match(/[\d.]+/g) ?? []).slice(0, 3).map((value) => Number(value) / 255);
     const luminance = (colour: string) => {
-      const [r, g, b] = channels(colour).map((c) =>
-        c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4,
-      );
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      const weights = [0.2126, 0.7152, 0.0722];
+      return channels(colour)
+        .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+        .reduce((sum, c, index) => sum + c * (weights[index] ?? 0), 0);
     };
     const ratio = (a: string, b: string) => {
-      const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-      return (light + 0.05) / (dark + 0.05);
+      const [first, second] = [luminance(a), luminance(b)];
+      return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
     };
 
     const pills: Pill[] = [];
