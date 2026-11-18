@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-q
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-import { Button, Select } from "@ds";
+import { Badge, Button, Select } from "@ds";
 
 import {
   getMemberIndexQueryKey,
@@ -484,18 +484,15 @@ export function Members() {
             {/* A register without a role that answers is almost always a
                 role somebody forgot to tick: a register grants nothing
                 (#189), so this person is never asked about an event. The same
-                pink pill as the login state below. Waits for the roles, or
-                every card would flash it. */}
+                attention badge as the login state below. Waits for the roles,
+                or every card would flash it. */}
             {member.sectionId !== null && roleList.length > 0 && !answersEvents(member) ? (
               // A flex child, not `inline-block`: that class also sets the
               // width to the `block` spacing token, 32px (docs/traps.md).
               <div className="mt-tight flex">
-                <span
-                  aria-label={t("members.notAnsweringName")}
-                  className="rounded-full bg-pink px-2 py-0.5 text-xs font-semibold text-ink"
-                >
+                <Badge tone="attention" size="sm" aria-label={t("members.notAnsweringName")}>
                   {t("members.notAnswering")}
-                </span>
+                </Badge>
               </div>
             ) : null}
             {/* No `Label : value` prefix: a pill is not a field with a value,

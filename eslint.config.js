@@ -1,36 +1,36 @@
-import js from '@eslint/js';
-import boundaries from 'eslint-plugin-boundaries';
-import reactHooks from 'eslint-plugin-react-hooks';
-import globals from 'globals';
-import tseslint from 'typescript-eslint';
+import js from "@eslint/js";
+import boundaries from "eslint-plugin-boundaries";
+import reactHooks from "eslint-plugin-react-hooks";
+import globals from "globals";
+import tseslint from "typescript-eslint";
 
 // See the block that uses them, below.
 const ROUTER_IMPORTS = {
-  name: 'react-router-dom',
-  importNames: ['Link', 'NavLink', 'Navigate', 'useNavigate', 'redirect'],
+  name: "react-router-dom",
+  importNames: ["Link", "NavLink", "Navigate", "useNavigate", "redirect"],
   message:
-    'Import Link, Navigate and useNavigate from i18n/routing, which keep the page in its language (#369).',
+    "Import Link, Navigate and useNavigate from i18n/routing, which keep the page in its language (#369).",
 };
 
 // A toast has a level, an icon, a close button and our own clock (ADR 0042),
 // which only the wrapper in components/ui/toast.tsx gives it.
 const SONNER_TOAST = {
-  name: 'sonner',
-  importNames: ['toast'],
-  message: 'Raise a toast with notify from @/components/ui/toast (ADR 0042).',
+  name: "sonner",
+  importNames: ["toast"],
+  message: "Raise a toast with notify from @/components/ui/toast (ADR 0042).",
 };
 
 // The block schemas are read on every public page, so zod is in the visitor's
 // bundle. Classic zod's methods cannot be tree-shaken, zod/mini's functions
 // can: the switch took 16 KB gzipped off that script (#479).
 const ZOD_CLASSIC = {
-  name: 'zod',
+  name: "zod",
   message: 'Import from "zod/mini": classic zod adds 16 KB to every visitor\'s script (#479).',
 };
 
 // See the router block below.
 const DS_DEEP_IMPORT = {
-  group: ['@ds/*', '**/design-system/*'],
+  group: ["@ds/*", "**/design-system/*"],
   message:
     'Import from "@ds", the design system\'s public API (ADR 0046), not from a file inside it.',
 };
@@ -42,28 +42,28 @@ export default [
     // linting: the type-checked rule set needs a program per run and doubles
     // lint time, and `npm run check` already runs `tsc --noEmit` over the same
     // files, so the types are enforced either way.
-    files: ['web/**/*.{ts,tsx}'],
+    files: ["web/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'module',
+      sourceType: "module",
       globals: { ...globals.browser },
       parser: tseslint.parser,
     },
     plugins: {
-      '@typescript-eslint': tseslint.plugin,
-      'react-hooks': reactHooks,
+      "@typescript-eslint": tseslint.plugin,
+      "react-hooks": reactHooks,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
       // The base rule does not understand type-only syntax (it flags a type
       // parameter or an `import type` as unused); the TS-aware one replaces it.
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       // no-undef cannot see TypeScript's lib types — it reports DOM types like
       // RequestInit as undefined globals. TypeScript itself reports genuinely
       // undefined identifiers, and `npm run check` runs tsc over these files,
       // so the rule is redundant here as well as wrong.
-      'no-undef': 'off',
+      "no-undef": "off",
     },
   },
   {
@@ -75,11 +75,11 @@ export default [
     // Only i18n/ may read a role's key, because it is the lookup key for the
     // role's label. Mocks are exempt too: they stand in for the API, which
     // has to know which seeded role is which.
-    files: ['web/src/**/*.{ts,tsx}'],
-    ignores: ['web/src/i18n/**', 'web/src/mocks/**'],
+    files: ["web/src/**/*.{ts,tsx}"],
+    ignores: ["web/src/i18n/**", "web/src/mocks/**"],
     rules: {
-      'no-restricted-syntax': [
-        'error',
+      "no-restricted-syntax": [
+        "error",
         // The other way back to the old model: the signed-in account's
         // register used as a gate, which is what `isPlayer` was. The session
         // object is called `user` everywhere it is read, and displaying the
@@ -102,20 +102,20 @@ export default [
           'BinaryExpression[operator=/^[!=]==?$/] > ChainExpression > MemberExpression[property.name="key"][object.name=/role/i]',
           // Any comparison against one of the seeded role keys, whatever
           // holds it: user.roleKeys[0] === "direction".
-          'BinaryExpression[operator=/^[!=]==?$/] > Literal[value=/^(member|musician|direction|committee)$/]',
+          "BinaryExpression[operator=/^[!=]==?$/] > Literal[value=/^(member|musician|direction|committee)$/]",
           // roleKeys.includes("committee"), and `case "direction":`.
           'CallExpression[callee.property.name="includes"] > Literal[value=/^(member|musician|direction|committee)$/]',
-          'SwitchCase > Literal[value=/^(member|musician|direction|committee)$/]',
+          "SwitchCase > Literal[value=/^(member|musician|direction|committee)$/]",
         ].map((selector) => ({
           selector,
           message:
-            'Decide access with can(permission) from useSession(), never by a role key. Roles group permissions and are editable data (ADR 0014).',
+            "Decide access with can(permission) from useSession(), never by a role key. Roles group permissions and are editable data (ADR 0014).",
         })),
         // An icon-only Button would have no visible name; IconButton shows one
         // on hover and keyboard focus.
         {
           selector: 'JSXAttribute[name.name="size"][value.value=/^icon/]',
-          message: 'Use IconButton for an icon-only button (ADR 0040)',
+          message: "Use IconButton for an icon-only button (ADR 0040)",
         },
         // A raw checkbox shrinks in a flex row beside a label that wraps: 13
         // px wide on /roles (#390). The primitive keeps it at 20x20.
@@ -139,6 +139,16 @@ export default [
           message:
             'Use Textarea from "@ds": it matches Input\'s border, focus ring and invalid state (#406).',
         },
+        // Status pills were built three ways, with 17 computed styles between
+        // them (#385). A padded rounded-full span is a pill. Count bubbles
+        // (`min-w-5`, an Indicator's job, #407) and the booking editor's
+        // positioned block stickers (`absolute`) are not.
+        {
+          selector:
+            'JSXOpeningElement[name.name="span"] > JSXAttribute[name.name="className"] > Literal[value=/^(?!.*\\b(absolute|min-w-5)\\b)(?=.*\\brounded-full\\b)(?=.*\\bpx-)/]',
+          message:
+            'Use Badge from "@ds" for a status or category pill: one height, weight and contrast per tone (#385).',
+        },
       ],
     },
   },
@@ -147,11 +157,11 @@ export default [
     // the German prefix is added by i18n/routing.tsx. The router's own link
     // and navigation would send a German visitor to the French page. Tests
     // may use them, to reach a URL exactly as written.
-    files: ['web/src/**/*.{ts,tsx}'],
-    ignores: ['web/src/i18n/routing.tsx', 'web/src/**/*.test.{ts,tsx}', 'web/src/test/**'],
+    files: ["web/src/**/*.{ts,tsx}"],
+    ignores: ["web/src/i18n/routing.tsx", "web/src/**/*.test.{ts,tsx}", "web/src/test/**"],
     rules: {
-      'no-restricted-imports': [
-        'error',
+      "no-restricted-imports": [
+        "error",
         {
           paths: [ROUTER_IMPORTS, SONNER_TOAST, ZOD_CLASSIC],
           // The app reaches the design system through `@ds`, never past it
@@ -168,43 +178,43 @@ export default [
     // lint:boundaries, in CI) states the same rules a second time, adds the
     // allow-list of packages and catches cycles; this block is the one that
     // speaks in the editor.
-    files: ['web/src/design-system/**/*.{ts,tsx}'],
+    files: ["web/src/design-system/**/*.{ts,tsx}"],
     plugins: { boundaries },
     settings: {
       // The plugin resolves each import itself and, by default, tries `.js`
       // only, so without this it never finds a .ts file and checks nothing.
-      'import/resolver': { node: { extensions: ['.ts', '.tsx', '.js'] } },
+      "import/resolver": { node: { extensions: [".ts", ".tsx", ".js"] } },
       // One element per layer folder: a layer's barrel is part of the layer.
-      'boundaries/elements': [
+      "boundaries/elements": [
         {
-          type: 'ds-primitives',
-          pattern: 'web/src/design-system/primitives',
+          type: "ds-primitives",
+          pattern: "web/src/design-system/primitives",
           partialMatch: false,
         },
         {
-          type: 'ds-composites',
-          pattern: 'web/src/design-system/composites',
+          type: "ds-composites",
+          pattern: "web/src/design-system/composites",
           partialMatch: false,
         },
-        { type: 'ds-internal', pattern: 'web/src/design-system/internal', partialMatch: false },
+        { type: "ds-internal", pattern: "web/src/design-system/internal", partialMatch: false },
       ],
     },
     rules: {
-      'boundaries/dependencies': [
+      "boundaries/dependencies": [
         2,
         {
-          default: 'allow',
+          default: "allow",
           policies: [
             {
-              from: { element: { type: 'ds-primitives' } },
-              disallow: { to: { element: { type: 'ds-composites' } } },
+              from: { element: { type: "ds-primitives" } },
+              disallow: { to: { element: { type: "ds-composites" } } },
               message:
-                'A primitive (layer 2) cannot import a composite (layer 3): dependencies point inward.',
+                "A primitive (layer 2) cannot import a composite (layer 3): dependencies point inward.",
             },
             {
-              from: { element: { type: 'ds-internal' } },
-              disallow: { to: { element: { types: ['ds-primitives', 'ds-composites'] } } },
-              message: 'design-system/internal is imported by the layers; it imports none of them.',
+              from: { element: { type: "ds-internal" } },
+              disallow: { to: { element: { types: ["ds-primitives", "ds-composites"] } } },
+              message: "design-system/internal is imported by the layers; it imports none of them.",
             },
           ],
         },
@@ -212,29 +222,29 @@ export default [
       // What the design system must not know (ADR 0046). A package outside the
       // allow-list fails dependency-cruiser too; this list is the part worth
       // seeing as you type.
-      'no-restricted-imports': [
-        'error',
+      "no-restricted-imports": [
+        "error",
         {
           patterns: [
             {
-              group: ['@/*', '**/../i18n', '**/../i18n/*'],
+              group: ["@/*", "**/../i18n", "**/../i18n/*"],
               message:
-                'The design system imports no app code: text, links and data arrive as props, asChild and slots.',
+                "The design system imports no app code: text, links and data arrive as props, asChild and slots.",
             },
             {
               group: [
-                'i18next',
-                'react-i18next',
-                'react-router',
-                'react-router-dom',
-                '@tanstack/*',
-                'zod',
-                'react-hook-form',
-                '@hookform/*',
-                'msw',
+                "i18next",
+                "react-i18next",
+                "react-router",
+                "react-router-dom",
+                "@tanstack/*",
+                "zod",
+                "react-hook-form",
+                "@hookform/*",
+                "msw",
               ],
               message:
-                'The design system must not know about i18n, routing, data fetching or form libraries (ADR 0046).',
+                "The design system must not know about i18n, routing, data fetching or form libraries (ADR 0046).",
             },
           ],
         },
@@ -244,14 +254,14 @@ export default [
 
   {
     // The toast wrapper is the one place that raises a sonner toast.
-    files: ['web/src/components/ui/toast.tsx'],
+    files: ["web/src/components/ui/toast.tsx"],
     rules: {
-      'no-restricted-imports': ['error', { paths: [ROUTER_IMPORTS] }],
+      "no-restricted-imports": ["error", { paths: [ROUTER_IMPORTS] }],
     },
   },
   {
     // Generated by orval from api/openapi.json — never hand-edited, so linting
     // it only ever produces noise no one may act on. See orval.config.ts.
-    ignores: ['web/src/api/generated/**'],
+    ignores: ["web/src/api/generated/**"],
   },
 ];

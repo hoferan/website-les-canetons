@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Button } from "@ds";
+import { Badge, Button } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 import { Switch } from "@/components/ui/switch";
 
@@ -507,23 +507,17 @@ export function EventRegistrations() {
                       contact details, and the committee knows how to reach
                       them. */}
                   {booking.isMember ? (
-                    <span
-                      data-testid="member-badge"
-                      className="rounded-full border-2 border-ink bg-lilac px-2 text-xs font-semibold"
-                    >
+                    <Badge size="sm" data-testid="member-badge">
                       {t("registrations.memberBadge")}
-                    </span>
+                    </Badge>
                   ) : null}
                   <SuspectBadge kind="booking" flagged={booking.suspectFields.length > 0} />
                   {since?.newIds.includes(booking.id) || since?.changedIds.includes(booking.id) ? (
-                    <span
-                      data-testid="read-tag"
-                      className="rounded-full border-2 border-ink bg-yellow px-2 text-xs font-semibold"
-                    >
+                    <Badge tone="attention" size="sm" data-testid="read-tag">
                       {since.newIds.includes(booking.id)
                         ? t("registrations.readLine.tagNew")
                         : t("registrations.readLine.tagChanged")}
-                    </span>
+                    </Badge>
                   ) : null}
                 </p>
                 {/* The address stays text, with no geo: link or maps URL: it is
@@ -800,16 +794,10 @@ function PaymentLine({
 
   if (!mayManage) {
     return (
-      <div data-testid="payment" className="mt-tight">
-        <span
-          className={
-            paid
-              ? "rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground"
-              : "rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted"
-          }
-        >
+      <div data-testid="payment" className="mt-tight flex">
+        <Badge tone={paid ? "success" : "neutral"} size="sm">
           {paid ? t("registrations.paid") : t("registrations.unpaid")}
-        </span>
+        </Badge>
       </div>
     );
   }

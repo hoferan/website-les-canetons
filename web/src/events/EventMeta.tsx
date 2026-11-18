@@ -1,3 +1,5 @@
+import { Badge } from "@ds";
+
 import type { EventTagResource } from "../api/generated/model";
 import { t } from "../i18n";
 import { TagChip } from "./TagChip";
@@ -30,18 +32,17 @@ export function EventMeta({
   }
 
   return (
-    <div data-testid="event-meta" className="mt-tight flex flex-wrap gap-tight text-sm">
+    <div
+      data-testid="event-meta"
+      className="mt-tight flex flex-wrap items-center gap-tight text-sm"
+    >
       {/* First, because they say what the event is; everything after them is
           a fact about it. Everybody sees them, unlike the chips that follow. */}
       {(tags ?? []).map((tag) => (
         <TagChip key={tag.id} tag={tag} />
       ))}
 
-      {isPublic === true ? (
-        <span className="rounded-full border border-line bg-panel px-2 py-0.5 text-ink-muted">
-          {t("events.meta.public")}
-        </span>
-      ) : null}
+      {isPublic === true ? <Badge>{t("events.meta.public")}</Badge> : null}
 
       {showsAnswers ? (
         <span

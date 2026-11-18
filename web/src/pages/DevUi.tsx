@@ -1,7 +1,7 @@
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Button } from "@ds";
+import { Badge, type BadgeTint, Button } from "@ds";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FormActions } from "@/components/ui/form-actions";
 import { IconButton } from "@/components/ui/icon-button";
@@ -19,6 +19,22 @@ import { usePageTitle } from "../components/pageTitle";
 
 const VARIANTS = ["primary", "secondary", "danger", "quiet", "accent"] as const;
 const SIZES = ["sm", "md", "lg"] as const;
+const BADGE_TONES = [
+  { tone: "neutral", text: "Brouillon" },
+  { tone: "attention", text: "Provisoire" },
+  { tone: "success", text: "Payé" },
+  { tone: "danger", text: "Suspecte" },
+] as const;
+const BADGE_TINTS: BadgeTint[] = [
+  "violet",
+  "teal",
+  "amber",
+  "pink",
+  "blue",
+  "green",
+  "coral",
+  "gray",
+];
 const INDICATOR_COLORS = ["cyan", "pink", "lime", "yellow", "violet", "danger", "ink"] as const;
 const INDICATOR_SIZES = ["sm", "md", "lg"] as const;
 const LEVELS: Array<{ level: ToastLevel; message: string; frozenAt?: number }> = [
@@ -329,6 +345,34 @@ export function DevUi() {
           <Button variant="secondary" onClick={() => notify.success("Modifié", { action: UNDO })}>
             success + action
           </Button>
+        </div>
+      </Block>
+      <Block
+        title="Badge"
+        note="#385. Un statut ou une catégorie, en lecture seule. sm (12 px/600) dans les cartes denses, md (14 px/500) à côté du texte. Le mot porte toujours le sens ; la couleur et l'icône s'y ajoutent."
+      >
+        <div className="grid gap-4">
+          {(["sm", "md"] as const).map((size) => (
+            <div
+              key={size}
+              data-testid={`badges-${size}`}
+              className="flex flex-wrap items-center gap-2"
+            >
+              {BADGE_TONES.map(({ tone, text }) => (
+                <Badge key={tone} tone={tone} size={size}>
+                  {text}
+                </Badge>
+              ))}
+              {BADGE_TINTS.map((tint) => (
+                <Badge key={tint} tone="tag" tint={tint} size={size}>
+                  {tint}
+                </Badge>
+              ))}
+              <Badge tone="attention" size={size} icon={<AlertTriangle />}>
+                Jamais utilisé
+              </Badge>
+            </div>
+          ))}
         </div>
       </Block>
       <Block
