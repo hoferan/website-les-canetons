@@ -223,7 +223,7 @@ test("a card is duplicated and deleted from the page, with no dialog but the que
   await page.setViewportSize({ width: 1280, height: 844 });
   await logIn(page, "demo.direction");
   await page.locator('a[href="/join"]:visible').first().click();
-  const headings = page.locator("[data-slot='card'] h2");
+  const headings = page.locator("[data-slot='surface'] h2");
   await expect(headings).toHaveCount(5);
 
   await page.getByRole("button", { name: /^Plus d’actions\s: Horaires, carte 2 sur 5$/ }).click();
@@ -261,7 +261,7 @@ test("moving a card from the keyboard keeps focus on that card's arrow", async (
   await page.setViewportSize({ width: 1280, height: 844 });
   await logIn(page, "demo.direction");
   await page.locator('a[href="/join"]:visible').first().click();
-  const headings = page.locator("[data-slot='card'] h2");
+  const headings = page.locator("[data-slot='surface'] h2");
   const after = page.getByRole("button", {
     name: /^Déplacer « Instruments recherchés, carte \d sur 5 » après$/,
   });

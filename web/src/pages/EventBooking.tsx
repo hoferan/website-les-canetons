@@ -3,9 +3,8 @@ import { useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { useLocation, useParams } from "react-router-dom";
 
-import { Button } from "@ds";
+import { Button, Surface } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import {
@@ -205,13 +204,13 @@ export function EventBooking() {
             {t("booking.bookedBody", { email: booked.email, phone: booked.phone })}
           </p>
 
-          <Card className={cn(RAISED_CARD, "mt-related gap-tight p-5")}>
+          <Surface variant="feature" padding="lg" className="mt-related flex flex-col gap-tight">
             <p className="font-display text-xl">{offer.event.title}</p>
             <p className="text-ink-muted">
               {formatEventWhen(offer.event.startsAt, offer.event.endsAt)}
             </p>
             <AnswersSummary booking={booked} countsPeople={typed.countsPeople} />
-          </Card>
+          </Surface>
         </PageSection>
       </>
     );
@@ -251,72 +250,77 @@ export function EventBooking() {
             {/* Raised like every card on cream, but the fields inside stay the
               plain vendored inputs: decoration stays out of anything a person
               types into (ADR 0029). */}
-            <Card asChild className={cn(RAISED_CARD, "mt-related gap-0 p-5")}>
-              <form onSubmit={submit} noValidate className="space-y-related">
-                <fieldset className="flex flex-col gap-related">
-                  {/* A heading inside the legend, as GOV.UK does: still the
+            <Surface
+              as="form"
+              variant="form"
+              padding="lg"
+              onSubmit={submit}
+              noValidate
+              className="mt-related flex flex-col space-y-related"
+            >
+              <fieldset className="flex flex-col gap-related">
+                {/* A heading inside the legend, as GOV.UK does: still the
                       group's name, and now in the heading list too, with the
                       form's own heading blocks one level under it (#392). */}
-                  <legend className="mb-tight heading-wave w-fit font-display text-xl">
-                    <h2>{t("booking.contactLegend")}</h2>
-                  </legend>
-                  <RequiredLegend />
-                  {/* Address and table are the form's to ask for (ADR 0033);
+                <legend className="mb-tight heading-wave w-fit font-display text-xl">
+                  <h2>{t("booking.contactLegend")}</h2>
+                </legend>
+                <RequiredLegend />
+                {/* Address and table are the form's to ask for (ADR 0033);
                     the other four every booking needs. The table is picked
                     from the ones already booked, below. */}
-                  {FIELDS.filter(
-                    (field) =>
-                      (field.name !== "address" || offer.asksAddress) && field.name !== "tableName",
-                  ).map((field) => (
-                    <FormField
-                      key={field.name}
-                      id={`booking-${field.name}`}
-                      label={t(field.labelKey)}
-                      type={field.type}
-                      required={field.required}
-                      hint={field.hintKey ? t(field.hintKey) : undefined}
-                      autoComplete={field.autoComplete}
-                      problem={messageFor(field.name)}
-                      value={contact[field.name]}
-                      onChange={(value) =>
-                        setContact((current) => ({ ...current, [field.name]: value }))
-                      }
-                    />
-                  ))}
-                  {offer.asksTable ? (
-                    <TablePicker
-                      id="booking-tableName"
-                      tables={offer.tables}
-                      seats={offer.tableSeats}
-                      value={contact.tableName}
-                      problem={messageFor("tableName")}
-                      onChange={(tableName) => setContact((current) => ({ ...current, tableName }))}
-                    />
-                  ) : null}
-                </fieldset>
+                {FIELDS.filter(
+                  (field) =>
+                    (field.name !== "address" || offer.asksAddress) && field.name !== "tableName",
+                ).map((field) => (
+                  <FormField
+                    key={field.name}
+                    id={`booking-${field.name}`}
+                    label={t(field.labelKey)}
+                    type={field.type}
+                    required={field.required}
+                    hint={field.hintKey ? t(field.hintKey) : undefined}
+                    autoComplete={field.autoComplete}
+                    problem={messageFor(field.name)}
+                    value={contact[field.name]}
+                    onChange={(value) =>
+                      setContact((current) => ({ ...current, [field.name]: value }))
+                    }
+                  />
+                ))}
+                {offer.asksTable ? (
+                  <TablePicker
+                    id="booking-tableName"
+                    tables={offer.tables}
+                    seats={offer.tableSeats}
+                    value={contact.tableName}
+                    problem={messageFor("tableName")}
+                    onChange={(tableName) => setContact((current) => ({ ...current, tableName }))}
+                  />
+                ) : null}
+              </fieldset>
 
-                <AnswerFields offer={offer} form={typed} messageFor={messageFor} />
+              <AnswerFields offer={offer} form={typed} messageFor={messageFor} />
 
-                {/* The honeypot, as on the contact form: hidden from people and
+              {/* The honeypot, as on the contact form: hidden from people and
                   assistive technology, a real control whose value is submitted,
                   and refused when absent as firmly as when filled. */}
-                <input
-                  type="text"
-                  name="website"
-                  hidden
-                  tabIndex={-1}
-                  autoComplete="off"
-                  value={website}
-                  onChange={(changed) => setWebsite(changed.target.value)}
-                />
+              <input
+                type="text"
+                name="website"
+                hidden
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(changed) => setWebsite(changed.target.value)}
+              />
 
-                <FormActions>
-                  <Button type="submit" variant="primary" size="lg" loading={send.isPending}>
-                    {send.isPending ? t("booking.sending") : t("booking.submit")}
-                  </Button>
-                </FormActions>
-              </form>
-            </Card>
+              <FormActions>
+                <Button type="submit" variant="primary" size="lg" loading={send.isPending}>
+                  {send.isPending ? t("booking.sending") : t("booking.submit")}
+                </Button>
+              </FormActions>
+            </Surface>
           </>
         ) : null}
       </PageSection>

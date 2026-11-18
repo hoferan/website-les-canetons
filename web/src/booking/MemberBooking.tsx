@@ -1,9 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import { Button } from "@ds";
+import { Button, Surface } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import {
@@ -147,42 +146,47 @@ export function MemberBooking({
             {t("booking.loadFailed")}
           </p>
         ) : showForm ? (
-          <Card asChild className={cn(RAISED_CARD, "mt-related gap-0 p-5")}>
-            <form onSubmit={submit} noValidate className="space-y-related">
-              {withdrawn ? (
-                <p role="status" className="text-ink-muted">
-                  {t("booking.memberWithdrawn")}
-                </p>
-              ) : null}
-              <p className="text-ink-muted" data-testid="member-name">
-                {t("booking.memberAs", { name })}
+          <Surface
+            as="form"
+            variant="form"
+            padding="lg"
+            onSubmit={submit}
+            noValidate
+            className="mt-related flex flex-col space-y-related"
+          >
+            {withdrawn ? (
+              <p role="status" className="text-ink-muted">
+                {t("booking.memberWithdrawn")}
               </p>
+            ) : null}
+            <p className="text-ink-muted" data-testid="member-name">
+              {t("booking.memberAs", { name })}
+            </p>
 
-              <AnswerFields offer={offer} form={typed} messageFor={messageFor} />
+            <AnswerFields offer={offer} form={typed} messageFor={messageFor} />
 
-              <FormActions>
-                <Button type="submit" variant="primary" size="lg" loading={save.isPending}>
-                  {save.isPending
-                    ? t("booking.sending")
-                    : mine
-                      ? t("booking.memberSave")
-                      : t("booking.memberSubmit")}
+            <FormActions>
+              <Button type="submit" variant="primary" size="lg" loading={save.isPending}>
+                {save.isPending
+                  ? t("booking.sending")
+                  : mine
+                    ? t("booking.memberSave")
+                    : t("booking.memberSubmit")}
+              </Button>
+              {mine ? (
+                <Button
+                  size="lg"
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setEditing(false)}
+                >
+                  {t("common.cancel")}
                 </Button>
-                {mine ? (
-                  <Button
-                    size="lg"
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setEditing(false)}
-                  >
-                    {t("common.cancel")}
-                  </Button>
-                ) : null}
-              </FormActions>
-            </form>
-          </Card>
+              ) : null}
+            </FormActions>
+          </Surface>
         ) : mine ? (
-          <Card className={cn(RAISED_CARD, "mt-related gap-tight p-5")}>
+          <Surface variant="feature" padding="lg" className="mt-related flex flex-col gap-tight">
             <p className="font-display text-xl">{t("booking.memberAnswersHeading")}</p>
             <AnswersSummary booking={mine} countsPeople={typed.countsPeople} />
             {offer.open ? (
@@ -204,7 +208,7 @@ export function MemberBooking({
                 </Button>
               </div>
             ) : null}
-          </Card>
+          </Surface>
         ) : !offer.open && !notYetOpen ? (
           <p className="mt-related text-ink-muted">{t("booking.memberNoAnswer")}</p>
         ) : null}

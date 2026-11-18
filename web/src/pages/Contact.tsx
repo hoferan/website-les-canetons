@@ -3,9 +3,8 @@ import { useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 
 import { PageSection } from "@/components/PageSection";
-import { Button } from "@ds";
+import { Button, Surface } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import { contactStore, useFormTokenShow } from "../api/generated/endpoints";
@@ -13,7 +12,6 @@ import type { ContactRequest } from "../api/generated/model";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageHero } from "../carnival/PageHero";
-import { RAISED_CARD } from "../carnival/raised";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { Notice } from "../components/Notice";
@@ -162,53 +160,58 @@ export function Contact() {
             Raised like every card on cream, while the fields stay plain
             vendored inputs: no decoration on what a person types into
             (ADR 0029). */}
-        <Card asChild className={cn(RAISED_CARD, "gap-0 p-5", error && "mt-related")}>
-          <form onSubmit={submit} noValidate className="space-y-related">
-            <RequiredLegend />
-            {FIELDS.map((field) => (
-              <FormField
-                key={field.name}
-                id={`contact-${field.name}`}
-                label={t(field.labelKey)}
-                type={field.type}
-                as={field.as}
-                /* Every field is required, `subject` included, as
+        <Surface
+          as="form"
+          variant="form"
+          padding="lg"
+          onSubmit={submit}
+          noValidate
+          className={cn("flex flex-col space-y-related", error && "mt-related")}
+        >
+          <RequiredLegend />
+          {FIELDS.map((field) => (
+            <FormField
+              key={field.name}
+              id={`contact-${field.name}`}
+              label={t(field.labelKey)}
+              type={field.type}
+              as={field.as}
+              /* Every field is required, `subject` included, as
                  ContactRequest requires it; otherwise a blank subject comes
                  back as a generic failure that names no field. */
-                required
-                autoComplete={field.autoComplete}
-                problem={messageFor(field.name)}
-                value={values[field.name]}
-                onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
-              />
-            ))}
+              required
+              autoComplete={field.autoComplete}
+              problem={messageFor(field.name)}
+              value={values[field.name]}
+              onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
+            />
+          ))}
 
-            {/* The honeypot. `hidden` keeps it out of the accessibility tree
+          {/* The honeypot. `hidden` keeps it out of the accessibility tree
                 while it stays a real, submitted control. tabIndex -1 and
                 autoComplete "off" keep a keyboard user and a password manager
                 from filling it by accident. */}
-            <input
-              type="text"
-              name="website"
-              hidden
-              tabIndex={-1}
-              autoComplete="off"
-              value={values.website}
-              onChange={(event) =>
-                setValues((previous) => ({ ...previous, website: event.target.value }))
-              }
-            />
+          <input
+            type="text"
+            name="website"
+            hidden
+            tabIndex={-1}
+            autoComplete="off"
+            value={values.website}
+            onChange={(event) =>
+              setValues((previous) => ({ ...previous, website: event.target.value }))
+            }
+          />
 
-            {/* `loading` is aria-disabled plus a spinner, never `disabled` (see
+          {/* `loading` is aria-disabled plus a spinner, never `disabled` (see
                 the design system's Button), and drops the click. The submit
                 handler's early return stays the guard for Enter in a field. */}
-            <FormActions>
-              <Button type="submit" variant="primary" size="lg" loading={send.isPending}>
-                {send.isPending ? t("contact.sending") : t("contact.submit")}
-              </Button>
-            </FormActions>
-          </form>
-        </Card>
+          <FormActions>
+            <Button type="submit" variant="primary" size="lg" loading={send.isPending}>
+              {send.isPending ? t("contact.sending") : t("contact.submit")}
+            </Button>
+          </FormActions>
+        </Surface>
       </PageSection>
     </>
   );

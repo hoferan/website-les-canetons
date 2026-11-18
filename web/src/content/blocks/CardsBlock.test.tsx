@@ -683,7 +683,7 @@ test("page code goes inside a card, before or after its rows, and a wide block s
 
   const card = screen
     .getByRole("heading", { name: "Contact des Canetons" })
-    .closest("[data-slot='card']");
+    .closest("[data-slot='surface']");
   const order = Array.from(card!.querySelectorAll("a, p"), (node) => node.textContent);
   expect(order[0]).toBe("Écrire au comité");
   expect(order[1]).toMatch(/^Pour réserver les Canetons :/);
@@ -699,7 +699,7 @@ test("page code goes inside a card, before or after its rows, and a wide block s
 test("the default layout is the grid of up to three columns", async () => {
   await renderWithSession(<CardsBlock blockKey="join.facts" />, { route: "/join" });
 
-  const card = screen.getByRole("heading", { name: "Horaires" }).closest("[data-slot='card']");
+  const card = screen.getByRole("heading", { name: "Horaires" }).closest("[data-slot='surface']");
   expect(card!.parentElement).toHaveClass("sm:grid-cols-2", "lg:grid-cols-3");
 });
 
@@ -1051,9 +1051,10 @@ test("each band card is one link to its page, tilted, as the home page shipped t
   expect(links[0]).toHaveAccessibleName(
     "Nous rejoindre Les instruments recherchés, les horaires et les critères d’âge.",
   );
-  const items = within(list).getAllByRole("listitem");
-  expect(items[0]!.className).toContain("-rotate-[1.2deg]");
-  expect(items[1]!.className).toContain("rotate-1");
+  // Each tile leans the other way from its neighbour; the tilt is on the
+  // tile, so its focus ring leans with it.
+  expect(links[0]).toHaveClass("-rotate-[1.2deg]");
+  expect(links[1]).toHaveClass("rotate-1");
   expect(screen.queryByRole("button")).toBeNull();
 });
 

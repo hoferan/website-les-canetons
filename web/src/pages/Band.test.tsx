@@ -280,7 +280,7 @@ test("the godparents' card is a card with its title, photo slot and names", asyn
   await renderWithSession(<Band />, { route: "/band" });
 
   const heading = await screen.findByRole("heading", { name: "Le parrain et la marraine" });
-  const card = heading.closest("[data-slot='card']")!;
+  const card = heading.closest("[data-slot='surface']")!;
   expect(
     within(card as HTMLElement).getByText("Richard Hertig et Annick Bürgisser"),
   ).toBeInTheDocument();
@@ -295,7 +295,7 @@ test("in edit mode the godparents' card shows its empty photo slot", async () =>
   await renderWithSession(<Band />, { route: "/band" });
 
   const heading = await screen.findByRole("heading", { name: "Le parrain et la marraine" });
-  const card = heading.closest("[data-slot='card']")!;
+  const card = heading.closest("[data-slot='surface']")!;
   await waitFor(() =>
     expect(card.querySelector("[data-photo-pending='band.godparents.godparents']")).not.toBeNull(),
   );

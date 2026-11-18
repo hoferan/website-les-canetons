@@ -402,9 +402,6 @@ function EntryStrip({
       look="strip"
       label={name}
       main="edit"
-      // A raised card's corner is 18px; the strip meets the inner edge of
-      // its 3px border.
-      className="rounded-t-[15px]"
       actions={[
         {
           id: "more",
