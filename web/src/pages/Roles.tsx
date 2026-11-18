@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, Checkbox } from "@ds";
+import { Button, Checkbox, Surface } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import { rowsOf } from "../api/collection";
@@ -31,7 +31,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { permissionHint, permissionLabel, roleName, roleNamesForEditing, t } from "../i18n";
-import { OUTLINED_CARD } from "../carnival/raised";
+
 import { usePageTitle } from "../components/pageTitle";
 
 /** Every permission, in the order the API's enum declares them. */
@@ -188,7 +188,7 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
   );
 
   return (
-    <li data-testid="role-card" className={`${OUTLINED_CARD} p-4`}>
+    <Surface as="li" data-testid="role-card">
       {editing === null ? (
         <div className="grid gap-tight">
           <h2 className="font-semibold">{name}</h2>
@@ -309,7 +309,7 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </li>
+    </Surface>
   );
 }
 
@@ -319,10 +319,12 @@ function NewRole({ onCreated }: { onCreated: () => Promise<void> }) {
   const creating = useApiFormError(t("rolesPage.saveFailed"));
 
   return (
-    <form
+    <Surface
+      as="form"
+      variant="placeholder"
       noValidate
       aria-labelledby="new-role-heading"
-      className="mt-block grid gap-related rounded-lg border border-dashed border-line p-4"
+      className="mt-block grid gap-related"
       onSubmit={(submitted) => {
         submitted.preventDefault();
         if (busy || !formIsValid(submitted.currentTarget)) {
@@ -358,7 +360,7 @@ function NewRole({ onCreated }: { onCreated: () => Promise<void> }) {
           {t("rolesPage.add")}
         </Button>
       </FormActions>
-    </form>
+    </Surface>
   );
 }
 

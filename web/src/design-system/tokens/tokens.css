@@ -56,10 +56,16 @@
   --color-status-edge: var(--color-ink);
   --color-content-on-status-danger: #fff;
 
-  /* Radius by role. Three of the eight radii found in the codebase; the
-     surface radius comes with Surface (#386). */
+  /* A Surface: the card a list row, a tile or a form is drawn on (#386). The
+     placeholder's dashed edge is muted ink, 6.6:1 on cream. */
+  --color-surface: var(--color-panel);
+  --color-surface-edge: var(--color-ink);
+  --color-surface-placeholder-edge: var(--color-ink-muted);
+
+  /* Radius by role. Every Surface variant has the one surface radius (#386). */
   --radius-control: 0.375rem;
   --radius-button: 0.75rem;
+  --radius-surface: 1.125rem;
   --radius-pill: 9999px;
 }
 

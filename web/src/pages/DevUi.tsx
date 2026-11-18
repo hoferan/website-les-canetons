@@ -1,7 +1,7 @@
 import { AlertTriangle, ArrowDown, ArrowUp, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Badge, type BadgeTint, Button } from "@ds";
+import { Badge, type BadgeTint, Button, Surface } from "@ds";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FormActions } from "@/components/ui/form-actions";
 import { IconButton } from "@/components/ui/icon-button";
@@ -374,6 +374,41 @@ export function DevUi() {
             </div>
           ))}
         </div>
+      </Block>
+      <Block
+        title="Surface"
+        note="#386. La carte sur laquelle se dessine une ligne de liste, une tuile ou un formulaire. Un seul rayon (18 px) pour les quatre ; list sans ombre, feature 5 px, form 3 px, placeholder en tirets sans fond. Une tuile entière qui est un lien est interactive : elle se soulève au survol et porte l'anneau de focus."
+      >
+        <div data-testid="surfaces" className="grid gap-5 sm:grid-cols-2">
+          <Surface>
+            <p className="font-semibold">list</p>
+            <p className="text-sm text-ink-muted">Planning, membres, rôles, pupitres.</p>
+          </Surface>
+          <Surface variant="feature">
+            <p className="font-display text-xl">feature</p>
+            <p className="text-sm text-ink-muted">Les tuiles de l'accueil.</p>
+          </Surface>
+          <Surface variant="form" padding="lg">
+            <p className="font-display text-xl">form, padding lg</p>
+            <p className="text-sm text-ink-muted">Contact, réservation, connexion.</p>
+          </Surface>
+          <Surface variant="placeholder">
+            <p className="font-semibold">placeholder</p>
+            <p className="text-sm text-ink-muted">Nouveau rôle, nouveau pupitre.</p>
+          </Surface>
+        </div>
+        <ul className="mt-6 grid gap-5 rounded-surface bg-yellow p-6 sm:grid-cols-2">
+          {(["left", "right"] as const).map((tilt) => (
+            <li key={tilt}>
+              <Surface asChild interactive variant="feature" tilt={tilt}>
+                <a href="#surfaces" className="block">
+                  <span className="block font-display text-xl">tilt {tilt}, interactive</span>
+                  <span className="block text-sm text-ink-muted">Tab pour voir l'anneau.</span>
+                </a>
+              </Surface>
+            </li>
+          ))}
+        </ul>
       </Block>
       <Block
         title="Barre d’actions"

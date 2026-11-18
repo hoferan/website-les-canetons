@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@ds";
+import { Button, Surface } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 import { Switch } from "@/components/ui/switch";
 
@@ -32,7 +32,7 @@ import { PageSection } from "../components/PageSection";
 import { TagChip } from "../events/TagChip";
 import { TAG_COLOURS } from "../events/tagColours";
 import { t, tagLabel } from "../i18n";
-import { OUTLINED_CARD } from "../carnival/raised";
+
 import { usePageTitle } from "../components/pageTitle";
 
 const COLOURS = Object.keys(TAG_COLOURS) as TagColour[];
@@ -191,7 +191,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
   };
 
   return (
-    <li data-testid="event-tag-row" className={`${OUTLINED_CARD} p-4`}>
+    <Surface as="li" data-testid="event-tag-row">
       {editing === null ? (
         <div className="flex flex-wrap items-center justify-between gap-related">
           <div className="flex w-full flex-wrap items-center gap-tight text-sm">
@@ -344,7 +344,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </li>
+    </Surface>
   );
 }
 
@@ -354,10 +354,12 @@ function NewTag({ onCreated }: { onCreated: () => Promise<void> }) {
   const creating = useApiFormError(t("eventTags.saveFailed"));
 
   return (
-    <form
+    <Surface
+      as="form"
+      variant="placeholder"
       noValidate
       aria-labelledby="new-tag-heading"
-      className="mt-block grid gap-related rounded-lg border border-dashed border-line p-4"
+      className="mt-block grid gap-related"
       onSubmit={(submitted) => {
         submitted.preventDefault();
         if (busy || !formIsValid(submitted.currentTarget)) {
@@ -389,7 +391,7 @@ function NewTag({ onCreated }: { onCreated: () => Promise<void> }) {
           {t("eventTags.add")}
         </Button>
       </FormActions>
-    </form>
+    </Surface>
   );
 }
 

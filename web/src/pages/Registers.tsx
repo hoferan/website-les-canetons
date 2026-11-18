@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@ds";
+import { Button, Surface } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 import { IconButton } from "@/components/ui/icon-button";
 
@@ -32,7 +32,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { registerName, t } from "../i18n";
-import { OUTLINED_CARD } from "../carnival/raised";
+
 import { usePageTitle } from "../components/pageTitle";
 
 type RegisterDraft = { name: string; nameDe: string };
@@ -207,7 +207,7 @@ function RegisterRow({
   const inUse = players > 0 || instructors > 0;
 
   return (
-    <li data-testid="register-row" className={`${OUTLINED_CARD} p-4`}>
+    <Surface as="li" data-testid="register-row">
       {editing === null ? (
         <div className="flex flex-wrap items-center justify-between gap-related">
           <div className="min-w-0">
@@ -360,7 +360,7 @@ function RegisterRow({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </li>
+    </Surface>
   );
 }
 
@@ -370,10 +370,12 @@ function NewRegister({ onCreated }: { onCreated: () => Promise<void> }) {
   const creating = useApiFormError(t("registers.saveFailed"));
 
   return (
-    <form
+    <Surface
+      as="form"
+      variant="placeholder"
       noValidate
       aria-labelledby="new-register-heading"
-      className="mt-block grid gap-related rounded-lg border border-dashed border-line p-4"
+      className="mt-block grid gap-related"
       onSubmit={(submitted) => {
         submitted.preventDefault();
         if (busy || !formIsValid(submitted.currentTarget)) {
@@ -405,7 +407,7 @@ function NewRegister({ onCreated }: { onCreated: () => Promise<void> }) {
           {t("registers.add")}
         </Button>
       </FormActions>
-    </form>
+    </Surface>
   );
 }
 
