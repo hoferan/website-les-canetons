@@ -115,7 +115,7 @@ export default [
         // on hover and keyboard focus.
         {
           selector: 'JSXAttribute[name.name="size"][value.value=/^icon/]',
-          message: "Use IconButton for an icon-only button (ADR 0040)",
+          message: 'Use IconButton from "@ds" for an icon-only button (ADR 0040)',
         },
         // A raw checkbox shrinks in a flex row beside a label that wraps: 13
         // px wide on /roles (#390). The primitive keeps it at 20x20.

@@ -7,8 +7,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  RadioGroup,
+  ToggleOption,
 } from "@ds";
-import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
 import { ChevronDown, Plus } from "lucide-react";
 
 import { rowsOf } from "../api/collection";

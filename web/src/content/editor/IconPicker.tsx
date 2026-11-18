@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { SearchField } from "@/components/SearchField";
-import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
+import { RadioGroup, ToggleOption } from "@ds";
 
 import { t } from "../../i18n";
 import { catalogueValue } from "../../i18n/catalogueText";

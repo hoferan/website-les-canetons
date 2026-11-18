@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
+import { expectNoA11yViolations } from "../../internal/testing/axe";
 import { RadioGroup, ToggleOption } from "./radio-group";
 
 /**
@@ -55,6 +56,21 @@ describe("RadioGroup", () => {
     await user.click(screen.getByRole("radio", { name: "Planning" }));
 
     expect(screen.getByRole("radio", { name: "Planning" })).toBeChecked();
+  });
+
+  // jsdom paints nothing, so this pins the class; the story measures the ring.
+  it("wears the one focus ring on each option, not a ring of its own", () => {
+    render(<Harness />);
+
+    for (const option of screen.getAllByRole("radio")) {
+      expect(option).toHaveClass("focus-ring");
+      expect(option.className).not.toMatch(/\bring-/);
+    }
+  });
+
+  it("a named group has no structural accessibility violations", async () => {
+    const { container } = render(<Harness />);
+    await expectNoA11yViolations(container);
   });
 });
 

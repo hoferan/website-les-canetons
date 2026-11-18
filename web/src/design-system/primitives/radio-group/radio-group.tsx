@@ -1,15 +1,16 @@
 import * as React from "react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 
-import { cn } from "@/lib/utils";
+import { cn } from "../../internal/cn";
 
 /**
  * A segmented control: pick one of a few views, all of them visible at once.
  *
- * Vendored from radix-ui like ui/dropdown-menu.tsx and ui/alert-dialog.tsx,
- * with the same `data-slot` attributes and `cn()` composition. Root and Item
- * only: a segment shows its state by filling, so there is no `Indicator`.
- * No `dark:` utility, for the reason in design-system/primitives/button/button.tsx.
+ * Radix's radio group, with the same `data-slot` attributes and `cn()`
+ * composition as ../dropdown-menu. Root and Item only: a segment shows its
+ * state by filling, so there is no radio dot. No `dark:` utility, for the
+ * reason in ../button/button.tsx. A segment's focus ring is the one
+ * `focus-ring` (#391), which the story measures.
  *
  * RadioGroup rather than ToggleGroup. `ToggleGroup type="single"` renders
  * radio roles but never selects on an arrow key, so focus moves while
@@ -54,7 +55,7 @@ function ToggleOption({
       className={cn(
         // min-h-touch: the 44px floor every control carries.
         // RadioGroup's data-state is checked/unchecked, not on/off.
-        "inline-flex min-h-touch shrink-0 cursor-default items-center justify-center rounded-sm px-4 text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+        "inline-flex min-h-touch shrink-0 cursor-default items-center justify-center rounded-sm px-4 text-sm font-medium whitespace-nowrap transition-all select-none focus-ring data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
         className,
       )}
       {...props}

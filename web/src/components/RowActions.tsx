@@ -5,8 +5,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  IconButton,
 } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
 import { Ellipsis } from "lucide-react";
 
 import { t } from "../i18n";

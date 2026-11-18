@@ -1,11 +1,11 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ArrowUp, Pencil, X } from "lucide-react";
-import { useState } from "react";
-import { MemoryRouter, Link } from "react-router-dom";
+import { Dialog } from "radix-ui";
+import { createRef, useState } from "react";
 import { expect, test, vi } from "vitest";
 
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "./dialog";
+import { expectNoA11yViolations } from "../../internal/testing/axe";
 import { IconButton } from "./icon-button";
 
 test("has its label as its name", () => {
@@ -63,15 +63,17 @@ function PickerLike() {
       <button type="button" onClick={() => setOpen(true)}>
         Ouvrir
       </button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogTitle>Bibliothèque</DialogTitle>
-          <DialogDescription>Choisissez une photo.</DialogDescription>
-          <DialogClose asChild>
-            <IconButton icon={X} label="Fermer la bibliothèque" />
-          </DialogClose>
-        </DialogContent>
-      </Dialog>
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Portal>
+          <Dialog.Content>
+            <Dialog.Title>Bibliothèque</Dialog.Title>
+            <Dialog.Description>Choisissez une photo.</Dialog.Description>
+            <Dialog.Close asChild>
+              <IconButton icon={X} label="Fermer la bibliothèque" />
+            </Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 }
@@ -101,12 +103,11 @@ test("the word defaults to the label", async () => {
 });
 
 test("asChild renders the link with the button look", () => {
+  // The app passes its router's Link; a plain anchor stands in for it.
   render(
-    <MemoryRouter>
-      <IconButton asChild icon={Pencil} label="Modifier Carnaval 1990" word="Modifier">
-        <Link to="/history/1/edit" />
-      </IconButton>
-    </MemoryRouter>,
+    <IconButton asChild icon={Pencil} label="Modifier Carnaval 1990" word="Modifier">
+      <a href="/history/1/edit" />
+    </IconButton>,
   );
 
   const link = screen.getByRole("link", { name: "Modifier Carnaval 1990" });
@@ -129,22 +130,61 @@ test("a click hides the tip rather than leaving it over the next row", async () 
 });
 
 test("stays an icon button inside a dialog's close, so a quiet one has no underline", () => {
-  // DialogClose passes its own data-slot down. styles.css keys the quiet
-  // underline's removal on data-slot="icon-button", so it must survive.
+  // The app's DialogClose passes its own data-slot down, as this one does.
+  // styles.css keys the quiet underline's removal on data-slot="icon-button",
+  // so it must survive.
   render(
-    <Dialog open>
-      <DialogContent>
-        <DialogTitle>Choisir une photo</DialogTitle>
-        <DialogDescription>Une photo</DialogDescription>
-        <DialogClose asChild>
-          <IconButton type="button" variant="quiet" icon={X} label="Fermer" />
-        </DialogClose>
-      </DialogContent>
-    </Dialog>,
+    <Dialog.Root open>
+      <Dialog.Portal>
+        <Dialog.Content>
+          <Dialog.Title>Choisir une photo</Dialog.Title>
+          <Dialog.Description>Une photo</Dialog.Description>
+          <Dialog.Close data-slot="dialog-close" asChild>
+            <IconButton type="button" variant="quiet" icon={X} label="Fermer" />
+          </Dialog.Close>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>,
   );
 
   expect(screen.getByRole("button", { name: "Fermer" })).toHaveAttribute(
     "data-slot",
     "icon-button",
   );
+});
+
+test("forwards its ref and a caller's class", () => {
+  const ref = createRef<HTMLButtonElement>();
+  render(<IconButton ref={ref} icon={ArrowUp} label="Monter Cloches" className="ml-auto" />);
+
+  const button = screen.getByRole("button", { name: "Monter Cloches" });
+  expect(ref.current).toBe(button);
+  expect(button).toHaveClass("ml-auto", "size-touch", "focus-ring");
+});
+
+test("the variant reaches the button, secondary by default", () => {
+  render(
+    <>
+      <IconButton icon={ArrowUp} label="Monter" />
+      <IconButton icon={X} label="Fermer" variant="quiet" />
+    </>,
+  );
+
+  expect(screen.getByRole("button", { name: "Monter" })).toHaveClass("bg-white", "border-ink");
+  expect(screen.getByRole("button", { name: "Fermer" })).toHaveClass("press-quiet");
+});
+
+test("icon buttons of every variant, and a link, have no structural accessibility violations", async () => {
+  const { container } = render(
+    <div>
+      <IconButton icon={ArrowUp} label="Monter Cloches" word="Monter" />
+      <IconButton icon={Pencil} label="Modifier" variant="primary" />
+      <IconButton icon={X} label="Fermer" variant="quiet" size="sm" />
+      <IconButton icon={X} label="Supprimer" variant="danger" aria-disabled="true" />
+      <IconButton asChild icon={Pencil} label="Modifier Carnaval 1990" word="Modifier">
+        <a href="/history/1/edit" />
+      </IconButton>
+    </div>,
+  );
+  await expectNoA11yViolations(container);
 });

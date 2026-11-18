@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-import { IconButton } from "@/components/ui/icon-button";
+import { IconButton } from "@ds";
 
 import { Notice } from "../components/Notice";
 import { t } from "../i18n";

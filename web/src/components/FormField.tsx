@@ -1,8 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState, type FormEvent, type HTMLAttributes, type ReactNode, type Ref } from "react";
 
-import { IconButton } from "@/components/ui/icon-button";
-import { FormField as FieldFrame, Input, RequiredMark, Textarea } from "@ds";
+import { FormField as FieldFrame, IconButton, Input, RequiredMark, Textarea } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { t, type TranslatedError } from "../i18n";

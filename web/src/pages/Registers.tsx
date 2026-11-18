@@ -11,9 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, Surface } from "@ds";
+import { Button, IconButton, Surface } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
-import { IconButton } from "@/components/ui/icon-button";
 
 import { rowsOf } from "../api/collection";
 import {

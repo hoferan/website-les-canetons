@@ -6,10 +6,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Indicator,
 } from "@ds";
 
 import { Avatar } from "../components/Avatar";
-import { Indicator } from "../components/ui/indicator";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { useLogout } from "./logout";

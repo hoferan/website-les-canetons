@@ -1,11 +1,9 @@
 import { AlertTriangle, ArrowDown, ArrowUp, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Badge, type BadgeTint, Button, Surface } from "@ds";
+import { Badge, type BadgeTint, Button, IconButton, Indicator, Surface } from "@ds";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FormActions } from "@/components/ui/form-actions";
-import { IconButton } from "@/components/ui/icon-button";
-import { Indicator } from "@/components/ui/indicator";
 import { notify, ToastCard, type ToastLevel } from "@/components/ui/toast";
 
 import { PageSection } from "../components/PageSection";

@@ -37,7 +37,7 @@ test("the first toast fetches sonner and still shows", async () => {
 });
 
 test("an icon button focused before its tip arrives keeps the focus", async () => {
-  const { IconButton, loadIconButtonTip } = await import("./ui/icon-button");
+  const { IconButton, loadIconButtonTip } = await import("@ds");
 
   render(<IconButton icon={ArrowUp} label="Monter Cloches" word="Monter" />);
   const before = screen.getByRole("button", { name: "Monter Cloches" });

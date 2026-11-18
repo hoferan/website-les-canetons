@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type { CSSProperties, ReactNode } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "../../internal/cn";
 
 const indicatorVariants = cva(
   "pointer-events-none absolute z-10 flex items-center justify-center rounded-full leading-none font-semibold tabular-nums",

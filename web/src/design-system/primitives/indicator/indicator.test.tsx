@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 
+import { expectNoA11yViolations } from "../../internal/testing/axe";
 import { Indicator } from "./indicator";
 
 const mark = () => document.querySelector("[data-indicator-mark]");
@@ -106,4 +107,21 @@ test("hidden, it keeps the wrapper and its placing, so the host does not move", 
   expect(wrapper).toHaveAttribute("data-indicator");
   expect(wrapper).toHaveClass("absolute", "top-2", "right-2");
   expect(mark()).toBeNull();
+});
+
+test("dots and counts on named hosts have no structural accessibility violations", async () => {
+  const { container } = render(
+    <div>
+      <Indicator>
+        <button type="button">Modifier le texte, sans allemand</button>
+      </Indicator>
+      <Indicator count={3} color="pink">
+        <button type="button">Mon compte, 3 messages non lus</button>
+      </Indicator>
+      <Indicator show={false}>
+        <button type="button">Modifier</button>
+      </Indicator>
+    </div>,
+  );
+  await expectNoA11yViolations(container);
 });

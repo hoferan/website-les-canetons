@@ -2,7 +2,7 @@ import { useId } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import { NetworkMark } from "@/components/social";
-import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
+import { RadioGroup, ToggleOption } from "@ds";
 
 import { t } from "../../i18n";
 import { ActionsField, BlockEditor, ListField, PlainField, TranslatedField } from "../editor";

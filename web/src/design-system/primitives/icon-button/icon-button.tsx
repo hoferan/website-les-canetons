@@ -3,9 +3,8 @@ import type { VariantProps } from "class-variance-authority";
 import type { LucideIcon } from "lucide-react";
 import { Slot } from "radix-ui";
 
-import { cn } from "@/lib/utils";
-
-import { buttonVariants } from "@ds";
+import { cn } from "../../internal/cn";
+import { buttonVariants } from "../button";
 
 type Variant = NonNullable<VariantProps<typeof buttonVariants>["variant"]>;
 
@@ -17,7 +16,7 @@ type IconButtonProps = Omit<React.ComponentProps<"button">, "children"> & {
   word?: string;
   variant?: Variant;
   size?: "default" | "sm";
-  /** Renders the single child, a `<Link>`, with the look, the icon and the word. */
+  /** Renders the single child, a link, with the look, the icon and the word. */
   asChild?: boolean;
   /** Keeps the tip open, for the catalogue's screenshot. */
   showWord?: boolean;
@@ -37,6 +36,7 @@ const tipListeners = new Set<() => void>();
 /** Fetches the tip. The first icon button to mount does; tests call it up front. */
 export function loadIconButtonTip(): Promise<void> {
   tipLoading ??= import("./icon-button-tip").then((module) => {
+    module.watchFocusKeys();
     tip = module.IconButtonTip;
     for (const listener of tipListeners) listener();
   });

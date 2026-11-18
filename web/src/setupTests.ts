@@ -3,9 +3,8 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
-import { loadActionMenu } from "@ds";
+import { loadActionMenu, loadIconButtonTip } from "@ds";
 
-import { loadIconButtonTip } from "./components/ui/icon-button";
 import { loadToasts } from "./components/ui/toast";
 import { setLocale } from "./i18n";
 import { loadCatalogue } from "./i18n/catalogues";
