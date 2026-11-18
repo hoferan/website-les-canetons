@@ -2,7 +2,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState, type FormEvent, type HTMLAttributes, type ReactNode, type Ref } from "react";
 
 import { IconButton } from "@/components/ui/icon-button";
-import { FormField as FieldFrame, Input, RequiredMark } from "@ds";
+import { FormField as FieldFrame, Input, RequiredMark, Textarea } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { t, type TranslatedError } from "../i18n";
@@ -113,10 +113,8 @@ export function RequiredLegend() {
  * Checkboxes are not handled: their value is a boolean and their label sits
  * after the control. The forms that need one write it out by hand.
  *
- * The input is shadcn's vendored one, which carries the 44px touch floor and
- * the aria-invalid styling. The textarea keeps a hand-written class string
- * because the vendored set has no Textarea, so the two are kept visually in
- * step by hand.
+ * The controls are the design system's Input and Textarea, which share the
+ * border, radius, focus ring and aria-invalid styling (#406).
  *
  * `type` applies to the input only: passing one with `as="textarea"`
  * type-checks but is ignored.
@@ -257,7 +255,7 @@ export function FormField({
         const shared = { ...own, ...wiring };
         return withAction(
           as === "textarea" ? (
-            <textarea
+            <Textarea
               {...shared}
               // Growing: a row per line typed, where the browser cannot size the
               // box to its content itself; where it can, field-sizing also
@@ -265,9 +263,7 @@ export function FormField({
               rows={grow ? Math.max(3, value.split("\n").length) : 6}
               onChange={(event) => change(event.target.value)}
               className={cn(
-                "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
                 action && "pr-12",
-                shown || invalid ? "border-danger" : "border-line",
                 grow && "field-sizing-content min-h-[calc(3lh+1rem+2px)]",
               )}
             />

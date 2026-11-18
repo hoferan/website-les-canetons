@@ -132,6 +132,13 @@ export default [
           message:
             'Use Select from "@ds": it matches Input\'s border, focus ring and invalid state (#405).',
         },
+        // The one textarea was written by hand twice and kept in step with
+        // Input by hand (#406). The primitive wears Input's tokens.
+        {
+          selector: 'JSXOpeningElement[name.name="textarea"]',
+          message:
+            'Use Textarea from "@ds": it matches Input\'s border, focus ring and invalid state (#406).',
+        },
       ],
     },
   },
