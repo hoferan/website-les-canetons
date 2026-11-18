@@ -277,7 +277,10 @@ test("describedBy, invalid and maxLength reach the control", () => {
 
 test("invalid marks a textarea red, like an input", () => {
   render(<FormField id="demo-body" label="Texte" as="textarea" value="" onChange={noop} invalid />);
-  expect(screen.getByLabelText("Texte")).toHaveClass("border-danger");
+  const textarea = screen.getByLabelText("Texte");
+  expect(textarea).toHaveAttribute("data-slot", "textarea");
+  expect(textarea).toHaveAttribute("aria-invalid", "true");
+  expect(textarea).toHaveClass("aria-invalid:border-feedback-error");
 });
 
 test("the reveal button is centred without a translate, which its press would override", () => {

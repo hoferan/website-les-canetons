@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import { Input, Select } from "../../primitives";
+import { Input, Select, Textarea } from "../../primitives";
 import { FormField } from "./form-field";
 
 /**
@@ -70,5 +70,17 @@ export const WithASelect: Story = {
         <option value="2">Trompettes</option>
       </Select>
     ),
+  },
+};
+
+/** A Textarea takes the same wiring too. */
+export const WithATextarea: Story = {
+  args: {
+    id: "message",
+    label: "Message",
+    required: true,
+    hint: "1000 caractères au plus.",
+    error: "Message est obligatoire",
+    children: (control) => <Textarea {...control} rows={6} />,
   },
 };

@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 /**
  * The attributes a control must carry for the field to work, handed to the
- * control by FormField. Spread them onto the `<input>`, `<textarea>` or any
- * other control: `<FormField …>{(control) => <Input {...control} />}</FormField>`.
+ * control by FormField. Spread them onto Input, Select, Textarea or any other
+ * control: `<FormField …>{(control) => <Input {...control} />}</FormField>`.
  */
 export type FieldControlProps = {
   id: string;

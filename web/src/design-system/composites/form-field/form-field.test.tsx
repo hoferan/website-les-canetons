@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 
 import { expectNoA11yViolations } from "../../internal/testing/axe";
-import { Input, Select } from "../../primitives";
+import { Input, Select, Textarea } from "../../primitives";
 import { FormField } from "./form-field";
 
 function Field(props: Partial<React.ComponentProps<typeof FormField>>) {
@@ -73,6 +73,26 @@ describe("FormField", () => {
     expect(select).toHaveAccessibleDescription(/Si connu\.\s*Mois est obligatoire/);
   });
 
+  test("wires a Textarea as it wires an Input", () => {
+    render(
+      <FormField
+        id="message"
+        label="Message"
+        required
+        hint="Sans limite."
+        error="Message est obligatoire"
+      >
+        {(control) => <Textarea {...control} rows={6} />}
+      </FormField>,
+    );
+    const textarea = screen.getByRole("textbox", { name: "Message" });
+    expect(textarea.tagName).toBe("TEXTAREA");
+    expect(textarea).toBeRequired();
+    expect(textarea).toBeInvalid();
+    expect(textarea).toHaveAttribute("aria-describedby", "message-hint message-error");
+    expect(textarea).toHaveAccessibleDescription(/Sans limite\.\s*Message est obligatoire/);
+  });
+
   test("every state has no structural accessibility violations", async () => {
     const { container } = render(
       <div>
@@ -81,6 +101,9 @@ describe("FormField", () => {
         </FormField>
         <FormField id="b" label="Courriel" required hint="Une adresse valide." error="Invalide">
           {(control) => <Input {...control} type="email" />}
+        </FormField>
+        <FormField id="d" label="Message" required error="Message est obligatoire">
+          {(control) => <Textarea {...control} />}
         </FormField>
         <FormField id="c" label="Pupitre" required error="Pupitre est obligatoire">
           {(control) => (
