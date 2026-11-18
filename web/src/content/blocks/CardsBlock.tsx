@@ -18,13 +18,12 @@ import {
   ActionBarList,
   Button,
   type ListMoves,
+  Surface,
   useListMoves,
 } from "@ds";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import { FormError } from "../../components/FormField";
-import { RAISED_CARD } from "../../carnival/raised";
 import { onDemand } from "../../lib/lazy";
 import { t } from "../../i18n";
 import { Link } from "../../i18n/routing";
@@ -64,12 +63,6 @@ const LAYOUTS = {
   // other way from its neighbour (ADR 0029).
   band: "grid gap-5 sm:grid-cols-2 lg:grid-cols-4",
 };
-
-/**
- * A band tile's own tilt, on the <li>, so the focus ring tilts with the card
- * it outlines and the action strip tilts with the card it sits on.
- */
-const BAND_TILT = "odd:-rotate-[1.2deg] even:rotate-1";
 
 /**
  * A grid of raised cards, each a picture on a carnival colour, a heading and
@@ -229,6 +222,10 @@ export function CardsBlock({
                   slot={slots[card.id]}
                   editing={editing}
                   band={band}
+                  // A band tile leans the other way from its neighbour. The
+                  // tilt is on the card itself, so its focus ring and its
+                  // action strip lean with it.
+                  tilt={band ? (index % 2 === 0 ? "left" : "right") : undefined}
                   links={links}
                   itemRef={band ? undefined : moves.itemRef(card.id)}
                 >
@@ -240,7 +237,6 @@ export function CardsBlock({
                         n: index + 1,
                         count: cards.length,
                       })}
-                      band={band}
                       moves={moves}
                       // A move waits for the save before it, so it never
                       // starts from a list that lacks that one. Blocks are
@@ -258,7 +254,6 @@ export function CardsBlock({
                 <li
                   key={card.id}
                   ref={moves.itemRef(card.id)}
-                  className={BAND_TILT}
                   data-card-id={card.id}
                   data-confetti-avoid
                 >
@@ -324,7 +319,6 @@ export function CardsBlock({
 function CardStrip({
   card,
   place,
-  band,
   moves,
   busy,
   onEdit,
@@ -333,7 +327,6 @@ function CardStrip({
 }: {
   card: CardData;
   place: string;
-  band: boolean;
   moves: ListMoves;
   /** A save is on its way: the arrows wait for it. */
   busy: boolean;
@@ -387,17 +380,7 @@ function CardStrip({
       onSelect: onEdit,
     },
   ];
-  return (
-    <ActionBar
-      look="strip"
-      label={place}
-      actions={actions}
-      main="edit"
-      // A raised card's corner is 18px, a band tile's 20px; the strip meets
-      // the inner edge of the 3px border.
-      className={band ? undefined : "rounded-t-[15px]"}
-    />
-  );
+  return <ActionBar look="strip" label={place} actions={actions} main="edit" />;
 }
 
 /**
@@ -405,11 +388,11 @@ function CardStrip({
  * about, so a card may go without one, and its title then starts at the
  * card's edge.
  *
- * A card with a target is the link itself, through `Card asChild`: one
- * element carrying both class strings, a target far larger than 44px on a
- * phone, whose accessible name is everything the card says. `Slot` joins the
- * two class strings without tailwind-merge, so a `display` class on the link
- * would not override the Card's `flex`. In edit mode the card is no link: its
+ * A card with a target is the link itself, through `Surface asChild`: one
+ * element, a target far larger than 44px on a phone, whose accessible name is
+ * everything the card says. `Slot` joins the surface's classes to the
+ * link's without tailwind-merge, so the link carries none of its own. In edit
+ * mode the card is no link: its
  * chips and its photo's control are buttons, which a link must not hold, and
  * a stray click would leave the page mid-edit.
  *
@@ -422,6 +405,7 @@ function CardView({
   slot,
   editing,
   band,
+  tilt,
   links,
   itemRef,
   children,
@@ -432,6 +416,7 @@ function CardView({
   /** Whether the card wears its action strip, and so needs room for it. */
   editing: boolean;
   band: boolean;
+  tilt: "left" | "right" | undefined;
   /** Whether the grid lets a card lead somewhere. */
   links: boolean;
   /** The move hook's ref, where no list item of its own holds the card. */
@@ -443,9 +428,9 @@ function CardView({
   // never become an href.
   const target = links && card.to !== undefined && isActionTarget(card.to) ? card.to : undefined;
   const title = tr(card.title);
-  const look = band
-    ? "h-full gap-3 rounded-[20px] border-3 border-ink p-4 shadow-raised"
-    : cn(RAISED_CARD, "gap-0 p-5");
+  // Surface draws the tile; its layout stays here.
+  const padding = band ? "md" : "lg";
+  const layout = band ? "flex h-full flex-col gap-3" : "flex flex-col";
   const rows = <Rows rows={card.rows} plain={target !== undefined} />;
 
   const body = (
@@ -504,43 +489,51 @@ function CardView({
   const editBlock = cardEditTarget(blockKey, card.id);
 
   if (target !== undefined && !editing) {
-    const className = cn(look, "transition-transform hover:-translate-y-0.5");
+    const surface = {
+      asChild: true,
+      interactive: true,
+      variant: "feature",
+      padding,
+      tilt,
+      className: layout,
+      "data-edit-block": editBlock,
+    } as const;
     return isPublicPage(target) ? (
       // Link keeps a visitor in their language (i18n/routing.tsx).
-      <Card asChild data-edit-block={editBlock} className={className}>
-        <Link to={target} className="focus-ring">
-          {body}
-        </Link>
-      </Card>
+      <Surface {...surface}>
+        <Link to={target}>{body}</Link>
+      </Surface>
     ) : (
       // Another site opens in a new tab and says so, as every outbound link does.
-      <Card asChild data-edit-block={editBlock} className={className}>
+      <Surface {...surface}>
         <a
           href={target}
           target="_blank"
           rel="noreferrer"
           aria-label={t("nav.newTab", { name: title })}
-          className="focus-ring"
         >
           {body}
         </a>
-      </Card>
+      </Surface>
     );
   }
 
   return (
     // The card is its strip's scope: edit-blocks.spec.ts checks the strip
     // against its text.
-    <Card
+    <Surface
       ref={itemRef}
+      variant="feature"
+      padding={padding}
+      tilt={tilt}
       data-chip-scope
       data-card-id={card.id}
       data-edit-block={editBlock}
-      className={cn(look, "relative", editing && ACTION_STRIP_ROOM)}
+      className={cn(layout, "relative", editing && ACTION_STRIP_ROOM)}
     >
       {children}
       {body}
-    </Card>
+    </Surface>
   );
 }
 

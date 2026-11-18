@@ -2,15 +2,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
 
-import { Button } from "@ds";
+import { Button, Surface } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 import { getAuthMeQueryKey, useAuthLogin } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageHero } from "../carnival/PageHero";
-import { RAISED_CARD } from "../carnival/raised";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
@@ -93,39 +90,44 @@ export function Login() {
       <PageSection width="form">
         {/* The fields stay plain vendored inputs; only the card around them
             and the button are raised (ADR 0029). */}
-        <Card asChild className={cn(RAISED_CARD, "gap-related p-5")}>
-          <form onSubmit={submit} noValidate>
-            <RequiredLegend />
-            <FormField
-              id="username"
-              label={t("auth.username")}
-              value={username}
-              onChange={setUsername}
-              problem={messageFor("username")}
-              required
-              autoComplete="username"
-            />
+        <Surface
+          as="form"
+          variant="form"
+          padding="lg"
+          onSubmit={submit}
+          noValidate
+          className="flex flex-col gap-related"
+        >
+          <RequiredLegend />
+          <FormField
+            id="username"
+            label={t("auth.username")}
+            value={username}
+            onChange={setUsername}
+            problem={messageFor("username")}
+            required
+            autoComplete="username"
+          />
 
-            <FormField
-              id="password"
-              label={t("auth.password")}
-              type="password"
-              value={password}
-              onChange={setPassword}
-              problem={messageFor("password")}
-              required
-              autoComplete="current-password"
-            />
+          <FormField
+            id="password"
+            label={t("auth.password")}
+            type="password"
+            value={password}
+            onChange={setPassword}
+            problem={messageFor("password")}
+            required
+            autoComplete="current-password"
+          />
 
-            <FormError error={error} />
+          <FormError error={error} />
 
-            <FormActions>
-              <Button type="submit" variant="primary" size="lg" loading={login.isPending}>
-                {login.isPending ? t("auth.signingIn") : t("auth.signIn")}
-              </Button>
-            </FormActions>
-          </form>
-        </Card>
+          <FormActions>
+            <Button type="submit" variant="primary" size="lg" loading={login.isPending}>
+              {login.isPending ? t("auth.signingIn") : t("auth.signIn")}
+            </Button>
+          </FormActions>
+        </Surface>
       </PageSection>
     </>
   );

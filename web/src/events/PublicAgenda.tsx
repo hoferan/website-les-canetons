@@ -1,9 +1,9 @@
+import { Surface } from "@ds";
 import { ButtonLink } from "@/components/ButtonLink";
 import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useAgendaIndex } from "../api/generated/endpoints";
-import { RAISED_CARD } from "../carnival/raised";
 import type { PublicEventResource } from "../api/generated/model";
 import { t } from "../i18n";
 import { EventPoster } from "./EventPoster";
@@ -49,10 +49,11 @@ export function AgendaEntry({
   const Title = level === 2 ? "h2" : "h3";
 
   return (
-    <li
+    <Surface
+      as="li"
+      variant="feature"
       className={cn(
-        RAISED_CARD,
-        "grid grid-cols-[auto_minmax(0,1fr)] gap-4 p-4",
+        "grid grid-cols-[auto_minmax(0,1fr)] gap-4",
         event.poster && "md:grid-cols-[auto_minmax(0,1fr)_auto]",
       )}
     >
@@ -98,7 +99,7 @@ export function AgendaEntry({
           className="col-span-2 row-start-1 md:col-span-1 md:col-start-3"
         />
       ) : null}
-    </li>
+    </Surface>
   );
 }
 

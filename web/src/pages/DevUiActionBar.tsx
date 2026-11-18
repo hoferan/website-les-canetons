@@ -214,7 +214,7 @@ function CardBand({
               <li key={entry.id} ref={moves.itemRef(entry.id)}>
                 <div
                   className={cn(
-                    "relative min-h-[13.75rem] rounded-[20px] border-3 border-ink bg-white px-4 pb-4.5 shadow-raised",
+                    "relative min-h-[13.75rem] rounded-surface border-3 border-ink bg-white px-4 pb-4.5 shadow-raised",
                     ACTION_STRIP_ROOM,
                     tilt && (index % 2 === 0 ? "-rotate-[1.2deg]" : "rotate-1"),
                   )}
@@ -262,7 +262,7 @@ function HistoryEntries({ lang, columns }: { lang: Lang; columns: number }) {
             <li
               key={entry.id}
               className={cn(
-                "relative rounded-2xl border-3 border-ink bg-white px-4.5 pb-4.5 shadow-raised",
+                "relative rounded-surface border-3 border-ink bg-white px-4.5 pb-4.5 shadow-raised",
                 ACTION_STRIP_ROOM,
               )}
             >
