@@ -1,4 +1,4 @@
-import { Badge } from "@ds";
+import { Badge, Surface } from "@ds";
 
 import type { ReactNode } from "react";
 
@@ -7,7 +7,6 @@ import { t } from "../i18n";
 import { isDraft } from "./eventDates";
 import { EventPoster } from "./EventPoster";
 import { formatEventWhen } from "./formatEventWhen";
-import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * One event on the planning.
@@ -44,11 +43,12 @@ export function EventCard({
   const Title = level === 2 ? "h2" : "h3";
 
   return (
-    <article
+    <Surface
+      as="article"
       data-testid="event-card"
       // A dashed edge on a draft, so it reads as unfinished even where the
       // group heading is out of view.
-      className={`${OUTLINED_CARD} p-4 ${isDraft(event) ? "border-dashed" : ""}`}
+      className={isDraft(event) ? "border-dashed" : undefined}
     >
       {/* The poster takes the first row on a phone and the right-hand column
           from `md` up, beside everything but the answer, which stays full
@@ -135,6 +135,6 @@ export function EventCard({
       </div>
 
       {answer}
-    </article>
+    </Surface>
   );
 }

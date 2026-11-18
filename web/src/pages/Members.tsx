@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-q
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-import { Badge, Button, Select } from "@ds";
+import { Badge, Button, Select, Surface } from "@ds";
 
 import {
   getMemberIndexQueryKey,
@@ -36,7 +36,7 @@ import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { GeneratedPasswordDialog } from "../members/GeneratedPasswordDialog";
 import { LoginState } from "../members/LoginState";
 import { MemberForm, type MemberDraft } from "../members/MemberForm";
-import { OUTLINED_CARD } from "../carnival/raised";
+
 import { usePageTitle } from "../components/pageTitle";
 
 /**
@@ -460,7 +460,7 @@ export function Members() {
         className="mt-block grid gap-related sm:grid-cols-2 xl:grid-cols-3"
       >
         {members.map((member) => (
-          <li key={member.id} data-member={member.id} className={`${OUTLINED_CARD} p-4`}>
+          <Surface as="li" key={member.id} data-member={member.id}>
             <p className="font-semibold">
               {member.firstName} <span data-testid="member-last-name">{member.lastName}</span>
             </p>
@@ -507,7 +507,7 @@ export function Members() {
                 onResetPassword={setResetting}
               />
             </div>
-          </li>
+          </Surface>
         ))}
       </ul>
 
