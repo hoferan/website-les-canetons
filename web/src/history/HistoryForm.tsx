@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-import { Checkbox } from "@ds";
+import { Checkbox, Select } from "@ds";
 import type {
   HistoryEntryResource,
   StoreHistoryEntryRequest,
@@ -284,7 +284,6 @@ export function HistoryForm({
   }
 
   const textDescription = RULE_ID;
-  const selectClass = "focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink";
 
   return (
     <>
@@ -293,9 +292,8 @@ export function HistoryForm({
         <RequiredLegend />
         <div className="flex flex-col gap-1">
           <label htmlFor="precision">{t("fields.precision")}</label>
-          <select
+          <Select
             id="precision"
-            className={selectClass}
             value={draft.precision}
             onChange={(changed) => changePrecision(changed.target.value as Precision)}
           >
@@ -304,7 +302,7 @@ export function HistoryForm({
                 {t(`historyForm.precisions.${precision}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="grid gap-related sm:grid-cols-2">
@@ -325,12 +323,11 @@ export function HistoryForm({
                   <div>
                     <label htmlFor="occurredMonth">{t("historyForm.month")}</label> <RequiredMark />
                   </div>
-                  <select
+                  <Select
                     id="occurredMonth"
                     required
                     aria-invalid={monthProblem ? true : undefined}
                     aria-describedby={monthProblem ? MONTH_ERROR_ID : undefined}
-                    className={`${selectClass} ${monthProblem ? "border-danger" : ""}`}
                     value={draft.month}
                     onChange={(changed) => set("month", changed.target.value)}
                   >
@@ -342,7 +339,7 @@ export function HistoryForm({
                         {name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {monthProblem ? (
                     <span id={MONTH_ERROR_ID} className="block text-sm text-danger">
                       {monthProblem}

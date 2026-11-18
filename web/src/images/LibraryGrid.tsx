@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, Checkbox } from "@ds";
+import { Button, Checkbox, Select } from "@ds";
 import { SearchField } from "../components/SearchField";
 import { currentLocale, t, translateApiError } from "../i18n";
 import { Link } from "../i18n/routing";
@@ -172,9 +172,10 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
         <label htmlFor="library-order" className="sr-only">
           {t("photos.sortLabel")}
         </label>
-        <select
+        {/* The search box's panel ground, so the row reads as one. */}
+        <Select
           id="library-order"
-          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
+          className="bg-panel"
           value={order}
           onChange={(event) => setOrder(event.target.value as LibraryOrder)}
         >
@@ -183,7 +184,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
               {t(`photos.sort.${key}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <div className="flex flex-wrap items-center gap-tight">
         <div className="flex flex-wrap gap-tight" role="group" aria-label={t("photos.filterLabel")}>

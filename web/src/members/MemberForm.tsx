@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button, Checkbox } from "@ds";
+import { Button, Checkbox, Select } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import type {
@@ -169,9 +169,8 @@ export function MemberForm({
 
       <div className="flex flex-col gap-1">
         <label htmlFor="sectionId">{t("memberForm.section")}</label>
-        <select
+        <Select
           id="sectionId"
-          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
           value={draft.sectionId ?? ""}
           onChange={(event) => {
             const sectionId = event.target.value === "" ? null : Number(event.target.value);
@@ -199,16 +198,15 @@ export function MemberForm({
               {registerName(section.name, section.nameDe)}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {/* A select over reference data, like the registers: the seats are
           ranked for /committee, and a typo cannot reach a public page. */}
       <div className="flex flex-col gap-1">
         <label htmlFor="committeeFunctionId">{t("memberForm.committeeFunction")}</label>
-        <select
+        <Select
           id="committeeFunctionId"
-          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
           value={draft.committeeFunctionId ?? ""}
           onChange={(event) =>
             set(
@@ -226,7 +224,7 @@ export function MemberForm({
               {seat.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {/* A second register field, not a duplicate: `sectionId` is where
@@ -235,9 +233,8 @@ export function MemberForm({
           lists them under both. */}
       <div className="flex flex-col gap-1">
         <label htmlFor="instructorOfSectionId">{t("memberForm.instructorOf")}</label>
-        <select
+        <Select
           id="instructorOfSectionId"
-          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
           value={draft.instructorOfSectionId ?? ""}
           onChange={(event) =>
             set(
@@ -253,7 +250,7 @@ export function MemberForm({
               {registerName(section.name, section.nameDe)}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <label className="flex min-h-touch items-center gap-2">

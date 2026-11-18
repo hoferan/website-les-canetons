@@ -1,6 +1,8 @@
 import { useId } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
+import { Select } from "@ds";
+
 import { t } from "../../i18n";
 import { PUBLIC_NAV, isPublicPage } from "../publicPages";
 import { ListField } from "./ListField";
@@ -71,9 +73,8 @@ export function TargetField({ name }: { name: string }) {
           control={control}
           name={name}
           render={({ field }) => (
-            <select
+            <Select
               id={selectId}
-              className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
               value={other ? OTHER : (field.value as string)}
               onChange={(event) => {
                 // "https://" is the start of the typed address, which keeps
@@ -88,7 +89,7 @@ export function TargetField({ name }: { name: string }) {
                 </option>
               ))}
               <option value={OTHER}>{t("blockEditor.actions.otherLink")}</option>
-            </select>
+            </Select>
           )}
         />
       </div>

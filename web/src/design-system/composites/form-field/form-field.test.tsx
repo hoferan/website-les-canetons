@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 
 import { expectNoA11yViolations } from "../../internal/testing/axe";
-import { Input } from "../../primitives";
+import { Input, Select } from "../../primitives";
 import { FormField } from "./form-field";
 
 function Field(props: Partial<React.ComponentProps<typeof FormField>>) {
@@ -55,6 +55,24 @@ describe("FormField", () => {
     expect(screen.getByRole("textbox", { name: "Nom (FR)" })).toBeInTheDocument();
   });
 
+  test("wires a Select as it wires an Input", () => {
+    render(
+      <FormField id="month" label="Mois" required hint="Si connu." error="Mois est obligatoire">
+        {(control) => (
+          <Select {...control} defaultValue="">
+            <option value="">Choisir</option>
+            <option value="01">janvier</option>
+          </Select>
+        )}
+      </FormField>,
+    );
+    const select = screen.getByRole("combobox", { name: "Mois" });
+    expect(select).toBeRequired();
+    expect(select).toBeInvalid();
+    expect(select).toHaveAttribute("aria-describedby", "month-hint month-error");
+    expect(select).toHaveAccessibleDescription(/Si connu\.\s*Mois est obligatoire/);
+  });
+
   test("every state has no structural accessibility violations", async () => {
     const { container } = render(
       <div>
@@ -63,6 +81,14 @@ describe("FormField", () => {
         </FormField>
         <FormField id="b" label="Courriel" required hint="Une adresse valide." error="Invalide">
           {(control) => <Input {...control} type="email" />}
+        </FormField>
+        <FormField id="c" label="Pupitre" required error="Pupitre est obligatoire">
+          {(control) => (
+            <Select {...control} defaultValue="">
+              <option value="">Choisir</option>
+              <option value="1">Cloches</option>
+            </Select>
+          )}
         </FormField>
       </div>,
     );
