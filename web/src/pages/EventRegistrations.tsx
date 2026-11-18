@@ -1132,7 +1132,7 @@ function AmendForm({
       <FormError error={error} />
 
       <FormActions>
-        <Button size="lg" type="submit" aria-disabled={busy}>
+        <Button size="lg" type="submit" loading={busy}>
           {busy ? t("registrations.saving") : t("common.save")}
         </Button>
         <Button size="lg" type="button" variant="secondary" onClick={onCancel}>

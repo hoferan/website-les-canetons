@@ -25,6 +25,30 @@ test("changes the password and says so", async () => {
   expect(await screen.findByText("Votre mot de passe a été changé.")).toBeInTheDocument();
 });
 
+/** Mutation test: drop `loading` from the submit and this fails (#394). */
+test("shows the change in progress on its button", async () => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.post("/api/v1/me/password", async () => {
+      await held;
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+
+  setMockUser("demo.direction");
+  await renderWithSession(<AccountPassword />, { route: "/account/password" });
+  await change("demo", "un-mot-de-passe");
+
+  const changing = await screen.findByRole("button", { name: "Changement…" });
+  expect(changing).toHaveAttribute("aria-busy", "true");
+  expect(changing).toHaveAttribute("aria-disabled", "true");
+  release();
+  expect(await screen.findByText("Votre mot de passe a été changé.")).toBeInTheDocument();
+});
+
 test("catches a mistyped confirmation without asking the API", async () => {
   let attempts = 0;
   server.use(

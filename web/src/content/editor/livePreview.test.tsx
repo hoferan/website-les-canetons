@@ -1,5 +1,6 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 
 import { setMockUser } from "../../mocks/handlers";
@@ -107,6 +108,40 @@ test("Aperçu lowers the editor to a bar that can still save", async () => {
   await user.click(within(bar).getByRole("button", { name: "Enregistrer" }));
 
   await expect.poll(() => puts.map((put) => put.key)).toEqual(["join.hero"]);
+});
+
+/**
+ * The bar's Save is the one in view while the sheet is lowered, so it shows
+ * the save in progress like the form's own (#394).
+ *
+ * Mutation test: drop `loading` from the bar's Save and this fails.
+ */
+test("the bar's Save shows the save in progress, and a second tap writes nothing", async () => {
+  const puts = recordBlockPuts();
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.put("/api/v1/blocks/:key", async () => {
+      await held;
+      return HttpResponse.json({ block: null });
+    }),
+  );
+  const { user, dialog, title } = await openHeroEditor();
+  await user.clear(title);
+  await user.type(title, "Viens jouer");
+  await user.click(within(dialog).getByRole("button", { name: "Aperçu" }));
+
+  const bar = within(dialog).getByRole("group", { name: "En-tête" });
+  await user.click(within(bar).getByRole("button", { name: "Enregistrer" }));
+  const pending = await within(bar).findByRole("button", { name: "Enregistrement…" });
+  expect(pending).toHaveAttribute("aria-busy", "true");
+  expect(pending).toHaveAttribute("aria-disabled", "true");
+  expect(pending).toHaveFocus();
+  await user.click(pending);
+
+  release();
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(puts).toHaveLength(1);
 });
 
 test("Modifier in the bar brings the form back with what was typed", async () => {

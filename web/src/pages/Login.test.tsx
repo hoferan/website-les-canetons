@@ -93,6 +93,8 @@ test("shows the submit as busy without disabling it", async () => {
   // element keeps focus; the handler's early return prevents a second submit.
   expect(submit).toHaveAttribute("aria-disabled", "true");
   expect(submit).not.toBeDisabled();
+  // And it says it is working, with a spinner beside the label (#394).
+  expect(submit).toHaveAttribute("aria-busy", "true");
 
   release();
 });

@@ -256,7 +256,7 @@ function RoleCard({ role, onChanged }: { role: RoleResource; onChanged: () => Pr
           />
           <FormError error={saving.error} />
           <FormActions>
-            <Button size="lg" type="submit" aria-disabled={busy}>
+            <Button size="lg" type="submit" loading={busy}>
               {t("common.save")}
             </Button>
             <Button size="lg" type="button" variant="secondary" onClick={() => setEditing(null)}>
@@ -354,7 +354,7 @@ function NewRole({ onCreated }: { onCreated: () => Promise<void> }) {
       />
       <FormError error={creating.error} />
       <FormActions>
-        <Button size="lg" type="submit" aria-disabled={busy}>
+        <Button size="lg" type="submit" loading={busy}>
           {t("rolesPage.add")}
         </Button>
       </FormActions>

@@ -42,6 +42,23 @@ test("every file with a submit button uses a form footer", () => {
   assert.deepEqual(bare, []);
 });
 
+// A submit that goes inert while it sends shows that it is sending: `loading`
+// adds aria-busy and a spinner to the aria-disabled (#394). `aria-disabled`
+// alone leaves a tap looking unanswered.
+test("a submit button that goes inert while sending uses loading", () => {
+  // The opening tag, stepping over the `=>` of an inline handler.
+  const submits = files.flatMap((file) =>
+    (file.text.match(/<Button\b(?:=>|[^>])*>/g) ?? [])
+      .filter((tag) => tag.includes('type="submit"'))
+      .map((tag) => ({ path: file.path, tag })),
+  );
+  assert.ok(submits.length >= 15, `only ${submits.length} submit buttons matched`);
+  const bare = submits
+    .filter(({ tag }) => tag.includes("aria-disabled=") && !tag.includes("loading="))
+    .map(({ path, tag }) => `${path}: ${tag.replace(/\s+/g, " ")}`);
+  assert.deepEqual(bare, []);
+});
+
 test("no footer holds a yellow accent button", () => {
   const found = footers();
   assert.ok(found.length >= 25, `only ${found.length} footers matched`);

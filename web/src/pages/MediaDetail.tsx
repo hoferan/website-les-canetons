@@ -309,7 +309,7 @@ export function MediaDetail({
             </p>
           ) : null}
           <FormActions>
-            <Button size="lg" type="submit" aria-disabled={savingName}>
+            <Button size="lg" type="submit" loading={savingName}>
               {savingName ? t("common.busy") : t("common.save")}
             </Button>
             <Button

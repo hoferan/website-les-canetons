@@ -38,13 +38,17 @@ const SHELL = [
   "max-xl:rounded-t-[18px] max-xl:rounded-b-none max-xl:border-3 max-xl:border-b-0 max-xl:shadow-[0_-6px_0_0_rgb(0_0_0/0.15)]",
 ].join(" ");
 
-/** What the panel hands its form: where it is, what it is called, how to lower. */
+/**
+ * What the panel hands its form: where it is, what it is called, how to lower,
+ * and where to say a save is running, so the lowered bar's Save can show it.
+ */
 type PanelState = {
   formId: string;
   above: string;
   title: string;
   menu: boolean;
   lower: () => void;
+  setPending: (pending: boolean) => void;
 };
 
 const Panel = createContext<PanelState | null>(null);
@@ -90,6 +94,7 @@ export function EditorPanel({
   children: ReactNode;
 }) {
   const [lowered, setLowered] = useState(false);
+  const [pending, setPending] = useState(false);
   const shell = useRef<HTMLDivElement>(null);
   const raise = useRef<HTMLButtonElement>(null);
   const formId = useId();
@@ -115,7 +120,14 @@ export function EditorPanel({
     if (lowered) raise.current?.focus();
   }, [lowered]);
 
-  const state: PanelState = { formId, above, title, menu, lower: () => setLowered(true) };
+  const state: PanelState = {
+    formId,
+    above,
+    title,
+    menu,
+    lower: () => setLowered(true),
+    setPending,
+  };
 
   return (
     <Dialog modal={false} open={open} onOpenChange={(next) => (next ? null : onRequestClose())}>
@@ -145,8 +157,8 @@ export function EditorPanel({
               <Pencil aria-hidden="true" />
               {t("common.edit")}
             </Button>
-            <Button type="submit" size="sm" form={formId}>
-              {t("blockEditor.save")}
+            <Button type="submit" size="sm" form={formId} loading={pending}>
+              {pending ? t("blockEditor.saving") : t("blockEditor.save")}
             </Button>
           </div>
         ) : null}
@@ -187,7 +199,13 @@ export function EditorPanelForm({
 }) {
   const panel = useContext(Panel);
   if (!panel) throw new Error("EditorPanelForm needs an EditorPanel around it");
-  const { formId, above, title, menu, lower } = panel;
+  const { formId, above, title, menu, lower, setPending } = panel;
+  // The bar's Save sits outside this form. Reset on unmount, so a form that
+  // closes mid-save leaves no spinner behind.
+  useEffect(() => {
+    setPending(pending);
+    return () => setPending(false);
+  }, [pending, setPending]);
   // Where the fields' EditorMenu shows: a state, so the fields render again
   // once the header has mounted it.
   const [menuSlot, setMenuSlot] = useState<HTMLDivElement | null>(null);
@@ -242,7 +260,7 @@ export function EditorPanelForm({
       {/* The one footer, Save first (ADR 0040), as two columns rather than a
           stack on a phone, so the row that stays in view stays low. */}
       <FormActions className="sticky bottom-0 z-10 grid grid-cols-2 gap-3 border-t-2 border-ink/10 bg-panel px-4 pt-3 pb-4 sm:px-6 sm:pb-6">
-        <Button size="lg" type="submit" aria-disabled={pending}>
+        <Button size="lg" type="submit" loading={pending}>
           {pending ? t("blockEditor.saving") : t("blockEditor.save")}
         </Button>
         <Button size="lg" type="button" variant="secondary" onClick={onCancel}>

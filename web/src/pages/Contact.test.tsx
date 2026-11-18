@@ -169,6 +169,52 @@ test("keeps what was typed when the send fails", async () => {
   expect(screen.getByLabelText("Sujet")).toHaveValue("Mon fils aimerait essayer");
 });
 
+/**
+ * While the message is on its way the button says so (#394), a second tap
+ * sends nothing, and a refusal hands the button back with focus still on it.
+ *
+ * Mutation test: drop `loading` from the submit and the aria-busy check
+ * fails; drop the handler's `isPending` return and the count reaches 2.
+ */
+test("shows the send in progress, ignores a second tap, and keeps focus on a refusal", async () => {
+  const user = userEvent.setup();
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let sends = 0;
+  server.use(
+    http.post("/api/v1/contact", async () => {
+      sends += 1;
+      await held;
+      return problem(422, "spam_suspected", "Submission looks automated");
+    }),
+  );
+
+  await renderWithSession(<Contact />, { route: "/contact" });
+  await fillIn(user);
+  await user.click(screen.getByRole("button", { name: "Envoyer" }));
+
+  const sending = await screen.findByRole("button", { name: "Envoi…" });
+  expect(sending).toHaveAttribute("aria-busy", "true");
+  expect(sending).toHaveAttribute("aria-disabled", "true");
+  expect(sending).toHaveFocus();
+
+  await user.click(sending);
+  release();
+
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Envoi refusé. Rechargez la page et réessayez.",
+    ),
+  );
+  const submit = screen.getByRole("button", { name: "Envoyer" });
+  expect(submit).not.toHaveAttribute("aria-busy");
+  expect(submit).toHaveFocus();
+  expect(screen.getByLabelText("Message")).toHaveValue("Bonjour, est-ce possible ?");
+  expect(sends).toBe(1);
+});
+
 /** Every field is required, `subject` included, as the API requires it. */
 test("marks every field required, subject included", async () => {
   await renderWithSession(<Contact />, { route: "/contact" });

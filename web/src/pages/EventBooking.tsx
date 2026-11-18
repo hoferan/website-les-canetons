@@ -311,7 +311,7 @@ export function EventBooking() {
                 />
 
                 <FormActions>
-                  <Button type="submit" variant="primary" size="lg" aria-disabled={send.isPending}>
+                  <Button type="submit" variant="primary" size="lg" loading={send.isPending}>
                     {send.isPending ? t("booking.sending") : t("booking.submit")}
                   </Button>
                 </FormActions>
