@@ -292,7 +292,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
           />
           <FormError error={saving.error} />
           <FormActions>
-            <Button size="lg" type="submit" aria-disabled={busy}>
+            <Button size="lg" type="submit" loading={busy}>
               {t("common.save")}
             </Button>
             <Button size="lg" type="button" variant="secondary" onClick={() => setEditing(null)}>
@@ -385,7 +385,7 @@ function NewTag({ onCreated }: { onCreated: () => Promise<void> }) {
       />
       <FormError error={creating.error} />
       <FormActions>
-        <Button size="lg" type="submit" aria-disabled={busy}>
+        <Button size="lg" type="submit" loading={busy}>
           {t("eventTags.add")}
         </Button>
       </FormActions>

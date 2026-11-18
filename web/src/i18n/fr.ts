@@ -1799,6 +1799,7 @@ export const fr = {
       "Le comité est joignable directement, par téléphone ou sur WhatsApp — souvent plus rapide qu’un message envoyé d’ici. Ce formulaire reste bien sûr à votre disposition.",
     sendFailed: "L’envoi du formulaire a échoué. Veuillez réessayer.",
     submit: "Envoyer",
+    sending: "Envoi…",
     sentHeading: "Message envoyé",
     sentBody:
       "Merci ! Le comité a reçu votre message et vous répondra à l’adresse que vous avez indiquée.",

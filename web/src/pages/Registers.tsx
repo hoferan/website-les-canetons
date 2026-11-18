@@ -302,7 +302,7 @@ function RegisterRow({
           />
           <FormError error={saving.error} />
           <FormActions>
-            <Button size="lg" type="submit" aria-disabled={busy}>
+            <Button size="lg" type="submit" loading={busy}>
               {t("common.save")}
             </Button>
             <Button size="lg" type="button" variant="secondary" onClick={() => setEditing(null)}>
@@ -401,7 +401,7 @@ function NewRegister({ onCreated }: { onCreated: () => Promise<void> }) {
       />
       <FormError error={creating.error} />
       <FormActions>
-        <Button size="lg" type="submit" aria-disabled={busy}>
+        <Button size="lg" type="submit" loading={busy}>
           {t("registers.add")}
         </Button>
       </FormActions>

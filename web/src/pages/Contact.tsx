@@ -204,7 +204,7 @@ export function Contact() {
                 handler's early return stays the guard for Enter in a field. */}
             <FormActions>
               <Button type="submit" variant="primary" size="lg" loading={send.isPending}>
-                {t("contact.submit")}
+                {send.isPending ? t("contact.sending") : t("contact.submit")}
               </Button>
             </FormActions>
           </form>

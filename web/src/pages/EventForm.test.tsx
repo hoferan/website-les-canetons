@@ -306,6 +306,49 @@ test("editing a draft offers both actions and lets the date go", async () => {
   await waitFor(async () => expect((await createdEvent("Concert d'automne")).startsAt).toBeNull());
 });
 
+/**
+ * "Publier" pressed while a save is in flight is refused, but its click still
+ * records "publish". Enter in a field afterwards must save, not publish: it
+ * clicks the first button, which records "save" over it.
+ *
+ * Mutation test: drop the first button's onClick and this publishes.
+ */
+test("a Publier pressed during a save does not make the next Enter publish", async () => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let publishes = 0;
+  server.use(
+    // Only the first save fails; the second reaches the mock and succeeds,
+    // so a stale "publish" would go on to publish.
+    http.patch(
+      "/api/v1/events/:id",
+      async () => {
+        await held;
+        return new HttpResponse(null, { status: 503 });
+      },
+      { once: true },
+    ),
+    http.post("/api/v1/events/:id/publish", () => {
+      publishes += 1;
+      return new HttpResponse(null, { status: 503 });
+    }),
+  );
+  await renderEdit(8);
+
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
+  await screen.findByRole("button", { name: "Enregistrement…" });
+  await userEvent.click(screen.getByRole("button", { name: "Publier" }));
+  release();
+  const save = await screen.findByRole("button", { name: "Enregistrer le brouillon" });
+  await waitFor(() => expect(save).not.toHaveAttribute("aria-disabled", "true"));
+
+  await userEvent.type(screen.getByLabelText("Titre"), "{Enter}");
+  await screen.findByText("planning");
+  expect(publishes).toBe(0);
+});
+
 test("a new event is saved with the tags picked for it", async () => {
   await renderCreateAndEdit();
   await userEvent.type(screen.getByLabelText("Titre"), "Répétition générale");
@@ -376,6 +419,12 @@ test("the form stays busy from the create through the publish, so a second tap m
   // The create is done once the event exists; the publish is still in flight.
   await waitFor(async () => expect((await createdEvent("Un seul concert")).id).toBeGreaterThan(0));
   expect(publish).toHaveAttribute("aria-disabled", "true");
+  // The spinner sits on the button that was pressed, not on "Enregistrer le
+  // brouillon" beside it (#394).
+  expect(publish).toHaveAttribute("aria-busy", "true");
+  expect(screen.getByRole("button", { name: "Enregistrer le brouillon" })).not.toHaveAttribute(
+    "aria-busy",
+  );
 
   await userEvent.click(publish);
   await screen.findByText("planning");

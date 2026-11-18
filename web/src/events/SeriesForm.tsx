@@ -338,7 +338,8 @@ export function SeriesForm({
         <Button
           size="lg"
           type="submit"
-          aria-disabled={busy || blockedBy !== null}
+          loading={busy}
+          aria-disabled={blockedBy !== null}
           aria-describedby={blockedBy ?? undefined}
         >
           {busy

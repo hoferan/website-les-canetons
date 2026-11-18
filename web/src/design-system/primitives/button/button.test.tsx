@@ -136,6 +136,17 @@ describe("Button", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  // A caller may pass aria-disabled for a reason of its own, such as a form
+  // with nothing to create yet, and `false` the rest of the time.
+  test("loading stays aria-disabled whatever aria-disabled the caller passes", () => {
+    render(
+      <Button loading aria-disabled={false}>
+        Envoyer
+      </Button>,
+    );
+    expect(screen.getByRole("button")).toHaveAttribute("aria-disabled", "true");
+  });
+
   test("loading keeps the label and adds a hidden spinner", () => {
     render(<Button loading>Envoyer</Button>);
     const button = screen.getByRole("button");

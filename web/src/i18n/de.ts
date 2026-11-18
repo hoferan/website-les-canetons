@@ -1367,6 +1367,7 @@ export const de: typeof fr = {
       "Der Vorstand ist direkt erreichbar, per Telefon oder WhatsApp — oft schneller als eine von hier gesendete Nachricht. Dieses Formular steht Ihnen natürlich weiterhin zur Verfügung.",
     sendFailed: "Das Senden des Formulars ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
     submit: "Senden",
+    sending: "Wird gesendet…",
     sentHeading: "Nachricht gesendet",
     sentBody:
       "Danke! Der Vorstand hat Ihre Nachricht erhalten und wird Ihnen an die angegebene Adresse antworten.",

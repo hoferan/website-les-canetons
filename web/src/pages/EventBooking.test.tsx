@@ -125,6 +125,42 @@ test("books a place and answers in place, without navigating", async () => {
 });
 
 /**
+ * A guest on a slow phone sees the booking leave (#394), and a second tap
+ * books nothing.
+ *
+ * Mutation test: drop `loading` from the submit and the aria-busy check fails.
+ */
+test("shows the booking in progress and ignores a second tap", async () => {
+  const user = userEvent.setup();
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let sends = 0;
+  server.use(
+    http.post("/api/v1/events/:id/registrations", async () => {
+      sends += 1;
+      await held;
+      return new HttpResponse(null, { status: 503 });
+    }),
+  );
+  await renderBooking();
+
+  await fillInContact(user);
+  await order(user, /Repas adulte/, 1);
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  const sending = await screen.findByRole("button", { name: "Envoi…" });
+  expect(sending).toHaveAttribute("aria-busy", "true");
+  expect(sending).toHaveAttribute("aria-disabled", "true");
+  await user.click(sending);
+  release();
+
+  expect(await screen.findByRole("button", { name: "M’inscrire" })).toHaveFocus();
+  expect(sends).toBe(1);
+});
+
+/**
  * The confirmation replaces a form several screens long, and the window keeps
  * the submit button's offset. Focus on the h1 is what a screen reader
  * announces; the scroll is what everyone else sees.

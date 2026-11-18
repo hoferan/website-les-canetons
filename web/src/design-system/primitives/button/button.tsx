@@ -111,6 +111,8 @@ function Button({
   loading = false,
   onClick,
   children,
+  // Taken out of `props` so the spread below cannot undo `loading`.
+  "aria-disabled": ariaDisabled,
   ...props
 }: ButtonProps) {
   const Comp = asChild ? Slot.Root : "button";
@@ -123,7 +125,7 @@ function Button({
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
       aria-busy={busy}
-      aria-disabled={busy ?? props["aria-disabled"]}
+      aria-disabled={busy ?? ariaDisabled}
       // aria-disabled alone does not stop a click, so the handler is dropped.
       onClick={loading ? undefined : onClick}
       {...props}

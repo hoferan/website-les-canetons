@@ -139,6 +139,9 @@ export function EventForm({
   // event. Enter in a field clicks the first button, so it saves and never
   // publishes by accident.
   const intent = useRef<"save" | "publish">("save");
+  // The same choice kept for the render, so the spinner goes on the button
+  // that was pressed. The ref is reset before `busy` arrives.
+  const [sent, setSent] = useState<"save" | "publish">("save");
   const isDraftMode = mode === "draft";
 
   // Whether the end date is the organiser's own answer or the start's echo.
@@ -173,6 +176,7 @@ export function EventForm({
         }
         const chosen = intent.current;
         intent.current = "save";
+        setSent(chosen);
         onSubmit(draft, chosen, poster);
       }}
     >
@@ -292,13 +296,15 @@ export function EventForm({
       <FormActions>
         {isDraftMode ? (
           <>
+            {/* Both go inert while either sends; only the pressed one says so. */}
             <Button
               size="lg"
               type="submit"
+              loading={busy && sent === "save"}
               aria-disabled={busy}
               onClick={() => (intent.current = "save")}
             >
-              {busy ? t("eventForm.saving") : t("eventForm.saveDraft")}
+              {busy && sent === "save" ? t("eventForm.saving") : t("eventForm.saveDraft")}
             </Button>
             {/* Publishing is the deliberate act, so it comes second and is
                 outlined: Enter never reaches for it. */}
@@ -306,6 +312,7 @@ export function EventForm({
               size="lg"
               type="submit"
               variant="secondary"
+              loading={busy && sent === "publish"}
               aria-disabled={busy}
               onClick={() => (intent.current = "publish")}
             >
@@ -313,7 +320,7 @@ export function EventForm({
             </Button>
           </>
         ) : (
-          <Button size="lg" type="submit" aria-disabled={busy}>
+          <Button size="lg" type="submit" loading={busy}>
             {busy ? t("eventForm.saving") : t("common.save")}
           </Button>
         )}
