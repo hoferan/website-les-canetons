@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+import { Select } from "@ds";
+
 import { FormField } from "../components/FormField";
 import { t } from "../i18n";
 import type { TableChoice } from "./tables";
@@ -69,9 +71,8 @@ export function TablePicker({
     <div className="flex flex-col gap-related">
       <div className="flex flex-col gap-1">
         <label htmlFor={id}>{t("booking.fields.tableName")}</label>
-        <select
+        <Select
           id={id}
-          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
           value={selected}
           aria-invalid={selectProblem ? true : undefined}
           aria-describedby={[hintId, selectProblem ? errorId : null].filter(Boolean).join(" ")}
@@ -100,7 +101,7 @@ export function TablePicker({
             </option>
           ))}
           <option value={NEW}>{t("booking.table.new")}</option>
-        </select>
+        </Select>
         <div id={hintId} className="text-sm text-ink-muted">
           {t("booking.tableHint")}
         </div>

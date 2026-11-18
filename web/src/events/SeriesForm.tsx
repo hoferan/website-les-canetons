@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { Button, Checkbox } from "@ds";
+import { Button, Checkbox, Select } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
 
 import type { StoreEventSeriesRequest } from "../api/generated/model";
@@ -230,9 +230,8 @@ export function SeriesForm({
 
       <div className="flex flex-col gap-1">
         <label htmlFor="weekday">{t("seriesForm.weekday")}</label>
-        <select
+        <Select
           id="weekday"
-          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
           value={draft.weekday}
           onChange={(changed) => setGenerator("weekday", Number(changed.target.value))}
         >
@@ -241,7 +240,7 @@ export function SeriesForm({
               {t(day.labelKey)}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="grid gap-related sm:grid-cols-2">

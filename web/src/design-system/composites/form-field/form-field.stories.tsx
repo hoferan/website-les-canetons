@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import { Input } from "../../primitives";
+import { Input, Select } from "../../primitives";
 import { FormField } from "./form-field";
 
 /**
@@ -55,3 +55,20 @@ export const WithBadge: Story = {
 
 /** `invalid` marks a field that belongs to a group error, with no message of its own. */
 export const InvalidInAGroup: Story = { args: { invalid: true } };
+
+/** A Select takes the same wiring as an Input: spread what the field hands it. */
+export const WithASelect: Story = {
+  args: {
+    id: "section",
+    label: "Pupitre",
+    required: true,
+    error: "Pupitre est obligatoire",
+    children: (control) => (
+      <Select {...control} defaultValue="">
+        <option value="">Choisir un pupitre</option>
+        <option value="1">Cloches</option>
+        <option value="2">Trompettes</option>
+      </Select>
+    ),
+  },
+};

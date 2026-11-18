@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-q
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@ds";
+import { Button, Select } from "@ds";
 
 import {
   getMemberIndexQueryKey,
@@ -392,7 +392,8 @@ export function Members() {
 
       {/* The filters. The labels are visually hidden, for the reason
           SearchField gives; each select's "all" option names what it filters,
-          so it reads as "Tous les pupitres" until somebody picks one. */}
+          so it reads as "Tous les pupitres" until somebody picks one. The
+          selects take the search box's panel ground, so the row reads as one. */}
       <div className="mt-block flex flex-wrap gap-tight" data-testid="roster-filters">
         <SearchField
           id="roster-search"
@@ -404,9 +405,9 @@ export function Members() {
         <label htmlFor="roster-section" className="sr-only">
           {t("members.sectionFilter")}
         </label>
-        <select
+        <Select
           id="roster-section"
-          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
+          className="bg-panel"
           value={sectionFilter}
           onChange={(event) => setSectionFilter(event.target.value)}
         >
@@ -417,13 +418,13 @@ export function Members() {
             </option>
           ))}
           <option value="none">{t("members.noSection")}</option>
-        </select>
+        </Select>
         <label htmlFor="roster-role" className="sr-only">
           {t("members.roleFilter")}
         </label>
-        <select
+        <Select
           id="roster-role"
-          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
+          className="bg-panel"
           value={roleFilter}
           onChange={(event) => setRoleFilter(event.target.value)}
         >
@@ -433,7 +434,7 @@ export function Members() {
               {roleName(role)}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {roster.isPending ? <p className="mt-block">{t("common.loading")}</p> : null}

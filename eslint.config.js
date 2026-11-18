@@ -125,6 +125,13 @@ export default [
           message:
             'Use Checkbox from "@ds": a raw checkbox shrinks beside a wrapping label (#390).',
         },
+        // Eleven selects once copied one class string by hand, and it had
+        // drifted from Input's (#405). The primitive wears Input's tokens.
+        {
+          selector: 'JSXOpeningElement[name.name="select"]',
+          message:
+            'Use Select from "@ds": it matches Input\'s border, focus ring and invalid state (#405).',
+        },
       ],
     },
   },
