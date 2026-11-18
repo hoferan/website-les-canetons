@@ -68,7 +68,7 @@ export function AgendaEntry({
       <div className="min-w-0">
         <Title className="font-display text-xl text-ink">{event.title}</Title>
         {event.tags.length > 0 ? (
-          <div className="mt-tight flex flex-wrap gap-tight text-sm">
+          <div className="mt-tight flex flex-wrap items-center gap-tight text-sm">
             {event.tags.map((tag) => (
               <TagChip key={tag.id} tag={tag} />
             ))}

@@ -1,3 +1,5 @@
+import { Badge } from "@ds";
+
 import { t } from "../i18n";
 
 /**
@@ -33,12 +35,9 @@ export function SuspectBadge({ kind, flagged }: { kind: "booking" | "message"; f
   }
 
   return (
-    <span
-      data-testid="suspect-badge"
-      className="rounded-full border-2 border-danger bg-danger px-2 text-xs font-semibold text-white"
-    >
+    <Badge tone="danger" size="sm" data-testid="suspect-badge">
       {t(`suspect.${kind}`)}
-    </span>
+    </Badge>
   );
 }
 

@@ -1,3 +1,5 @@
+import { Badge } from "@ds";
+
 import type { ReactNode } from "react";
 
 import type { EventResource } from "../api/generated/model";
@@ -68,12 +70,7 @@ export function EventCard({
                   {/* A flex child like the "Public" chip: as inline-block the
                       badge collapses to 32px and its text runs out of the
                       pill. */}
-                  <span
-                    data-testid="draft-badge"
-                    className="rounded-full border border-line bg-panel px-2 py-0.5 text-sm font-medium text-ink"
-                  >
-                    {t("events.draftBadge")}
-                  </span>
+                  <Badge data-testid="draft-badge">{t("events.draftBadge")}</Badge>
                 </div>
               ) : null}
 

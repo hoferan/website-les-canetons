@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, Checkbox, Select } from "@ds";
+import { Badge, Button, Checkbox, Select } from "@ds";
 import { SearchField } from "../components/SearchField";
 import { currentLocale, t, translateApiError } from "../i18n";
 import { Link } from "../i18n/routing";
@@ -301,9 +301,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
                 </p>
               ) : (
                 <>
-                  <span className="self-start rounded-full border border-line bg-panel px-2 py-0.5 text-sm text-ink-muted">
-                    {t("photos.unused")}
-                  </span>
+                  <Badge className="self-start">{t("photos.unused")}</Badge>
                   <label className="mt-auto flex min-h-touch cursor-pointer items-center gap-2">
                     <Checkbox
                       aria-label={t("photos.selectPhoto", { name: image.name })}
