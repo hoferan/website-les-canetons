@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { IconButton } from "@/components/ui/icon-button";
+import { IconButton } from "@ds";
 
 import type { EventResource } from "../api/generated/model";
 import { currentLocale, t } from "../i18n";

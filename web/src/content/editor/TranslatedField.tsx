@@ -2,8 +2,7 @@ import { X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useController, useFormContext, type FieldValues, type Path } from "react-hook-form";
 
-import { Button } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
+import { Button, IconButton } from "@ds";
 
 import { FormField } from "../../components/FormField";
 import { currentLocale, t } from "../../i18n";

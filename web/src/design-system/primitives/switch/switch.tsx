@@ -1,13 +1,15 @@
 import * as React from "react";
 import { Switch as SwitchPrimitive } from "radix-ui";
 
-import { cn } from "@/lib/utils";
+import { cn } from "../../internal/cn";
 
 /**
  * An on/off setting that takes effect the moment it is flipped.
  *
- * Vendored from radix-ui like ui/radio-group.tsx, with the same `data-slot`
- * attributes and `cn()` composition.
+ * Radix's switch, with the same `data-slot` attributes and `cn()`
+ * composition as ../radio-group. Its focus ring is the one `focus-ring`
+ * (#391): violet, 2px out from the track, so it reads on the cream ground
+ * whether the track is on or off. The story measures it.
  *
  * Only for a write that happens on the flip. A setting saved later by a form's
  * "Enregistrer" stays a checkbox: a switch promises the change has already
@@ -21,7 +23,7 @@ import { cn } from "@/lib/utils";
  * The caller names it, and the name contains the visible label (WCAG 2.5.3).
  *
  * Busy is `aria-disabled`, never `disabled`, which would blur the focused
- * control to <body> (rule 2 in design-system/primitives/button/button.tsx). The caller passes
+ * control to <body> (rule 2 in ../button/button.tsx). The caller passes
  * `aria-disabled` and returns early from `onCheckedChange`.
  */
 function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimitive.Root>) {
@@ -29,7 +31,7 @@ function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimi
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        "inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 data-[state=checked]:bg-violet data-[state=unchecked]:bg-ink-muted",
+        "inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors focus-ring disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 data-[state=checked]:bg-violet data-[state=unchecked]:bg-ink-muted",
         className,
       )}
       {...props}

@@ -1,9 +1,7 @@
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 
-import { Button } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
-import { Switch } from "@/components/ui/switch";
+import { Button, IconButton, Switch } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { OUTLINED_CARD, RAISED_CARD } from "../../carnival/raised";

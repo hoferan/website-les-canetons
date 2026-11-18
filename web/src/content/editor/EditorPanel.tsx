@@ -12,10 +12,9 @@ import {
   type Ref,
 } from "react";
 
-import { Button } from "@ds";
+import { Button, IconButton } from "@ds";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormActions } from "@/components/ui/form-actions";
-import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 
 import { FormError } from "../../components/FormField";

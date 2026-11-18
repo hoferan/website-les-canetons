@@ -26,9 +26,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  IconButton,
+  Switch,
 } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
-import { Switch } from "@/components/ui/switch";
 
 import { Notice } from "../../components/Notice";
 import { t } from "../../i18n";

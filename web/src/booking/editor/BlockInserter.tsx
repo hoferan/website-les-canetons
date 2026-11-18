@@ -1,8 +1,7 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
+import { Button, IconButton } from "@ds";
 import { cn } from "@/lib/utils";
 
 import type { OptionKind } from "../../api/generated/model";

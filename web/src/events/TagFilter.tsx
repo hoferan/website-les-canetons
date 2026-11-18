@@ -23,7 +23,7 @@ export function shownTag(
 /**
  * One row of chips that narrows the planning to a tag.
  *
- * A radio group for the reason ui/radio-group.tsx gives: one choice, arrow
+ * A radio group for the reason RadioGroup in `@ds` gives: one choice, arrow
  * keys that select, and no way to be left with nothing chosen. Built on the
  * primitive rather than on ToggleOption because each option has to look like
  * the chip it filters by.

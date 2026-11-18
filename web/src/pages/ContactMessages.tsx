@@ -3,8 +3,7 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { Button } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
+import { Button, IconButton, Switch } from "@ds";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -14,7 +13,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Switch } from "@/components/ui/switch";
 
 import {
   contactMessageDestroy,

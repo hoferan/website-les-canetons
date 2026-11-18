@@ -4,8 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
 import { t } from "../../i18n";
-import { Button } from "@ds";
-import { IconButton } from "./icon-button";
+import { Button, IconButton } from "@ds";
 
 /**
  * Every toast the app raises, as ADR 0042 sets it out: a level, one sentence,

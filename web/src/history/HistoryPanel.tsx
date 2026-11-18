@@ -2,8 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ellipsis, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@ds";
-import { IconButton } from "@/components/ui/icon-button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+} from "@ds";
 
 import {
   historyEntryShow,

@@ -10,9 +10,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, Surface } from "@ds";
+import { Button, Surface, Switch } from "@ds";
 import { FormActions } from "@/components/ui/form-actions";
-import { Switch } from "@/components/ui/switch";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -214,7 +213,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
               id={`tag-${tag.id}-celebrate`}
               checked={flipped ?? tag.celebrate}
               // aria-disabled and an early return, never `disabled`: see the
-              // docblock in ui/switch.tsx.
+              // docblock on Switch in `@ds`.
               aria-disabled={busy}
               aria-label={t("eventTags.celebrateAria", { label: tagLabel(tag) })}
               onCheckedChange={(next) => {

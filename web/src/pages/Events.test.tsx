@@ -119,7 +119,7 @@ function positionOf(title: string): number {
 
 /**
  * Switch the list between its two halves. The control is a Radix radiogroup
- * (`ui/radio-group.tsx`), so it is queried as a radio, not a button.
+ * (RadioGroup in `@ds`), so it is queried as a radio, not a button.
  */
 async function switchView(
   user: ReturnType<typeof userEvent.setup>,
@@ -147,7 +147,7 @@ test("the view switch is a named radiogroup showing which half is on screen", as
 /**
  * The view survives a second press. A radio group has no cleared state, and
  * this proves at screen level that the property reaches the reader.
- * ui/radio-group.test.tsx pins the primitive half.
+ * The design system's radio-group.test.tsx pins the primitive half.
  */
 test("pressing the half already on screen leaves the view where it is", async () => {
   const user = userEvent.setup();

@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { useId } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
-import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
+import { RadioGroup, ToggleOption } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { t } from "../../i18n";

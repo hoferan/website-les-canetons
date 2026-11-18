@@ -66,7 +66,16 @@ const onPointerDown = () => {
   focusMovedByKey = false;
 };
 
-if (typeof document !== "undefined") {
+let watching = false;
+
+/**
+ * Starts listening for the keys above. The loader calls it once the chunk is
+ * in, never the import itself: a design-system module does nothing when it is
+ * imported (design-system/index.ts says why).
+ */
+export function watchFocusKeys() {
+  if (watching || typeof document === "undefined") return;
+  watching = true;
   document.addEventListener("keydown", onKeyDown, true);
   document.addEventListener("pointerdown", onPointerDown, true);
   // A hot reload runs this module again; drop the old listeners first.
