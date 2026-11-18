@@ -69,6 +69,8 @@ for (const width of [375, 1280]) {
     test(`every panel is one Surface with one radius, ${language.toUpperCase()} at ${width}px`, async ({
       page,
     }) => {
+      // A walk over several pages, like the badge one: past 30 s on CI.
+      test.slow();
       await page.setViewportSize({ width, height: 900 });
       const prefix = language === "de" ? "/de" : "";
       const all: Array<Panel & { where: string }> = [];

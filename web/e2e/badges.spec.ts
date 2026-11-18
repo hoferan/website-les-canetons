@@ -90,6 +90,9 @@ for (const width of [375, 1280]) {
     test(`every pill is one Badge, on one line and readable, ${language.toUpperCase()} at ${width}px`, async ({
       page,
     }) => {
+      // Two logins and eight pages, each waiting for the network to settle:
+      // on CI's four busy workers that ran past the default 30 s.
+      test.slow();
       await page.setViewportSize({ width, height: 900 });
       const prefix = language === "de" ? "/de" : "";
       const all: Array<Pill & { where: string }> = [];
