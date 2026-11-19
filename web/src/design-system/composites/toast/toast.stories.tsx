@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Undo2 } from "lucide-react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { Button } from "../../primitives";
 import { raiseToast, ToastOutlet } from "./toast";
@@ -85,6 +85,7 @@ export const Raised: Story = {
     const toast = message.closest<HTMLElement>("[data-sonner-toast]")!;
 
     await userEvent.click(within(toast).getByRole("button", { name: "Fermer" }));
-    await expect(page.queryByText("Le texte allemand manque.")).toBeNull();
+    // Sonner removes it once its exit animation has run.
+    await waitFor(() => expect(page.queryByText("Le texte allemand manque.")).toBeNull());
   },
 };
