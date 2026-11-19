@@ -428,9 +428,10 @@ jobs:
           cache: npm
       - name: Install Node dev tools
         run: npm ci
-      # tools/build.mjs runs Composer in the composer:2 image with its cache at
-      # .composer-cache/, so that directory is what gets cached. It holds only
-      # the --no-dev subset, hence a key of its own.
+      # tools/build.mjs runs Composer in docker/php's PHP 8.4 image
+      # (tools/php-image.mjs) with its cache at .composer-cache/, so that
+      # directory is what gets cached. It holds only the --no-dev subset, hence
+      # a key of its own.
       - name: Cache Composer downloads (artifact)
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
