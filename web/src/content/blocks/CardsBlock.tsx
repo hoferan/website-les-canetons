@@ -2,6 +2,11 @@ import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode, type Ref } from "react";
 
 import {
+  ACTION_STRIP_ROOM,
+  ActionBar,
+  type ActionBarAction,
+  ActionBarList,
+  type ActionBarMenuItem,
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
@@ -9,13 +14,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  ACTION_STRIP_ROOM,
-  ActionBar,
-  type ActionBarAction,
-  type ActionBarMenuItem,
-  ActionBarList,
   Button,
   type ListMoves,
   Surface,

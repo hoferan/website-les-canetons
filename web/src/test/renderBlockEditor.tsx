@@ -3,13 +3,13 @@ import { HttpResponse, http } from "msw";
 import { useState, type ReactNode } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
-import { Toaster } from "../components/ui/sonner";
 import { BlockEditor } from "../content/editor";
 import type { BlockData, BlockKey } from "../content/registry";
 import type { Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "./renderWithSession";
+import { Toaster } from "@ds";
 
 export type BlockPut = { key: string; body: unknown };
 

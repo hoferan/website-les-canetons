@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { Button } from "@ds";
-import { notify } from "@/components/ui/toast";
+import { notify } from "@/components/notify";
 
 import { rowsOf } from "../api/collection";
 import {

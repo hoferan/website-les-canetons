@@ -19,8 +19,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Badge, Button, Checkbox, Select } from "@ds";
+  Badge,
+  Button,
+  Checkbox,
+  Select,
+} from "@ds";
 import { SearchField } from "../components/SearchField";
 import { currentLocale, t, translateApiError } from "../i18n";
 import { Link } from "../i18n/routing";

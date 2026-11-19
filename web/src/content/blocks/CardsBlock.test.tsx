@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { http } from "msw";
 import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 
-import { Toaster } from "../../components/ui/sonner";
 import { t } from "../../i18n";
 import {
   mockPhotoSlot,
@@ -20,6 +19,7 @@ import { BLOCKS } from "../registry";
 import { tr } from "../translated";
 import { cardSlot } from "../../images/photoSlots";
 import { CardsBlock } from "./CardsBlock";
+import { Toaster } from "@ds";
 
 afterEach(() => server.events.removeAllListeners());
 

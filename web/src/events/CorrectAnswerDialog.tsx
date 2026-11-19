@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { Button } from "@ds";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -9,7 +8,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Button,
+} from "@ds";
 
 import { FormError, FormField } from "../components/FormField";
 import { t, type TranslatedError } from "../i18n";

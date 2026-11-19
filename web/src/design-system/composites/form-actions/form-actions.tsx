@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "../../internal/cn";
 
 /**
  * The one footer for every form and dialog. Save comes first and sits on the

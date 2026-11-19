@@ -3,8 +3,8 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 
-import { Toaster } from "../../components/ui/sonner";
-import { notify } from "../../components/ui/toast";
+import { Toaster } from "@ds";
+import { notify } from "../../components/notify";
 import { cardSlot } from "../../images/photoSlots";
 import { mockPhotoSlot, setMockBlock, setMockPhotoSlot, setMockUser } from "../../mocks/handlers";
 import { server } from "../../mocks/node";

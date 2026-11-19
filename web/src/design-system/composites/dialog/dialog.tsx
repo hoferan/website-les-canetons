@@ -1,8 +1,8 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
-import { cn } from "@/lib/utils";
-import { FormActions } from "@/components/ui/form-actions";
+import { cn } from "../../internal/cn";
+import { FormActions } from "../form-actions";
 
 /**
  * VENDORED from shadcn/ui (ADR 0022), shaped like alert-dialog.tsx. The same

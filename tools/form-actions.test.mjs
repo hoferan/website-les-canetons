@@ -25,10 +25,10 @@ const files = sources("web/src").map((path) => ({ path, text: readFileSync(path,
 const FOOTER_USE = /<(FormActions|DialogFooter|AlertDialogFooter)\b/;
 const FOOTER_BLOCK = /<(FormActions|DialogFooter|AlertDialogFooter)\b[\s\S]*?<\/\1>/g;
 
-/** Every footer element in the app code (not the ui components, not tests). */
+/** Every footer element in the app code (not the design system, not tests). */
 function footers() {
   return files
-    .filter((file) => !file.path.includes("components\\ui") && !file.path.includes("components/ui"))
+    .filter((file) => !/design-system[\\/]/.test(file.path))
     .flatMap((file) =>
       (file.text.match(FOOTER_BLOCK) ?? []).map((block) => ({ path: file.path, block })),
     );

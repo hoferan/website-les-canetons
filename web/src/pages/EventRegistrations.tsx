@@ -2,8 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Badge, Button, Switch } from "@ds";
-import { FormActions } from "@/components/ui/form-actions";
+import { Badge, Button, FormActions, Switch } from "@ds";
 
 import { rowsOf, totalOf } from "../api/collection";
 import { downloadGuestList, type ExportFormat } from "../api/download";

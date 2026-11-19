@@ -1,8 +1,22 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { Toaster } from "./sonner";
-import { notify } from "./toast";
+import { dismissToast, raiseToast, type ToastOptions } from "./toast";
+import type { ToastLevel } from "./toast-card";
+import { Toaster } from "./toaster";
+
+/** The app's `notify`, minus the translation: the close label is French here. */
+type Options = Omit<ToastOptions, "closeLabel">;
+const raiseAt =
+  (level: ToastLevel) =>
+  (message: string, options: Options = {}) =>
+    raiseToast(level, message, { ...options, closeLabel: "Fermer" });
+const notify = {
+  success: raiseAt("success"),
+  info: raiseAt("info"),
+  warning: raiseAt("warning"),
+  error: raiseAt("error"),
+};
 
 /**
  * The clock of ADR 0042: success and info go after 5 s, anything with an
@@ -30,7 +44,7 @@ beforeEach(() => {
 
 afterEach(() => {
   act(() => {
-    notify.dismiss();
+    dismissToast();
   });
   advance(1000);
   setHidden(false);

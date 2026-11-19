@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 
-import { Button, Checkbox } from "@ds";
-import { FormActions } from "@/components/ui/form-actions";
+import { Button, Checkbox, FormActions } from "@ds";
 
 import type { EventResource, StoreEventRequest } from "../api/generated/model";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";

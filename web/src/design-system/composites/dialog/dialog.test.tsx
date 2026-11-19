@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { expect, test } from "vitest";
 
+import { expectNoA11yViolations } from "../../internal/testing/axe";
 import {
   Dialog,
   DialogContent,
@@ -52,4 +53,12 @@ test("the footer is a form-actions row", async () => {
   await user.click(screen.getByRole("button", { name: "Choisir" }));
   const save = await screen.findByRole("button", { name: "Enregistrer" });
   expect(save.parentElement).toHaveAttribute("data-slot", "form-actions");
+});
+
+test("an open dialog has no axe violations", async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  await user.click(screen.getByRole("button", { name: "Choisir" }));
+  await screen.findByRole("dialog", { name: "Photos" });
+  await expectNoA11yViolations(document.body);
 });

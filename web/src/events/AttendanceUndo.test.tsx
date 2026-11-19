@@ -2,11 +2,11 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
-import { Toaster } from "../components/ui/sonner";
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { Events } from "../pages/Events";
 import { renderWithSession } from "../test/renderWithSession";
+import { Toaster } from "@ds";
 
 /**
  * The undo, which lives in a toast and therefore needs the Toaster the layout

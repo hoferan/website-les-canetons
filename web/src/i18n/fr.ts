@@ -413,7 +413,7 @@ export const fr = {
     moreActions: "Autres actions",
   },
 
-  /** The toasts (ADR 0042), raised through notify in components/ui/toast. */
+  /** The toasts (ADR 0042), raised through notify in components/notify.ts. */
   toast: {
     // The close control every toast carries, beside its action if it has one.
     close: "Fermer",

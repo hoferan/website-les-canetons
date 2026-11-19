@@ -2,8 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
 
-import { Button, Surface } from "@ds";
-import { FormActions } from "@/components/ui/form-actions";
+import { Button, FormActions, Surface } from "@ds";
 
 import { getAuthMeQueryKey, useAuthLogin } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
