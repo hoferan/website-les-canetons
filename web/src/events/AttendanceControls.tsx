@@ -3,7 +3,7 @@ import { Undo2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@ds";
-import { notify } from "@/components/ui/toast";
+import { notify } from "@/components/notify";
 
 import {
   attendanceDestroy,

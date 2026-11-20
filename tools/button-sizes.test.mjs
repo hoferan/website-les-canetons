@@ -98,7 +98,7 @@ export function sizeClassOffenders(root = ROOT) {
 
 // The dialog footers render a FormActions row of their own.
 const ROWS = new Set(["FormActions", "DialogFooter", "AlertDialogFooter"]);
-// These default to lg (components/ui/alert-dialog.tsx), so they may omit it.
+// These default to lg (design-system/composites/alert-dialog), so they may omit it.
 const LARGE_BY_DEFAULT = new Set(["AlertDialogAction", "AlertDialogCancel"]);
 
 /**
@@ -132,7 +132,10 @@ test("buttons take their height, padding and text size from `size`, not from cla
 });
 
 test("the alert dialog's own buttons default to large", () => {
-  const text = readFileSync("web/src/components/ui/alert-dialog.tsx", "utf8");
+  const text = readFileSync(
+    "web/src/design-system/composites/alert-dialog/alert-dialog.tsx",
+    "utf8",
+  );
   for (const tag of LARGE_BY_DEFAULT) {
     assert.match(text, new RegExp(`function ${tag}\\(\\{[^}]*size = "lg"`), tag);
   }

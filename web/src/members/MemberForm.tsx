@@ -1,7 +1,6 @@
 import { useState } from "react";
 
-import { Button, Checkbox, Select } from "@ds";
-import { FormActions } from "@/components/ui/form-actions";
+import { Button, Checkbox, FormActions, Select } from "@ds";
 
 import type {
   CommitteeFunctionResource,

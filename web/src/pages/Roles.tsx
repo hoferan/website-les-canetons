@@ -9,9 +9,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button, Checkbox, Surface } from "@ds";
-import { FormActions } from "@/components/ui/form-actions";
+  Button,
+  Checkbox,
+  FormActions,
+  Surface,
+} from "@ds";
 
 import { rowsOf } from "../api/collection";
 import {

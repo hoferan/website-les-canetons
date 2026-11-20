@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { expect, test } from "vitest";
 
+import { expectNoA11yViolations } from "../../internal/testing/axe";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,4 +75,12 @@ test("the footer is a form-actions row with the action before Cancel", async () 
 
   expect(action.parentElement).toHaveAttribute("data-slot", "form-actions");
   expect(action.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("an open alert dialog has no axe violations", async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  await user.click(screen.getByRole("button", { name: "Supprimer" }));
+  await screen.findByRole("alertdialog", { name: "Supprimer ?" });
+  await expectNoA11yViolations(document.body);
 });

@@ -10,6 +10,7 @@ import path from 'node:path';
 import { includeInLaravelBuild } from './artifact-excludes.mjs';
 import { COMPOSER_ROOT_VERSION, findVcsStamps } from './artifact-vendor.mjs';
 import { assertNoMockLeaks } from './mock-leak.mjs';
+import { composerRunArgs, ensurePhpImage } from './php-image.mjs';
 
 const mount = process.cwd().split('\\').join('/');
 
@@ -88,31 +89,26 @@ cpSync('api', laravelBuild, {
   filter: (src) => includeInLaravelBuild(src, laravelSrcRoot),
 });
 
+// Under production's PHP, in docker/php's image (tools/php-image.mjs says why
+// not the composer:2 image this used to run in).
+ensurePhpImage();
 execFileSync(
   'docker',
-  [
-    'run',
-    '--rm',
-    '-v',
-    `${mount}:/app`,
-    '-w',
-    `/app/${laravelBuild}`,
-    '-e',
-    'COMPOSER_CACHE_DIR=/app/.composer-cache',
-    // Keep the generated vendor/ machine-independent (#109). Composer
-    // describes the ROOT package from whatever VCS surrounds the directory it
-    // installs into — and that directory is inside this repository, so without
-    // this it writes the building checkout's HEAD and branch into
-    // vendor/composer/installed.php. Naming the version stops it asking git.
-    // tools/artifact-vendor.mjs has the measurement and why this value.
-    '-e',
-    `COMPOSER_ROOT_VERSION=${COMPOSER_ROOT_VERSION}`,
-    'composer:2',
-    'install',
-    '--no-dev',
-    '--optimize-autoloader',
-    '--no-interaction',
-  ],
+  composerRunArgs({
+    mount,
+    workdir: laravelBuild,
+    env: {
+      COMPOSER_CACHE_DIR: '/app/.composer-cache',
+      // Keep the generated vendor/ machine-independent (#109). Composer
+      // describes the ROOT package from whatever VCS surrounds the directory it
+      // installs into — and that directory is inside this repository, so
+      // without this it writes the building checkout's HEAD and branch into
+      // vendor/composer/installed.php. Naming the version stops it asking git.
+      // tools/artifact-vendor.mjs has the measurement and why this value.
+      COMPOSER_ROOT_VERSION,
+    },
+    args: ['install', '--no-dev', '--optimize-autoloader', '--no-interaction'],
+  }),
   { stdio: 'inherit' }
 );
 

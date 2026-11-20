@@ -22,7 +22,7 @@ const ALLOWED_PACKAGES = [
   "clsx",
   "tailwind-merge",
   "lucide-react",
-  // Reached only through the toast adapter, when it moves in.
+  // The toast stack only (composites/toast).
   "sonner",
 ];
 

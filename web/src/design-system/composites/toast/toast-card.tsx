@@ -1,18 +1,14 @@
 import { Check, createLucideIcon, X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { cn } from "@/lib/utils";
-
-import { t } from "../../i18n";
-import { Button, IconButton } from "@ds";
+import { cn } from "../../internal/cn";
+import { Button, IconButton } from "../../primitives";
 
 /**
- * Every toast the app raises, as ADR 0042 sets it out: a level, one sentence,
- * at most one action and a close button. Call sites use `notify` and never
- * sonner's `toast`, which an ESLint rule enforces.
+ * The toast card of ADR 0042: a level, one sentence, at most one action and a
+ * close button, plus the clock that closes it.
  *
- * Sonner still stacks, swipes and announces the toasts, and replaces one by
- * id. The clock is ours: sonner's runs forever, and the card closes itself.
+ * The clock is ours: sonner's runs forever, and the card closes itself.
  * Sonner pauses its own clock on hover and in a hidden tab but not on
  * keyboard focus, so a Tab onto the undo left it running out.
  */
@@ -20,12 +16,6 @@ import { Button, IconButton } from "@ds";
 export type ToastLevel = "success" | "info" | "warning" | "error";
 
 export type ToastAction = { label: string; onClick: () => void; icon?: LucideIcon };
-
-type ToastOptions = {
-  /** Raising a toast under the id of one on screen replaces it. */
-  id?: string;
-  action?: ToastAction;
-};
 
 /** How long a toast stays, or null when it stays until closed. */
 export function durationOf(level: ToastLevel, action?: ToastAction): number | null {
@@ -104,26 +94,35 @@ function useClock(
   }, [duration, paused, fill]);
 }
 
-type ToastCardProps = {
+export type ToastCardProps = {
   level: ToastLevel;
   message: string;
   action?: ToastAction;
   onClose: () => void;
+  /** The close button's accessible name, in the page's language. */
+  closeLabel: string;
   /**
-   * For the /dev/ui catalogue only: the share of the time left, drawn and
-   * never run, so the screenshot shows the column part-empty.
+   * For a story or a catalogue only: the share of the time left, drawn and
+   * never run, so a screenshot shows the column part-empty.
    */
   frozenAt?: number;
 };
 
 /**
- * The card itself, which `notify` hands to sonner and /dev/ui renders as is.
+ * The card itself, which `raiseToast` hands to sonner and a story renders as is.
  *
  * It sets its own width: sonner sizes only the toasts it styles, and leaves a
  * custom one as wide as its text. Up to 600px sonner stretches every toast
  * across the screen, and the card fills it.
  */
-export function ToastCard({ level, message, action, onClose, frozenAt }: ToastCardProps) {
+export function ToastCard({
+  level,
+  message,
+  action,
+  onClose,
+  closeLabel,
+  frozenAt,
+}: ToastCardProps) {
   const { icon: Icon, fill, tint } = LEVELS[level];
   const duration = durationOf(level, action);
   const hidden = useSyncExternalStore(subscribeToVisibility, pageHidden, () => false);
@@ -188,117 +187,8 @@ export function ToastCard({ level, message, action, onClose, frozenAt }: ToastCa
             {action.label}
           </Button>
         ) : null}
-        <IconButton
-          type="button"
-          variant="quiet"
-          icon={X}
-          label={t("toast.close")}
-          onClick={onClose}
-        />
+        <IconButton type="button" variant="quiet" icon={X} label={closeLabel} onClick={onClose} />
       </div>
     </div>
   );
 }
-
-type Sonner = typeof import("sonner");
-type ToasterComponent = typeof import("./sonner").Toaster;
-
-/**
- * Sonner and the stack it draws, fetched by the first toast (#476), or ahead
- * of it once a member is logged in (Layout). Only members raise toasts, so a
- * visitor never downloads them.
- */
-let sonner: Sonner | undefined;
-let Toaster: ToasterComponent | undefined;
-let loading: Promise<Sonner> | undefined;
-
-/** Whether a toast has been raised, which is when `ToastOutlet` mounts the stack. */
-let wanted = false;
-const listeners = new Set<() => void>();
-
-function changed() {
-  for (const listener of listeners) listener();
-}
-
-/** Fetches sonner and the stack. Layout does for a member; tests do up front. */
-export function loadToasts(): Promise<Sonner> {
-  loading ??= Promise.all([import("sonner"), import("./sonner")]).then(([module, stack]) => {
-    sonner = module;
-    Toaster = stack.Toaster;
-    changed();
-    return module;
-  });
-  return loading;
-}
-
-/** Runs at once when sonner is in, else once it is. */
-function withSonner(run: (module: Sonner) => void) {
-  if (sonner) run(sonner);
-  else void loadToasts().then(run);
-}
-
-function want() {
-  if (wanted) return;
-  wanted = true;
-  changed();
-}
-
-/**
- * Where the toasts stack, rendered once by Layout. It draws nothing until the
- * first toast. Sonner replays the toasts raised before its stack subscribed,
- * so a toast raised while it loads is not lost.
- */
-export function ToastOutlet() {
-  const Stack = useSyncExternalStore(
-    (onChange) => {
-      listeners.add(onChange);
-      return () => listeners.delete(onChange);
-    },
-    () => (wanted ? Toaster : undefined),
-    () => undefined,
-  );
-  return Stack ? <Stack /> : null;
-}
-
-/**
- * A fresh key for every raise. A toast raised under the id of one on screen
- * replaces it in place, and without a new key React would keep the old card,
- * clock and all.
- */
-let raised = 0;
-
-function raise(level: ToastLevel, message: string, { id, action }: ToastOptions = {}) {
-  const key = ++raised;
-  // Ours rather than sonner's, which only exists once sonner has loaded.
-  const toastId = id ?? `toast-${key}`;
-  want();
-  withSonner(({ toast }) =>
-    toast.custom(
-      () => (
-        <ToastCard
-          key={key}
-          level={level}
-          message={message}
-          action={action}
-          onClose={() => toast.dismiss(toastId)}
-        />
-      ),
-      { id: toastId, duration: Infinity },
-    ),
-  );
-  return toastId;
-}
-
-export const notify = {
-  success: (message: string, options?: ToastOptions) => raise("success", message, options),
-  info: (message: string, options?: ToastOptions) => raise("info", message, options),
-  warning: (message: string, options?: ToastOptions) => raise("warning", message, options),
-  error: (message: string, options?: ToastOptions) => raise("error", message, options),
-  /**
-   * Closes one toast, or every toast when no id is given. Before the first
-   * toast there is nothing to close, and nothing to fetch.
-   */
-  dismiss: (id?: string | number) => {
-    if (loading) withSonner(({ toast }) => toast.dismiss(id));
-  },
-};

@@ -24,7 +24,8 @@ afterEach(() => {
 });
 
 test("the first toast fetches sonner and still shows", async () => {
-  const { notify, ToastOutlet } = await import("./ui/toast");
+  const { ToastOutlet } = await import("@ds");
+  const { notify } = await import("./notify");
 
   render(<ToastOutlet />);
   expect(document.querySelector("[data-sonner-toaster]")).toBeNull();

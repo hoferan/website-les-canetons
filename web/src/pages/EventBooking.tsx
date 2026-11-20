@@ -3,8 +3,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { useLocation, useParams } from "react-router-dom";
 
-import { Button, Surface } from "@ds";
-import { FormActions } from "@/components/ui/form-actions";
+import { Button, FormActions, Surface } from "@ds";
 import { cn } from "@/lib/utils";
 
 import {

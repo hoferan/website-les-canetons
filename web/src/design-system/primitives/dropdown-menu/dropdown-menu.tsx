@@ -4,7 +4,7 @@ import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { cn } from "../../internal/cn";
 
 /**
- * Vendored from shadcn/ui and trimmed, like ui/alert-dialog.tsx. Only the
+ * Vendored from shadcn/ui and trimmed, like composites/alert-dialog. Only the
  * parts in use: a screen that needs a submenu, checkbox item, group or label
  * adds it then. No `dark:` utility, for the reason in ../button/button.tsx.
  *

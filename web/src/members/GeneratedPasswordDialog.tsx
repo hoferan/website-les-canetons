@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -6,9 +7,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-import { t } from "../i18n";
+} from "@ds";
 
 /**
  * Shows a newly-issued password exactly once (ADR 0016).

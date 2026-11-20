@@ -8,7 +8,7 @@ import { useRef } from "react";
 import { Undo2 } from "lucide-react";
 import type { z } from "zod/mini";
 
-import { notify } from "@/components/ui/toast";
+import { notify } from "@/components/notify";
 
 import { rowsOf } from "../../api/collection";
 import {

@@ -1,6 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
+import { useLeaveGuard } from "../../components/LeaveGuard";
+import { t } from "../../i18n";
+import type { BlockData, BlockKey } from "../registry";
+import { asSaved, sameData } from "./useSaveBlock";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,12 +14,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-import { useLeaveGuard } from "../../components/LeaveGuard";
-import { t } from "../../i18n";
-import type { BlockData, BlockKey } from "../registry";
-import { asSaved, sameData } from "./useSaveBlock";
+} from "@ds";
 
 /**
  * Asks before an editor throws away what was typed (#355).

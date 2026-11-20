@@ -9,8 +9,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@ds";
+  Button,
+} from "@ds";
 
 import {
   getHistoryEntryIndexQueryKey,

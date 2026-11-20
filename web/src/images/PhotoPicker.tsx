@@ -4,15 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { rowsOf } from "../api/collection";
 import { useImageIndex } from "../api/generated/endpoints";
 import type { ImageResource } from "../api/generated/model";
-import { Button, IconButton } from "@ds";
 import {
+  Button,
   Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+  IconButton,
+} from "@ds";
 import { t } from "../i18n";
 import { PHOTO_SIZES } from "./Photo";
 import { UploadCards, unlisted } from "./UploadCards";

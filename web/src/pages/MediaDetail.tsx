@@ -27,9 +27,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@ds";
-import { FormActions } from "@/components/ui/form-actions";
+  Button,
+  FormActions,
+} from "@ds";
 import { t, translateApiError } from "../i18n";
 import { Link, useNavigate } from "../i18n/routing";
 import { kilobytes } from "../images/kilobytes";

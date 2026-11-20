@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import { Button, Surface } from "@ds";
-import { FormActions } from "@/components/ui/form-actions";
+import { Button, FormActions, Surface } from "@ds";
 import { cn } from "@/lib/utils";
 
 import {
