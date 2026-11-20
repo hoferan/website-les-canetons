@@ -1,0 +1,44 @@
+<!doctype html>
+<!--
+  The root of the gh-pages branch, which serves every PR preview (#353).
+  .github/workflows/preview.yml copies this file there on every publish.
+
+  GitHub Pages has no rewrite rules and serves this one 404.html for every
+  missing path on the site, whatever directory it is in. A deep link into a
+  preview, say pr-12/de/agenda, has no file behind it and lands here. This
+  page sends it to pr-12/?__path=/de/agenda, the PR's own shell, which puts
+  the path back before the app boots (vite.config.ts, preview mode).
+
+  A path that is already a PR's root, or no PR's at all, is a real 404: a PR
+  closed and its preview removed. Forwarding it would only land here again.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>No preview here</title>
+    <script>
+      (function () {
+        var m = location.pathname.match(/^(\/[^/]+\/pr-\d+)(\/.+)$/);
+        if (!m) return;
+        var q = new URLSearchParams(location.search);
+        if (q.has("__path")) return;
+        q.set("__path", m[2]);
+        location.replace(m[1] + "/?" + q.toString() + location.hash);
+      })();
+    </script>
+  </head>
+  <body style="font-family: system-ui, sans-serif; margin: 2rem">
+    <h1>No preview here</h1>
+    <p>
+      This preview does not exist, or no longer does: a preview is removed when its pull request closes.
+    </p>
+    <p><a id="all" href="/">All open previews</a></p>
+    <script>
+      // The site's root is the path's first segment, the repository's name,
+      // where index.html lists every preview.
+      document.getElementById("all").href = "/" + location.pathname.split("/")[1] + "/";
+    </script>
+  </body>
+</html>
