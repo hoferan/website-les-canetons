@@ -32,6 +32,18 @@ test("the default hero renders the heading, its highlight and the intro", async 
   expect(screen.queryByRole("button")).toBeNull();
 });
 
+test("a stored intro shows its bold words in bold, without the stars", async () => {
+  storeBlock("join.hero", {
+    title: { fr: "Rejoins-nous" },
+    intro: { fr: "Viens **jouer** avec nous" },
+  });
+  await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
+
+  const intro = document.querySelector("h1 + div p");
+  expect(intro?.textContent).toBe("Viens jouer avec nous");
+  expect(intro?.querySelector("strong")?.textContent).toBe("jouer");
+});
+
 test("a stored title that no longer holds the highlighted words renders plain", async () => {
   storeBlock("join.hero", { title: { fr: "Rejoins-nous" }, mark: { fr: "la guggen" } });
   await renderWithSession(<HeroBlock blockKey="join.hero" seed={5} />, { route: "/join" });
