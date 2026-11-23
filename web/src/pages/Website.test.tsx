@@ -164,6 +164,10 @@ test("import replaces the site after the typed confirmation, and names a skipped
   const result = within(importCard).getByRole("status");
   await waitFor(() => expect(result).toHaveTextContent("Site importé"));
   expect(result).toHaveTextContent("Tubas");
+  expect(result.querySelector("[data-notice-level]")).toHaveAttribute(
+    "data-notice-level",
+    "success",
+  );
   expect(bodies).toHaveLength(1);
 });
 

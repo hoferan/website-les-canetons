@@ -1,10 +1,8 @@
-import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-import { IconButton } from "@ds";
+import { Notice } from "@ds";
 
-import { Notice } from "../components/Notice";
 import { t } from "../i18n";
 import { Link, useNavigate } from "../i18n/routing";
 
@@ -20,10 +18,9 @@ function countFrom(state: unknown): number | null {
  * "5 événements créés." on the planning, after the series generator saved.
  *
  * The count arrives after mount, into a live region that is already there: a
- * region rendered with its text inside is not announced. That is why this
- * wraps a Notice in role="status" although Notice's docblock rules a live
- * region out; those notices are there before the reader arrives, and this one
- * answers something they just did.
+ * region rendered with its text inside is not announced. So the Notice sits
+ * inside a role="status" this component renders first, as Notice asks of a
+ * notice that answers something the reader just did.
  *
  * Read once, then cleared from the history entry, so a reload or "back" does
  * not report the same season as created again.
@@ -52,24 +49,21 @@ export function SeriesCreatedNotice() {
   return (
     <div role="status" className="empty:hidden mt-block">
       {count !== null ? (
-        /* A grid, so the close control stays beside the count at 390px,
-           where the link takes a row of its own. From `sm` all three sit on
-           one line. */
-        <Notice className="grid grid-cols-[1fr_auto] items-center gap-x-related sm:grid-cols-[1fr_auto_auto]">
-          <span>{t("seriesForm.createdCount", { count })}</span>
-          <Link
-            to="/events/new/series"
-            className="focus-ring order-last col-span-2 inline-flex min-h-touch items-center justify-self-start underline sm:order-none sm:col-span-1"
-          >
-            {t("seriesForm.another")}
-          </Link>
-          <IconButton
-            type="button"
-            variant="quiet"
-            icon={X}
-            label={t("seriesForm.dismissCreated")}
-            onClick={() => setCount(null)}
-          />
+        <Notice
+          level="success"
+          dismiss={{ label: t("seriesForm.dismissCreated"), onDismiss: () => setCount(null) }}
+        >
+          {/* At 390px the link wraps onto a line of its own, and the ✕ stays
+              beside both in the notice's own column. */}
+          <span className="flex flex-wrap items-center gap-x-related">
+            <span>{t("seriesForm.createdCount", { count })}</span>
+            <Link
+              to="/events/new/series"
+              className="focus-ring inline-flex min-h-touch items-center underline"
+            >
+              {t("seriesForm.another")}
+            </Link>
+          </span>
         </Notice>
       ) : null}
     </div>

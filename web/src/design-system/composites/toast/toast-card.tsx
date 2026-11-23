@@ -1,7 +1,8 @@
-import { Check, createLucideIcon, X, type LucideIcon } from "lucide-react";
+import { X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { cn } from "../../internal/cn";
+import { LEVELS, LevelDisc, type Level } from "../../internal/levels";
 import { Button, IconButton } from "../../primitives";
 
 /**
@@ -13,7 +14,7 @@ import { Button, IconButton } from "../../primitives";
  * keyboard focus, so a Tab onto the undo left it running out.
  */
 
-export type ToastLevel = "success" | "info" | "warning" | "error";
+export type ToastLevel = Level;
 
 export type ToastAction = { label: string; onClick: () => void; icon?: LucideIcon };
 
@@ -22,30 +23,6 @@ export function durationOf(level: ToastLevel, action?: ToastAction): number | nu
   if (level === "warning" || level === "error") return null;
   return action ? 10_000 : 5_000;
 }
-
-// The info and warning glyphs without lucide's circle or triangle, because
-// the disc around them is the frame. The dot sits a stroke's width off the
-// stem, or at strokeWidth 3 the two run together into a bar.
-const InfoGlyph = createLucideIcon("toast-info", [
-  ["path", { d: "M12 18v-6", key: "stem" }],
-  ["path", { d: "M12 6.5h.01", key: "dot" }],
-]);
-const WarningGlyph = createLucideIcon("toast-warning", [
-  ["path", { d: "M12 6v7", key: "stem" }],
-  ["path", { d: "M12 18h.01", key: "dot" }],
-]);
-
-/**
- * Each level's column and its tint, the part a clock has already used. The
- * tint is the colour over the white body, so the icon keeps its ink contrast
- * at every height.
- */
-const LEVELS: Record<ToastLevel, { icon: LucideIcon; fill: string; tint: string }> = {
-  success: { icon: Check, fill: "bg-lime", tint: "bg-lime/28" },
-  info: { icon: InfoGlyph, fill: "bg-cyan", tint: "bg-cyan/28" },
-  warning: { icon: WarningGlyph, fill: "bg-yellow", tint: "bg-yellow/28" },
-  error: { icon: X, fill: "bg-danger", tint: "bg-danger/28" },
-};
 
 function subscribeToVisibility(onChange: () => void) {
   document.addEventListener("visibilitychange", onChange);
@@ -123,7 +100,7 @@ export function ToastCard({
   closeLabel,
   frozenAt,
 }: ToastCardProps) {
-  const { icon: Icon, fill, tint } = LEVELS[level];
+  const { fill, tint } = LEVELS[level];
   const duration = durationOf(level, action);
   const hidden = useSyncExternalStore(subscribeToVisibility, pageHidden, () => false);
   const [pointerOver, setPointerOver] = useState(false);
@@ -162,9 +139,7 @@ export function ToastCard({
             style={{ height: `${(frozenAt ?? 1) * 100}%` }}
           />
         ) : null}
-        <span className="relative grid size-9.5 place-items-center rounded-full border-3 border-ink bg-panel">
-          <Icon aria-hidden="true" className="size-5" strokeWidth={3} />
-        </span>
+        <LevelDisc level={level} size="lg" />
       </span>
       <p className="py-3 font-bold">{message}</p>
       <div className="flex items-center gap-1">

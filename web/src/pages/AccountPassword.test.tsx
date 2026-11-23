@@ -169,11 +169,11 @@ test("explains why a committee-issued password bounced the member here", async (
   setMockUser("demo.both");
   await renderWithSession(<AccountPassword />, { route: "/account/password" });
 
-  expect(
-    screen.getByText(
-      "Votre mot de passe a été fourni par le comité et doit être remplacé avant de continuer.",
-    ),
-  ).toBeInTheDocument();
+  const why = screen.getByText(
+    "Votre mot de passe a été fourni par le comité et doit être remplacé avant de continuer.",
+  );
+  // A warning: nothing else opens until it is done (#376).
+  expect(why.closest("[data-notice-level]")).toHaveAttribute("data-notice-level", "warning");
 });
 
 /**
