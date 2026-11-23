@@ -88,7 +88,8 @@ export function Footer({ above }: { above: string | null }) {
           <div>
             <p className="font-display text-lg">{site.name}</p>
             <p className="mt-2 max-w-md whitespace-pre-line text-white/70">
-              <StyledText text={tr(site.pitch)} />
+              {/* Bold at the pitch's 70% barely shows on ink. */}
+              <StyledText text={tr(site.pitch)} boldClassName="text-white" />
             </p>
             {actions.length > 0 ? (
               <div className="mt-5 grid grid-cols-2 gap-3 sm:flex">
