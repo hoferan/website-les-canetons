@@ -73,7 +73,7 @@ function pairsOfLine(line: string, offset: number, pairs: Pair[]) {
 }
 
 /** The offsets of the stars the pairs use, which the page does not show. */
-function hiddenStars(pairs: Pair[]): Set<number> {
+export function hiddenStars(pairs: Pair[]): Set<number> {
   const hidden = new Set<number>();
   for (const pair of pairs) {
     for (let i = 0; i < pair.size; i++) {

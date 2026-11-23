@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 
+import { styledRuns, stylesAt } from "../inlineStyles";
 import { toggleStyle } from "./toggleStyle";
 
 test("wraps the selection", () => {
@@ -78,4 +79,38 @@ test("a second tap on the caret takes the empty pair back out", () => {
   expect(toggleStyle(italic.value, italic.start, italic.end, "italic").value).toBe("ab");
   // Between the stars of an empty bold pair, I adds italic rather than eating them.
   expect(toggleStyle("a****b", 3, 3, "italic").value).toBe("a******b");
+});
+
+/** The text a visitor reads: every star a pair uses is gone. */
+const read = (value: string) =>
+  value
+    .split("\n")
+    .map((line) =>
+      styledRuns(line)
+        .map((run) => run.text)
+        .join(""),
+    )
+    .join("\n");
+
+/** Toggles `style` on the first occurrence of `words`. */
+function on(value: string, words: string, style: "bold" | "italic") {
+  const at = value.indexOf(words);
+  if (at === -1) throw new Error(`"${words}" is not in "${value}"`);
+  return toggleStyle(value, at, at + words.length, style);
+}
+
+test("a selection starting inside bold words merges with them", () => {
+  const edit = on("**la musique** de", "sique** de", "bold");
+  expect(edit.value).toBe("**la musique de**");
+  expect(read(edit.value)).toBe("la musique de");
+});
+
+test("a selection ending inside bold words merges with them", () => {
+  expect(on("de **la musique**", "de **la", "bold").value).toBe("**de la musique**");
+});
+
+test("a selection starting inside italic words takes them in whole", () => {
+  const edit = on("*la musique* de", "sique* de", "bold");
+  expect(read(edit.value)).toBe("la musique de");
+  expect(stylesAt(edit.value, edit.start, edit.end).bold).toBe(true);
 });
