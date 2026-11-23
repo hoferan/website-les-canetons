@@ -72,3 +72,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0046](0046-design-system-boundaries-enforced-by-lint.md) | Enforce the design system's layers and public API with ESLint and dependency-cruiser |
 | [0047](0047-storybook-and-component-tests.md) | Document components in Storybook, test them with Vitest and axe, and add visual regression later |
 | [0048](0048-gaps-in-public-content-show-only-in-edit-mode.md) | Show the gaps in the public content only in edit mode |
+| [0049](0049-inline-styles-as-a-markdown-subset.md) | Store bold and italic in block texts as a Markdown subset |
