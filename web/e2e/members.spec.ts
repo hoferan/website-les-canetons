@@ -398,7 +398,7 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
   // trap on the roster side.
   await page
     .getByRole("navigation", { name: "Navigation principale" })
-    .getByRole("link", { name: "Événements" })
+    .getByRole("link", { name: "Planning", exact: true })
     .locator("visible=true")
     .click();
   await expect(page.getByTestId("event-card").first()).toBeVisible();

@@ -67,7 +67,7 @@ test("a visitor books the souper from the agenda, and the committee finds them o
   // reload it.
   await logInInPlace(page, "demo.committee");
 
-  await navLink(page, "Événements").click();
+  await navLink(page, "Planning").click();
   await page.getByRole("link", { name: "Inscriptions à Souper de soutien" }).click();
   await expect(page).toHaveURL(/\/events\/7\/registrations$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Inscriptions");
@@ -155,7 +155,7 @@ test("a booking with a link in its table is flagged, and direction clears it", a
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Inscription enregistrée");
 
   await logInInPlace(page, "demo.direction");
-  await navLink(page, "Événements").click();
+  await navLink(page, "Planning").click();
   // Direction holds more actions than the committee, so the guest list sits
   // in the event's menu.
   await page.getByRole("button", { name: "Autres actions pour Souper de soutien" }).click();

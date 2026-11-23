@@ -161,8 +161,8 @@ test("in edit mode, a notice links to Événements, and not otherwise", async ()
   sessionStorage.setItem(EDIT_MODE_KEY, "1");
   await renderWithSession(<Agenda />, { route: "/agenda" });
   const line = await screen.findByText(/se gèrent dans/);
-  expect(line.textContent).toBe("Les dates se gèrent dans Événements.");
-  expect(within(line).getByRole("link", { name: "Événements" })).toHaveAttribute("href", "/events");
+  expect(line.textContent).toBe("Les dates se gèrent dans Planning.");
+  expect(within(line).getByRole("link", { name: "Planning" })).toHaveAttribute("href", "/events");
 });
 
 test("the Événements line needs events.manage", async () => {

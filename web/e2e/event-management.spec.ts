@@ -64,7 +64,7 @@ test("the direction writes a draft, edits it, publishes it, and the public agend
   await expect(page).toHaveURL(/\/agenda$/);
   await expect(page.getByText("Vendanges Cheyres").first()).toBeVisible();
   await expect(page.getByText(title)).toHaveCount(0);
-  await navLink(page, "Événements").click();
+  await navLink(page, "Planning").click();
 
   // EDITED FROM ITS CARD, where a draft carries Publier inline and the rest in
   // the row menu.
