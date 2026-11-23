@@ -385,6 +385,8 @@ themselves, or touch the baseline role: there is no shell to repair a lockout.
 - **French and German are for user-visible UI text only**: `fr-CH` at `/`,
   `de-CH` under `/de/*`. `de.ts` is typed `typeof fr`, so a key missing from
   either fails `npm run typecheck`.
+- **UI text uses the words in `docs/glossary.md`**: the section is "le
+  planning" / "die Planung", one item in it "un événement" / "ein Anlass".
 - So `contact_messages` has `first_name`/`last_name` and `responses.answer`
   stores `participate`/`notparticipate`, while the UI reads French and German.
 

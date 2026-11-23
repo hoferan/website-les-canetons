@@ -379,7 +379,7 @@ export const de: typeof fr = {
     committee: "Vorstand",
     history: "Geschichte",
     contact: "Kontakt",
-    events: "Anlässe",
+    events: "Planung",
     members: "Mitglieder",
     inbox: "Posteingang",
     eventTags: "Kategorien",

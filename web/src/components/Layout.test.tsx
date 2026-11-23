@@ -301,7 +301,7 @@ test("Site web needs all three website permissions, in the menu and on the route
   expect(within(mine).getByRole("link", { name: "Médias" })).toBeInTheDocument();
 });
 
-test("a player's card holds only Événements", async () => {
+test("a player's card holds only Planning", async () => {
   const user = userEvent.setup();
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/login" });
@@ -312,7 +312,7 @@ test("a player's card holds only Événements", async () => {
     within(mine)
       .getAllByRole("link")
       .map((link) => link.textContent),
-  ).toEqual(["Événements"]);
+  ).toEqual(["Planning"]);
 });
 
 test("logged out, the phone list has no headings and ends with Connexion", async () => {
@@ -395,16 +395,16 @@ test("choosing a page in the layer closes it", async () => {
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
-test("shows Événements to any logged-in member, first in the bar", async () => {
+test("shows Planning to any logged-in member, first in the bar", async () => {
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/login" });
   const bar = screen.getByRole("navigation", { name: "Navigation principale" });
   const first = within(within(bar).getAllByRole("list")[0]!).getAllByRole("link")[0];
-  expect(first).toHaveAccessibleName("Événements");
+  expect(first).toHaveAccessibleName("Planning");
   expect(first).toHaveAttribute("href", "/events");
 });
 
-test("an account holding nothing is offered neither Événements nor Mon compte", async () => {
+test("an account holding nothing is offered neither Planning nor Mon compte", async () => {
   // Both entries answer to a permission, like every other screen in the nav,
   // so a session alone does not show them. Only a hand edit in the database
   // leaves an account without the baseline role, and that account must not
@@ -418,10 +418,10 @@ test("an account holding nothing is offered neither Événements nor Mon compte"
   expect(items.map((item) => item.textContent)).toEqual(["Déconnexion"]);
   await user.keyboard("{Escape}");
 
-  expect(screen.queryByRole("link", { name: "Événements" })).toBeNull();
+  expect(screen.queryByRole("link", { name: "Planning" })).toBeNull();
   await openPhoneMenu(user);
   const layer = await screen.findByRole("dialog", { name: "Menu" });
-  expect(within(layer).queryByRole("link", { name: "Événements" })).toBeNull();
+  expect(within(layer).queryByRole("link", { name: "Planning" })).toBeNull();
   expect(within(layer).queryByRole("link", { name: "Mon compte" })).toBeNull();
   expect(within(layer).getByRole("button", { name: "Déconnexion" })).toBeInTheDocument();
 });
@@ -438,10 +438,10 @@ test("shows the inbox to a member who may only read guest lists", async () => {
   expect(items.map((item) => item.textContent)).toContain("Boîte de réception");
 });
 
-test("hides Événements from an anonymous visitor", async () => {
+test("hides Planning from an anonymous visitor", async () => {
   // The planning is the members' tool. The public agenda is a separate page.
   await renderWithSession(<AppRoutes />, { route: "/login" });
-  expect(screen.queryByRole("link", { name: "Événements" })).toBeNull();
+  expect(screen.queryByRole("link", { name: "Planning" })).toBeNull();
 });
 
 /**

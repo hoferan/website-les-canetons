@@ -85,7 +85,11 @@ test("a session that expires under an open page sends the member to log in, then
 
   // Through the nav, not page.goto: a full load would re-read the session and
   // test the case above instead.
-  await page.getByRole("link", { name: "Événements" }).locator("visible=true").first().click();
+  await page
+    .getByRole("link", { name: "Planning", exact: true })
+    .locator("visible=true")
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/events$/);
   const card = page.getByTestId("event-card").filter({ hasText: "Weekend musical" });
   const coming = card.getByRole("button", { name: "Je viens à Weekend musical" });

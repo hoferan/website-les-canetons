@@ -475,7 +475,8 @@ export const fr = {
     committee: "Comité",
     history: "Histoire",
     contact: "Contact",
-    events: "Événements",
+    // The section's name, as in its heading and back links (docs/glossary.md).
+    events: "Planning",
     members: "Membres",
     inbox: "Boîte de réception",
     eventTags: "Catégories",
