@@ -306,6 +306,23 @@ test("a textarea with a toolbar shares one box with it, the toolbar on top", () 
   expect(textarea).toHaveClass("border-0");
 });
 
+test("the line under a toolbar takes the box's colour, red when invalid", () => {
+  render(
+    <FormField
+      id="demo-rule"
+      label="Introduction"
+      as="textarea"
+      value=""
+      onChange={noop}
+      toolbar={<button type="button">B</button>}
+    />,
+  );
+  expect(screen.getByRole("button", { name: "B" }).parentElement).toHaveClass(
+    "border-b",
+    "border-inherit",
+  );
+});
+
 test("a textarea without a toolbar keeps its own border", () => {
   render(<FormField id="demo-plain" label="Texte" as="textarea" value="" onChange={noop} />);
   expect(screen.getByLabelText("Texte")).not.toHaveClass("border-0");

@@ -114,3 +114,21 @@ test("a selection starting inside italic words takes them in whole", () => {
   expect(read(edit.value)).toBe("la musique de");
   expect(stylesAt(edit.value, edit.start, edit.end).bold).toBe(true);
 });
+
+test("a second tap on a bold selection of several lines takes the bold off", () => {
+  const once = toggleStyle("un\ndeux", 0, 7, "bold");
+  expect(once).toEqual({ value: "**un**\n**deux**", start: 2, end: 13 });
+  expect(toggleStyle(once.value, once.start, once.end, "bold")).toEqual({
+    value: "un\ndeux",
+    start: 0,
+    end: 7,
+  });
+});
+
+test("B, I, B at a caret leaves italic to type in", () => {
+  let edit = toggleStyle("ab", 1, 1, "bold");
+  edit = toggleStyle(edit.value, edit.start, edit.end, "italic");
+  expect(edit).toEqual({ value: "a******b", start: 4, end: 4 });
+  edit = toggleStyle(edit.value, edit.start, edit.end, "bold");
+  expect(edit).toEqual({ value: "a**b", start: 2, end: 2 });
+});

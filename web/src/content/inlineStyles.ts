@@ -111,20 +111,71 @@ export function innerRange(pairs: Pair[], pair: Pair): { start: number; end: num
   return { start, end };
 }
 
-/** Whether the selection, or the caret, sits inside bold or italic words. */
+/**
+ * The pairs of `style` that hold the selection, one per line it touches, or
+ * none unless every line's part has one. A pair can only span its own line,
+ * so a selection over three lines is in bold when each line's part is.
+ *
+ * The caret counts when it sits among a pair's words; a selection, when it
+ * stays within the pair's stars, so selecting `**musique**` whole counts. The
+ * innermost pair wins where the same style nests. B and I take off exactly
+ * these pairs, and show themselves on exactly when there are some.
+ */
+export function pairsHolding(
+  text: string,
+  start: number,
+  end: number,
+  style: Pair["style"],
+): Pair[] {
+  const pairs = findPairs(text);
+  const own = pairs.filter((pair) => pair.style === style);
+  const holding: Pair[] = [];
+  for (const part of lineParts(text, start, end)) {
+    const holder = own
+      .filter((pair) => {
+        if (part.start === part.end) {
+          const inner = innerRange(pairs, pair);
+          return inner.start <= part.start && part.end <= inner.end;
+        }
+        return pair.open <= part.start && part.end <= pair.close + pair.size;
+      })
+      .sort((a, b) => b.open - a.open)[0];
+    if (!holder) return [];
+    holding.push(holder);
+  }
+  return holding;
+}
+
+/**
+ * The selection cut at its line breaks, each part without the spaces at its
+ * ends, blank parts left out. The caret is one empty part.
+ */
+function lineParts(text: string, start: number, end: number): { start: number; end: number }[] {
+  if (start === end) return [{ start, end }];
+  const parts: { start: number; end: number }[] = [];
+  let from = start;
+  for (let i = start; i <= end; i++) {
+    if (i < end && text[i] !== "\n") continue;
+    let a = from;
+    let b = i;
+    while (a < b && /\s/.test(text[a]!)) a++;
+    while (b > a && /\s/.test(text[b - 1]!)) b--;
+    if (a < b) parts.push({ start: a, end: b });
+    from = i + 1;
+  }
+  return parts;
+}
+
+/** Whether the selection, or the caret, is in bold or italic (`pairsHolding`). */
 export function stylesAt(
   text: string,
   start: number,
   end: number,
 ): { bold: boolean; italic: boolean } {
-  const pairs = findPairs(text);
-  const on = (style: Pair["style"]) =>
-    pairs.some((pair) => {
-      if (pair.style !== style) return false;
-      const inner = innerRange(pairs, pair);
-      return inner.start <= start && end <= inner.end;
-    });
-  return { bold: on("bold"), italic: on("italic") };
+  return {
+    bold: pairsHolding(text, start, end, "bold").length > 0,
+    italic: pairsHolding(text, start, end, "italic").length > 0,
+  };
 }
 
 /**

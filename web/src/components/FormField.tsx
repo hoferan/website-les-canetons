@@ -224,7 +224,8 @@ export function FormField({
       control
     ) : (
       <div className="overflow-hidden rounded-control border border-input has-[[aria-invalid=true]]:border-feedback-error has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-focus">
-        {toolbar}
+        {/* The line under the toolbar takes the box's colour, red included. */}
+        <div className="border-b border-inherit">{toolbar}</div>
         {control}
       </div>
     );

@@ -1,4 +1,4 @@
-import { findPairs, hiddenStars, innerRange, type Pair } from "../inlineStyles";
+import { findPairs, hiddenStars, innerRange, pairsHolding, type Pair } from "../inlineStyles";
 
 /** A text after a change, and the selection to put back on it. */
 export type Edit = { value: string; start: number; end: number };
@@ -8,10 +8,12 @@ const MARKER: Record<Pair["style"], string> = { bold: "**", italic: "*" };
 /**
  * What the B and I buttons do to a text and its selection (#372).
  *
- * - The selection, or the caret, inside words of that style, or a selection
- *   of exactly such words with their stars: the stars come off.
+ * - The selection, or the caret, already in that style (`pairsHolding`), on
+ *   every line it touches: those pairs' stars come off.
  * - A caret anywhere else: an empty pair goes in, the caret between, so what
- *   is typed next is in that style.
+ *   is typed next is in that style. Between empty pairs already put down, the
+ *   stars on each side count the styles waiting there (one for italic, two
+ *   for bold, three for both), and the tap adds or takes away its own.
  * - A selection: its words are wrapped. Spaces at its ends stay outside the
  *   stars, since a pair cannot close after a space (a double click on Windows
  *   takes the space after the word too), and each line is wrapped on its own,
@@ -21,17 +23,8 @@ const MARKER: Record<Pair["style"], string> = { bold: "**", italic: "*" };
  */
 export function toggleStyle(value: string, start: number, end: number, style: Pair["style"]): Edit {
   const pairs = findPairs(value);
-  const own = pairs
-    .filter((pair) => pair.style === style)
-    .filter((pair) => {
-      const inner = innerRange(pairs, pair);
-      const inside = inner.start <= start && end <= inner.end;
-      const withStars = start === pair.open && end === pair.close + pair.size;
-      return inside || withStars;
-    })
-    // The innermost one, if the same style nests.
-    .sort((a, b) => b.open - a.open)[0];
-  if (own) return unwrap(value, start, end, own);
+  const holding = pairsHolding(value, start, end, style);
+  if (holding.length > 0) return unwrap(value, start, end, holding);
 
   const marker = MARKER[style];
   let from = start;
@@ -39,12 +32,14 @@ export function toggleStyle(value: string, start: number, end: number, style: Pa
   while (from < to && /\s/.test(value[from]!)) from++;
   while (to > from && /\s/.test(value[to - 1]!)) to--;
   if (from === to) {
-    // A second tap on an empty pair takes it out again, rather than piling
-    // up stars: the pair is no pair yet, so the button never showed it on.
-    if (start === end && starsAround(value, start) === marker.length) {
-      const caret = start - marker.length;
+    // Empty pairs are no pairs yet, so the buttons never show them on: a
+    // second tap takes its own stars back out, rather than piling up more.
+    const waiting = start === end ? starsAround(value, start) : -1;
+    if (waiting >= 0 && waiting <= 3) {
+      const stars = "*".repeat(waiting ^ marker.length);
+      const caret = start - waiting + stars.length;
       return {
-        value: value.slice(0, caret) + value.slice(start + marker.length),
+        value: value.slice(0, start - waiting) + stars + stars + value.slice(start + waiting),
         start: caret,
         end: caret,
       };
@@ -111,16 +106,12 @@ function starsAround(value: string, at: number): number {
   return before === after ? before : -1;
 }
 
-/** Takes a pair's own stars off, keeping the selection on the same words. */
-function unwrap(value: string, start: number, end: number, pair: Pair): Edit {
-  const { open, close, size } = pair;
-  const moved = (at: number) =>
-    at -
-    (at > open ? Math.min(size, at - open) : 0) -
-    (at > close ? Math.min(size, at - close) : 0);
-  return {
-    value: value.slice(0, open) + value.slice(open + size, close) + value.slice(close + size),
-    start: moved(start),
-    end: moved(end),
-  };
+/** Takes the pairs' own stars off, keeping the selection on the same words. */
+function unwrap(value: string, start: number, end: number, pairs: Pair[]): Edit {
+  const dropped = hiddenStars(pairs);
+  // Every offset moves back by the stars taken out before it.
+  const moved = (at: number) => at - [...dropped].filter((star) => star < at).length;
+  let next = "";
+  for (let i = 0; i < value.length; i++) if (!dropped.has(i)) next += value[i];
+  return { value: next, start: moved(start), end: moved(end) };
 }

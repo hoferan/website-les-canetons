@@ -102,7 +102,7 @@ export function StyleBar({ target, value, onChange }: Props) {
     <div
       role="group"
       aria-label={t("blockEditor.styles")}
-      className="flex items-center gap-1 border-b border-input bg-ground p-1"
+      className="flex items-center gap-1 bg-ground p-1"
     >
       {button("bold")}
       {button("italic")}

@@ -57,3 +57,12 @@ test("dropEmptyPairs takes out the pairs nobody typed into, and nothing else", (
     expect(dropEmptyPairs(kept)).toBe(kept);
   }
 });
+
+test("a style is on when the stars are selected with the words", () => {
+  expect(stylesAt("**musique**", 0, 11).bold).toBe(true);
+});
+
+test("a style is on across lines when every line of the selection has it", () => {
+  expect(stylesAt("**un**\n**deux**", 2, 13).bold).toBe(true);
+  expect(stylesAt("**un**\ndeux", 2, 11).bold).toBe(false);
+});
