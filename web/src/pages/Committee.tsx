@@ -1,12 +1,10 @@
+import { Surface } from "@ds";
 import { PageSection } from "@/components/PageSection";
 import { Tbd } from "@/components/Tbd";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useCommitteeIndex } from "../api/generated/endpoints";
 import type { CommitteeMemberResource } from "../api/generated/model";
-import { RAISED_CARD } from "../carnival/raised";
 import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { useShowsGaps } from "../content/EditMode";
@@ -78,18 +76,16 @@ export function Committee() {
             {seats.length > 0 ? (
               <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {seats.map((seat) => (
-                  <Card key={seat.id} asChild className={cn(RAISED_CARD, "gap-0 p-4")}>
-                    <li>
-                      {/* The seat, then the person: a visitor looks for "the
-                      person who handles costumes", not a name they know. */}
-                      <p className="text-xs font-semibold tracking-wide text-violet uppercase">
-                        {seat.function}
-                      </p>
-                      <p className="mt-tight">
-                        {seat.firstName} {seat.lastName}
-                      </p>
-                    </li>
-                  </Card>
+                  <Surface key={seat.id} as="li" variant="feature" className="flex flex-col">
+                    {/* The seat, then the person: a visitor looks for "the
+                    person who handles costumes", not a name they know. */}
+                    <p className="text-xs font-semibold tracking-wide text-violet uppercase">
+                      {seat.function}
+                    </p>
+                    <p className="mt-tight">
+                      {seat.firstName} {seat.lastName}
+                    </p>
+                  </Surface>
                 ))}
               </ul>
             ) : (

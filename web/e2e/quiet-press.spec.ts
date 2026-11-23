@@ -1,4 +1,4 @@
-import { expect, type Locator, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
 /**
  * The quiet button's press (ADR 0040), in a real browser: jsdom applies no
@@ -28,11 +28,27 @@ async function pressed(button: Locator) {
   return styles;
 }
 
+async function logIn(page: Page, username: string) {
+  await page.goto("/login");
+  await page.getByLabel("Identifiant").fill(username);
+  await page.getByLabel("Mot de passe", { exact: true }).fill("demo");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page.getByRole("button", { name: `Compte de ${username}` })).toBeVisible();
+}
+
 test("a quiet button's word drops onto its line while the line and the patch stay put", async ({
   page,
 }) => {
-  await page.goto("/dev/ui");
-  const button = page.getByRole("button", { name: "Réinitialiser" }).first();
+  // The block editor's "Rétablir l’original" is a quiet button with a word.
+  // The mock keeps the blocks in page memory, so the page is reached by a
+  // click rather than a goto that would reload it.
+  await logIn(page, "demo.direction");
+  await page.locator('a[href="/committee"]:visible').first().click();
+  await page.getByRole("button", { name: "Modifier la page" }).click();
+  await page.getByRole("button", { name: /^Modifier : Contact des Canetons/ }).click();
+  const button = page
+    .getByRole("dialog", { name: "Comité · contact" })
+    .getByRole("button", { name: "Rétablir l’original" });
   await expect(button).toBeVisible();
 
   const resting = await button.evaluate((element) => {

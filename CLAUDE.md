@@ -200,7 +200,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   barrel. The alias is declared in `tsconfig.json`, `vite.config.ts`,
   `vitest.config.ts` and `.storybook/vite.config.ts`, which must agree.
   ESLint and `npm run lint:boundaries` fail on a breach. New components go
-  here with a story and an axe test; `components/ui/` is being emptied into it.
+  here with a story and an axe test; Storybook is their catalogue.
 - **`web/src/api/generated/` is generated; never hand-edit it.** Change the
   controller, run `npm run openapi && npm run generate:api`, commit the result.
   CI's `openapi-drift` job fails if either is stale.

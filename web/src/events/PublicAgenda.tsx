@@ -1,11 +1,11 @@
-import { Surface } from "@ds";
-import { ButtonLink } from "@/components/ButtonLink";
+import { Button, Surface } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useAgendaIndex } from "../api/generated/endpoints";
 import type { PublicEventResource } from "../api/generated/model";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { EventPoster } from "./EventPoster";
 import { formatEventDay, formatEventWhen } from "./formatEventWhen";
 import { TagChip } from "./TagChip";
@@ -81,14 +81,14 @@ export function AgendaEntry({
         <p className="mt-tight text-sm text-ink-muted">{event.location}</p>
 
         {event.registrationOpen ? (
-          <ButtonLink
-            to={`/events/${event.id}/book`}
-            variant="primary"
-            className="mt-related"
-            ariaLabel={t("agenda.registerFor", { title: event.title })}
-          >
-            {t("agenda.register")}
-          </ButtonLink>
+          <Button asChild variant="primary" className="mt-related">
+            <Link
+              to={`/events/${event.id}/book`}
+              aria-label={t("agenda.registerFor", { title: event.title })}
+            >
+              {t("agenda.register")}
+            </Link>
+          </Button>
         ) : null}
       </div>
 
@@ -151,9 +151,9 @@ export function PublicAgenda() {
       {/* Only when there is more to see; under a list that already holds
           every date it would lead to a page the reader has just read. */}
       {all.length > SHOWN ? (
-        <ButtonLink to="/agenda" variant="secondary" className="mt-block">
-          {t("agenda.seeAll")}
-        </ButtonLink>
+        <Button asChild variant="secondary" className="mt-block">
+          <Link to="/agenda">{t("agenda.seeAll")}</Link>
+        </Button>
       ) : null}
     </section>
   );

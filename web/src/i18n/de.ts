@@ -563,8 +563,8 @@ export const de: typeof fr = {
     // 131px beside a 152px heading: it fits (#182 phone budget, see fr.ts).
     addTrigger: "Hinzufügen",
     // "Hinzufügen" first: the visible text must start the accessible name, or
-    // voice control on "Hinzufügen" misses it (WCAG 2.5.3), the rule
-    // ButtonLink keeps for row actions. German word order would otherwise
+    // voice control on "Hinzufügen" misses it (WCAG 2.5.3), the rule the
+    // row actions keep. German word order would otherwise
     // push the separable verb to the end. "Planung", as everywhere else here.
     addTriggerAria: "Hinzufügen zur Planung",
     // "Anlässe", as everywhere in this catalogue, not "Vergangenes".

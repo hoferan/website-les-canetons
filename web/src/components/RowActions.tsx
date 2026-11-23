@@ -11,7 +11,6 @@ import { Ellipsis } from "lucide-react";
 
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
-import { ButtonLink } from "./ButtonLink";
 
 /**
  * One row's actions: the frequent one inline, the rest behind a "..." menu.
@@ -38,8 +37,8 @@ type RowActionCommon = {
 };
 
 /**
- * A link-shaped action cannot be disabled: `InlineAction` renders it through
- * `ButtonLink`, which has no `aria-disabled` pass-through, so it would stay
+ * A link-shaped action cannot be disabled: `InlineAction` renders it as a
+ * plain link, and `aria-disabled` stops no click on one, so it would stay
  * live inline while the same action in the menu was inert. The `?: never`
  * fields make `{ to, disabled: true }` a type error.
  */
@@ -113,9 +112,11 @@ export function RowActions({
 function InlineAction({ action }: { action: RowAction }) {
   if (action.to !== undefined) {
     return (
-      <ButtonLink to={action.to} variant="secondary" ariaLabel={action.ariaLabel}>
-        {action.label}
-      </ButtonLink>
+      <Button asChild variant="secondary">
+        <Link to={action.to} aria-label={action.ariaLabel}>
+          {action.label}
+        </Link>
+      </Button>
     );
   }
 
@@ -138,11 +139,11 @@ function InlineAction({ action }: { action: RowAction }) {
 }
 
 function ItemFor({ action, first }: { action: RowAction; first: boolean }) {
-  // `asChild` goes straight to react-router's `Link`, never through
-  // `ButtonLink`: ButtonLink does not spread unknown props, so the Slot-merged
-  // role="menuitem", tabIndex and Radix's pointer and keyboard handlers would
-  // be dropped. `Link` spreads them onto the `<a>`. Link-shaped actions stay
-  // real anchors so middle-click and open-in-new-tab work.
+  // `asChild` goes straight to the router's `Link`, which spreads the
+  // Slot-merged role="menuitem", tabIndex and Radix's pointer and keyboard
+  // handlers onto the `<a>`. A wrapper that passed on only the props it named
+  // would drop them. Link-shaped actions stay real anchors so middle-click and
+  // open-in-new-tab work.
   const { to } = action;
 
   // textValue is explicit so typeahead stays on the short label if the

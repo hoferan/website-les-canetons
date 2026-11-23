@@ -53,10 +53,6 @@ const MediaDetail = lazyNamed(() => import("./pages/MediaDetail"), "MediaDetail"
 // which only an administrator ever needs (#336).
 const Website = lazyNamed(() => import("./pages/Website"), "Website");
 
-// The button catalogue is for developers. `import.meta.env.DEV` is a literal
-// in a build, so the import and the route below are dropped from the bundle.
-const DevUi = import.meta.env.DEV ? lazyNamed(() => import("./pages/DevUi"), "DevUi") : null;
-
 /**
  * The route table.
  *
@@ -195,8 +191,6 @@ export function AppRoutes() {
           <Route element={<RequirePermission permission={WEBSITE_PERMISSIONS} every />}>
             <Route path="/website" element={<Website />} />
           </Route>
-
-          {DevUi ? <Route path="/dev/ui" element={<DevUi />} /> : null}
 
           <Route path="*" element={<NotFound />} />
         </Route>

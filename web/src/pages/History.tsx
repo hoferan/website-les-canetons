@@ -1,15 +1,13 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { ACTION_STRIP_ROOM, ActionBar, ActionBarList, Button } from "@ds";
+import { ACTION_STRIP_ROOM, ActionBar, ActionBarList, Button, Surface } from "@ds";
 import { PageSection } from "@/components/PageSection";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useHistoryEntryIndex } from "../api/generated/endpoints";
 import type { HistoryEntryResource } from "../api/generated/model";
-import { RAISED_CARD } from "../carnival/raised";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { useEditMode } from "../content/EditMode";
 import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
@@ -358,13 +356,15 @@ function TimelineEntry({
       )}
     >
       {/* data-chip-scope: the card whose text edit-blocks.spec.ts checks the strip against. */}
-      <Card
+      <Surface
+        variant="feature"
+        padding="lg"
         data-chip-scope
         // What the open panel keeps clear of its fade.
         data-edit-block={historyEditTarget(
           entry.id === NEW_ID ? { kind: "new" } : { kind: "edit", id: entry.id },
         )}
-        className={cn(RAISED_CARD, "relative gap-0 p-5", mayEdit && ACTION_STRIP_ROOM)}
+        className={cn("relative flex flex-col", mayEdit && ACTION_STRIP_ROOM)}
       >
         {mayEdit ? (
           <EntryStrip
@@ -375,7 +375,7 @@ function TimelineEntry({
           />
         ) : null}
         {text}
-      </Card>
+      </Surface>
     </li>
   );
 }

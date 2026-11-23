@@ -42,8 +42,10 @@ export const Tags: Story = {
 };
 
 /**
- * Both sizes in every tone. A size has one height whatever its tone, because
- * every tone keeps a 1px border; the play function measures it.
+ * Both sizes in every tone and every tag tint, with and without an icon. Axe
+ * holds each one's text to 4.5:1, the small size included. A size has one
+ * height, weight and padding whatever its tone, because every tone keeps a 1px
+ * border; the play function measures it.
  */
 export const SizesAndTones: Story = {
   render: () => (
@@ -51,9 +53,6 @@ export const SizesAndTones: Story = {
       {(["sm", "md"] as const).map((size) => (
         <div key={size} data-size={size} className="flex flex-wrap items-start gap-2">
           <Badge size={size}>Public</Badge>
-          <Badge size={size} tone="tag" tint="teal">
-            Concert
-          </Badge>
           <Badge size={size} tone="attention">
             Provisorisch
           </Badge>
@@ -62,6 +61,14 @@ export const SizesAndTones: Story = {
           </Badge>
           <Badge size={size} tone="danger">
             Verdächtig
+          </Badge>
+          {TINTS.map((tint) => (
+            <Badge key={tint} size={size} tone="tag" tint={tint}>
+              {tint}
+            </Badge>
+          ))}
+          <Badge size={size} tone="attention" icon={<AlertTriangle />}>
+            Jamais utilisé
           </Badge>
         </div>
       ))}
@@ -72,7 +79,24 @@ export const SizesAndTones: Story = {
       ["sm", 22],
       ["md", 26],
     ] as const) {
-      const badges = canvasElement.querySelectorAll(`[data-size="${size}"] [data-slot="badge"]`);
+      const badges = [
+        ...canvasElement.querySelectorAll(`[data-size="${size}"] [data-slot="badge"]`),
+      ];
+      // Four tones, eight tints and the icon example, so a check over nothing fails.
+      await expect(badges).toHaveLength(13);
+      const looks = new Set(
+        badges.map((badge) => {
+          const style = getComputedStyle(badge);
+          return [
+            style.fontSize,
+            style.fontWeight,
+            style.paddingTop,
+            style.paddingLeft,
+            style.borderTopWidth,
+          ].join(" ");
+        }),
+      );
+      await expect(looks.size).toBe(1);
       for (const badge of badges) {
         await expect(badge.getBoundingClientRect().height).toBe(height);
       }
