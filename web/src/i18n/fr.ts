@@ -1889,6 +1889,10 @@ export const fr = {
     french: "FR",
     german: "DE",
     addGerman: "+ Deutsch",
+    // The bar on top of a longer text, which sets selected words in bold or italic.
+    styles: "Mise en forme",
+    bold: "Gras",
+    italic: "Italique",
     // The editor's FR | DE, which shows the page, its preview, in either language.
     previewLanguage: "Langue de l’aperçu",
     previewInFrench: "Aperçu en français",
