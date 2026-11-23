@@ -16,6 +16,7 @@ import { SlotPicture } from "../images/SlotPicture";
 import { PublicAgenda } from "../events/PublicAgenda";
 import { t } from "../i18n";
 import { useBlock } from "../content/BlocksProvider";
+import { StyledText } from "../content/StyledText";
 import { CardsBlock } from "../content/blocks/CardsBlock";
 import { HeroActions, HeroEditor } from "../content/blocks/HeroBlock";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
@@ -153,7 +154,9 @@ export function Home() {
                 the way it does to keep that above 4.5:1. */}
             {intro !== "" ? (
               <div data-confetti-avoid className="mt-related max-w-text text-lg">
-                <p className="whitespace-pre-line">{intro}</p>
+                <p className="whitespace-pre-line">
+                  <StyledText text={intro} />
+                </p>
               </div>
             ) : null}
 

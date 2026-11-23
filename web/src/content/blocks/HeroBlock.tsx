@@ -4,6 +4,7 @@ import { PageHero } from "../../carnival/PageHero";
 import { onDemand } from "../../lib/lazy";
 import { t } from "../../i18n";
 import { useBlock } from "../BlocksProvider";
+import { StyledText } from "../StyledText";
 import { EditChip } from "../editor/EditChip";
 import { BLOCKS } from "../registry";
 import { lacksGerman, tr, trMark } from "../translated";
@@ -62,7 +63,11 @@ export function HeroBlock({
       >
         {intro !== "" || children || actions.length > 0 ? (
           <>
-            {intro !== "" ? <p className="whitespace-pre-line">{intro}</p> : null}
+            {intro !== "" ? (
+              <p className="whitespace-pre-line">
+                <StyledText text={intro} />
+              </p>
+            ) : null}
             {children}
             <HeroActions actions={actions} />
           </>

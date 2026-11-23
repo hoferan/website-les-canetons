@@ -58,6 +58,19 @@ test("the band's name, pitch and legal name in the footer and the header follow 
   expect(screen.queryAllByRole("link", { name: shipped.name })).toHaveLength(0);
 });
 
+// The pitch is 70% white on ink; a bold word at that tint barely stood out
+// in the 390px screenshot (#372), so it goes full white.
+test("a bold word of the pitch is full white, the rest of the pitch muted", async () => {
+  storeBlock("site", site({ pitch: { fr: "On joue **fort**." } }));
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+
+  const footer = screen.getByRole("contentinfo");
+  const word = within(footer).getByText("fort");
+  expect(word.tagName).toBe("STRONG");
+  expect(word).toHaveClass("text-white");
+  expect(word.parentElement).toHaveClass("text-white/70");
+});
+
 test("a network the band removed disappears from the nav and the footer", async () => {
   storeBlock("site", site({ networks: without("Instagram") }));
   await renderWithSession(<AppRoutes />, { route: "/join" });

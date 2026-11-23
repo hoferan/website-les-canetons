@@ -55,8 +55,7 @@ test("+ Deutsch reveals the German field and saving keeps German blank when left
 });
 
 // On the German page the editor is there to write German (#368).
-test("on the German page every German field is open, and Retirer l'allemand still closes one", async () => {
-  const user = userEvent.setup();
+test("on the German page every German field is open", async () => {
   storeFrenchOnlyPlace();
   const dialog = await renderBlockEditor(
     "join.facts",
@@ -67,14 +66,9 @@ test("on the German page every German field is open, and Retirer l'allemand stil
   // The place name has no German, and its field is open all the same.
   const german = within(dialog).getByRole("textbox", { name: "Ort DE" });
   expect(german).toHaveValue("");
-
-  await user.click(within(dialog).getByRole("button", { name: "Deutsch entfernen" }));
-
-  expect(within(dialog).queryByRole("textbox", { name: "Ort DE" })).toBeNull();
-  expect(within(dialog).getByRole("button", { name: "+ Deutsch" })).toHaveFocus();
 });
 
-test("a German text already set shows its field, and Retirer l'allemand drops it", async () => {
+test("a German text already set shows its field, and emptying it stores no German", async () => {
   const user = userEvent.setup();
   const puts = recordBlockPuts();
   const dialog = await renderBlockEditor("join.facts", () => (
@@ -84,9 +78,9 @@ test("a German text already set shows its field, and Retirer l'allemand drops it
   const german = within(dialog).getByRole("textbox", { name: "Titre DE" });
   expect(german).not.toHaveValue("");
 
-  await user.click(within(dialog).getByRole("button", { name: "Retirer l’allemand" }));
-  expect(within(dialog).queryByRole("textbox", { name: "Titre DE" })).toBeNull();
-  expect(within(dialog).getByRole("button", { name: "+ Deutsch" })).toHaveFocus();
+  await user.clear(german);
+  // Still there while it is being typed in; it only stores nothing.
+  expect(within(dialog).getByRole("textbox", { name: "Titre DE" })).toHaveValue("");
 
   await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
@@ -121,7 +115,7 @@ test("an optional text emptied in both languages stays empty on screen and is no
 
   const french = within(dialog).getByRole("textbox", { name: "Introduction FR" });
   expect(french).not.toHaveValue("");
-  await user.click(within(dialog).getByRole("button", { name: "Retirer l’allemand" }));
+  await user.clear(within(dialog).getByRole("textbox", { name: "Introduction DE" }));
   await user.clear(french);
   // Not back to the value the form opened with.
   expect(within(dialog).getByRole("textbox", { name: "Introduction FR" })).toHaveValue("");
@@ -132,20 +126,12 @@ test("an optional text emptied in both languages stays empty on screen and is no
   expect(puts[0]?.body as { data: Record<string, unknown> }).not.toHaveProperty("data.intro");
 });
 
-test("Retirer l'allemand is a clear button inside the German field, and the only one", async () => {
-  const user = userEvent.setup();
+test("a German field has no button of its own to remove it", async () => {
   const dialog = await renderBlockEditor("join.facts", () => (
     <TranslatedField name="cards.0.title" label="Titre" />
   ));
 
   const german = within(dialog).getByRole("textbox", { name: "Titre DE" });
-  const clear = within(german.parentElement as HTMLElement).getByRole("button", {
-    name: "Retirer l’allemand",
-  });
-  // An icon, not a text button under the field.
-  expect(within(dialog).queryByText("Retirer l’allemand")).toBeNull();
-  expect(within(dialog).getAllByRole("button", { name: "Retirer l’allemand" })).toEqual([clear]);
-
-  await user.click(clear);
-  expect(within(dialog).queryByRole("textbox", { name: "Titre DE" })).toBeNull();
+  expect(within(german.parentElement as HTMLElement).queryByRole("button")).toBeNull();
+  expect(within(dialog).queryByRole("button", { name: /allemand|entfernen/i })).toBeNull();
 });

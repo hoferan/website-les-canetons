@@ -85,7 +85,8 @@ test("the German title gets its own row, and none while German is absent", async
       name: "Kinder-",
     }),
   ).toHaveAttribute("aria-pressed", "true");
-  await user.click(within(dialog).getByRole("button", { name: "Retirer l’allemand" }));
+  // Emptied, the German title has no words to pick from.
+  await user.clear(within(dialog).getByRole("textbox", { name: "Titre DE" }));
   expect(screen.queryByRole("group", { name: /DE$/ })).toBeNull();
 });
 

@@ -318,3 +318,55 @@ test("the editor shows the German page with the edit open, and saves from there"
   await page.getByRole("link", { name: "Passer en français" }).first().click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Viens jouer avec nous");
 });
+
+/**
+ * #372 in a real browser, which jsdom cannot stand in for: the selection a
+ * button keeps, and the browser's own undo after a tap on B.
+ */
+test("a word of the home hero's intro is set in bold in French and in German", async ({ page }) => {
+  await logIn(page, "demo.direction");
+  await page.getByRole("button", { name: "Modifier la page" }).click();
+  await page
+    .getByRole("button", { name: /^Modifier : .*en-tête$/ })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+
+  const french = dialog.getByRole("textbox", { name: "Introduction FR" });
+  const german = dialog.getByRole("textbox", { name: "Introduction DE" });
+  const boldOf = (field: typeof french) =>
+    field.locator("xpath=..").getByRole("button", { name: "Gras" });
+  const select = (field: typeof french, words: string) =>
+    field.evaluate((area: HTMLTextAreaElement, picked) => {
+      const at = area.value.indexOf(picked);
+      area.focus();
+      area.setSelectionRange(at, at + picked.length);
+    }, words);
+
+  const shipped = await french.inputValue();
+  await select(french, "pas besoin de connaître la musique");
+  await boldOf(french).click();
+  await expect(french).toHaveValue(/\*\*pas besoin de connaître la musique\*\*/);
+  await expect(boldOf(french)).toHaveAttribute("aria-pressed", "true");
+  // The browser's own undo takes the stars back off, and only them.
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(french).toHaveValue(shipped);
+  await select(french, "pas besoin de connaître la musique");
+  await boldOf(french).click();
+
+  await select(german, "ganz ohne Musikkenntnisse");
+  await boldOf(german).click();
+  await expect(german).toHaveValue(/\*\*ganz ohne Musikkenntnisse\*\*/);
+
+  await dialog.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(dialog).toBeHidden();
+
+  const hero = page.locator("[data-edit-block='home.hero']");
+  await expect(hero.locator("strong")).toHaveText("pas besoin de connaître la musique");
+  await expect(hero).not.toContainText("*");
+
+  await page.getByRole("link", { name: "Auf Deutsch wechseln" }).first().click();
+  await expect(page).toHaveURL(/\/de\/?$/);
+  await expect(hero.locator("strong")).toHaveText("ganz ohne Musikkenntnisse");
+  await expect(hero).not.toContainText("*");
+});

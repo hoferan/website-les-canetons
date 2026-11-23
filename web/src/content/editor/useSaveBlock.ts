@@ -31,6 +31,7 @@ import { t, translateApiError } from "../../i18n";
 import { cardSlot, usePhotoSlots } from "../../images/photoSlots";
 import { useSession } from "../../session/SessionProvider";
 import { useSavedBlock, useStoredBlock } from "../BlocksProvider";
+import { dropEmptyPairs } from "../inlineStyles";
 import { BLOCKS, type BlockData, type BlockKey } from "../registry";
 
 /**
@@ -193,7 +194,10 @@ async function refresh(queryClient: QueryClient, photos: boolean) {
  * fields add on their own (a blank text, a hero's empty list of buttons).
  */
 export function asSaved<K extends BlockKey>(key: K, typed: BlockData<K>): BlockData<K> {
-  return withoutBlankTexts(BLOCKS[key].schema, withoutIdleActions(typed, BLOCKS[key].defaults()));
+  return withoutBlankTexts(
+    BLOCKS[key].schema,
+    withoutEmptyPairs(withoutIdleActions(typed, BLOCKS[key].defaults())),
+  );
 }
 
 /** The photo slots of a block's cards that show one; none for a block without cards. */
@@ -278,6 +282,35 @@ function isBlankText(value: unknown): boolean {
   if (value === null || typeof value !== "object") return false;
   const keys = Object.keys(value);
   return keys.length === 1 && (value as { fr?: unknown }).fr === "";
+}
+
+/**
+ * Every text without the empty pairs the bold and italic bar leaves at a
+ * caret (`dropEmptyPairs`). A German text left blank by that goes, so the
+ * German page falls back to the French, as it does for any blank German.
+ */
+function withoutEmptyPairs<T>(data: T): T {
+  return clean(data) as T;
+}
+
+function clean(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(clean);
+  if (value === null || typeof value !== "object") return value;
+  if (isText(value)) {
+    const fr = dropEmptyPairs(value.fr);
+    const de = value.de === undefined ? undefined : dropEmptyPairs(value.de);
+    return de === undefined || de.trim() === "" ? { fr } : { fr, de };
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, clean(inner)]));
+}
+
+/** A `{ fr, de? }` pair of strings, and nothing else. */
+function isText(value: object): value is { fr: string; de?: string } {
+  const entries = Object.entries(value);
+  return (
+    typeof (value as { fr?: unknown }).fr === "string" &&
+    entries.every(([key, inner]) => (key === "fr" || key === "de") && typeof inner === "string")
+  );
 }
 
 /**

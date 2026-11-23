@@ -4,6 +4,7 @@ import { Tbd } from "@/components/Tbd";
 
 import { mailtoHref, swissTelHref } from "../../lib/contactHref";
 import { useShowsGaps } from "../EditMode";
+import { StyledText } from "../StyledText";
 import { type TranslationKey, t } from "../../i18n";
 import { tr } from "../translated";
 import { isHttpsUrl, type Row } from "../types";
@@ -30,11 +31,15 @@ export function RowView({ row, plain = false }: { row: Row; plain?: boolean }) {
     case "text":
       return lines(tr(row.text)).map((line, index) => (
         <p key={index} className="mt-tight">
-          {line}
+          <StyledText text={line} />
         </p>
       ));
     case "labelValue":
-      return <Labelled label={tr(row.label)}>{tr(row.value)}</Labelled>;
+      return (
+        <Labelled label={tr(row.label)}>
+          <StyledText text={tr(row.value)} />
+        </Labelled>
+      );
     case "phone": {
       if (row.number.trim() === "") return <EmptyPhone label={tr(row.label)} token={row.tbd} />;
       // A read does not check the number (see types.ts), so one the editor

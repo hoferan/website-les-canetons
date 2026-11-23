@@ -5,6 +5,7 @@ import { t } from "../i18n";
 import { cn } from "@/lib/utils";
 import { ActionLink, shownActions } from "../content/blocks/ActionLink";
 import { useSite } from "../content/blocks/SiteBlock";
+import { StyledText } from "../content/StyledText";
 import { useBlockEditing } from "../content/blocks/useBlockEditing";
 import { EditChip } from "../content/editor/EditChip";
 import { lacksGerman, tr } from "../content/translated";
@@ -86,7 +87,10 @@ export function Footer({ above }: { above: string | null }) {
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-start">
           <div>
             <p className="font-display text-lg">{site.name}</p>
-            <p className="mt-2 max-w-md whitespace-pre-line text-white/70">{tr(site.pitch)}</p>
+            <p className="mt-2 max-w-md whitespace-pre-line text-white/70">
+              {/* Bold at the pitch's 70% barely shows on ink. */}
+              <StyledText text={tr(site.pitch)} boldClassName="text-white" />
+            </p>
             {actions.length > 0 ? (
               <div className="mt-5 grid grid-cols-2 gap-3 sm:flex">
                 {actions.map((action, index) => (

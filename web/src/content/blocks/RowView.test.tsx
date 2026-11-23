@@ -171,3 +171,24 @@ test("German rows read German, and fall back to French", async () => {
       encodeURIComponent("Planche-Inférieure 14, 1700 Fribourg"),
   );
 });
+
+test("a text row and a value show their bold and italic words", () => {
+  rows(
+    { type: "text", text: { fr: "**Samedi** matin" } },
+    { type: "labelValue", label: { fr: "Âge" }, value: { fr: "*dès* 7 ans" } },
+  );
+
+  expect(screen.getByText("Samedi").tagName).toBe("STRONG");
+  expect(screen.getByText("dès").tagName).toBe("EM");
+  expect(screen.getByTestId("card").textContent).not.toContain("*");
+});
+
+test("a card that is a link keeps the styles of its text", () => {
+  render(
+    <div data-testid="card">
+      <RowView row={{ type: "text", text: { fr: "**Samedi** matin" } }} plain />
+    </div>,
+  );
+
+  expect(screen.getByText("Samedi").tagName).toBe("STRONG");
+});
