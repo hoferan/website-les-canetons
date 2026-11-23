@@ -39,6 +39,9 @@ and sees it on the page beside the field.
   other Markdown. Titles keep their highlight and take neither.
 - A pair never spans a line, and a star that closes nothing stays a star. A text typed
   before this, such as "5 * 3", reads as it always did.
+- A run of two or four stars that pairs with nothing is dropped on save. It is what B
+  or I puts down at a caret, left empty, and saved it would show as stars or keep a
+  blank German text from falling back to French.
 - The page renders the pairs as `<strong>` and `<em>` React elements
   (`web/src/content/StyledText.tsx`). No HTML string is built, so there is no
   `dangerouslySetInnerHTML` and no sanitiser.
@@ -57,6 +60,7 @@ and sees it on the page beside the field.
   result on the page beside it.
 - Bad, because a text that holds a star pair on purpose, such as `*note*`, now renders
   in italic. None of the shipped texts does.
+- Bad, because a `**` typed on its own on purpose, as in "5 ** 2", is dropped on save.
 
 ### Confirmation
 

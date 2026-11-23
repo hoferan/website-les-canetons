@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { findPairs, innerRange, styledRuns, stylesAt } from "./inlineStyles";
+import { dropEmptyPairs, findPairs, innerRange, styledRuns, stylesAt } from "./inlineStyles";
 
 /** Each run as "B:", "I:", "BI:" or ":" followed by its text. */
 const shown = (line: string) =>
@@ -46,4 +46,14 @@ test("the pairs of ***x*** and the styles at x", () => {
   expect(stylesAt("***x***", 3, 4)).toEqual({ bold: true, italic: true });
   expect(stylesAt("a **b** c", 0, 1)).toEqual({ bold: false, italic: false });
   expect(stylesAt("a **bc** d", 4, 4)).toEqual({ bold: true, italic: false });
+});
+
+test("dropEmptyPairs takes out the pairs nobody typed into, and nothing else", () => {
+  expect(dropEmptyPairs("a****b")).toBe("ab");
+  expect(dropEmptyPairs("Viens **")).toBe("Viens ");
+  expect(dropEmptyPairs("****")).toBe("");
+  expect(dropEmptyPairs("un\n**deux**\n****")).toBe("un\n**deux**\n");
+  for (const kept of ["**gras** et *penché*", "***x***", "5 * 3", "note*", "a *** b"]) {
+    expect(dropEmptyPairs(kept)).toBe(kept);
+  }
 });

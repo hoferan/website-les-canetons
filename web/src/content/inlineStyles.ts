@@ -126,3 +126,18 @@ export function stylesAt(
     });
   return { bold: on("bold"), italic: on("italic") };
 }
+
+/**
+ * The text without the pairs nobody typed into: a run of two or four stars
+ * that pairs with nothing is what B or I puts down at a caret, left empty.
+ * Saved, it would show as stars on the page, or keep a blank German text
+ * from falling back to French. A lone `*` or `***` is kept as typed.
+ */
+export function dropEmptyPairs(text: string): string {
+  const hidden = hiddenStars(findPairs(text));
+  return text.replace(/\*+/g, (run, at: number) => {
+    if (run.length !== 2 && run.length !== 4) return run;
+    for (let i = at; i < at + run.length; i++) if (hidden.has(i)) return run;
+    return "";
+  });
+}
