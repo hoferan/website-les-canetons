@@ -1,8 +1,9 @@
 import type { ComponentProps } from "react";
 
-import { ButtonLink } from "@/components/ButtonLink";
+import { Button } from "@ds";
 
 import { t } from "../../i18n";
+import { Link } from "../../i18n/routing";
 import { isPublicPage } from "../publicPages";
 import { tr } from "../translated";
 import { isActionTarget, type Action } from "../types";
@@ -22,6 +23,10 @@ export function shownActions(actions: readonly Action[] | undefined): Action[] {
  * (i18n/routing.tsx); an https address opens in a new tab and says so in its
  * name, as every outbound link does.
  *
+ * The outbound branch is a raw <a href>, so it gets no German prefix, and it
+ * carries rel="noreferrer": target="_blank" without it hands the destination
+ * a window.opener it can navigate.
+ *
  * Pass only what {@link shownActions} kept.
  */
 export function ActionLink({
@@ -32,21 +37,29 @@ export function ActionLink({
 }: {
   action: Action;
   index: number;
-  size?: ComponentProps<typeof ButtonLink>["size"];
+  size?: ComponentProps<typeof Button>["size"];
   className?: string;
 }) {
-  const external = !isPublicPage(action.to);
   const label = tr(action.label);
   return (
-    <ButtonLink
-      to={action.to}
-      external={external}
-      {...(external ? { ariaLabel: t("nav.newTab", { name: label }) } : {})}
+    <Button
+      asChild
       variant={index === 0 ? "accent" : "secondary"}
       {...(size ? { size } : {})}
       {...(className ? { className } : {})}
     >
-      {label}
-    </ButtonLink>
+      {isPublicPage(action.to) ? (
+        <Link to={action.to}>{label}</Link>
+      ) : (
+        <a
+          href={action.to}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={t("nav.newTab", { name: label })}
+        >
+          {label}
+        </a>
+      )}
+    </Button>
   );
 }

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Copy, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { expect, userEvent } from "storybook/test";
+import { expect, userEvent, waitFor } from "storybook/test";
 
 import { ACTION_STRIP_ROOM, ActionBar, type ActionBarAction, ActionBarList } from "./action-bar";
 import { useListMoves } from "./use-list-moves";
@@ -144,8 +144,48 @@ export const Keyboard: Story = {
 
 const TITLES = ["Nous rejoindre", "Les canetons", "Notre histoire", "Le comité"];
 
-function Band({ width }: { width: number }) {
-  const [order, setOrder] = useState(TITLES);
+const WORDS = {
+  fr: {
+    titles: TITLES,
+    before: "Avant",
+    after: "Après",
+    edit: "Modifier",
+    beforeLabel: (title: string) => `Déplacer « ${title} » avant`,
+    afterLabel: (title: string) => `Déplacer « ${title} » après`,
+    moreLabel: (title: string) => `Plus d’actions : ${title}`,
+    editLabel: (title: string) => `Modifier : ${title}`,
+    moved: (title: string, position: number, count: number) =>
+      `${title} : position ${position} sur ${count}`,
+  },
+  // German words run longer, so more of them fold.
+  de: {
+    titles: ["Mitmachen", "Die Canetons", "Geschichte", "Der Vorstand"],
+    before: "Nach vorn",
+    after: "Nach hinten",
+    edit: "Bearbeiten",
+    beforeLabel: (title: string) => `„${title}“ nach vorn verschieben`,
+    afterLabel: (title: string) => `„${title}“ nach hinten verschieben`,
+    moreLabel: (title: string) => `Weitere Aktionen: ${title}`,
+    editLabel: (title: string) => `Bearbeiten: ${title}`,
+    moved: (title: string, position: number, count: number) =>
+      `${title}: Position ${position} von ${count}`,
+  },
+};
+
+function Band({
+  width,
+  columns = 4,
+  count = 4,
+  lang = "fr",
+}: {
+  /** A card's width in px, or 0 for one column that fills the frame. */
+  width: number;
+  columns?: number;
+  count?: number;
+  lang?: keyof typeof WORDS;
+}) {
+  const w = WORDS[lang];
+  const [order, setOrder] = useState(() => w.titles.slice(0, count));
   const moves = useListMoves({
     keys: order,
     onMove: (key, to) =>
@@ -154,11 +194,15 @@ function Band({ width }: { width: number }) {
         next.splice(to, 0, key);
         return next;
       }),
-    announce: (key, position, count) => `${key} : position ${position} sur ${count}`,
+    announce: (key, position, of) => w.moved(key, position, of),
   });
   return (
     <ActionBarList>
-      <ul className="grid gap-5" style={{ gridTemplateColumns: `repeat(4, ${width}px)` }}>
+      <ul
+        lang={lang === "fr" ? "fr-CH" : "de-CH"}
+        className="grid gap-5"
+        style={{ gridTemplateColumns: `repeat(${columns}, ${width ? `${width}px` : "1fr"})` }}
+      >
         {order.map((title) => (
           <li
             key={title}
@@ -170,16 +214,10 @@ function Band({ width }: { width: number }) {
               label={title}
               main="edit"
               actions={[
-                moves.moveAction(title, "before", {
-                  label: `Déplacer « ${title} » avant`,
-                  word: "Avant",
-                }),
-                moves.moveAction(title, "after", {
-                  label: `Déplacer « ${title} » après`,
-                  word: "Après",
-                }),
-                { ...more, label: `Plus d’actions : ${title}` },
-                { ...edit(), label: `Modifier : ${title}` },
+                moves.moveAction(title, "before", { label: w.beforeLabel(title), word: w.before }),
+                moves.moveAction(title, "after", { label: w.afterLabel(title), word: w.after }),
+                { ...more, label: w.moreLabel(title) },
+                { ...edit(), word: w.edit, label: w.editLabel(title) },
               ]}
             />
             <p className="font-bold">{title}</p>
@@ -206,4 +244,43 @@ export const BandWhereEveryWordFits: Story = {
   parameters: { layout: "padded" },
   decorators: [],
   render: () => <Band width={340} />,
+};
+
+/** The home band at 1024px in German, whose longer words fold where the French ones fit. */
+export const BandInGerman: Story = {
+  parameters: { layout: "padded" },
+  decorators: [],
+  render: () => <Band width={237} lang="de" />,
+};
+
+/**
+ * Two columns of 299px cards, the band at 640px. The arrows still point left
+ * and right, because the cards still sit side by side.
+ */
+export const TwoColumns: Story = {
+  parameters: { layout: "padded" },
+  decorators: [],
+  render: () => <Band width={299} columns={2} />,
+};
+
+/**
+ * A phone: one column at 390px, inside the page's 16px gutter. The cards
+ * stack, so the arrows point up and down; the play function checks it.
+ */
+export const OneColumnOnAPhone: Story = {
+  parameters: { layout: "fullscreen" },
+  decorators: [
+    (Story) => (
+      <div className="w-[390px] bg-yellow px-4 py-9">
+        <Story />
+      </div>
+    ),
+  ],
+  render: () => <Band width={0} columns={1} count={3} />,
+  play: async ({ canvasElement }) => {
+    // The list measures itself after layout, so the arrows turn a frame later.
+    const first = canvasElement.querySelector("li");
+    await waitFor(() => expect(first?.querySelector(".lucide-arrow-up")).not.toBeNull());
+    await expect(first?.querySelector(".lucide-arrow-left")).toBeNull();
+  },
 };

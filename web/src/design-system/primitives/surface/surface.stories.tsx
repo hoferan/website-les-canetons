@@ -67,7 +67,8 @@ export const Interactive: Story = {
 
 /**
  * Every variant side by side. The play function measures that they share one
- * radius, and that only the placeholder goes without a fill.
+ * radius, and each one's edge: 2px for a list row, 3px for a tile and a form
+ * panel, and a dashed 2px for the placeholder.
  */
 export const Variants: Story = {
   render: () => (
@@ -85,10 +86,15 @@ export const Variants: Story = {
     </div>
   ),
   play: async ({ canvas }) => {
-    const radii = ["list", "feature", "form", "placeholder"].map(
-      (id) => getComputedStyle(canvas.getByTestId(id)).borderTopLeftRadius,
-    );
-    await expect(new Set(radii)).toEqual(new Set(["18px"]));
-    await expect(getComputedStyle(canvas.getByTestId("placeholder")).borderTopStyle).toBe("dashed");
+    const looks = ["list", "feature", "form", "placeholder"].map((id) => {
+      const style = getComputedStyle(canvas.getByTestId(id));
+      return [style.borderTopLeftRadius, style.borderTopWidth, style.borderTopStyle].join(" ");
+    });
+    await expect(looks).toEqual([
+      "18px 2px solid",
+      "18px 3px solid",
+      "18px 3px solid",
+      "18px 2px dashed",
+    ]);
   },
 };

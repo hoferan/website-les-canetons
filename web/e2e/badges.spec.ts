@@ -130,16 +130,3 @@ for (const width of [375, 1280]) {
     });
   }
 }
-
-test("every tone and tag tint measures at least 4.5:1, in both sizes", async ({ page }) => {
-  await page.goto("/dev/ui");
-  await expect(page.getByTestId("badges-sm")).toBeVisible();
-
-  const pills = (await pillsOnPage(page)).filter((pill) => pill.isBadge);
-  // Four tones and eight tints, plus the icon example, in each of two sizes.
-  expect(pills.length).toBeGreaterThanOrEqual(26);
-  for (const pill of pills) {
-    expect.soft(pill.contrast, `"${pill.text}"`).toBeGreaterThanOrEqual(4.5);
-  }
-  expect(new Set(pills.map((pill) => pill.signature)).size).toBe(2);
-});

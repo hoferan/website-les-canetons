@@ -12,7 +12,7 @@ import ts from "typescript";
 
 const ROOT = "web/src";
 const SKIP = [/\.test\.tsx?$/, /\.stories\.tsx$/, /^design-system\//, /^api\/generated\//];
-const BUTTONS = new Set(["Button", "ButtonLink", "ActionLink"]);
+const BUTTONS = new Set(["Button", "ActionLink"]);
 // Any variant prefix (`sm:`, `hover:`), then a height, padding or text size.
 const SIZE_CLASS = /^(?:[\w-]+:)*(?:h-|min-h-|px-|py-|text-(?:xs|sm|base|lg|xl|\d))/;
 

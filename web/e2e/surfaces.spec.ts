@@ -107,19 +107,6 @@ for (const width of [375, 1280]) {
   }
 }
 
-test("the four variants on /dev/ui share one radius", async ({ page }) => {
-  await page.goto("/dev/ui");
-  const surfaces = page.getByTestId("surfaces").locator("[data-slot=surface]");
-  await expect(surfaces).toHaveCount(4);
-  const looks = await surfaces.evaluateAll((elements) =>
-    elements.map((element) => {
-      const style = getComputedStyle(element);
-      return [style.borderTopLeftRadius, style.borderTopWidth, style.borderTopStyle].join(" ");
-    }),
-  );
-  expect(looks).toEqual(["18px 2px solid", "18px 3px solid", "18px 3px solid", "18px 2px dashed"]);
-});
-
 for (const width of [375, 1280]) {
   test(`each home tile takes focus in turn and its ring measures at least 3:1, at ${width}px`, async ({
     page,

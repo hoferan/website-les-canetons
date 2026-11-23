@@ -72,7 +72,7 @@ test("a member answers yes, then takes it back with the reason the committee wil
   // Without one the confirm button is held, and a tap on it changes nothing.
   // Dispatched rather than clicked: Playwright refuses to click an
   // aria-disabled control, and what is under test is the handler's own early
-  // return, since aria-disabled alone stops no click (components/ui/button.tsx).
+  // return, since aria-disabled alone stops no click (design-system/primitives/button/button.tsx).
   const confirm = dialog.getByRole("button", { name: "Je ne viens pas" });
   await expect(confirm).toHaveAttribute("aria-disabled", "true");
   await confirm.dispatchEvent("click");

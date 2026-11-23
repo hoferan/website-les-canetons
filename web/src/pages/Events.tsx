@@ -425,10 +425,9 @@ export function Events() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {/* asChild straight to Link, never through ButtonLink: ButtonLink
-                  does not spread unknown props, so Radix's Slot-merged role,
-                  tabIndex and keyboard wiring would be dropped. See RowActions'
-                  ItemFor. */}
+              {/* asChild straight to Link, which spreads Radix's Slot-merged
+                  role, tabIndex and keyboard wiring onto the <a>. See
+                  RowActions' ItemFor. */}
               <DropdownMenuItem asChild>
                 <Link to="/events/new">{t("events.add")}</Link>
               </DropdownMenuItem>

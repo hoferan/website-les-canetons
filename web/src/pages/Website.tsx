@@ -8,12 +8,12 @@ import { cn } from "@/lib/utils";
 import { imageSummary, websiteExport, websiteImport } from "../api/generated/endpoints";
 import { ApiError } from "../api/http";
 import { RAISED_CARD } from "../carnival/raised";
-import { ButtonLink } from "../components/ButtonLink";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { useLeaveGuard } from "../components/LeaveGuard";
 import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
 import { t, translateApiError, type TranslationKey } from "../i18n";
+import { Link } from "../i18n/routing";
 import type { UploadFn } from "../images/uploadQueue";
 import { uploadViaApi } from "../images/useUploadQueue";
 import { formatDay } from "../lib/date";
@@ -338,9 +338,9 @@ function Result({ result }: { result: ImportOutcome }) {
           {t("website.skipped", { name: skipped.registerName })}
         </p>
       ))}
-      <ButtonLink to="/" variant="secondary" className="mt-related">
-        {t("website.viewSite")}
-      </ButtonLink>
+      <Button asChild variant="secondary" className="mt-related">
+        <Link to="/">{t("website.viewSite")}</Link>
+      </Button>
     </div>
   );
 }

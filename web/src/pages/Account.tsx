@@ -1,9 +1,11 @@
 import { KeyRound } from "lucide-react";
 
+import { Button } from "@ds";
+
 import type { AuthMe200 } from "../api/generated/model";
-import { ButtonLink } from "../components/ButtonLink";
 import { PageSection } from "../components/PageSection";
 import { registerName, roleName, t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
 import { usePageTitle } from "../components/pageTitle";
@@ -41,10 +43,12 @@ export function Account() {
             ••••••••
           </p>
         </div>
-        <ButtonLink to="/account/password" variant="secondary">
-          <KeyRound aria-hidden="true" />
-          {t("account.change")}
-        </ButtonLink>
+        <Button asChild variant="secondary">
+          <Link to="/account/password">
+            <KeyRound aria-hidden="true" />
+            {t("account.change")}
+          </Link>
+        </Button>
       </section>
     </PageSection>
   );

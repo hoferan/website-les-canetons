@@ -1,9 +1,10 @@
 import { Outlet, useLocation } from "react-router-dom";
 
-import { ButtonLink } from "./ButtonLink";
+import { Button } from "@ds";
+
 import { PageSection } from "./PageSection";
 import { t } from "../i18n";
-import { Navigate } from "../i18n/routing";
+import { Link, Navigate } from "../i18n/routing";
 import { useSession } from "../session/SessionProvider";
 import { usePageTitle } from "./pageTitle";
 
@@ -84,9 +85,9 @@ function AccessDenied() {
       <p role="alert" className="mt-related text-gray-600">
         {t("guards.deniedBody")}
       </p>
-      <ButtonLink to="/" variant="secondary" className="mt-block">
-        {t("common.backHome")}
-      </ButtonLink>
+      <Button asChild variant="secondary" className="mt-block">
+        <Link to="/">{t("common.backHome")}</Link>
+      </Button>
     </PageSection>
   );
 }

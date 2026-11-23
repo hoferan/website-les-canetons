@@ -3,8 +3,7 @@ import { Eye, Pencil } from "lucide-react";
 import { useEffect, useState, type DragEvent } from "react";
 import { useParams } from "react-router-dom";
 
-import { Button } from "@ds";
-import { Card } from "@/components/ui/card";
+import { Button, Surface } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
@@ -44,7 +43,6 @@ import {
 } from "../booking/editor/settings";
 import { SettingsStrip } from "../booking/editor/SettingsStrip";
 import { PageHero } from "../carnival/PageHero";
-import { RAISED_CARD } from "../carnival/raised";
 import { FormError, RequiredLegend } from "../components/FormField";
 import { useLeaveGuard } from "../components/LeaveGuard";
 import { PageSection } from "../components/PageSection";
@@ -458,10 +456,10 @@ export function EventFormEditor() {
 
         {guest ? (
           // The guest's card, as EventBooking draws it.
-          <Card className={cn(RAISED_CARD, "mt-related gap-related p-5")}>
+          <Surface variant="feature" padding="lg" className="mt-related flex flex-col gap-related">
             <RequiredLegend />
             {blocks}
-          </Card>
+          </Surface>
         ) : (
           <div className="mt-related flex flex-col gap-block">
             <p className="text-ink-muted">{t("registrationOptions.editing")}</p>

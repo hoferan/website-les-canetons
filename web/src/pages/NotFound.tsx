@@ -1,13 +1,12 @@
-import { ButtonLink } from "@/components/ButtonLink";
-import { Card } from "@/components/ui/card";
+import { Button, Surface } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { Confetti } from "../carnival/Confetti";
 import { useFooterEdge } from "../carnival/footerEdge";
 import { POSTER_CONFETTI } from "../carnival/PageHero";
-import { RAISED_CARD } from "../carnival/raised";
 import { SCALLOP_CLIP, Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
+import { Link } from "../i18n/routing";
 import { usePageTitle } from "../components/pageTitle";
 
 /**
@@ -44,19 +43,20 @@ export function NotFound() {
           404
         </p>
 
-        <Card
+        <Surface
+          variant="feature"
           data-confetti-avoid
-          className={cn(RAISED_CARD, "mt-block w-full max-w-md items-center gap-0 p-6")}
+          className="mt-block flex w-full max-w-md flex-col items-center p-6"
         >
           <h1 className="font-display text-3xl">{t("notFound.heading")}</h1>
           <p className="mt-related text-ink-muted">{t("notFound.body")}</p>
-          {/* A ButtonLink rather than a text link: the page's only control
-              belongs above the 44px floor. Inline links in prose are a
-              different case. */}
-          <ButtonLink to="/" variant="accent" size="lg" className="mt-block">
-            {t("common.backHome")}
-          </ButtonLink>
-        </Card>
+          {/* A button-styled link rather than a text link: the page's only
+              control belongs above the 44px floor. Inline links in prose are
+              a different case. */}
+          <Button asChild variant="accent" size="lg" className="mt-block">
+            <Link to="/">{t("common.backHome")}</Link>
+          </Button>
+        </Surface>
       </div>
       <Scallop into="var(--color-stage)" />
     </div>
