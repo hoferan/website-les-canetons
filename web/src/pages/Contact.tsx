@@ -3,7 +3,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 
 import { PageSection } from "@/components/PageSection";
-import { Button, FormActions, Surface } from "@ds";
+import { Button, FormActions, Notice, Surface } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { contactStore, useFormTokenShow } from "../api/generated/endpoints";
@@ -13,7 +13,6 @@ import { useApiFormError } from "../api/useApiFormError";
 import { PageHero } from "../carnival/PageHero";
 import { HeroBlock } from "../content/blocks/HeroBlock";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
-import { Notice } from "../components/Notice";
 import { type TranslationKey, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 import { usePageTitle } from "../components/pageTitle";

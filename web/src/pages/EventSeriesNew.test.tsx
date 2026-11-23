@@ -108,7 +108,13 @@ test("creating a season goes to the planning and says how many were created", as
   await fillSeptember();
   await userEvent.click(await screen.findByRole("button", { name: "Créer 4 événements" }));
 
-  expect(await screen.findByRole("status")).toHaveTextContent("4 brouillons créés.");
+  const status = await screen.findByRole("status");
+  expect(status).toHaveTextContent("4 brouillons créés.");
+  // A success notice (#376), not the default info one.
+  expect(status.querySelector("[data-notice-level]")).toHaveAttribute(
+    "data-notice-level",
+    "success",
+  );
   expect(screen.getByTestId("pathname")).toHaveTextContent(/^\/events$/);
   expect(screen.getByRole("link", { name: "Créer une autre série" })).toHaveAttribute(
     "href",

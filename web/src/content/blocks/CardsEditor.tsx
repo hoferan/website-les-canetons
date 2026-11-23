@@ -25,10 +25,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
+  Notice,
   Switch,
 } from "@ds";
 
-import { Notice } from "../../components/Notice";
 import { t } from "../../i18n";
 import { useBlock } from "../BlocksProvider";
 import {

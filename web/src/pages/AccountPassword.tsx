@@ -2,14 +2,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Circle, CircleCheck } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 
-import { Button, FormActions } from "@ds";
+import { Button, FormActions, Notice } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { getAuthMeQueryKey, useAccountPassword } from "../api/generated/endpoints";
 import { MIN_PASSWORD_LENGTH } from "../api/passwordPolicy";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
-import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
@@ -104,8 +103,10 @@ export function AccountPassword() {
 
       {user?.mustChangePassword ? (
         // Why the gate explains itself: see account.provisionalNotice in
-        // i18n/fr.ts.
-        <Notice className="mt-related">{t("account.provisionalNotice")}</Notice>
+        // i18n/fr.ts. A warning: nothing else opens until it is done.
+        <Notice level="warning" className="mt-related">
+          {t("account.provisionalNotice")}
+        </Notice>
       ) : null}
 
       <form onSubmit={submit} noValidate className="mt-block flex flex-col gap-related">

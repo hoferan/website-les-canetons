@@ -588,7 +588,10 @@ test("says in French when a server cannot make an Excel file", async () => {
   // A straight apostrophe, which fr.ts's error catalogue uses throughout,
   // unlike the typographic one in the page copy. The wrong character fails as
   // "unable to find the text", which looks like a missing message.
-  expect(await screen.findByText(/L'export Excel n'est pas disponible/)).toBeInTheDocument();
+  const refusal = await screen.findByText(/L'export Excel n'est pas disponible/);
+  // An error notice, inside an alert that was there before it (#376).
+  expect(refusal.closest("[data-notice-level]")).toHaveAttribute("data-notice-level", "error");
+  expect(refusal.closest('[role="alert"]')).not.toBeNull();
 });
 
 test("an open form nobody has booked says where the form is", async () => {

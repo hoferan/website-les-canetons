@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Badge, Button, FormActions, Switch } from "@ds";
+import { Badge, Button, FormActions, Notice, Switch } from "@ds";
 
 import { rowsOf, totalOf } from "../api/collection";
 import { downloadGuestList, type ExportFormat } from "../api/download";
@@ -445,11 +445,11 @@ export function EventRegistrations() {
       </details>
       <p className="mt-tight text-sm text-ink-muted">{t("registrations.exportsHint")}</p>
 
-      {downloadError ? (
-        <p role="alert" className="mt-tight text-danger">
-          {downloadError}
-        </p>
-      ) : null}
+      {/* The alert is in the page before the refusal goes into it, so a
+          screen reader announces the refusal: Notice has no role of its own. */}
+      <div role="alert" className="mt-tight empty:hidden">
+        {downloadError ? <Notice level="error">{downloadError}</Notice> : null}
+      </div>
 
       {readError ? (
         <p role="alert" className="mt-related text-danger">

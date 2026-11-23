@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { CircleCheck, Download, FileArchive, Upload } from "lucide-react";
+import { Download, FileArchive, Upload } from "lucide-react";
 import { useId, useRef, useState, type ChangeEvent } from "react";
 
-import { Button } from "@ds";
+import { Button, Notice } from "@ds";
 import { cn } from "@/lib/utils";
 
 import { imageSummary, websiteExport, websiteImport } from "../api/generated/endpoints";
@@ -10,7 +10,6 @@ import { ApiError } from "../api/http";
 import { RAISED_CARD } from "../carnival/raised";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { useLeaveGuard } from "../components/LeaveGuard";
-import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
 import { t, translateApiError, type TranslationKey } from "../i18n";
 import { Link } from "../i18n/routing";
@@ -267,7 +266,7 @@ function ImportCard({
           </p>
         ) : null}
         {stage.kind === "done" ? <Result result={stage.result} /> : null}
-        {stage.kind === "failed" ? <p className="text-danger">{stage.message}</p> : null}
+        {stage.kind === "failed" ? <Notice level="error">{stage.message}</Notice> : null}
       </div>
 
       {stage.kind === "read" ? (
@@ -316,17 +315,11 @@ function Summary({ site, onReplace }: { site: BundledSite; onReplace: () => void
   );
 }
 
-/**
- * What the import did, on lime with the tick the password rules use for a
- * rule met. The palette has no green.
- */
+/** What the import did, as a success notice. */
 function Result({ result }: { result: ImportOutcome }) {
   return (
-    <div className="rounded-[18px] border-2 border-ink bg-lime p-4">
-      <p className="flex items-center gap-2 font-semibold">
-        <CircleCheck aria-hidden="true" className="size-5 shrink-0" />
-        {t("website.done")}
-      </p>
+    <Notice level="success">
+      <p className="font-semibold">{t("website.done")}</p>
       <ul className="mt-tight list-inside list-disc text-sm">
         <li>{t("website.doneBlocks", { count: result.blocks })}</li>
         <li>{t("website.donePhotos", { count: result.photos })}</li>
@@ -341,7 +334,7 @@ function Result({ result }: { result: ImportOutcome }) {
       <Button asChild variant="secondary" className="mt-related">
         <Link to="/">{t("website.viewSite")}</Link>
       </Button>
-    </div>
+    </Notice>
   );
 }
 

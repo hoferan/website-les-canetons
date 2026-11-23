@@ -1,10 +1,10 @@
-import { Notice } from "@/components/Notice";
 import { cn } from "@/lib/utils";
 
 import { t, type TranslationKey } from "../../i18n";
 import { Link } from "../../i18n/routing";
 import { useSession } from "../../session/SessionProvider";
 import { useEditMode } from "../EditMode";
+import { Notice } from "@ds";
 
 /** One kind of data a page shows but does not own, and where it is managed. */
 export type ManagedSource = {
