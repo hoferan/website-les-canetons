@@ -1889,7 +1889,6 @@ export const fr = {
     french: "FR",
     german: "DE",
     addGerman: "+ Deutsch",
-    removeGerman: "Retirer l’allemand",
     // The editor's FR | DE, which shows the page, its preview, in either language.
     previewLanguage: "Langue de l’aperçu",
     previewInFrench: "Aperçu en français",

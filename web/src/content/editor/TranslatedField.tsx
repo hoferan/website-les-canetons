@@ -1,8 +1,7 @@
-import { X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useController, useFormContext, type FieldValues, type Path } from "react-hook-form";
 
-import { Button, IconButton } from "@ds";
+import { Button } from "@ds";
 
 import { FormField } from "../../components/FormField";
 import { currentLocale, t } from "../../i18n";
@@ -21,10 +20,9 @@ type Props<T extends FieldValues> = {
  *
  * French is always there. German waits behind "+ Deutsch" until somebody has
  * a German wording to type, and is open from the start when the text has one
- * or the page is German. A German field left blank, or taken away with
- * "Retirer l'allemand",
- * stores no `de` at all, so the German page shows the French: a name or a
- * number reads the same in both. A text the block's type may leave out is
+ * or the page is German. A German field left blank stores no `de` at all, so
+ * the German page shows the French: a name or a number reads the same in
+ * both. Emptying the field is how German comes off; there is no button for it. A text the block's type may leave out is
  * dropped on save when it is blank in both languages (`useSaveBlock`).
  *
  * Both fields carry the same label, told apart by their language badge, which
@@ -62,15 +60,13 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
   const frProblem = error && (error.fr || !error.de) ? problem : undefined;
   const deProblem = error?.de ? problem : undefined;
 
-  // Focus follows the button that was pressed, which leaves the tree: to the
-  // German field it revealed, or back to "+ Deutsch".
+  // "+ Deutsch" leaves the tree when pressed, so focus moves on to the German
+  // field it revealed.
   const germanRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
-  const addRef = useRef<HTMLButtonElement>(null);
-  const focusNext = useRef<"german" | "add" | null>(null);
+  const focusGerman = useRef(false);
   useEffect(() => {
-    if (focusNext.current === "german") germanRef.current?.focus();
-    if (focusNext.current === "add") addRef.current?.focus();
-    focusNext.current = null;
+    if (focusGerman.current) germanRef.current?.focus();
+    focusGerman.current = false;
   }, [open]);
 
   const as = multiline ? "textarea" : "input";
@@ -93,50 +89,34 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
       />
 
       {open ? (
-        <>
-          <FormField
-            id={`${id}-de`}
-            label={label}
-            badge={<LanguageBadge>{t("blockEditor.german")}</LanguageBadge>}
-            lang="de"
-            value={value?.de ?? ""}
-            onChange={(de) => {
-              // Kept open while emptied: the field stays where it is being
-              // typed in, it only stores nothing.
-              setShown(true);
-              write(value?.fr ?? "", de);
-            }}
-            as={as}
-            grow={multiline}
-            maxLength={2000}
-            problem={deProblem}
-            controlRef={(element) => {
-              germanRef.current = element;
-            }}
-            action={
-              <IconButton
-                type="button"
-                variant="quiet"
-                icon={X}
-                label={t("blockEditor.removeGerman")}
-                onClick={() => {
-                  focusNext.current = "add";
-                  setShown(false);
-                  write(value?.fr ?? "", undefined);
-                }}
-              />
-            }
-          />
-        </>
+        <FormField
+          id={`${id}-de`}
+          label={label}
+          badge={<LanguageBadge>{t("blockEditor.german")}</LanguageBadge>}
+          lang="de"
+          value={value?.de ?? ""}
+          onChange={(de) => {
+            // Kept open while emptied: the field stays where it is being
+            // typed in, it only stores nothing.
+            setShown(true);
+            write(value?.fr ?? "", de);
+          }}
+          as={as}
+          grow={multiline}
+          maxLength={2000}
+          problem={deProblem}
+          controlRef={(element) => {
+            germanRef.current = element;
+          }}
+        />
       ) : (
         <Button
-          ref={addRef}
           type="button"
           variant="quiet"
           size="sm"
           className="self-start font-bold text-violet"
           onClick={() => {
-            focusNext.current = "german";
+            focusGerman.current = true;
             setShown(true);
           }}
         >

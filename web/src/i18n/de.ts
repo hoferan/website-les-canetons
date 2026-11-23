@@ -1493,7 +1493,6 @@ export const de: typeof fr = {
     french: "FR",
     german: "DE",
     addGerman: "+ Deutsch",
-    removeGerman: "Deutsch entfernen",
     previewLanguage: "Sprache der Vorschau",
     previewInFrench: "Vorschau auf Französisch",
     previewInGerman: "Vorschau auf Deutsch",

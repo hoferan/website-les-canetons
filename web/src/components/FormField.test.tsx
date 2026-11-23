@@ -283,6 +283,34 @@ test("invalid marks a textarea red, like an input", () => {
   expect(textarea).toHaveClass("aria-invalid:border-feedback-error");
 });
 
+test("a textarea with a toolbar shares one box with it, the toolbar on top", () => {
+  render(
+    <FormField
+      id="demo-intro"
+      label="Introduction"
+      as="textarea"
+      value=""
+      onChange={noop}
+      invalid
+      toolbar={<button type="button">B</button>}
+    />,
+  );
+  const textarea = screen.getByLabelText("Introduction");
+  const box = textarea.parentElement as HTMLElement;
+  const button = screen.getByRole("button", { name: "B" });
+  expect(box).toContainElement(button);
+  expect(button.compareDocumentPosition(textarea) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  // The box wears the border, invalid state included; the textarea none.
+  expect(box).toHaveClass("border", "border-input");
+  expect(box.className).toContain("has-[[aria-invalid=true]]:border-feedback-error");
+  expect(textarea).toHaveClass("border-0");
+});
+
+test("a textarea without a toolbar keeps its own border", () => {
+  render(<FormField id="demo-plain" label="Texte" as="textarea" value="" onChange={noop} />);
+  expect(screen.getByLabelText("Texte")).not.toHaveClass("border-0");
+});
+
 test("the reveal button is centred without a translate, which its press would override", () => {
   render(<FormField id="demo-pw" label="Mot de passe" type="password" value="x" onChange={noop} />);
   const toggle = screen.getByRole("button", { name: "Afficher le mot de passe" });

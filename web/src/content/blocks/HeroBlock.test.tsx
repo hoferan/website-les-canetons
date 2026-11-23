@@ -203,8 +203,8 @@ test("clearing a saved intro removes it", async () => {
     "true",
   );
   // The shipped texts carry a German wording; it goes with the French.
-  for (const remove of within(dialog).getAllByRole("button", { name: "Retirer l’allemand" })) {
-    await user.click(remove);
+  for (const german of within(dialog).getAllByRole("textbox", { name: / DE$/ })) {
+    await user.clear(german);
   }
   await user.clear(intro);
   await user.click(within(picked).getByRole("button", { name: "Aucun" }));
