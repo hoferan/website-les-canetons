@@ -356,7 +356,9 @@ jobs:
   # web/e2e/ — the two suites are separate runners over separate directories.
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 20, not 15: main's run took 13.5 minutes once targets.spec.ts measured
+    # every route (#400), and the focus scan (#391) adds about two more.
+    timeout-minutes: 20
     needs: changes
     if: needs.changes.outputs.code == 'true'
     steps:

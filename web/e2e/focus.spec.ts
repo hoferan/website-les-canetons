@@ -197,13 +197,12 @@ function focusStops(page: Page) {
   });
 }
 
-for (const width of [375, 1280]) {
-  for (const entry of PAGES) {
-    test(`${entry.path} as ${entry.as ?? "visitor"} at ${width}px: every focus ring is 3:1`, async ({
-      page,
-    }) => {
+// Both widths in one test, so each route costs one login rather than two.
+for (const entry of PAGES) {
+  test(`${entry.path} as ${entry.as ?? "visitor"}: every focus ring is 3:1`, async ({ page }) => {
+    if (entry.as) await logIn(page, entry.as);
+    for (const width of [375, 1280]) {
       await page.setViewportSize({ width, height: 900 });
-      if (entry.as) await logIn(page, entry.as);
       await page.goto(entry.path);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(entry.heading);
       await page.waitForLoadState("networkidle");
@@ -213,21 +212,31 @@ for (const width of [375, 1280]) {
       if (process.env.FOCUS_REPORT) {
         appendFileSync(
           process.env.FOCUS_REPORT,
-          `${JSON.stringify({ path: entry.path, as: entry.as, width, stops })}\n`,
+          `${JSON.stringify({ path: entry.path, as: entry.as, width, stops })}
+`,
         );
       }
 
-      expect(stops.length).toBeGreaterThan(0);
-      expect(stops.filter((stop) => !stop.focusVisible).map((stop) => stop.el)).toEqual([]);
-      expect(
-        stops
-          .filter((stop) => stop.contrast < 3)
-          .map(
-            (stop) => `${stop.el}: ${stop.ring} on ${stop.grounds.join(" / ")} = ${stop.contrast}`,
-          ),
-      ).toEqual([]);
-    });
-  }
+      expect.soft(stops.length, `${width}px`).toBeGreaterThan(0);
+      expect
+        .soft(
+          stops.filter((stop) => !stop.focusVisible).map((stop) => stop.el),
+          `${width}px: not :focus-visible`,
+        )
+        .toEqual([]);
+      expect
+        .soft(
+          stops
+            .filter((stop) => stop.contrast < 3)
+            .map(
+              (stop) =>
+                `${stop.el}: ${stop.ring} on ${stop.grounds.join(" / ")} = ${stop.contrast}`,
+            ),
+          `${width}px: under 3:1`,
+        )
+        .toEqual([]);
+    }
+  });
 }
 
 /** A click draws no ring; the same control reached by Tab does. */
