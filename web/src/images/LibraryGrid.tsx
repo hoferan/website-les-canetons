@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import {
   getImageIndexQueryKey,
@@ -23,6 +23,7 @@ import {
   Button,
   Checkbox,
   Select,
+  StateMessage,
 } from "@ds";
 import { SearchField } from "../components/SearchField";
 import { currentLocale, t, translateApiError } from "../i18n";
@@ -61,7 +62,14 @@ type Failure = { image: ImageResource; message: string };
  * the list). The deletes run one after the other and a refusal settles that
  * photo only: if somebody placed one of them meanwhile, the rest still go.
  */
-export function LibraryGrid({ images }: { images: ImageResource[] }) {
+export function LibraryGrid({
+  images,
+  addAction,
+}: {
+  images: ImageResource[];
+  /** The way to add a first photo, offered when the library is empty. */
+  addAction?: ReactNode;
+}) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -248,7 +256,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
       </div>
 
       {images.length === 0 ? (
-        <p className="text-ink-muted">{t("photos.pickerEmpty")}</p>
+        <StateMessage state="empty" title={t("photos.pickerEmpty")} action={addAction} />
       ) : visible.length === 0 ? (
         <p className="text-ink-muted">{t("photos.emptyFiltered")}</p>
       ) : (

@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
   Button,
   FormActions,
+  StateMessage,
   Surface,
   Switch,
 } from "@ds";
@@ -30,6 +31,7 @@ import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
+import { listState } from "../components/listState";
 import { TagChip } from "../events/TagChip";
 import { TAG_COLOURS } from "../events/tagColours";
 import { t, tagLabel } from "../i18n";
@@ -65,6 +67,11 @@ export function EventTags() {
   const queryClient = useQueryClient();
   const list = useEventTagIndex();
   const tags = rowsOf<EventTagResource>(list.data);
+  const state = listState(list, {
+    loadFailed: t("eventTags.loadFailed"),
+    rowHeight: 11.5,
+    empty: tags.length > 0 ? null : { title: t("eventTags.empty") },
+  });
 
   const refresh = async () => {
     // The planning too: its cards carry copies of these names and colours.
@@ -79,9 +86,10 @@ export function EventTags() {
       <h1 className="font-display text-3xl">{t("eventTags.heading")}</h1>
       <p className="mt-tight text-ink-muted">{t("eventTags.intro")}</p>
 
-      {list.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
+      {/* No action in the empty state: the form to add one is right below. */}
+      {state ? <StateMessage {...state} className="mt-block" /> : null}
 
-      <ul className="mt-block grid gap-related">
+      <ul className="mt-block grid gap-related empty:hidden">
         {tags.map((tag) => (
           <TagRow key={tag.id} tag={tag} onChanged={refresh} />
         ))}

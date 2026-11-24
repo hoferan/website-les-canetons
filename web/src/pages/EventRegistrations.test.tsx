@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
@@ -36,7 +36,12 @@ async function renderGuestList(
     </Routes>,
     { route: `/events/${eventId}/registrations`, locale },
   );
-  await screen.findByTestId("guest-counts");
+  // The counts, or the empty state that stands in for them.
+  await waitFor(() =>
+    expect(
+      document.querySelector('[data-testid="guest-counts"], [data-state-message="empty"]'),
+    ).not.toBeNull(),
+  );
   return result;
 }
 

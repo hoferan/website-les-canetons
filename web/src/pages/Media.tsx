@@ -5,7 +5,8 @@ import { rowsOf } from "../api/collection";
 import { useImageIndex, useImageSummary } from "../api/generated/endpoints";
 import type { ImageResource } from "../api/generated/model";
 import { PageSection } from "../components/PageSection";
-import { Button, Notice } from "@ds";
+import { listState } from "../components/listState";
+import { Button, Notice, StateMessage } from "@ds";
 import { currentLocale, t } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import { LibraryGrid } from "../images/LibraryGrid";
@@ -71,6 +72,14 @@ export function Media({ upload, shrinker }: Props = {}) {
 
   const counts = summary.data?.status === 200 ? summary.data.data : null;
   const listed = new Set(images.map((image) => image.id));
+  // Loading and failing only. The grid says when the library is empty, since
+  // it stays mounted when its last photo is deleted, with the outcome line.
+  const state = listState(library, {
+    loadFailed: t("photos.loadFailed"),
+    rows: 2,
+    rowHeight: 18,
+    empty: null,
+  });
 
   function add(files: FileList) {
     if (counts) {
@@ -140,15 +149,20 @@ export function Media({ upload, shrinker }: Props = {}) {
         <h2 id="library-heading" className="mb-related font-display text-2xl">
           {t("photos.libraryHeading")}
         </h2>
-        {library.isError ? (
-          <p role="alert" className="text-danger">
-            {t("photos.loadFailed")}
-          </p>
-        ) : library.isPending ? (
-          <p className="text-ink-muted">{t("common.loading")}</p>
-        ) : (
-          <LibraryGrid images={images} />
-        )}
+        {state ? <StateMessage {...state} className="mb-related" /> : null}
+        {library.data !== undefined ? (
+          <LibraryGrid
+            images={images}
+            // An empty library repeats the add button, so the next step is
+            // where the reader is looking.
+            addAction={
+              <Button type="button" onClick={() => input.current?.click()}>
+                <Plus aria-hidden="true" />
+                {t("photos.add")}
+              </Button>
+            }
+          />
+        ) : null}
       </section>
     </PageSection>
   );

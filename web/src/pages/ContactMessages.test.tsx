@@ -219,6 +219,11 @@ test("filtering to a status with nothing in it explains itself, not as an error"
   expect(empty).not.toHaveAttribute("role", "alert");
   // Distinct from the true-empty copy: there are messages, none in this filter.
   expect(screen.queryByText(/prêt à en recevoir/i)).not.toBeInTheDocument();
+
+  // And it offers the way back to all of them.
+  await userEvent.click(screen.getByRole("button", { name: "Afficher tous les messages" }));
+  expect(screen.getByRole("button", { name: "Tous" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getAllByText("Chappuis").length).toBeGreaterThan(0);
 });
 
 /**
