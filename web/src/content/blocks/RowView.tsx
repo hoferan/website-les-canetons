@@ -79,7 +79,7 @@ export function RowView({ row, plain = false }: { row: Row; plain?: boolean }) {
             href={mapHref(place, row.address)}
             target="_blank"
             rel="noreferrer"
-            className="text-violet hover:underline"
+            className="link-target text-violet hover:underline"
           >
             {place || row.address}
           </a>
@@ -90,7 +90,7 @@ export function RowView({ row, plain = false }: { row: Row; plain?: boolean }) {
       return (
         <p className="mt-tight">
           {isHttpsUrl(row.url) ? (
-            <a href={row.url} target="_blank" rel="noreferrer" className={LINK}>
+            <a href={row.url} target="_blank" rel="noreferrer" className={`link-target ${LINK}`}>
               {tr(row.label)}
             </a>
           ) : (

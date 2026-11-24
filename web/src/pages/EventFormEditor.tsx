@@ -438,7 +438,7 @@ export function EventFormEditor() {
 
       <PageSection width="text">
         <div className="flex flex-wrap items-center justify-between gap-related">
-          <Link to="/events" className="text-sm text-ink-muted underline">
+          <Link to="/events" className="link-target text-sm text-ink-muted underline">
             {t("common.backToPlanning")}
           </Link>
           <Button

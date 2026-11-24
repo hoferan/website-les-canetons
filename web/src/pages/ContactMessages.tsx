@@ -534,7 +534,10 @@ function MessagePanel({
           <h2 className="font-display text-2xl">
             {message.firstName} {message.lastName}
           </h2>
-          <a href={`mailto:${message.email}`} className="text-sm text-ink-muted underline">
+          <a
+            href={`mailto:${message.email}`}
+            className="link-target text-sm text-ink-muted underline"
+          >
             {message.email}
           </a>
         </div>

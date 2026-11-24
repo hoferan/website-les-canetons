@@ -14,12 +14,14 @@ import { mailtoHref, telHref } from "../lib/contactHref";
  * public-prose one (`text-violet hover:underline`) suits a sentence holding
  * one link, not a long list.
  *
- * `inline-flex items-center` is what makes the 32px touch target exist:
- * `min-height` does not apply to an inline box, so without it `min-h-8` does
- * nothing. jsdom computes no layout, so only the 390px screenshot shows this.
+ * `inline-flex items-center` makes the touch target exist: `min-height` does
+ * not apply to an inline box, so without it the `min-h-*` do nothing. The
+ * link is 44px tall on a phone, where a thumb taps a card's stacked e-mail and
+ * phone (#400), and 32px from `sm`, so a card keeps its desktop height. jsdom
+ * computes no layout; web/e2e/targets.spec.ts measures it.
  */
 const LINK =
-  "focus-ring rounded-sm inline-flex min-h-8 items-center py-1 break-words " +
+  "focus-ring rounded-sm inline-flex min-h-touch sm:min-h-8 items-center py-1 break-words " +
   "text-ink underline underline-offset-2 hover:text-violet";
 
 /**

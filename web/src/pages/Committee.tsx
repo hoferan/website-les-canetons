@@ -60,7 +60,7 @@ export function Committee() {
             contact: {
               beforeRows: (
                 <p className="mt-tight">
-                  <Link to="/contact" className="text-violet underline">
+                  <Link to="/contact" className="link-target text-violet underline">
                     {t("committee.writeToCommittee")}
                   </Link>
                 </p>
