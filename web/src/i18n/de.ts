@@ -317,6 +317,8 @@ export const de: typeof fr = {
 
   common: {
     loading: "Wird geladen…",
+    loadFailedHint: "Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+    retry: "Erneut versuchen",
     requiredLegend: "Pflichtfeld",
     backToPlanning: "← Zurück zur Planung",
     // "Abbrechen", not "Rückgängig", though French says "Annuler" for both.
@@ -584,10 +586,7 @@ export const de: typeof fr = {
     noMatch: "Kein Anlass entspricht dieser Suche.",
     noTagMatch: "Kein Anlass in dieser Kategorie.",
     emptyPast: "Keine vergangenen Anlässe.",
-    // Tight guillemets, and {{action}} is another key's value: the hint quotes
-    // the button beside it.
-    emptyHint:
-      "Fügen Sie einen Anlass hinzu, oder erzeugen Sie mit «{{action}}» gleich eine ganze Saison.",
+    emptyHint: "Fügen Sie einen Anlass hinzu, oder erzeugen Sie gleich eine ganze Saison.",
     owedHeading: "Zu beantworten",
     allAnswered: "Alles beantwortet.",
     // The verb changes too, "fehlt" against "fehlen", which no "s" appended

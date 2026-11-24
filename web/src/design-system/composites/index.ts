@@ -4,4 +4,5 @@ export * from "./dialog";
 export * from "./form-actions";
 export * from "./form-field";
 export * from "./notice";
+export * from "./state-message";
 export * from "./toast";
