@@ -61,7 +61,11 @@ export function PageHero({
   children?: ReactNode;
 }) {
   return (
-    <div data-edit-block={editBlock} className={cn("relative bg-poster text-white", SCALLOP_CLIP)}>
+    <div
+      data-edit-block={editBlock}
+      data-surface="poster"
+      className={cn("relative bg-poster text-white", SCALLOP_CLIP)}
+    >
       <Confetti seed={seed} colours={POSTER_CONFETTI} wobble />
       {/* The chip sits in the header's own corner, not the text column's. */}
       {edit}

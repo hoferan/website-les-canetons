@@ -70,22 +70,33 @@ test("a long unbroken word does not push the phone page sideways", async ({ page
  * the focus ring, so without the white offset between them focus on the
  * selected icon, which is where focus nearly always is, was invisible.
  *
- * MUTATION TEST: drop `focus-within:ring-offset-2` from HistoryForm's icon
- * labels and the offset shadow disappears.
+ * The ring is the site's one focus outline, 2px out, so the panel's white
+ * shows between it and the fill. It is keyboard focus only (#391): a click on
+ * an icon draws none.
+ *
+ * MUTATION TEST: drop `has-[:focus-visible]:outline-offset-2` from
+ * HistoryForm's icon labels and the offset reads 0px.
  */
 test("focus on the selected icon is drawn apart from its fill", async ({ page }) => {
   await openNewEntry(page);
 
   const checked = page.getByRole("radio", { name: "Aucune" });
   await expect(checked).toBeChecked();
-  await checked.focus();
+  const ring = () =>
+    checked.evaluate((radio) => {
+      const style = getComputedStyle(radio.closest("label") as HTMLElement);
+      return `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor} ${style.outlineOffset}`;
+    });
 
-  const shadow = await checked.evaluate(
-    (radio) => getComputedStyle(radio.closest("label") as HTMLElement).boxShadow,
-  );
-  // Two shadows: the white 2px offset, then the violet ring outside it.
-  expect(shadow).toMatch(/rgb\(255, 255, 255\) 0px 0px 0px 2px/);
-  expect(shadow).toMatch(/rgb\(75, 46, 214\) 0px 0px 0px 4px/);
+  await checked.locator("xpath=..").click();
+  await expect(checked).toBeFocused();
+  expect(await ring()).toMatch(/^none /);
+
+  // A key press, so the focus that follows counts as keyboard focus.
+  await page.keyboard.press("Shift");
+  await checked.blur();
+  await checked.focus();
+  expect(await ring()).toBe("solid 2px rgb(75, 46, 214) 2px");
 });
 
 /**

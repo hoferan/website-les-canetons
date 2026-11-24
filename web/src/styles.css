@@ -308,6 +308,15 @@
   h1[tabindex="-1"]:focus {
     outline: none;
   }
+
+  /* The focus-ring utility's ring for everything no component styles: a link
+     inside a sentence, a native radio. Without this they kept the browser's
+     own thin ring, which differs from one browser to the next (#391). A
+     utility, `outline-none` included, still wins over it. */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: var(--focus-ring-offset, 2px);
+  }
 }
 
 /* The page's own ground and default face. Everything else is a utility class. */
@@ -346,11 +355,13 @@ h2 {
 }
 
 /* One visible focus ring, from one place. focus-visible, so a mouse click
-   leaves no ring while a keyboard tab does. */
+   leaves no ring while a keyboard tab does. A control flush with the edge of
+   a bar sets --focus-ring-offset below zero, so the ring stays on the bar's
+   colour instead of crossing onto the page (PhoneNav). */
 @utility focus-ring {
   &:focus-visible {
     outline: 2px solid var(--color-focus);
-    outline-offset: 2px;
+    outline-offset: var(--focus-ring-offset, 2px);
   }
 }
 
@@ -383,7 +394,7 @@ h2 {
 @utility focus-ring-stage {
   &:focus-visible {
     outline: 2px solid var(--color-focus-stage);
-    outline-offset: 2px;
+    outline-offset: var(--focus-ring-offset, 2px);
   }
 }
 

@@ -51,7 +51,7 @@ export function TagPicker({
               {/* Unchosen chips are not dimmed: opacity takes their text under
                   4.5:1 contrast. The border and the check carry the choice. */}
               <span
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium group-focus-visible:ring-[3px] group-focus-visible:ring-ring/50 ${TAG_COLOURS[tag.colour]} ${
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-focus ${TAG_COLOURS[tag.colour]} ${
                   pressed ? "border-current" : "border-transparent"
                 }`}
               >

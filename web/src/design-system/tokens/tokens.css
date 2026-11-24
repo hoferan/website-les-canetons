@@ -161,4 +161,13 @@
     --raised-offset: 4px;
     --color-focus: var(--color-focus-stage);
   }
+
+  /* The violet-to-pink poster behind a public page's hero. A violet ring
+     vanishes on its violet end, so the ring turns white: 8.4:1 on the violet
+     and 3.3:1 on the pink corner, where no control sits. The raised shadow
+     stays ink. Only where controls sit on the poster itself: a card on it is
+     light, and a white ring would vanish there (the 404 page). */
+  [data-surface="poster"] {
+    --color-focus: var(--color-focus-stage);
+  }
 }

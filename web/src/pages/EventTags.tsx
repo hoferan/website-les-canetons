@@ -455,7 +455,7 @@ function TagFields({
                 className="peer sr-only"
               />
               <span
-                className={`rounded-full border-2 px-3 py-1 text-sm ${TAG_COLOURS[colour]} border-transparent peer-checked:border-current peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50`}
+                className={`rounded-full border-2 px-3 py-1 text-sm ${TAG_COLOURS[colour]} border-transparent peer-checked:border-current peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus`}
               >
                 {t(`eventTags.colours.${colour}`)}
               </span>

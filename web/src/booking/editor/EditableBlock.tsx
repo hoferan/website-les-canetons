@@ -181,13 +181,15 @@ export function EditableBlock({
           </div>
         </>
       ) : (
-        // Over the whole card, so a tap anywhere on the block opens it.
+        // Over the whole card, so a tap anywhere on the block opens it. Its
+        // ring starts 4px out, past the card's 3px shadow: closer, it ran
+        // into the ink and measured 2.35:1 there (#391).
         <button
           ref={editButton}
           type="button"
           aria-label={t("registrationOptions.edit", { block: name })}
           onClick={onOpen}
-          className="absolute inset-0 rounded-surface focus-visible:outline-3 focus-visible:outline-violet"
+          className="absolute inset-0 rounded-surface focus-ring [--focus-ring-offset:4px]"
         />
       )}
     </div>

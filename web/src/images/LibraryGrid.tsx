@@ -274,7 +274,7 @@ export function LibraryGrid({
                   stops for a keyboard on the way to the same page. */}
               <Link
                 to={`/media/${image.id}`}
-                className="flex flex-col gap-tight rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                className="flex flex-col gap-tight rounded-sm focus-ring"
               >
                 <img
                   src={image.url}

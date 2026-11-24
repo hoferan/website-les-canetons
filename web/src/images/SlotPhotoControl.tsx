@@ -310,7 +310,7 @@ export function SlotPhotoControl({
             aria-label={name}
             aria-disabled={busy}
             onClick={open}
-            className="group/add flex aspect-[3/2] w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-violet/70 bg-violet/5 px-4 text-center text-ink outline-none transition-colors hover:border-violet hover:bg-violet/10 focus-visible:border-violet focus-visible:bg-violet/10 focus-visible:ring-[3px] focus-visible:ring-ring/40"
+            className="group/add flex aspect-[3/2] w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-violet/70 bg-violet/5 px-4 text-center text-ink transition-colors hover:border-violet hover:bg-violet/10 focus-ring focus-visible:border-violet focus-visible:bg-violet/10"
           >
             {/* The whole frame is the button; the chip inside it wears
                 the chip's yellow, so an empty slot reads as one more thing to
