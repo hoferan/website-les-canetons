@@ -210,10 +210,13 @@ export function Layout() {
       <RouteFocus />
 
       {/* The skip link, first in the tab order (#15). Hidden until focused.
-          Following it focuses <main>, which is why that carries tabIndex -1. */}
+          Following it focuses <main>, which is why that carries tabIndex -1.
+          It shows over the black header, so its ring is the stage's white:
+          violet there is 2.5:1 (#391). */}
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-sm focus:bg-panel focus:px-4 focus:py-3 focus:text-ink focus:outline-2 focus:outline-violet"
+        data-surface="stage"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-sm focus:bg-panel focus:px-4 focus:py-3 focus:text-ink focus-ring"
       >
         {t("nav.skipToContent")}
       </a>

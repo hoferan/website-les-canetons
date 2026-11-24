@@ -4,7 +4,9 @@
  *
  * The ring is the `focus-ring` outline, drawn 2px outside the element, so
  * what it must stand out from is the ground behind the element: the nearest
- * ancestor that paints a background. Stories render on the cream page.
+ * ancestor that paints a background. Stories render on the cream page. On a
+ * gradient, such as the hero's poster, the contrast is the lowest against any
+ * of its colours.
  *
  * It waits for the element's transitions first: a control with
  * `transition-all` animates the outline in, and read at once it is still 3px
@@ -13,18 +15,34 @@
 export async function measureFocusRing(element: Element) {
   await Promise.all(element.getAnimations().map((animation) => animation.finished));
   const style = getComputedStyle(element);
-  let ground: Element | null = element.parentElement;
-  while (ground && isTransparent(getComputedStyle(ground).backgroundColor)) {
-    ground = ground.parentElement;
+  let under = ["rgb(255, 255, 255)"];
+  for (let ground = element.parentElement; ground; ground = ground.parentElement) {
+    const painted = getComputedStyle(ground);
+    const stops = painted.backgroundImage.includes("gradient")
+      ? (painted.backgroundImage.match(/rgba?\([^)]*\)/g) ?? [])
+      : [];
+    if (stops.length) {
+      under = stops;
+      break;
+    }
+    if (!isTransparent(painted.backgroundColor)) {
+      under = [painted.backgroundColor];
+      break;
+    }
   }
-  const under = ground ? getComputedStyle(ground).backgroundColor : "rgb(255, 255, 255)";
-  const [ring, back] = [luminance(style.outlineColor), luminance(under)];
+  const ring = luminance(style.outlineColor);
+  const contrast = Math.min(
+    ...under.map((colour) => {
+      const back = luminance(colour);
+      return (Math.max(ring, back) + 0.05) / (Math.min(ring, back) + 0.05);
+    }),
+  );
   return {
     /** "solid 2px" when the one focus ring is on. */
     ring: `${style.outlineStyle} ${style.outlineWidth}`,
     colour: style.outlineColor,
-    ground: under,
-    contrast: (Math.max(ring, back) + 0.05) / (Math.min(ring, back) + 0.05),
+    ground: under.join(" / "),
+    contrast,
   };
 }
 

@@ -77,6 +77,7 @@ export function Home() {
           the Scallop room to draw over the bottom edge. */}
       <div
         data-edit-block="home.hero"
+        data-surface="poster"
         className={cn("relative bg-poster text-white", SCALLOP_CLIP)}
       >
         <Confetti seed={11} colours={POSTER_CONFETTI} wobble />

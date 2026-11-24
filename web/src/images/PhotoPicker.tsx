@@ -145,7 +145,7 @@ export function PhotoPicker({ open, onOpenChange, onPick, onRemove, upload, shri
                     thumbnail: the button's accessible name is that text. */}
                 <button
                   type="button"
-                  className="flex min-h-touch w-full flex-col overflow-hidden rounded-sm border text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="flex min-h-touch w-full flex-col overflow-hidden rounded-sm border text-left focus-ring"
                   onClick={() => {
                     onPick(image);
                     close(false);

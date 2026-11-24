@@ -84,9 +84,12 @@ export function PhoneNav({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <div className="flex items-center justify-between pr-2 md:hidden">
+        {/* The bar is as tall as the button, so a ring outside it would end
+            on the cream below: it is drawn inside instead (#391). The same
+            for the language switch at the other end. */}
         <Dialog.Trigger
           aria-label={t("nav.menuLabel")}
-          className="focus-ring-stage flex min-h-touch items-center gap-2 px-4 font-semibold"
+          className="focus-ring-stage flex min-h-touch items-center gap-2 px-4 font-semibold [--focus-ring-offset:-4px]"
         >
           <Menu aria-hidden="true" className="size-6" />
           {t("nav.menu")}
@@ -97,7 +100,9 @@ export function PhoneNav({
               button is gone and the bar is 44px again, which EditModeBar's
               top-11 counts on. */}
           <EditModeStart className="my-1.5" />
-          <LanguageSwitch />
+          <div className="[--focus-ring-offset:-4px]">
+            <LanguageSwitch />
+          </div>
         </div>
       </div>
 

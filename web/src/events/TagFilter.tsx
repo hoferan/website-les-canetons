@@ -96,7 +96,7 @@ function Option({
       className="group inline-flex min-h-touch shrink-0 items-center outline-none"
     >
       <span
-        className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap group-focus-visible:ring-[3px] group-focus-visible:ring-ring/50 ${className}`}
+        className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-focus ${className}`}
       >
         {children}
       </span>

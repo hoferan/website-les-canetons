@@ -454,10 +454,11 @@ export function HistoryForm({
                 // A ring offset, because the checked circle is filled with the
                 // same violet as the ring: without the gap, focus on the
                 // selected icon, where focus nearly always is, is invisible.
+                // On :focus-visible, so a click on an icon draws no ring.
                 <label
                   key={key}
                   title={name}
-                  className="flex size-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink focus-within:ring-2 focus-within:ring-violet focus-within:ring-offset-2 focus-within:ring-offset-panel has-checked:border-violet has-checked:bg-violet has-checked:text-white"
+                  className="flex size-11 cursor-pointer items-center justify-center rounded-full border border-line text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus has-checked:border-violet has-checked:bg-violet has-checked:text-white"
                 >
                   <input
                     type="radio"

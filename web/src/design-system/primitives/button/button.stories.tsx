@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ArrowRight, Plus } from "lucide-react";
 import { expect, userEvent } from "storybook/test";
 
+import { measureFocusRing } from "../../internal/testing/focus-ring";
 import { Button } from "./button";
 
 const meta = {
@@ -94,6 +95,30 @@ export const OnTheStage: Story = {
       getComputedStyle(button).getPropertyValue("--color-focus").trim();
     await expect(focus(page)).toBe("#4b2ed6");
     await expect(focus(stage)).toBe("#fff");
+  },
+};
+
+/**
+ * On the violet-to-pink poster behind a public page's hero (`data-surface="poster"`) the focus
+ * ring turns white, as on the stage, while the shadow stays ink. A violet ring vanishes on the
+ * poster's violet end; white measures 3.3:1 against its pinkest colour and 8.4:1 on the violet.
+ */
+export const OnThePoster: Story = {
+  args: { variant: "accent" },
+  render: (args) => (
+    <div data-surface="poster" className="rounded-md bg-poster p-6">
+      <Button {...args}>Sur l’affiche</Button>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const button = canvas.getByRole("button", { name: "Sur l’affiche" });
+    await expect(getComputedStyle(button).boxShadow).toContain("rgb(20, 18, 28) 3px 3px");
+    await userEvent.tab();
+    await expect(button).toHaveFocus();
+    const { ring, colour, contrast } = await measureFocusRing(button);
+    await expect(ring).toBe("solid 2px");
+    await expect(colour).toBe("rgb(255, 255, 255)");
+    await expect(contrast).toBeGreaterThanOrEqual(3);
   },
 };
 
