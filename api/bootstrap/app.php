@@ -49,7 +49,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // routes/meta.php is unversioned at /api/*: the reference and the
         // migration trigger describe or operate the API rather than being part
         // of it. It shares the `api` middleware group, so RunPendingMigrations
-        // sits in front of it too.
+        // sits in front of it too, except on POST /api/migrate, which opts out
+        // so its dry run stays dry and takes the same lock itself.
         then: function (): void {
             Route::middleware('api')
                 ->prefix('api')

@@ -291,7 +291,8 @@ The request-path runner has no timeout of its own. A long `ALTER` holds a
 PHP-FPM worker until `max_execution_time` stops it halfway, and the next request
 retries from wherever it stopped. Running it by hand does not help: the
 migration file only reaches the server with a deploy, and `POST /api/migrate`
-goes through the same `api` middleware group and the same PHP time limit. For a
+runs under the same PHP time limit. It skips `RunPendingMigrations` but takes
+the same lock, so the two never run a migration at once. For a
 heavy migration, ship it in a deploy of its own, ahead of the code that needs
 it, and run `npm run dbmigrate:<env>` right after that deploy so you are the
 request that runs it.
@@ -302,8 +303,9 @@ serve against a schema it cannot vouch for, so every `/api/*` request and
 démarrer" because it cannot load `GET /api/v1/config`. The migration is retried
 on every request. To recover:
 
-1. `npm run dbmigrate:<env> -- --dry-run` shows the `error` and `output` the 503
-   does not carry. `_api/storage/logs/laravel.log` has the stack trace.
+1. `npm run dbmigrate:<env>` runs the failing migration once more and answers
+   with the `error` and `output` the 503 does not carry; `-- --dry-run` only
+   lists what is pending. `_api/storage/logs/laravel.log` has the stack trace.
 2. To bring the site back before you have a fix, set `AUTO_MIGRATE=false` in
    that server's `_api/.env`. Requests are served again, against the
    half-applied schema. That is deliberate (ADR 0030): this host has no shell,

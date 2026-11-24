@@ -3,14 +3,13 @@
 namespace App\Http\Middleware;
 
 use App\Exceptions\SchemaUnavailable;
+use App\Support\MigrationLock;
 use Closure;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
-use UnexpectedValueException;
 
 /**
  * Applies pending migrations on the first Laravel request after a deploy,
@@ -27,8 +26,9 @@ use UnexpectedValueException;
  * `npm run dbmigrate:test` by hand.
  *
  * POST /api/migrate remains the explicit operator path: `npm run
- * dbmigrate:<env>` calls it, and it is the only way to get a dry run. This
- * middleware is the safety net under it.
+ * dbmigrate:<env>` calls it, and it is the only way to get a dry run. That
+ * route opts out of this middleware (routes/meta.php), or a dry run would apply
+ * everything before the controller read `mode`. It takes the same lock instead.
  *
  * Hot path: nearly every request has nothing pending, and that costs one glob
  * of database/migrations plus two round trips (the information_schema lookup
@@ -42,38 +42,17 @@ use UnexpectedValueException;
  * deploy, which is an FTP upload that cannot run anything on the server, and a
  * TTL reopens a window in which the API serves against the wrong schema.
  *
- * Why a raw GET_LOCK: Cache::lock() and `artisan migrate --isolated` both go
- * through the cache store, which is the `database` store
- * (CACHE_STORE=database, see api/.env.example), and the `cache` table is itself
- * created by a migration. GET_LOCK needs no table, so it works on an empty
- * database.
- *
- * The lock is held on the connection, so every statement here is pinned to the
- * write PDO (useReadPdo: false), the one `artisan migrate` writes through.
+ * The lock is App\Support\MigrationLock, which says why it is a raw GET_LOCK.
  */
 class RunPendingMigrations
 {
-    /**
-     * The same name as the old server-rendered site's migrator, so the two
-     * exclude each other while both can run against one database. Advisory
-     * lock names are server-wide, not per-database.
-     */
-    private const LOCK_NAME = 'lescanetons_migrate';
-
-    /**
-     * Long enough for a realistic migration run to finish while a second worker
-     * waits, short enough that a wedged migration surfaces as a 503 rather than
-     * pinning an FPM worker until the request times out.
-     */
-    private const LOCK_TIMEOUT_SECONDS = 30;
-
     /**
      * Overridable only so the test proving that an unavailable lock produces a
      * 503 can wait 0 seconds instead of 30.
      */
     protected function lockTimeoutSeconds(): int
     {
-        return self::LOCK_TIMEOUT_SECONDS;
+        return MigrationLock::TIMEOUT_SECONDS;
     }
 
     public function handle(Request $request, Closure $next): Response
@@ -94,13 +73,13 @@ class RunPendingMigrations
             return;
         }
 
-        if (! $this->acquireLock()) {
+        if (! MigrationLock::acquire($this->lockTimeoutSeconds())) {
             // Timed out behind a worker that is migrating, or an error. Either
             // way the schema may not be current, so the request is not served.
             throw new SchemaUnavailable(sprintf(
                 'Could not acquire the migration lock (%s) within %d seconds; '
                 .'migrations are pending and the schema may be out of date.',
-                self::LOCK_NAME,
+                MigrationLock::NAME,
                 $this->lockTimeoutSeconds()
             ));
         }
@@ -112,7 +91,7 @@ class RunPendingMigrations
                 $this->migrate();
             }
         } finally {
-            $this->releaseLock();
+            MigrationLock::release();
         }
     }
 
@@ -176,47 +155,6 @@ class RunPendingMigrations
                 $exitCode,
                 trim(Artisan::output())
             ));
-        }
-    }
-
-    /**
-     * GET_LOCK returns 1 (acquired), 0 (timed out) or NULL (error). Only 1 may
-     * be read as success; the string comparison is because the driver hands
-     * these back as strings on MariaDB.
-     */
-    private function acquireLock(): bool
-    {
-        $row = DB::selectOne(
-            'SELECT GET_LOCK(?, ?) AS acquired',
-            [self::LOCK_NAME, $this->lockTimeoutSeconds()],
-            useReadPdo: false
-        );
-
-        if ($row === null) {
-            // GET_LOCK always returns a row, so no row means something other
-            // than MariaDB answered. A programming error, not a
-            // SchemaUnavailable.
-            throw new UnexpectedValueException('GET_LOCK returned no row; the connection is not MariaDB/MySQL.');
-        }
-
-        return (string) $row->acquired === '1';
-    }
-
-    /**
-     * Best-effort: the lock is released anyway when the connection closes at
-     * the end of the request. Throwing out of the finally{} would replace the
-     * real exception (a failed migration) with this one.
-     */
-    private function releaseLock(): void
-    {
-        try {
-            DB::selectOne(
-                'SELECT RELEASE_LOCK(?)',
-                [self::LOCK_NAME],
-                useReadPdo: false
-            );
-        } catch (Throwable) {
-            // Intentionally ignored; see the docblock.
         }
     }
 }
