@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
   Button,
   IconButton,
+  StateMessage,
   Switch,
 } from "@ds";
 
@@ -29,6 +30,7 @@ import { rowsOf, totalOf } from "../api/collection";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
+import { listState } from "../components/listState";
 import { SuspectBadge, SuspectReasons } from "../components/SuspectFlag";
 import { t } from "../i18n";
 import { formatInstant } from "../lib/date";
@@ -145,6 +147,24 @@ export function ContactMessages() {
   const total = totalOf(list.data);
   const visible = messages.filter((message) => matchesFilter(filter, message));
   const mayManage = can("messages.manage");
+  // A filter that hides every message offers the way back to all of them.
+  const listView = listState(list, {
+    loadFailed: t("contactMessages.loadError"),
+    rowHeight: 14,
+    empty:
+      visible.length > 0
+        ? null
+        : total === 0
+          ? { title: t("contactMessages.empty") }
+          : {
+              title: t("contactMessages.emptyFiltered"),
+              action: (
+                <Button type="button" variant="secondary" onClick={() => setFilter("all")}>
+                  {t("contactMessages.showAll")}
+                </Button>
+              ),
+            },
+  });
 
   // Both keys: the archive's list, and the inbox badge, which lives in Layout
   // and never remounts, so nothing else would move its count after a handle
@@ -325,20 +345,9 @@ export function ContactMessages() {
         />
       ) : null}
 
-      {list.isPending ? <p className="mt-block">{t("common.loading")}</p> : null}
-      {list.isError ? (
-        <p role="alert" className="mt-block text-danger">
-          {t("contactMessages.loadError")}
-        </p>
-      ) : null}
+      {listView ? <StateMessage {...listView} className="mt-block" /> : null}
 
-      {!list.isPending && !list.isError && visible.length === 0 ? (
-        <p className="mt-block text-ink-muted">
-          {total === 0 ? t("contactMessages.empty") : t("contactMessages.emptyFiltered")}
-        </p>
-      ) : null}
-
-      {!list.isPending && !list.isError && visible.length > 0 ? (
+      {visible.length > 0 ? (
         <>
           <ul
             data-testid="messages-cards"

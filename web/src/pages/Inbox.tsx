@@ -12,7 +12,8 @@ import type { EventBookingsFactsResource, InboxItemResource } from "../api/gener
 import { actorsText, changesText, closingText, placesText } from "../booking/bookingProgress";
 import { PageSection } from "../components/PageSection";
 import { SuspectBadge } from "../components/SuspectFlag";
-import { Button } from "@ds";
+import { Button, StateMessage } from "@ds";
+import { listState } from "../components/listState";
 import { t } from "../i18n";
 import { Link } from "../i18n/routing";
 import { formatDay, formatInstant } from "../lib/date";
@@ -55,23 +56,19 @@ export function Inbox() {
   usePageTitle(t("inbox.heading"));
   const list = useInboxIndex();
   const items = rowsOf<InboxItemResource>(list.data);
+  const state = listState(list, {
+    loadFailed: t("inbox.loadError"),
+    rowHeight: 8.5,
+    empty: items.length > 0 ? null : { title: t("inbox.empty") },
+  });
 
   return (
     <PageSection>
       <h1 className="font-display text-4xl">{t("inbox.heading")}</h1>
 
-      {list.isPending ? <p className="mt-block">{t("common.loading")}</p> : null}
-      {list.isError ? (
-        <p role="alert" className="mt-block text-danger">
-          {t("inbox.loadError")}
-        </p>
-      ) : null}
+      {state ? <StateMessage {...state} className="mt-block" /> : null}
 
-      {!list.isPending && !list.isError && items.length === 0 ? (
-        <p className="mt-block text-ink-muted">{t("inbox.empty")}</p>
-      ) : null}
-
-      {!list.isPending && !list.isError && items.length > 0 ? (
+      {items.length > 0 ? (
         <ul data-testid="inbox-items" className="mt-block flex flex-col gap-related">
           {items.map((item) => (
             <li key={`${item.kind}-${item.id}`} data-testid="inbox-item">

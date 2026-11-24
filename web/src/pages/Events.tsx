@@ -10,7 +10,6 @@ import {
   RadioGroup,
   StateMessage,
   ToggleOption,
-  type StateMessageProps,
 } from "@ds";
 import { ChevronDown, Plus } from "lucide-react";
 
@@ -28,6 +27,7 @@ import type { EventResource, EventTagResource } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
+import { listState } from "../components/listState";
 import { PageSection } from "../components/PageSection";
 import { RowActions, type RowAction } from "../components/RowActions";
 import { SearchField, useDebouncedValue } from "../components/SearchField";
@@ -405,52 +405,37 @@ export function Events() {
   }
 
   // One StateMessage for the whole load, so its live regions outlive each
-  // change of state (#387). A refetch that fails keeps the rows it had, and
-  // the error sits above them. Three rows at an event card's measured height
+  // change of state (#387). Three rows at an event card's measured height
   // (about 250px at 390 and 1280), so the list lands without a jump.
   //
   // The empty state says something, since a blank screen reads as broken. A
   // search or tag that matched nothing gets its own sentence and no way to add
   // a series: the planning may be full.
-  //
-  // React Query sends a query that has no data back to pending for a retry.
-  // That retry stays an error with a busy Réessayer, or the skeleton would
-  // unmount the button the reader just pressed.
   const offerSeries = mayManage && !showingPast && q === "" && tag === null;
-  const retrying = planning.isPending && planning.errorUpdateCount > 0;
-  const listState: StateMessageProps | null =
-    planning.isError || retrying
-      ? {
-          state: "error",
-          title: t("events.loadFailed"),
-          description: t("common.loadFailedHint"),
-          retry: {
-            label: t("common.retry"),
-            onRetry: () => void planning.refetch(),
-            busy: planning.isFetching,
+  const planningState = listState(planning, {
+    loadFailed: t("events.loadFailed"),
+    rows: 3,
+    rowHeight: 15.5,
+    empty:
+      shown.length > 0
+        ? null
+        : {
+            title:
+              q !== ""
+                ? t("events.noMatch")
+                : tag !== null
+                  ? t("events.noTagMatch")
+                  : showingPast
+                    ? t("events.emptyPast")
+                    : t("events.empty"),
+            description: offerSeries ? t("events.emptyHint") : undefined,
+            action: offerSeries ? (
+              <Button asChild>
+                <Link to="/events/new/series">{t("events.addSeries")}</Link>
+              </Button>
+            ) : undefined,
           },
-        }
-      : planning.isPending
-        ? { state: "loading", label: t("common.loading"), rows: 3, rowHeight: 15.5 }
-        : shown.length === 0
-          ? {
-              state: "empty",
-              title:
-                q !== ""
-                  ? t("events.noMatch")
-                  : tag !== null
-                    ? t("events.noTagMatch")
-                    : showingPast
-                      ? t("events.emptyPast")
-                      : t("events.empty"),
-              description: offerSeries ? t("events.emptyHint") : undefined,
-              action: offerSeries ? (
-                <Button asChild>
-                  <Link to="/events/new/series">{t("events.addSeries")}</Link>
-                </Button>
-              ) : undefined,
-            }
-          : null;
+  });
 
   return (
     <PageSection>
@@ -573,7 +558,7 @@ export function Events() {
         </p>
       ) : null}
 
-      {listState ? <StateMessage {...listState} className="mt-block" /> : null}
+      {planningState ? <StateMessage {...planningState} className="mt-block" /> : null}
 
       {drafts.length > 0 ? (
         <section className="mt-block" aria-labelledby="drafts-heading">

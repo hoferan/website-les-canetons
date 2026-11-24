@@ -431,6 +431,7 @@ export const de: typeof fr = {
     // The normal case, not an error: an empty inbox is good news.
     empty: "Noch keine Nachrichten. Das Kontaktformular ist bereit.",
     emptyFiltered: "Keine Nachricht entspricht diesem Filter.",
+    showAll: "Alle Nachrichten anzeigen",
     loadError: "Die Nachrichtenliste konnte nicht geladen werden.",
     readError: "Diese Nachricht konnte nicht geladen werden. Laden Sie die Seite neu.",
     actionFailed: "Die Aktion konnte nicht ausgeführt werden.",
@@ -507,6 +508,7 @@ export const de: typeof fr = {
     recordedByCommittee: "Vom Vorstand erfasst.",
     nobodyAnswerable:
       "Es gehört noch niemand einem Register an, also wird von niemandem eine Rückmeldung erwartet.",
+    assignRegisters: "Register zuweisen",
     answerFromPlanning: "Antworten Sie über die Planung.",
     editFromPlanning: "Änderbar über die Planung.",
     comingAria: "{{name}} kommt",
@@ -888,9 +890,10 @@ export const de: typeof fr = {
     countsSeparator: " · ",
     exportsHint:
       "Alle vier Dateien enthalten genau dieselben Zeilen. Excel ist die, die der Vorstand öffnet; CSV funktioniert überall.",
-    empty: "Es hat sich noch niemand angemeldet. Das öffentliche Formular ist unter",
+    empty: "Es hat sich noch niemand angemeldet.",
+    emptyOpen: "Das öffentliche Formular ist unter",
     emptyClosed:
-      "Es hat sich noch niemand angemeldet. Das Formular ist für das Publikum noch nicht geöffnet: Kreuzen Sie beim Anlass «Formular geöffnet» an.",
+      "Das Formular ist für das Publikum noch nicht geöffnet: Kreuzen Sie beim Anlass «Formular geöffnet» an.",
 
     // "Stornieren", not "Abbrechen": this cancels a booking, while
     // common.cancel closes a form without doing anything. French says
@@ -1660,6 +1663,7 @@ export const de: typeof fr = {
     add: "Rolle erstellen",
     saveFailed: "Die Rolle konnte nicht gespeichert werden.",
     deleteFailed: "Die Rolle konnte nicht gelöscht werden.",
+    loadFailed: "Die Rollen konnten nicht geladen werden.",
   },
   eventTags: {
     heading: "Kategorien",
@@ -1690,6 +1694,8 @@ export const de: typeof fr = {
     deleteUnused: "Kein Anlass hat diese Kategorie.",
     saveFailed: "Die Kategorie konnte nicht gespeichert werden.",
     deleteFailed: "Die Kategorie konnte nicht gelöscht werden.",
+    loadFailed: "Die Kategorien konnten nicht geladen werden.",
+    empty: "Noch keine Kategorien.",
   },
   registers: {
     heading: "Register",
@@ -1713,5 +1719,7 @@ export const de: typeof fr = {
     saveFailed: "Das Register konnte nicht gespeichert werden.",
     deleteFailed: "Das Register konnte nicht gelöscht werden.",
     moveFailed: "Die Reihenfolge konnte nicht gespeichert werden.",
+    loadFailed: "Die Register konnten nicht geladen werden.",
+    empty: "Noch keine Register.",
   },
 };

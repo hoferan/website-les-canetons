@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Badge, Button, FormActions, Notice, Switch } from "@ds";
+import { Badge, Button, FormActions, Notice, StateMessage, Switch } from "@ds";
 
 import { rowsOf, totalOf } from "../api/collection";
 import { downloadGuestList, type ExportFormat } from "../api/download";
@@ -35,6 +35,7 @@ import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { ContactLink } from "../components/ContactLink";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
+import { listState } from "../components/listState";
 import { RowActions, type RowAction } from "../components/RowActions";
 import { SuspectBadge, SuspectReasons } from "../components/SuspectFlag";
 import { formatEventWhen } from "../events/formatEventWhen";
@@ -174,6 +175,26 @@ export function EventRegistrations() {
   const perAnswer = answerTotalsOf(bookings);
 
   const title = event.data?.status === 200 ? event.data.data : null;
+
+  // A form that is not open answers 404 at its address (ADR 0033), so the
+  // address is offered only once there is something there.
+  const state = listState(list, {
+    loadFailed: t("registrations.listLoadFailed"),
+    rowHeight: 15,
+    empty:
+      bookings.length > 0
+        ? null
+        : {
+            title: t("registrations.empty"),
+            description: title?.registrationEnabled ? (
+              <>
+                {t("registrations.emptyOpen")} <code>/events/{eventId}/book</code>.
+              </>
+            ) : (
+              t("registrations.emptyClosed")
+            ),
+          },
+  });
 
   // A correction or cancellation made here is a change since the read too.
   const refresh = () =>
@@ -331,15 +352,9 @@ export function EventRegistrations() {
         </p>
       ) : null}
 
-      {list.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
+      {state ? <StateMessage {...state} className="mt-block" /> : null}
 
-      {list.isError ? (
-        <p role="alert" className="mt-block text-red-700">
-          {t("registrations.listLoadFailed")}
-        </p>
-      ) : null}
-
-      {!list.isPending && !list.isError ? (
+      {bookings.length > 0 ? (
         <p data-testid="guest-counts" className="mt-block text-lg">
           {/* Both counts are pluralised by the catalogue: a `> 1` rule is
               French, and wrong in German, where zero is plural. */}
@@ -363,7 +378,7 @@ export function EventRegistrations() {
         </p>
       ) : null}
 
-      {!list.isPending && !list.isError ? <BookingReadLine eventId={eventId} /> : null}
+      {list.data !== undefined ? <BookingReadLine eventId={eventId} /> : null}
 
       {/* What the kitchen is told: a sum of the quantities the server sent
           per booking, the same numbers as every download's totals row. */}
@@ -472,20 +487,6 @@ export function EventRegistrations() {
             setAmending(null);
           }}
         />
-      ) : null}
-
-      {!list.isPending && !list.isError && bookings.length === 0 ? (
-        <p className="mt-block text-ink-muted">
-          {/* A form that is not open answers 404 at its address (ADR 0033),
-              so the address is offered only once there is something there. */}
-          {title?.registrationEnabled ? (
-            <>
-              {t("registrations.empty")} <code>/events/{eventId}/book</code>.
-            </>
-          ) : (
-            t("registrations.emptyClosed")
-          )}
-        </p>
       ) : null}
 
       {bookings.length > 0 ? (

@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-q
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-import { Badge, Button, Select, Surface } from "@ds";
+import { Badge, Button, Select, StateMessage, Surface } from "@ds";
 
 import {
   getMemberIndexQueryKey,
@@ -28,6 +28,7 @@ import { rowsOf, totalOf } from "../api/collection";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
+import { listState } from "../components/listState";
 import { SearchField, useDebouncedValue } from "../components/SearchField";
 import { RowActions, type RowAction } from "../components/RowActions";
 import { t } from "../i18n";
@@ -182,6 +183,22 @@ export function Members() {
     setSectionFilter("");
     setRoleFilter("");
   }
+
+  const rosterState = listState(roster, {
+    loadFailed: t("members.rosterLoadFailed"),
+    rowHeight: 13,
+    empty:
+      members.length > 0 || !filtering
+        ? null
+        : {
+            title: t("members.noMatch"),
+            action: (
+              <Button type="button" variant="secondary" onClick={clearFilters}>
+                {t("members.clearFilters")}
+              </Button>
+            ),
+          },
+  });
 
   function openCreate() {
     form.clear();
@@ -437,23 +454,11 @@ export function Members() {
         </Select>
       </div>
 
-      {roster.isPending ? <p className="mt-block">{t("common.loading")}</p> : null}
-      {roster.isError ? (
-        <p role="alert" className="mt-block text-danger">
-          {t("members.rosterLoadFailed")}
-        </p>
-      ) : null}
-
-      {/* A search that found nobody says so and offers the way back;
-          otherwise the screen reads as a roster that failed to load. */}
-      {filtering && !roster.isPending && !roster.isError && members.length === 0 ? (
-        <div className="mt-block" data-testid="roster-no-match">
-          <p className="text-ink-muted">{t("members.noMatch")}</p>
-          <Button type="button" variant="secondary" className="mt-tight" onClick={clearFilters}>
-            {t("members.clearFilters")}
-          </Button>
-        </div>
-      ) : null}
+      {/* Straight after the filters, so Réessayer is the next Tab stop. A
+          search that found nobody says so and offers the way back; otherwise
+          the screen reads as a roster that failed to load. The whole roster is
+          never empty: whoever reads it is in it. */}
+      {rosterState ? <StateMessage {...rosterState} className="mt-block" /> : null}
 
       <ul
         data-testid="roster-cards"

@@ -12,6 +12,7 @@ import {
   Button,
   Checkbox,
   FormActions,
+  StateMessage,
   Surface,
 } from "@ds";
 
@@ -32,6 +33,7 @@ import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
+import { listState } from "../components/listState";
 import { permissionHint, permissionLabel, roleName, roleNamesForEditing, t } from "../i18n";
 
 import { usePageTitle } from "../components/pageTitle";
@@ -60,6 +62,12 @@ export function Roles() {
   const queryClient = useQueryClient();
   const list = useRoleIndex();
   const roles = rowsOf<RoleResource>(list.data);
+  // Never empty: the baseline role always exists and cannot be deleted.
+  const state = listState(list, {
+    loadFailed: t("rolesPage.loadFailed"),
+    rowHeight: 9,
+    empty: null,
+  });
 
   const refresh = async () => {
     // The roster too: its cards and its form show role names.
@@ -74,7 +82,7 @@ export function Roles() {
       <h1 className="font-display text-3xl">{t("rolesPage.heading")}</h1>
       <p className="mt-tight text-ink-muted">{t("rolesPage.intro")}</p>
 
-      {list.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
+      {state ? <StateMessage {...state} className="mt-block" /> : null}
 
       <ul className="mt-block grid gap-related">
         {roles.map((role) => (

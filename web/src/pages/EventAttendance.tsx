@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Button } from "@ds";
+import { Button, StateMessage } from "@ds";
 import { notify } from "@/components/notify";
 
 import { rowsOf } from "../api/collection";
@@ -16,6 +16,7 @@ import type { ChaseListEntryResource } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
+import { listState } from "../components/listState";
 import { answerLine, nameOf } from "../events/chaseList";
 import { CorrectAnswerDialog } from "../events/CorrectAnswerDialog";
 import { formatEventWhen } from "../events/formatEventWhen";
@@ -55,6 +56,24 @@ export function EventAttendance() {
   const silent = entries.filter((entry) => entry.attendance === null);
 
   const mayRecord = can("attendance.record_for_others");
+
+  // Nobody to list means nobody is in a register yet; whoever may place them
+  // gets the way to the roster.
+  const state = listState(list, {
+    loadFailed: t("attendance.loadFailed"),
+    rowHeight: 4.5,
+    empty:
+      entries.length > 0
+        ? null
+        : {
+            title: t("attendance.nobodyAnswerable"),
+            action: can("members.manage") ? (
+              <Button asChild variant="secondary">
+                <Link to="/members">{t("attendance.assignRegisters")}</Link>
+              </Button>
+            ) : undefined,
+          },
+  });
 
   const record = useMutation({
     mutationFn: ({
@@ -127,17 +146,11 @@ export function EventAttendance() {
         </p>
       ) : null}
 
-      {list.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
-
-      {list.isError ? (
-        <p role="alert" className="mt-block text-red-700">
-          {t("attendance.loadFailed")}
-        </p>
-      ) : null}
+      {state ? <StateMessage {...state} className="mt-block" /> : null}
 
       {/* The three counts first and together: the number the committee acts
           on is the third one. */}
-      {!list.isPending && !list.isError ? (
+      {entries.length > 0 ? (
         <p data-testid="chase-counts" className="mt-block text-lg">
           {t("attendance.counts", {
             yes: yes.length,
@@ -264,10 +277,6 @@ export function EventAttendance() {
             ))}
           </ul>
         </section>
-      ) : null}
-
-      {!list.isPending && !list.isError && entries.length === 0 ? (
-        <p className="mt-block text-ink-muted">{t("attendance.nobodyAnswerable")}</p>
       ) : null}
 
       {/* Keyed by the member, so the form starts from the answer it is

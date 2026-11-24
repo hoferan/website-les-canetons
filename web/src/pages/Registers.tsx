@@ -13,6 +13,7 @@ import {
   Button,
   FormActions,
   IconButton,
+  StateMessage,
   Surface,
 } from "@ds";
 
@@ -32,6 +33,7 @@ import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
+import { listState } from "../components/listState";
 import { registerName, t } from "../i18n";
 
 import { usePageTitle } from "../components/pageTitle";
@@ -59,6 +61,11 @@ export function Registers() {
   const registers = rowsOf<SectionResource>(list.data);
   const [moving, setMoving] = useState(false);
   const reordering = useApiFormError(t("registers.moveFailed"));
+  const state = listState(list, {
+    loadFailed: t("registers.loadFailed"),
+    rowHeight: 8.75,
+    empty: registers.length > 0 ? null : { title: t("registers.empty") },
+  });
 
   const refresh = async () => {
     // The roster too: its cards carry a copy of each member's register name.
@@ -94,7 +101,8 @@ export function Registers() {
       <h1 className="font-display text-3xl">{t("registers.heading")}</h1>
       <p className="mt-tight text-ink-muted">{t("registers.intro")}</p>
 
-      {list.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
+      {/* No action in the empty state: the form to add one is right below. */}
+      {state ? <StateMessage {...state} className="mt-block" /> : null}
 
       <div role="alert">
         {reordering.error !== null ? (
@@ -102,7 +110,7 @@ export function Registers() {
         ) : null}
       </div>
 
-      <ol className="mt-block grid gap-related">
+      <ol className="mt-block grid gap-related empty:hidden">
         {registers.map((register, index) => (
           <RegisterRow
             key={register.id}

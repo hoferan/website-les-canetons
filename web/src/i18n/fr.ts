@@ -556,6 +556,7 @@ export const fr = {
     // The normal case, not an error: an empty inbox is good news.
     empty: "Aucun message pour l’instant. Le formulaire de contact est prêt à en recevoir.",
     emptyFiltered: "Aucun message ne correspond à ce filtre.",
+    showAll: "Afficher tous les messages",
     loadError: "La liste des messages n’a pas pu être chargée.",
     readError: "Ce message n’a pas pu être chargé. Rechargez la page.",
     // When a handle or delete fails without an API answer, e.g. a dropped connection.
@@ -679,6 +680,8 @@ export const fr = {
     recordedByCommittee: "Saisie par le comité.",
     nobodyAnswerable:
       "Personne n’est encore inscrit dans un pupitre, donc personne n’a de réponse à donner.",
+    // The empty list's link to the roster, for whoever may place members.
+    assignRegisters: "Attribuer les pupitres",
     // What the caller is told in place of buttons aimed at their own row,
     // which the on-behalf endpoint refuses (ADR 0018).
     answerFromPlanning: "Répondez depuis le planning.",
@@ -1194,9 +1197,12 @@ export const fr = {
     countsSeparator: " · ",
     exportsHint:
       "Les quatre fichiers contiennent exactement les mêmes lignes. Excel est celui que le comité ouvre\u00a0; CSV fonctionne partout.",
-    empty: "Personne ne s’est encore inscrit. Le formulaire public est à l’adresse",
+    // An empty guest list: `empty` above one of the two lines below it, and
+    // emptyOpen is followed by the form's address.
+    empty: "Personne ne s’est encore inscrit.",
+    emptyOpen: "Le formulaire public est à l’adresse",
     emptyClosed:
-      "Personne ne s’est encore inscrit. Le formulaire n’est pas encore ouvert au public\u00a0: cochez «\u00a0Formulaire ouvert\u00a0» sur l’événement.",
+      "Le formulaire n’est pas encore ouvert au public\u00a0: cochez «\u00a0Formulaire ouvert\u00a0» sur l’événement.",
 
     /**
      * The two "Annuler"s are not one key. `cancel` is the per-row button that
@@ -2150,6 +2156,7 @@ export const fr = {
     add: "Créer le rôle",
     saveFailed: "Le rôle n’a pas pu être enregistré.",
     deleteFailed: "Le rôle n’a pas pu être supprimé.",
+    loadFailed: "Les rôles n’ont pas pu être chargés.",
   },
   // The tag editor. "Catégorie" on screen: "étiquette" or "tag" would be the
   // developer's word, and the committee sorts the planning into categories.
@@ -2183,6 +2190,9 @@ export const fr = {
     deleteUnused: "Aucun événement ne la porte.",
     saveFailed: "La catégorie n'a pas pu être enregistrée.",
     deleteFailed: "La catégorie n'a pas pu être supprimée.",
+    loadFailed: "Les catégories n'ont pas pu être chargées.",
+    // Above the form that adds one, so it does not point at it.
+    empty: "Aucune catégorie pour l'instant.",
   },
   registers: {
     heading: "Pupitres",
@@ -2207,5 +2217,8 @@ export const fr = {
     saveFailed: "Le pupitre n'a pas pu être enregistré.",
     deleteFailed: "Le pupitre n'a pas pu être supprimé.",
     moveFailed: "L'ordre n'a pas pu être enregistré.",
+    loadFailed: "Les pupitres n'ont pas pu être chargés.",
+    // Above the form that adds one, so it does not point at it.
+    empty: "Aucun pupitre pour l'instant.",
   },
 };
