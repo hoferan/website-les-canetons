@@ -8,7 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   RadioGroup,
+  StateMessage,
   ToggleOption,
+  type StateMessageProps,
 } from "@ds";
 import { ChevronDown, Plus } from "lucide-react";
 
@@ -402,6 +404,54 @@ export function Events() {
     }
   }
 
+  // One StateMessage for the whole load, so its live regions outlive each
+  // change of state (#387). A refetch that fails keeps the rows it had, and
+  // the error sits above them. Three rows at an event card's measured height
+  // (about 250px at 390 and 1280), so the list lands without a jump.
+  //
+  // The empty state says something, since a blank screen reads as broken. A
+  // search or tag that matched nothing gets its own sentence and no way to add
+  // a series: the planning may be full.
+  //
+  // React Query sends a query that has no data back to pending for a retry.
+  // That retry stays an error with a busy Réessayer, or the skeleton would
+  // unmount the button the reader just pressed.
+  const offerSeries = mayManage && !showingPast && q === "" && tag === null;
+  const retrying = planning.isPending && planning.errorUpdateCount > 0;
+  const listState: StateMessageProps | null =
+    planning.isError || retrying
+      ? {
+          state: "error",
+          title: t("events.loadFailed"),
+          description: t("common.loadFailedHint"),
+          retry: {
+            label: t("common.retry"),
+            onRetry: () => void planning.refetch(),
+            busy: planning.isFetching,
+          },
+        }
+      : planning.isPending
+        ? { state: "loading", label: t("common.loading"), rows: 3, rowHeight: 15.5 }
+        : shown.length === 0
+          ? {
+              state: "empty",
+              title:
+                q !== ""
+                  ? t("events.noMatch")
+                  : tag !== null
+                    ? t("events.noTagMatch")
+                    : showingPast
+                      ? t("events.emptyPast")
+                      : t("events.empty"),
+              description: offerSeries ? t("events.emptyHint") : undefined,
+              action: offerSeries ? (
+                <Button asChild>
+                  <Link to="/events/new/series">{t("events.addSeries")}</Link>
+                </Button>
+              ) : undefined,
+            }
+          : null;
+
   return (
     <PageSection>
       <div className="flex flex-wrap items-center justify-between gap-related">
@@ -414,8 +464,8 @@ export function Events() {
              row-shaped, so this page-level menu does not use it.
 
              The items keep their full labels so each stands alone for a
-             screen reader, and events.emptyHint quotes t("events.addSeries"),
-             the same key rendered here. */
+             screen reader. An empty planning repeats the series item as its
+             own button, from the same key. */
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" aria-label={t("events.addTriggerAria")}>
@@ -523,38 +573,7 @@ export function Events() {
         </p>
       ) : null}
 
-      {planning.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
-
-      {planning.isError ? (
-        <p role="alert" className="mt-block text-red-700">
-          {t("events.loadFailed")}
-        </p>
-      ) : null}
-
-      {/* The empty state says something, since a blank screen reads as
-          broken. A search or tag that matched nothing gets its own sentence
-          and no hint to add a series: the planning may be full. */}
-      {!planning.isPending && !planning.isError && shown.length === 0 ? (
-        <div className="mt-block">
-          <p className="text-ink-muted">
-            {q !== ""
-              ? t("events.noMatch")
-              : tag !== null
-                ? t("events.noTagMatch")
-                : showingPast
-                  ? t("events.emptyPast")
-                  : t("events.empty")}
-          </p>
-          {mayManage && !showingPast && q === "" && tag === null ? (
-            <p className="mt-tight text-sm text-ink-muted">
-              {/* The hint quotes the menu item from the key that renders it.
-                  The guillemets travel in the string, because French spaces
-                  them and German does not. */}
-              {t("events.emptyHint", { action: t("events.addSeries") })}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+      {listState ? <StateMessage {...listState} className="mt-block" /> : null}
 
       {drafts.length > 0 ? (
         <section className="mt-block" aria-labelledby="drafts-heading">

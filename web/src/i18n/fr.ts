@@ -371,6 +371,10 @@ export const fr = {
    */
   common: {
     loading: "Chargement…",
+    // A list that failed to load: the line under its own sentence, and the
+    // button beside it (StateMessage).
+    loadFailedHint: "Vérifiez la connexion, puis réessayez.",
+    retry: "Réessayer",
     // The key to the star beside a required label, rendered after the star:
     // "* champ obligatoire".
     requiredLegend: "champ obligatoire",
@@ -786,11 +790,8 @@ export const fr = {
     noMatch: "Aucun événement ne correspond à cette recherche.",
     noTagMatch: "Aucun événement dans cette catégorie.",
     emptyPast: "Aucun événement passé.",
-    // {{action}} is another key's value: the hint quotes the button beside
-    // it, so the label is not spelled out twice. The spaced guillemets are
-    // French typography, which German does not take.
-    emptyHint:
-      "Ajoutez un événement, ou générez toute une saison d’un coup avec «\u00a0{{action}}\u00a0».",
+    // Above the "Ajouter une série" button, so it does not name it again.
+    emptyHint: "Ajoutez un événement, ou générez toute une saison d’un coup.",
     owedHeading: "À répondre",
     allAnswered: "Tout est répondu.",
     owedCount_one: "Il reste {{count}} événement sans réponse.",

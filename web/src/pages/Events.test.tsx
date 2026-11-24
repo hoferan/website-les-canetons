@@ -306,8 +306,26 @@ test("an empty planning says so rather than rendering nothing", async () => {
   await renderWithSession(<Events />, { route: "/events" });
 
   expect(await screen.findByText(/Aucun événement au planning/)).toBeInTheDocument();
-  // And an organiser is pointed at what to do about it.
+  // And an organiser is pointed at what to do about it, and given the way in.
   expect(screen.getByText(/générez toute une saison/)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ajouter une série" })).toHaveAttribute(
+    "href",
+    "/events/new/series",
+  );
+});
+
+test("a player's empty planning offers no way to add one", async () => {
+  server.use(
+    http.get("/api/v1/events", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
+
+  setMockUser("demo.player");
+  await renderWithSession(<Events />, { route: "/events" });
+
+  expect(await screen.findByText(/Aucun événement au planning/)).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Ajouter une série" })).toBeNull();
 });
 
 /**
@@ -340,6 +358,55 @@ test("a failed planning is announced, not silently empty", async () => {
   await renderWithSession(<Events />, { route: "/events" });
 
   expect(await screen.findByRole("alert")).toHaveTextContent(/n’a pas pu être chargé/);
+});
+
+/**
+ * React Query sends a query with no data back to pending for a retry. Shown
+ * as loading, that would unmount the button the reader just pressed.
+ */
+test("a retry that fails again keeps the reader on Réessayer", async () => {
+  const user = userEvent.setup();
+  // The retry is held open until the test has looked at it.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  let calls = 0;
+  server.use(
+    http.get("/api/v1/events", async () => {
+      calls += 1;
+      if (calls > 1) await held;
+      return HttpResponse.error();
+    }),
+  );
+
+  setMockUser("demo.player");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findByRole("alert");
+
+  const button = screen.getByRole("button", { name: "Réessayer" });
+  await user.click(button);
+  await waitFor(() => expect(button).toHaveAttribute("aria-busy", "true"));
+  expect(screen.queryByText("Chargement…")).toBeNull();
+
+  release();
+  await waitFor(() => expect(button).not.toHaveAttribute("aria-busy"));
+  expect(screen.getByRole("button", { name: "Réessayer" })).toBe(button);
+  expect(button).toHaveFocus();
+});
+
+test("Réessayer loads the planning again in place of the error", async () => {
+  const user = userEvent.setup();
+  let down = true;
+  server.use(http.get("/api/v1/events", () => (down ? HttpResponse.error() : undefined)));
+
+  setMockUser("demo.player");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findByRole("alert");
+
+  down = false;
+  await user.click(screen.getByRole("button", { name: "Réessayer" }));
+
+  expect(await screen.findAllByTestId("event-card")).not.toHaveLength(0);
+  expect(screen.queryByRole("alert")).toBeNull();
 });
 
 test("naming the event before deleting it", async () => {
@@ -1059,7 +1126,7 @@ test("the owed count changes its verb in German, so the plural is in the catalog
     .toBe("Es fehlt noch 1 Rückmeldung.");
 });
 
-test("the empty planning's hint quotes the button beside it, in German", async () => {
+test("the empty planning's button is the menu's series item, in German", async () => {
   server.use(
     http.get("/api/v1/events", () =>
       HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
@@ -1071,15 +1138,16 @@ test("the empty planning's hint quotes the button beside it, in German", async (
   await renderWithSession(<Events />, { route: "/events", locale: "de-CH" });
 
   expect(await screen.findByText("Keine Anlässe in der Planung.")).toBeInTheDocument();
+  expect(screen.getByText(/gleich eine ganze Saison/)).toBeInTheDocument();
 
-  // The label is read from the menu item that renders it, so the two cannot
-  // drift, and the guillemets are tight where French spaces them. The item
-  // sits behind the "Hinzufügen" trigger, so the menu is opened first.
+  // The empty planning's button is the menu's series item, from the same key,
+  // so the two cannot drift. The item sits behind the "Hinzufügen" trigger,
+  // so the menu is opened first.
+  const button = screen.getByRole("link", { name: "Serie hinzufügen" });
   await user.click(screen.getByRole("button", { name: "Hinzufügen zur Planung" }));
-  const action = await screen.findByRole("menuitem", { name: "Serie hinzufügen" });
-  expect(screen.getByText(/gleich eine ganze Saison/)).toHaveTextContent(
-    `mit «${action.textContent}» gleich eine ganze Saison`,
-  );
+  const item = await screen.findByRole("menuitem", { name: "Serie hinzufügen" });
+  expect(button).toHaveTextContent(item.textContent ?? "");
+  expect(button).toHaveAttribute("href", item.getAttribute("href") ?? "");
 });
 
 test("the calendar's month and weekday names follow the locale", async () => {
