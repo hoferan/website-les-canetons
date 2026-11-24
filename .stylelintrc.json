@@ -6,6 +6,12 @@
     "color-function-notation": "legacy",
     "alpha-value-notation": "number",
     "import-notation": null,
+    "custom-property-pattern": [
+      "^([a-z][a-z0-9]*)(-[a-z0-9]+)*(--[a-z0-9]+(-[a-z0-9]+)*|-\\*)?$",
+      {
+        "message": "Expected custom property name \"%s\" to be kebab-case, optionally with a Tailwind modifier (--text-xs--line-height) or namespace reset (--text-*)"
+      }
+    ],
     "at-rule-no-unknown": [
       true,
       {

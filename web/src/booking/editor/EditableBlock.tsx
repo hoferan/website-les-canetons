@@ -187,7 +187,7 @@ export function EditableBlock({
           type="button"
           aria-label={t("registrationOptions.edit", { block: name })}
           onClick={onOpen}
-          className="absolute inset-0 rounded-[18px] focus-visible:outline-3 focus-visible:outline-violet"
+          className="absolute inset-0 rounded-surface focus-visible:outline-3 focus-visible:outline-violet"
         />
       )}
     </div>

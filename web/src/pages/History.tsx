@@ -327,7 +327,7 @@ function TimelineEntry({
           photo={photo}
           alt={rowName}
           sizes={PHOTO_SIZES.timeline}
-          className="mt-tight h-auto w-full rounded-md"
+          className="mt-tight h-auto w-full rounded-sm"
         />
       ) : null}
 

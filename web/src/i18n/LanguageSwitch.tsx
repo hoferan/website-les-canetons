@@ -61,7 +61,7 @@ export function LanguageSwitch() {
           >
             <span
               aria-hidden="true"
-              className="rounded bg-white px-2 py-1 leading-none font-semibold text-stage"
+              className="rounded-sm bg-white px-2 py-1 leading-none font-semibold text-stage"
             >
               {CODE[locale]}
             </span>
@@ -86,7 +86,7 @@ export function LanguageSwitch() {
             onPointerEnter={() => void loadCatalogue(locale)}
             onFocus={() => void loadCatalogue(locale)}
             onTouchStart={() => void loadCatalogue(locale)}
-            className="focus-ring-stage inline-flex min-h-touch min-w-touch items-center justify-center rounded text-white/70 hover:text-white"
+            className="focus-ring-stage inline-flex min-h-touch min-w-touch items-center justify-center rounded-sm text-white/70 hover:text-white"
           >
             <span className="px-2 py-1 leading-none font-semibold">{CODE[locale]}</span>
           </Link>

@@ -28,7 +28,7 @@ function Select({ className, children, ...props }: React.ComponentProps<"select"
       <select
         data-slot="select"
         className={cn(
-          "peer min-h-touch w-full min-w-0 cursor-pointer appearance-none rounded-control border border-input bg-transparent py-1 pr-9 pl-3 text-base shadow-xs transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          "peer min-h-touch w-full min-w-0 cursor-pointer appearance-none rounded-control border border-input bg-transparent py-1 pr-9 pl-3 text-base transition-[color,box-shadow] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
           "focus-ring",
           "aria-invalid:border-feedback-error",
           className,

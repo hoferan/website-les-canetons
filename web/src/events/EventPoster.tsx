@@ -35,7 +35,7 @@ export function EventPoster({
         photo={poster}
         alt={t("photos.slot.event", { title })}
         sizes={PHOTO_SIZES.eventPoster}
-        className="h-auto w-full rounded-xl border-2 border-ink"
+        className="h-auto w-full rounded-md border-2 border-ink"
       />
     </a>
   );

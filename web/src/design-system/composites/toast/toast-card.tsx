@@ -121,7 +121,7 @@ export function ToastCard({
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocusInside(false);
       }}
-      className="grid min-h-18 w-full animate-toast-in min-[601px]:w-(--width) grid-cols-[3.875rem_1fr_auto] items-center gap-3 overflow-hidden rounded-2xl border-3 border-ink bg-panel pr-2 font-sans text-base text-ink shadow-toast"
+      className="grid min-h-18 w-full animate-toast-in min-[601px]:w-(--width) grid-cols-[3.875rem_1fr_auto] items-center gap-3 overflow-hidden rounded-lg border-3 border-ink bg-panel pr-2 font-sans text-base text-ink shadow-overlay"
     >
       {/* The column: the level's colour, and the clock as how much of it is
           left. A toast that stays has no clock and a full column. */}

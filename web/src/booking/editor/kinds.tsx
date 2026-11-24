@@ -46,7 +46,7 @@ export function KindTile({ kind }: { kind: OptionKind }) {
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex size-8 shrink-0 items-center justify-center rounded-md border-2 border-ink ${tint}`}
+      className={`inline-flex size-8 shrink-0 items-center justify-center rounded-sm border-2 border-ink ${tint}`}
     >
       <Icon className="size-4" />
     </span>

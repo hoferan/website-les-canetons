@@ -50,7 +50,7 @@ export function GeneratedPasswordDialog({
 
         <p
           data-testid="generated-password"
-          className="rounded-md border border-line bg-panel p-4 text-center font-mono text-2xl tracking-widest select-all"
+          className="rounded-sm border border-line bg-panel p-4 text-center font-mono text-2xl tracking-widest select-all"
         >
           {password}
         </p>

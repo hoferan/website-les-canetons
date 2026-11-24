@@ -124,7 +124,7 @@ export function Home() {
                     photo={photo}
                     alt={BAND_NAME}
                     sizes={BADGE_SIZES}
-                    className={cn("aspect-[237/174] rounded-lg object-cover", BADGE_FRAME)}
+                    className={cn("aspect-[237/174] rounded-md object-cover", BADGE_FRAME)}
                   />
                 ) : (
                   <BrandLogo className={BADGE_FRAME} />

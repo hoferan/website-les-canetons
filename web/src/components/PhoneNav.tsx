@@ -117,7 +117,12 @@ export function PhoneNav({
           data-confetti-avoid
           className="relative flex items-center justify-between py-2 pr-2 pl-4"
         >
-          <Link to="/" onClick={close} aria-label={site.name} className="focus-ring-stage rounded">
+          <Link
+            to="/"
+            onClick={close}
+            aria-label={site.name}
+            className="focus-ring-stage rounded-sm"
+          >
             <img
               src={publicUrl("assets/img/duck-white.png")}
               alt=""
@@ -130,7 +135,7 @@ export function PhoneNav({
             <LanguageSwitch />
             <Dialog.Close
               aria-label={t("nav.close")}
-              className="focus-ring-stage inline-flex min-h-touch min-w-touch items-center justify-center rounded"
+              className="focus-ring-stage inline-flex min-h-touch min-w-touch items-center justify-center rounded-sm"
             >
               <X aria-hidden="true" className="size-6" />
             </Dialog.Close>
@@ -141,7 +146,7 @@ export function PhoneNav({
           <ul
             aria-label={t("nav.groupMine")}
             data-confetti-avoid
-            className="relative mx-4 mt-2 rounded-2xl bg-white/[0.07] p-1.5"
+            className="relative mx-4 mt-2 rounded-lg bg-white/[0.07] p-1.5"
           >
             {mine.map((entry) => {
               const here = entry.to === active;
@@ -152,7 +157,7 @@ export function PhoneNav({
                     to={entry.to}
                     onClick={close}
                     aria-current={here ? "page" : undefined}
-                    className={`focus-ring-stage flex min-h-13 items-center gap-3 rounded-xl px-3 text-base font-semibold ${here ? "bg-yellow text-ink" : ""}`}
+                    className={`focus-ring-stage flex min-h-13 items-center gap-3 rounded-md px-3 text-base font-semibold ${here ? "bg-yellow text-ink" : ""}`}
                   >
                     <Icon aria-hidden="true" className={`size-5 ${here ? "" : "text-white/70"}`} />
                     {entry.label}
@@ -179,12 +184,12 @@ export function PhoneNav({
                   leading={
                     <span aria-hidden="true" className="flex w-5 shrink-0 justify-center">
                       <span
-                        className={`size-3 rotate-[20deg] rounded-[4px] ${MARKERS[index % MARKERS.length]}`}
+                        className={`size-3 rotate-[20deg] rounded-sm ${MARKERS[index % MARKERS.length]}`}
                       />
                     </span>
                   }
                   labelClassName={here ? NAV_HERE : undefined}
-                  className={`focus-ring-stage flex min-h-13 items-center gap-3 rounded-xl px-2 font-display text-[22px] uppercase ${recruit && !here ? "underline decoration-pink decoration-2 underline-offset-[6px]" : ""}`}
+                  className={`focus-ring-stage flex min-h-13 items-center gap-3 rounded-md px-2 font-display text-2xl uppercase ${recruit && !here ? "underline decoration-pink decoration-2 underline-offset-[6px]" : ""}`}
                 />
               </li>
             );
@@ -230,7 +235,7 @@ function AccountFooter({
 
   const fullName = `${member.firstName} ${member.lastName}`.trim();
   const action =
-    "focus-ring-stage inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[0.07] px-3 text-sm font-semibold";
+    "focus-ring-stage inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-md bg-white/[0.07] px-3 text-sm font-semibold";
 
   return (
     <div

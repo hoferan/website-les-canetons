@@ -233,7 +233,7 @@ export function LibraryGrid({
       </div>
       <div role="alert">
         {outcome && outcome.failures.length > 0 ? (
-          <div className="rounded-md border border-danger p-3">
+          <div className="rounded-sm border border-danger p-3">
             <p className="font-medium text-danger">{t("photos.deleteFailedHeading")}</p>
             <ul className="mt-tight flex flex-col gap-tight">
               {outcome.failures.map(({ image, message }) => (
@@ -245,7 +245,7 @@ export function LibraryGrid({
                     width={image.width}
                     height={image.height}
                     alt=""
-                    className="size-12 shrink-0 rounded object-cover"
+                    className="size-12 shrink-0 rounded-sm object-cover"
                   />
                   <span>{t("photos.deleteFailed", { name: image.name, message })}</span>
                 </li>
@@ -274,7 +274,7 @@ export function LibraryGrid({
                   stops for a keyboard on the way to the same page. */}
               <Link
                 to={`/media/${image.id}`}
-                className="flex flex-col gap-tight rounded outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                className="flex flex-col gap-tight rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 <img
                   src={image.url}
@@ -285,7 +285,7 @@ export function LibraryGrid({
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className="aspect-[4/3] w-full rounded object-cover"
+                  className="aspect-[4/3] w-full rounded-sm object-cover"
                 />
                 <span className="line-clamp-2 font-medium wrap-anywhere text-violet underline underline-offset-2">
                   {image.name}
@@ -351,7 +351,7 @@ export function LibraryGrid({
                   width={image.width}
                   height={image.height}
                   alt=""
-                  className="size-12 rounded object-cover"
+                  className="size-12 rounded-sm object-cover"
                 />
               </li>
             ))}

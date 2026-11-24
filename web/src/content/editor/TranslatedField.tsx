@@ -172,7 +172,7 @@ export function TranslatedField<T extends FieldValues = FieldValues>({
 /** "FR" or "DE" beside a label. Flex, not inline-block: see docs/traps.md. */
 function LanguageBadge({ children }: { children: string }) {
   return (
-    <span className="inline-flex rounded-md border-2 border-ink bg-ground px-1.5 align-[1.5px] text-xs font-bold">
+    <span className="inline-flex rounded-sm border-2 border-ink bg-ground px-1.5 align-[1.5px] text-xs font-bold">
       {children}
     </span>
   );

@@ -37,7 +37,7 @@ export function BlockInserter({
             <button
               key={kind}
               type="button"
-              className="flex min-h-touch items-start gap-2 rounded-xl border-2 border-ink bg-panel p-3 text-left hover:bg-ground focus-visible:outline-3 focus-visible:outline-violet"
+              className="flex min-h-touch items-start gap-2 rounded-md border-2 border-ink bg-panel p-3 text-left hover:bg-ground focus-visible:outline-3 focus-visible:outline-violet"
               onClick={() => {
                 setPicking(false);
                 onPick(kind);
@@ -70,7 +70,7 @@ export function BlockInserter({
       <button
         type="button"
         onClick={() => setPicking(true)}
-        className="flex min-h-touch w-full items-center justify-center gap-2 rounded-[18px] border-2 border-dashed border-ink-muted text-ink-muted hover:border-ink hover:text-ink focus-visible:outline-3 focus-visible:outline-violet"
+        className="flex min-h-touch w-full items-center justify-center gap-2 rounded-surface border-2 border-dashed border-ink-muted text-ink-muted hover:border-ink hover:text-ink focus-visible:outline-3 focus-visible:outline-violet"
       >
         <Plus aria-hidden="true" className="size-4" />
         {label}

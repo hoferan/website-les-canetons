@@ -73,7 +73,7 @@ export function CopyFrom({
               type="button"
               aria-disabled={copying !== null}
               onClick={() => copying === null && void copy(source)}
-              className="flex min-h-touch w-full flex-col rounded-xl border-2 border-ink bg-panel p-3 text-left hover:bg-ground focus-visible:outline-3 focus-visible:outline-violet"
+              className="flex min-h-touch w-full flex-col rounded-md border-2 border-ink bg-panel p-3 text-left hover:bg-ground focus-visible:outline-3 focus-visible:outline-violet"
             >
               <span className="font-semibold">{source.title}</span>
               <span className="text-sm text-ink-muted">

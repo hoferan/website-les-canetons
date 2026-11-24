@@ -28,7 +28,7 @@ export function PreviewLanguage() {
     <div
       role="group"
       aria-label={t("blockEditor.previewLanguage")}
-      className="flex shrink-0 overflow-hidden rounded-lg border-2 border-ink"
+      className="flex shrink-0 overflow-hidden rounded-md border-2 border-ink"
     >
       {ORDER.map((locale) => {
         const here = locale === current;

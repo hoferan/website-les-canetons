@@ -106,7 +106,7 @@ function NetworkFields({ path }: { path: string }) {
                   key={icon}
                   value={icon}
                   aria-label={iconName(icon)}
-                  className="size-11 rounded-xl border-2 border-ink bg-white px-0 text-ink data-[state=checked]:bg-yellow data-[state=checked]:text-ink data-[state=checked]:shadow-raised-sm"
+                  className="size-11 rounded-md border-2 border-ink bg-white px-0 text-ink data-[state=checked]:bg-yellow data-[state=checked]:text-ink data-[state=checked]:shadow-raised-sm"
                 >
                   <NetworkMark icon={icon} className="size-5" />
                 </ToggleOption>

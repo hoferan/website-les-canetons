@@ -27,7 +27,7 @@ export function Logo() {
     // The label must not contain "accueil": name matching can be substring
     // and case insensitive, so a query for a link such as "Retour à
     // l'accueil" would also match the logo and fail on strict mode.
-    <Link to="/" aria-label={name} className="focus-ring-stage flex items-center gap-3 rounded">
+    <Link to="/" aria-label={name} className="focus-ring-stage flex items-center gap-3 rounded-sm">
       {/* alt="": the wordmark beside it is real text saying the same thing.
 
           width/height are the file's intrinsic pixels, there to reserve the
@@ -50,7 +50,7 @@ export function Logo() {
         <span className="font-display text-lg leading-tight sm:text-2xl sm:leading-none">
           {name}
         </span>
-        <span className="mt-1.5 text-[10px] font-bold tracking-[0.28em] text-white/70 uppercase sm:text-[11px] sm:tracking-[0.3em]">
+        <span className="mt-1.5 text-xs font-bold tracking-[0.28em] text-white/70 uppercase sm:tracking-[0.3em]">
           Guggenmusik
         </span>
       </span>
@@ -78,7 +78,7 @@ export function BrandLogo({ className }: { className?: string }) {
       alt={t("home.brandLogoAlt")}
       width={237}
       height={174}
-      className={cn("h-auto rounded-lg", className)}
+      className={cn("h-auto rounded-md", className)}
     />
   );
 }

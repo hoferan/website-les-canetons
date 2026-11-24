@@ -71,7 +71,7 @@ export function SlotPhoto({ slot, label, alt, upload, shrinker }: Props) {
                 photo={photo}
                 alt={alt}
                 sizes={PHOTO_SIZES.textColumn}
-                className="block h-auto w-full rounded-lg"
+                className="block h-auto w-full rounded-md"
               />
             </div>
           ) : (
@@ -98,7 +98,7 @@ export function SlotPhoto({ slot, label, alt, upload, shrinker }: Props) {
       photo={photo}
       alt={alt}
       sizes={PHOTO_SIZES.textColumn}
-      className="mt-related h-auto w-full rounded-lg"
+      className="mt-related h-auto w-full rounded-md"
     />
   );
 }
