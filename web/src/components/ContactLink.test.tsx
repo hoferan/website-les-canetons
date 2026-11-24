@@ -47,8 +47,10 @@ test("a caller's classes reach the link without taking the touch target away", (
 
   const link = screen.getByRole("link");
   expect(link).toHaveClass("text-sm");
-  // min-h-8 is only real because of inline-flex; both must survive the merge.
-  expect(link).toHaveClass("min-h-8");
+  // The min-heights are only real because of inline-flex; all must survive
+  // the merge.
+  expect(link).toHaveClass("min-h-touch");
+  expect(link).toHaveClass("sm:min-h-8");
   expect(link).toHaveClass("inline-flex");
 });
 

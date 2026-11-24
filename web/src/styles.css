@@ -354,6 +354,22 @@ h2 {
   }
 }
 
+/* A link on a line of its own, such as "← Retour au planning", sized for a
+   thumb (#400). It is 44px tall on a phone (WCAG 2.5.5, Apple's 44pt) and,
+   from `sm` where a mouse points, the 24px of WCAG 2.5.8, which barely moves
+   the desktop spacing. It needs inline-flex because min-height does nothing
+   on an inline box. A link inside a sentence keeps its line height;
+   web/e2e/targets.spec.ts tells the two apart and measures every route. */
+@utility link-target {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--spacing-touch);
+
+  @variant sm {
+    min-height: 1.5rem;
+  }
+}
+
 /* The phone's Menu bar is sticky (Layout), so a jump to an anchor would
    land under it. 3rem clears its 44px. From `md` the bar scrolls away. */
 @media (max-width: 47.99rem) {
