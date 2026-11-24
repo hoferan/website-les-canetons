@@ -54,7 +54,7 @@ class AutoMigrateTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Must match RunPendingMigrations::LOCK_NAME. */
+    /** Must match App\Support\MigrationLock::NAME. */
     private const LOCK_NAME = 'lescanetons_migrate';
 
     /** Table the probe migration creates; also the marker we look for. */

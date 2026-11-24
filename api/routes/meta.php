@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\MigrateController;
+use App\Http\Middleware\RunPendingMigrations;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 |
 | Registered from bootstrap/app.php's withRouting(then:) hook with the same
 | `api` middleware group as routes/api.php, so RunPendingMigrations sits in
-| front of them too.
+| front of them too. POST /migrate is the exception; see its comment.
 |
 | They stay under /api/ so the site .htaccess dispatches them to Laravel
 | before its SPA fallback. Scramble's own /docs/api is outside that prefix,
@@ -40,4 +41,11 @@ Route::get('/health', HealthController::class);
 // Token-gated, no session: the deploy tooling calls this server-side with the
 // shared MIGRATE_TOKEN. Excluded from the OpenAPI document, since nothing in
 // the browser may trigger a migration.
-Route::post('/migrate', MigrateController::class);
+//
+// It skips RunPendingMigrations. With AUTO_MIGRATE on, the middleware would
+// apply everything before the controller read `mode`, so a dry run would
+// migrate, and a failing migration would answer its bare 503 instead of the
+// controller's `error` and `output`. The controller takes the same lock for
+// mode=apply (App\Support\MigrationLock).
+Route::post('/migrate', MigrateController::class)
+    ->withoutMiddleware(RunPendingMigrations::class);

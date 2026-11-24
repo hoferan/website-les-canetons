@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Api\MigrateController;
+use Illuminate\Database\Connection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -32,6 +34,12 @@ class MigrateTest extends TestCase
     /** Table the probe migration creates; also the marker we look for. */
     private const PROBE_TABLE = 'migrate_probe';
 
+    /** Must match App\Support\MigrationLock::NAME. */
+    private const LOCK_NAME = 'lescanetons_migrate';
+
+    /** A second, independent DB connection, for looking at the lock from outside. */
+    private const OTHER_CONNECTION = 'migrate_probe_connection';
+
     /** Directory registered as an extra migration path, per test. */
     private string $probePath;
 
@@ -51,6 +59,10 @@ class MigrateTest extends TestCase
         Schema::dropIfExists(self::PROBE_TABLE);
         DB::table('migrations')->where('migration', 'like', '2099_%_probe%')->delete();
         File::deleteDirectory($this->probePath);
+
+        // Disconnecting drops the session that held the lock, so a test that
+        // took one cannot wedge the next.
+        DB::purge(self::OTHER_CONNECTION);
 
         parent::tearDown();
     }
@@ -276,7 +288,173 @@ class MigrateTest extends TestCase
         self::assertStringContainsString('probe migration exploded', (string) $response->json('error'));
     }
 
+    // ---------------------------------------------------- with AUTO_MIGRATE on
+
+    /**
+     * phpunit.xml pins AUTO_MIGRATE=false, but every server runs with it on.
+     * RunPendingMigrations must not sit in front of this route there, or it
+     * applies everything before the controller reads `mode`, and a dry run
+     * reports `pending: []` after doing the work.
+     */
+    public function test_dry_run_stays_dry_with_auto_migrate_on(): void
+    {
+        config(['app.migrate_token' => self::TOKEN, 'app.auto_migrate' => true]);
+        $name = $this->writeProbeMigration();
+
+        $response = $this->postJson('/api/migrate?mode=dry-run', [], ['X-Migrate-Token' => self::TOKEN]);
+
+        $response->assertOk()
+            ->assertJsonPath('mode', 'dry-run')
+            ->assertJsonPath('applied', []);
+
+        self::assertContains($name, $response->json('pending'), 'dry-run must still report the probe as pending.');
+        self::assertFalse(Schema::hasTable(self::PROBE_TABLE), 'dry-run applied the probe migration.');
+        self::assertSame(0, DB::table('migrations')->where('migration', $name)->count());
+    }
+
+    /**
+     * Recovery from a failing migration starts with this endpoint, so it must
+     * answer in its own contract, with the exception's message in `error` and
+     * the console output in `output`. The middleware, if it ran first, would
+     * answer the same bare 503 problem document as every other route.
+     */
+    public function test_a_failing_migration_is_reported_with_error_and_output_with_auto_migrate_on(): void
+    {
+        config(['app.migrate_token' => self::TOKEN, 'app.auto_migrate' => true]);
+        $name = $this->writeFailingProbeMigration();
+
+        $response = $this->postJson('/api/migrate?mode=apply', [], ['X-Migrate-Token' => self::TOKEN]);
+
+        $response->assertStatus(500)
+            ->assertJsonPath('status', 'error')
+            ->assertJsonPath('mode', 'apply');
+
+        self::assertStringContainsString('probe migration exploded', (string) $response->json('error'));
+        self::assertIsString($response->json('output'));
+        self::assertStringContainsString($name, (string) $response->json('output'));
+    }
+
+    // ---------------------------------------------------------------- the lock
+
+    /**
+     * mode=apply takes the advisory lock RunPendingMigrations takes, on the
+     * connection the migration runs through, so the two cannot apply the same
+     * migration at once.
+     */
+    public function test_apply_holds_the_migration_lock_on_the_migrating_connection(): void
+    {
+        config(['app.migrate_token' => self::TOKEN]);
+        $marker = $this->probePath.'/holder.txt';
+        $this->writeLockObservingProbeMigration($marker);
+
+        $this->postJson('/api/migrate?mode=apply', [], ['X-Migrate-Token' => self::TOKEN])->assertOk();
+
+        self::assertFileExists($marker, 'The probe migration never ran.');
+        self::assertSame('held-by-me', trim((string) File::get($marker)));
+        self::assertTrue($this->lockIsFree(), 'apply left the migration lock held.');
+    }
+
+    public function test_apply_releases_the_lock_after_a_failed_migration(): void
+    {
+        config(['app.migrate_token' => self::TOKEN]);
+        $this->writeFailingProbeMigration();
+
+        $this->postJson('/api/migrate?mode=apply', [], ['X-Migrate-Token' => self::TOKEN])->assertStatus(500);
+
+        self::assertTrue($this->lockIsFree(), 'apply left the migration lock held after a failure.');
+    }
+
+    /**
+     * Another worker is migrating. apply must refuse rather than run
+     * alongside it, and say why.
+     */
+    public function test_apply_refuses_when_the_lock_is_taken(): void
+    {
+        config(['app.migrate_token' => self::TOKEN]);
+        $this->app->bind(MigrateController::class, fn () => new class extends MigrateController
+        {
+            protected function lockTimeoutSeconds(): int
+            {
+                return 0;
+            }
+        });
+        $name = $this->writeProbeMigration();
+
+        self::assertTrue($this->grabLockOnAnotherConnection(), 'Fixture check: the other connection must get the lock.');
+
+        $response = $this->postJson('/api/migrate?mode=apply', [], ['X-Migrate-Token' => self::TOKEN]);
+
+        $response->assertStatus(503)
+            ->assertJsonPath('status', 'error')
+            ->assertJsonPath('applied', []);
+
+        self::assertStringContainsString('lescanetons_migrate', (string) $response->json('error'));
+        self::assertContains($name, $response->json('pending'));
+        self::assertFalse(Schema::hasTable(self::PROBE_TABLE), 'apply migrated without holding the lock.');
+    }
+
     // ----------------------------------------------------------- probe plumbing
+
+    /** Is the advisory lock free, seen from a connection that is not ours? */
+    private function lockIsFree(): bool
+    {
+        $row = $this->otherConnection()->selectOne('SELECT IS_FREE_LOCK(?) AS free', [self::LOCK_NAME]);
+
+        return $row !== null && (string) $row->free === '1';
+    }
+
+    private function grabLockOnAnotherConnection(): bool
+    {
+        $row = $this->otherConnection()->selectOne('SELECT GET_LOCK(?, 0) AS got', [self::LOCK_NAME]);
+
+        return $row !== null && (string) $row->got === '1';
+    }
+
+    /**
+     * GET_LOCK belongs to a session, and the default connection may be the
+     * holder, so the lock is observed and taken from a second one.
+     */
+    private function otherConnection(): Connection
+    {
+        if (! config('database.connections.'.self::OTHER_CONNECTION)) {
+            config(['database.connections.'.self::OTHER_CONNECTION => config('database.connections.mysql')]);
+        }
+
+        return DB::connection(self::OTHER_CONNECTION);
+    }
+
+    /**
+     * Records, from inside the migration, whether the advisory lock is held by
+     * the connection running it.
+     */
+    private function writeLockObservingProbeMigration(string $marker): string
+    {
+        $markerLiteral = var_export($marker, true);
+
+        return $this->writeMigration('2099_01_01_000002_migrate_probe_lock_observer', <<<PHP
+            <?php
+
+            use Illuminate\Database\Migrations\Migration;
+            use Illuminate\Support\Facades\DB;
+
+            return new class extends Migration
+            {
+                public function up(): void
+                {
+                    \$row = DB::selectOne(
+                        "SELECT IS_USED_LOCK('lescanetons_migrate') = CONNECTION_ID() AS mine"
+                    );
+
+                    file_put_contents(
+                        {$markerLiteral},
+                        (\$row !== null && (string) \$row->mine === '1') ? 'held-by-me' : 'not-held-by-me'
+                    );
+                }
+
+                public function down(): void {}
+            };
+            PHP);
+    }
 
     /**
      * Writes a throwaway migration into a directory registered on the migrator,

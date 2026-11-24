@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\MigrationLock;
 use App\Support\PendingMigrations;
 use Dedoc\Scramble\Attributes\ExcludeRouteFromDocs;
 use Illuminate\Http\JsonResponse;
@@ -97,7 +98,36 @@ class MigrateController extends Controller
         ]);
     }
 
+    /**
+     * Runs under the lock RunPendingMigrations takes, so a visitor's request
+     * cannot start the same migrations alongside this one.
+     */
     private function apply(): JsonResponse
+    {
+        if (! MigrationLock::acquire($this->lockTimeoutSeconds())) {
+            return $this->respond('apply', 503, [
+                'status' => 'error',
+                'ok' => false,
+                'error' => sprintf(
+                    'Could not acquire the migration lock (%s) within %d seconds; '
+                    .'another migration run may still be going.',
+                    MigrationLock::NAME,
+                    $this->lockTimeoutSeconds()
+                ),
+                'applied' => [],
+                'pending' => $this->pendingMigrations(),
+                'output' => '',
+            ]);
+        }
+
+        try {
+            return $this->migrate();
+        } finally {
+            MigrationLock::release();
+        }
+    }
+
+    private function migrate(): JsonResponse
     {
         // Snapshot first: `migrate` prints its progress but does not return the
         // names, and diffing the pending list across the run is what turns that
@@ -129,6 +159,15 @@ class MigrateController extends Controller
             'pending' => $pendingAfter,
             'output' => $output,
         ]);
+    }
+
+    /**
+     * Overridable only so the test of a busy lock can wait 0 seconds instead
+     * of 30.
+     */
+    protected function lockTimeoutSeconds(): int
+    {
+        return MigrationLock::TIMEOUT_SECONDS;
     }
 
     /**
