@@ -40,7 +40,7 @@ const SHELL = [
   "xl:rounded-none xl:border-0 xl:border-l-3 xl:content-start xl:data-[state=open]:zoom-in-100",
   "max-xl:top-auto max-xl:bottom-0 max-xl:left-0 max-xl:max-w-full max-xl:translate-x-0 max-xl:translate-y-0 sm:max-w-full",
   "md:max-xl:left-1/2 md:max-xl:max-w-[680px] md:max-xl:-translate-x-1/2",
-  "max-xl:rounded-t-[18px] max-xl:rounded-b-none max-xl:border-3 max-xl:border-b-0 max-xl:shadow-[0_-6px_0_0_rgb(0_0_0/0.15)]",
+  "max-xl:rounded-t-lg max-xl:rounded-b-none max-xl:border-3 max-xl:border-b-0",
 ].join(" ");
 
 /**

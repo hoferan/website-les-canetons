@@ -75,10 +75,10 @@ export const OnTheStage: Story = {
   args: { variant: "accent" },
   render: (args) => (
     <div className="flex flex-wrap gap-4">
-      <div className="rounded-xl bg-ground p-6">
+      <div className="rounded-md bg-ground p-6">
         <Button {...args}>Sur la page</Button>
       </div>
-      <div data-surface="stage" className="rounded-xl bg-stage p-6">
+      <div data-surface="stage" className="rounded-md bg-stage p-6">
         <Button {...args}>Sur la scène</Button>
       </div>
     </div>

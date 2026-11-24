@@ -49,7 +49,7 @@ export function PhotoReserved() {
   return (
     <div
       aria-hidden="true"
-      className="mt-related aspect-[3/2] w-full rounded-lg bg-linear-to-br from-violet/5 to-violet/15"
+      className="mt-related aspect-[3/2] w-full rounded-md bg-linear-to-br from-violet/5 to-violet/15"
       data-photo-reserved=""
     />
   );

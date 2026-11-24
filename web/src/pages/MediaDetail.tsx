@@ -333,7 +333,7 @@ export function MediaDetail({
         sizes={PHOTO_SIZES.textColumn}
         // At most 60% of the screen's height, so a portrait photo leaves the
         // actions in view on a laptop. It keeps its shape and narrows.
-        className="mt-related h-auto max-h-[60vh] w-auto max-w-full rounded-md border border-line bg-panel"
+        className="mt-related h-auto max-h-[60vh] w-auto max-w-full rounded-sm border border-line bg-panel"
       />
 
       <input

@@ -221,12 +221,12 @@ const CHIP_BORDER =
   "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border-3 after:border-ink";
 
 const FRAME: Record<ActionBarLook, string> = {
-  chip: `relative inline-flex h-11 rounded-xl bg-action-accent ${CHIP_BORDER}`,
+  chip: `relative inline-flex h-11 rounded-md bg-action-accent ${CHIP_BORDER}`,
   // A Surface's radius minus its 3px border, so the strip meets the inner
   // edge of the feature tile it sits on.
   strip:
     "absolute inset-x-0 top-0 flex h-[2.875rem] rounded-t-[calc(var(--radius-surface)-3px)] border-b-3 border-dashed border-ink bg-action-accent",
-  row: "inline-flex h-10 rounded-[10px] border-2 border-ink bg-white",
+  row: "inline-flex h-10 rounded-md border-2 border-ink bg-white",
 };
 
 const DIVIDER: Record<ActionBarLook, string> = {

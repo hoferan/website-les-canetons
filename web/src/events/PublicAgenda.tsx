@@ -61,7 +61,7 @@ export function AgendaEntry({
           in words, so a screen reader skips this. */}
       <div
         aria-hidden="true"
-        className={`flex w-18 shrink-0 flex-col items-center self-start rounded-xl border-3 border-ink py-2 ${tint}`}
+        className={`flex w-18 shrink-0 flex-col items-center self-start rounded-md border-3 border-ink py-2 ${tint}`}
       >
         <span className="font-display text-3xl leading-none">{day}</span>
         <span className="mt-1 text-xs font-bold tracking-widest uppercase">{month}</span>

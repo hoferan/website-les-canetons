@@ -2,15 +2,17 @@ import { type ClassValue, clsx } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
 
 /**
- * tailwind-merge knows only Tailwind's own shadow sizes. The raised shadows in
- * styles.css are listed so one of them replaces a vendored component's
- * shadow-sm instead of landing beside it. A new --shadow-* token in styles.css
+ * tailwind-merge knows only Tailwind's own shadow and radius names. The
+ * shadows and the radius roles in design-system/tokens/tokens.css are listed
+ * so a caller's `shadow-raised` or `rounded-surface` replaces a component's
+ * own instead of landing beside it. A new --shadow-* or --radius-* token
  * belongs in this list too.
  */
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      shadow: ["raised", "raised-sm", "raised-pressed"],
+      shadow: ["raised", "raised-sm", "raised-pressed", "overlay"],
+      radius: ["control", "button", "pill", "surface"],
     },
   },
 });

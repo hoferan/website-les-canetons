@@ -7,14 +7,14 @@ import { extendTailwindMerge } from "tailwind-merge";
  *
  * tailwind-merge knows only Tailwind's built-in scales. Every custom token that
  * a component's classes can collide on is listed here, or two classes of one
- * group would sit side by side instead of the later one winning: the raised
- * shadows from styles.css and the radius roles from tokens/tokens.css. A new
- * --shadow-* or --radius-* token belongs in this list too.
+ * group would sit side by side instead of the later one winning: the shadows
+ * and the radius roles from tokens/tokens.css. A new --shadow-* or --radius-*
+ * token belongs in this list too, and in lib/utils.ts.
  */
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      shadow: ["raised", "raised-sm", "raised-pressed"],
+      shadow: ["raised", "raised-sm", "raised-pressed", "overlay"],
       radius: ["control", "button", "pill", "surface"],
     },
   },

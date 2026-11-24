@@ -33,7 +33,7 @@ function RadioGroup({
       data-slot="radio-group"
       className={cn(
         // `w-fit`: as wide as its options, not the row.
-        "inline-flex w-fit items-center gap-[2px] rounded-md border bg-background p-[2px]",
+        "inline-flex w-fit items-center gap-[2px] rounded-sm border bg-background p-[2px]",
         className,
       )}
       {...props}

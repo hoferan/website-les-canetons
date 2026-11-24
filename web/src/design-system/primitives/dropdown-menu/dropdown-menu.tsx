@@ -44,7 +44,7 @@ function DropdownMenuContent({
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          "z-50 min-w-[12rem] overflow-hidden rounded-lg border border-line bg-panel p-1.5 text-ink shadow-lg data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+          "z-50 min-w-[12rem] overflow-hidden rounded-md border border-line bg-panel p-1.5 text-ink shadow-overlay data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
           className,
         )}
         {...props}
@@ -67,7 +67,7 @@ function DropdownMenuItem({
         //
         // Radix moves focus with the pointer, so the focus tint is the hover
         // state too. A destructive item stays red on focus.
-        "relative flex min-h-touch cursor-default items-center gap-3 rounded-md px-2.5 py-1.5 text-sm text-ink outline-none select-none focus:bg-violet/10 focus:text-violet data-[destructive]:text-danger data-[destructive]:focus:bg-danger/10 data-[destructive]:focus:text-danger data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+        "relative flex min-h-touch cursor-default items-center gap-3 rounded-sm px-2.5 py-1.5 text-sm text-ink outline-none select-none focus:bg-violet/10 focus:text-violet data-[destructive]:text-danger data-[destructive]:focus:bg-danger/10 data-[destructive]:focus:text-danger data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
         className,
       )}
       {...props}

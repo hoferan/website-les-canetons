@@ -179,8 +179,8 @@ export function EventCalendar({
               onClick={() => onSelect(chosen ? null : day)}
               className={
                 chosen
-                  ? "rounded-md bg-primary py-2 text-center text-sm font-medium text-primary-foreground"
-                  : "rounded-md border border-primary/40 py-2 text-center text-sm font-medium text-ink hover:bg-accent"
+                  ? "rounded-sm bg-primary py-2 text-center text-sm font-medium text-primary-foreground"
+                  : "rounded-sm border border-primary/40 py-2 text-center text-sm font-medium text-ink hover:bg-accent"
               }
             >
               {dayNumber}

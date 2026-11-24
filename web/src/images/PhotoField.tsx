@@ -50,7 +50,7 @@ export function PhotoField({ label, value, onChange }: Props) {
           photo={value}
           alt={label}
           sizes={PHOTO_SIZES.formThumbnail}
-          className="h-auto w-40 rounded-md border"
+          className="h-auto w-40 rounded-sm border"
         />
       ) : null}
       {manage ? (

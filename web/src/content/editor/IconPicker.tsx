@@ -77,7 +77,7 @@ export function IconPicker({ name, labelledBy }: { name: string; labelledBy?: st
                       key={icon}
                       value={icon}
                       aria-label={t(`blockEditor.icons.${icon}`)}
-                      className="size-11 rounded-xl border-2 border-ink bg-white px-0 text-ink data-[state=checked]:bg-yellow data-[state=checked]:text-ink data-[state=checked]:shadow-raised-sm"
+                      className="size-11 rounded-md border-2 border-ink bg-white px-0 text-ink data-[state=checked]:bg-yellow data-[state=checked]:text-ink data-[state=checked]:shadow-raised-sm"
                     >
                       <Glyph aria-hidden="true" className="size-5" />
                     </ToggleOption>

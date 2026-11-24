@@ -25,7 +25,7 @@ export function EntryTile({
     <span
       aria-hidden="true"
       className={cn(
-        "grid size-11 shrink-0 place-items-center rounded-xl border-3 border-ink",
+        "grid size-11 shrink-0 place-items-center rounded-md border-3 border-ink",
         important ? "bg-pink" : "bg-yellow",
         className,
       )}

@@ -100,7 +100,7 @@ function Row({
     >
       <span className="text-sm font-bold" aria-hidden="true">
         {label}{" "}
-        <span className="inline-flex rounded-md border-2 border-ink bg-ground px-1.5 align-[1.5px] text-xs font-bold">
+        <span className="inline-flex rounded-sm border-2 border-ink bg-ground px-1.5 align-[1.5px] text-xs font-bold">
           {badge}
         </span>
       </span>
@@ -123,7 +123,7 @@ function Row({
               type="button"
               aria-pressed={inside}
               onClick={() => onPick(markOf(title, tokens, nextRun(tokens, run, index)))}
-              className={`min-h-touch min-w-touch rounded-md border-2 border-ink px-2 text-sm sm:min-h-8 sm:min-w-0 focus-visible:outline-3 focus-visible:outline-violet ${inside ? "bg-highlight text-ink" : "bg-panel hover:bg-ground"}`}
+              className={`min-h-touch min-w-touch rounded-sm border-2 border-ink px-2 text-sm sm:min-h-8 sm:min-w-0 focus-visible:outline-3 focus-visible:outline-violet ${inside ? "bg-highlight text-ink" : "bg-panel hover:bg-ground"}`}
             >
               {token.text}
             </button>

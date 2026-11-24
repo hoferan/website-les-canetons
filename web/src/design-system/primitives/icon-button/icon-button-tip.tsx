@@ -31,7 +31,7 @@ export function IconButtonTip({
           <Tooltip.Content
             side="top"
             sideOffset={8}
-            className="z-50 animate-roll-up rounded-lg bg-ink px-2.5 py-1.5 text-[13px] leading-none font-medium whitespace-nowrap text-white"
+            className="z-50 animate-roll-up rounded-md bg-ink px-2.5 py-1.5 text-sm leading-none font-medium whitespace-nowrap text-white"
           >
             {word}
           </Tooltip.Content>

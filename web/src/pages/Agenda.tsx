@@ -55,7 +55,7 @@ export function Agenda() {
             ))}
           </ul>
         ) : (
-          <p className="rounded-[18px] border-3 border-dashed border-ink bg-panel px-4 py-5 text-ink-muted">
+          <p className="rounded-surface border-3 border-dashed border-ink bg-panel px-4 py-5 text-ink-muted">
             {t("agenda.emptyNotice")}
           </p>
         )}

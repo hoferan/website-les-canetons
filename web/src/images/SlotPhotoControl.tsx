@@ -287,7 +287,7 @@ export function SlotPhotoControl({
               photo={photo}
               alt={alt}
               sizes={PHOTO_SIZES.textColumn}
-              className="block h-auto w-full rounded-lg"
+              className="block h-auto w-full rounded-md"
             />
             {/* Every block's chip (ADR 0043), in the photo's bottom corner:
                 icon only on a phone, the word beside it from sm up. Its ink
@@ -310,7 +310,7 @@ export function SlotPhotoControl({
             aria-label={name}
             aria-disabled={busy}
             onClick={open}
-            className="group/add flex aspect-[3/2] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-violet/70 bg-violet/5 px-4 text-center text-ink outline-none transition-colors hover:border-violet hover:bg-violet/10 focus-visible:border-violet focus-visible:bg-violet/10 focus-visible:ring-[3px] focus-visible:ring-ring/40"
+            className="group/add flex aspect-[3/2] w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-violet/70 bg-violet/5 px-4 text-center text-ink outline-none transition-colors hover:border-violet hover:bg-violet/10 focus-visible:border-violet focus-visible:bg-violet/10 focus-visible:ring-[3px] focus-visible:ring-ring/40"
           >
             {/* The whole frame is the button; the chip inside it wears
                 the chip's yellow, so an empty slot reads as one more thing to
@@ -332,7 +332,7 @@ export function SlotPhotoControl({
             // over a photo it lets the picture show, blurred, as the thing
             // being replaced.
             className={cn(
-              "pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-violet px-4 text-center font-medium text-violet",
+              "pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md border-2 border-violet px-4 text-center font-medium text-violet",
               photo
                 ? "bg-panel/85 backdrop-blur-sm"
                 : "bg-panel bg-linear-to-b from-violet/10 to-violet/10",

@@ -9,4 +9,9 @@ import { cn } from "./utils";
 test("a raised shadow replaces the one a vendored component set", () => {
   expect(cn("shadow-sm", "shadow-raised")).toBe("shadow-raised");
   expect(cn("shadow-raised", "shadow-raised-sm")).toBe("shadow-raised-sm");
+  expect(cn("shadow-raised", "shadow-overlay")).toBe("shadow-overlay");
+});
+
+test("a radius role replaces a step of the scale", () => {
+  expect(cn("rounded-md", "rounded-surface")).toBe("rounded-surface");
 });

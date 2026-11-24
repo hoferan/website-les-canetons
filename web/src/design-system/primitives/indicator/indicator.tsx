@@ -34,7 +34,7 @@ const indicatorVariants = cva(
       { shape: "dot", size: "sm", class: "size-2" },
       { shape: "dot", size: "md", class: "size-3" },
       { shape: "dot", size: "lg", class: "size-4" },
-      { shape: "count", size: "sm", class: "h-4 min-w-4 px-1 text-[10px]" },
+      { shape: "count", size: "sm", class: "h-4 min-w-4 px-1 text-xs" },
       { shape: "count", size: "md", class: "h-5 min-w-5 px-1.5 text-xs" },
       { shape: "count", size: "lg", class: "h-6 min-w-6 px-2 text-sm" },
     ],

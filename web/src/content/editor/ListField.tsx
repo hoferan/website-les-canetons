@@ -100,7 +100,7 @@ export function ListField<T extends FieldValues>(props: Props<T>) {
               key={field.id}
               ref={moves.itemRef(field.id)}
               data-item={index}
-              className="flex flex-col gap-3 rounded-xl border-2 border-ink bg-panel p-3"
+              className="flex flex-col gap-3 rounded-md border-2 border-ink bg-panel p-3"
             >
               <div className="flex items-center gap-1">
                 <div className="mr-auto min-w-0 font-bold">{itemTitle?.(index)}</div>

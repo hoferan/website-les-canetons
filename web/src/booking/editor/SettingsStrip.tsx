@@ -74,7 +74,7 @@ export function SettingsStrip({
       {/* Said here, where the date was cleared: a form saved without one
           keeps its blocks, and nobody can reach it (ADR 0020). */}
       {settings.closesDate.trim() === "" ? (
-        <p className="rounded-md bg-yellow p-3 text-sm" role="status">
+        <p className="rounded-sm bg-yellow p-3 text-sm" role="status">
           {t("registrationOptions.noClosingDate")}
         </p>
       ) : null}
