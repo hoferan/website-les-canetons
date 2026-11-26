@@ -8,8 +8,10 @@ use App\Models\Member;
 use App\Support\AttendanceIntegrity;
 use App\Support\AttendanceStatus;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AttendanceSchemaTest extends TestCase
@@ -106,5 +108,95 @@ class AttendanceSchemaTest extends TestCase
         // because a member can erase a yes and re-answer no for free.
         $this->assertSame(5, AttendanceIntegrity::UNDO_WINDOW_MINUTES);
         $this->assertSame('in:yes,no', AttendanceStatus::rule());
+    }
+
+    public function test_a_migration_cut_off_after_the_table_adds_its_keys_and_indexes_next_time(): void
+    {
+        // Laravel creates the table and then adds each key and index in its
+        // own ALTER, and MariaDB commits every one of them. A worker killed
+        // after the CREATE TABLE leaves the table with none of them, and a
+        // guard on the table alone would skip them for good: no unique
+        // (event_id, member_id), so PUT is no longer an upsert, and no
+        // foreign keys, so a deleted event leaves its answers behind.
+        $this->assertComplete();
+
+        // Each foreign key goes before the index it rests on, or MariaDB
+        // refuses to drop the index.
+        Schema::table('attendance', function (Blueprint $table) {
+            $table->dropForeign(['event_id']);
+            $table->dropForeign(['member_id']);
+            $table->dropForeign(['recorded_by_member_id']);
+        });
+        Schema::table('attendance', function (Blueprint $table) {
+            $table->dropUnique(['event_id', 'member_id']);
+            $table->dropIndex(['member_id']);
+            $table->dropIndex('attendance_recorded_by_member_id_foreign');
+        });
+        $this->assertFalse(
+            Schema::hasIndex('attendance', ['event_id', 'member_id'], 'unique'),
+            'The cut-off state was not set up; the run below would prove nothing.',
+        );
+        $this->assertSame([], Schema::getForeignKeys('attendance'));
+
+        $this->runAttendanceMigration();
+
+        $this->assertComplete();
+    }
+
+    public function test_a_second_migration_run_on_a_complete_table_changes_nothing(): void
+    {
+        $indexes = Schema::getIndexes('attendance');
+        $keys = Schema::getForeignKeys('attendance');
+
+        $this->runAttendanceMigration();
+
+        $this->assertEquals($indexes, Schema::getIndexes('attendance'));
+        $this->assertEquals($keys, Schema::getForeignKeys('attendance'));
+    }
+
+    protected function tearDown(): void
+    {
+        // DDL implicitly commits on MariaDB, so RefreshDatabase's transaction
+        // cannot put back what a test dropped. The migration itself can, and
+        // on a complete table it changes nothing.
+        $this->runAttendanceMigration();
+
+        parent::tearDown();
+    }
+
+    private function runAttendanceMigration(): void
+    {
+        (require database_path('migrations/2026_09_10_000001_create_attendance_table.php'))->up();
+    }
+
+    private function assertComplete(): void
+    {
+        $this->assertTrue(
+            Schema::hasIndex('attendance', ['event_id', 'member_id'], 'unique'),
+            'attendance has no unique (event_id, member_id), so PUT is no longer an upsert.',
+        );
+        $this->assertTrue(
+            Schema::hasIndex('attendance', ['member_id']),
+            'attendance has no index on member_id for GET /api/events.',
+        );
+
+        $this->assertForeignKey('event_id', 'events', 'cascade');
+        $this->assertForeignKey('member_id', 'members', 'cascade');
+        $this->assertForeignKey('recorded_by_member_id', 'members', 'set null');
+    }
+
+    private function assertForeignKey(string $column, string $table, string $onDelete): void
+    {
+        foreach (Schema::getForeignKeys('attendance') as $key) {
+            if ($key['columns'] === [$column]) {
+                $this->assertSame($table, $key['foreign_table']);
+                $this->assertSame(['id'], $key['foreign_columns']);
+                $this->assertSame($onDelete, strtolower((string) $key['on_delete']));
+
+                return;
+            }
+        }
+
+        $this->fail("attendance.{$column} has no foreign key.");
     }
 }

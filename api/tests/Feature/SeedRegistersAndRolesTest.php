@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\Section;
 use App\Support\Permission;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -103,6 +104,29 @@ class SeedRegistersAndRolesTest extends TestCase
             [Permission::RegistrationsView],
             Role::where('key', 'direction')->sole()->permissions()->all(),
             'a hand-edited role must survive a re-migration',
+        );
+    }
+
+    public function test_a_role_whose_permissions_fail_is_not_left_behind(): void
+    {
+        // A worker killed between inserting the role and inserting its
+        // permissions would leave a role that grants nothing. The retry skips
+        // any role that already exists, so it would stay empty for good. A
+        // permission listed twice breaks the second insert on the primary
+        // key, which stands in for the kill.
+        $migration = require database_path(
+            'migrations/2026_09_07_000001_seed_registers_and_roles.php',
+        );
+        $role = new \ReflectionMethod($migration, 'role');
+
+        $this->assertThrows(
+            fn () => $role->invoke($migration, 'probe', 'Probe', [Permission::EventsManage, Permission::EventsManage]),
+            QueryException::class,
+        );
+
+        $this->assertFalse(
+            Role::where('key', 'probe')->exists(),
+            'the role was kept without its permissions, and a retry would skip it',
         );
     }
 }
