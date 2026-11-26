@@ -23,6 +23,10 @@ use Illuminate\Support\Facades\Hash;
  * The password is read from that server's own .env and the account is created
  * with must_change_password, because a password that has been typed into a file
  * is not a secret worth keeping.
+ *
+ * IT RUNS ONCE, like every migration. Whatever up() does short of throwing,
+ * Laravel records it as applied. So every case that cannot create the account
+ * throws, except on the suite and the local stack (#423).
  */
 return new class extends Migration
 {
@@ -36,9 +40,21 @@ return new class extends Migration
         $password = config('bootstrap.admin.password');
 
         if (blank($username) || blank($password)) {
-            // Not an error. A local stack, a test run, or a server that has
-            // already been bootstrapped by hand all land here legitimately.
-            return;
+            // The suite and a bare local stack legitimately have no
+            // administrator to create.
+            if (app()->environment('local', 'testing')) {
+                return;
+            }
+
+            // Anywhere else, returning would let Laravel record this migration
+            // as applied, and it would never run again: keys filled in later
+            // would change nothing, and no other path creates a first account.
+            // Refusing keeps it pending, so the next request retries it.
+            throw new RuntimeException(
+                'Nobody can manage members yet, and BOOTSTRAP_ADMIN_USERNAME or '.
+                'BOOTSTRAP_ADMIN_PASSWORD is blank. Set both in this server\'s '.
+                '_api/.env; the next request creates the first administrator.',
+            );
         }
 
         // Refusing beats creating: this account can lock the whole band out of

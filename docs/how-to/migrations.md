@@ -114,7 +114,12 @@ like `grant_roles_manage`: look the role up, return quietly if it is gone,
 
 The first administrator comes from the `bootstrap_first_administrator`
 migration, from `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` in
-`_api/.env`. It does nothing once anybody holds `members.manage`.
+`_api/.env`. Like every migration it runs once, so keys set after it was
+recorded change nothing. It does nothing when somebody already holds
+`members.manage`. Otherwise it refuses to finish on a server while either key
+is blank, and stays pending with every `/api/*` request answering 503 until
+both are set. Only `local` and `testing` let it pass with blank keys, which
+the suite relies on.
 
 ## MariaDB 10.3
 

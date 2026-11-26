@@ -7,6 +7,7 @@ use App\Support\EffectivePermissions;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -15,8 +16,8 @@ use Tests\TestCase;
  *
  * The migration reads BOOTSTRAP_ADMIN_* from the server's own .env and does
  * nothing unless administration is unheld. phpunit.xml leaves those keys
- * unset, so the migration no-ops for the suite and these tests drive it with
- * config().
+ * unset, which the `testing` environment allows, so the migration no-ops for
+ * the suite and these tests drive it with config().
  */
 class BootstrapAdministratorTest extends TestCase
 {
@@ -80,8 +81,19 @@ class BootstrapAdministratorTest extends TestCase
         $this->assertSame(1, Member::where('username', 'comite')->count());
     }
 
-    public function test_it_does_nothing_when_the_environment_is_unset(): void
+    /** @return array<string, array{string}> */
+    public static function developmentEnvironments(): array
     {
+        return [
+            'the docker stack' => ['local'],
+            'the suite' => ['testing'],
+        ];
+    }
+
+    #[DataProvider('developmentEnvironments')]
+    public function test_it_does_nothing_on_a_development_stack_when_the_keys_are_unset(string $environment): void
+    {
+        $this->app['env'] = $environment;
         config([
             'bootstrap.admin.username' => null,
             'bootstrap.admin.password' => null,
@@ -90,6 +102,69 @@ class BootstrapAdministratorTest extends TestCase
         $this->runBootstrap();
 
         $this->assertSame(0, Member::count());
+    }
+
+    /** @return array<string, array{string, ?string, ?string}> */
+    public static function serversWithoutBothKeys(): array
+    {
+        return [
+            'test, both blank' => ['test', '', ''],
+            'qa, both blank' => ['qa', '', ''],
+            'production, both blank' => ['production', '', ''],
+            'production, both unset' => ['production', null, null],
+            'an unknown name, both blank' => ['staging', '', ''],
+            'production, no password' => ['production', 'comite', ''],
+            'production, no username' => ['production', '', 'a-long-enough-secret'],
+        ];
+    }
+
+    #[DataProvider('serversWithoutBothKeys')]
+    public function test_it_refuses_to_finish_on_a_server_that_names_no_administrator(
+        string $environment,
+        ?string $username,
+        ?string $password,
+    ): void {
+        // Returning quietly here would let Laravel record the migration as
+        // applied, and it would never run again: filling the keys in afterwards
+        // would change nothing, and no other path creates a first account.
+        $this->app['env'] = $environment;
+        config([
+            'bootstrap.admin.username' => $username,
+            'bootstrap.admin.password' => $password,
+        ]);
+
+        // Caught rather than expected, so the assertions below still run.
+        // fail() cannot go inside the try: PHPUnit's own failure is a
+        // RuntimeException too, and the catch would swallow it.
+        $refusal = null;
+        try {
+            $this->runBootstrap();
+        } catch (\RuntimeException $e) {
+            $refusal = $e;
+        }
+
+        $this->assertNotNull($refusal, 'the migration finished without creating an administrator');
+        $this->assertStringContainsString('BOOTSTRAP_ADMIN_USERNAME', $refusal->getMessage());
+        $this->assertStringContainsString('BOOTSTRAP_ADMIN_PASSWORD', $refusal->getMessage());
+        $this->assertSame(0, Member::count());
+    }
+
+    public function test_a_server_that_already_has_an_administrator_needs_no_keys(): void
+    {
+        $this->app['env'] = 'production';
+        config([
+            'bootstrap.admin.username' => '',
+            'bootstrap.admin.password' => '',
+        ]);
+        Member::factory()->administrator()->create();
+        $this->assertTrue(
+            EffectivePermissions::memberIdsWith(Permission::MembersManage)->isNotEmpty(),
+            'the direction role must grant members.manage for this test to mean anything',
+        );
+
+        $this->runBootstrap();
+
+        $this->assertSame(1, Member::count());
     }
 
     public function test_it_refuses_a_short_password_rather_than_creating_a_weak_account(): void
