@@ -67,6 +67,11 @@ const env = {
   APP_ENV: "production",
   DB_CONNECTION: "sqlite",
   DB_DATABASE: SQLITE,
+  // With APP_ENV=production, the bootstrap-administrator migration refuses
+  // blank keys, and a CI runner has no api/.env to supply them. So the
+  // throwaway schema gets a throwaway administrator, deleted with the file.
+  BOOTSTRAP_ADMIN_USERNAME: "openapi.export",
+  BOOTSTRAP_ADMIN_PASSWORD: "openapi-export-throwaway",
 };
 const artisan = (...args) => runPhp(["php", "artisan", ...args], { cwd: "api", env });
 

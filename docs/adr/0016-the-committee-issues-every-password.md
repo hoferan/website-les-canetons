@@ -44,6 +44,12 @@ The first administrator comes from a migration that reads `BOOTSTRAP_ADMIN_*` fr
 server's `.env`, and only runs while nobody holds `members.manage`. It refuses a
 password shorter than 12 characters.
 
+*Amended by #423: like every migration it runs once, and Laravel records it whatever
+it did, so filling the keys in later changes nothing. It used to return quietly on a
+blank key and be recorded with no account created. Now, on any `APP_ENV` but `local`
+and `testing`, it refuses to finish while nobody holds `members.manage` and either key
+is blank. It stays pending and the API answers 503 until both are set.*
+
 ### Consequences
 
 - Good, because a minted password is never logged, and the member replaces it with

@@ -221,6 +221,18 @@ hidden behind `APP_DEBUG=false`).
      `MAIL_FROM_ADDRESS`; `api/.env.example` says why.
    - `MIGRATE_TOKEN`: the same value as in the `.env.<env>` of the machine that
      runs `npm run dbmigrate:<env>`. There is no CI secret for it.
+   - `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD`: the first
+     account that can manage members, which the first migration run creates.
+     The password needs at least 12 characters, and its owner must change it
+     at the first login. `api/.env.example` ships both blank, so a search
+     for `CHANGE_ME` misses them. While either is blank or the password is
+     short, the migration refuses to finish: every `/api/*` request answers
+     503 and `laravel.log` names the key. Fix the value and the next request
+     creates the account. A
+     server that ran this migration before #423 with blank keys recorded it
+     and created nobody; there, also delete the
+     `2026_09_07_000002_bootstrap_first_administrator` row from the
+     `migrations` table in the control panel.
    - `AUTO_MIGRATE`: leave it `true` (the default). See
      [Migrations](#migrations-and-recovery).
 3. Generate a fresh `APP_KEY` on that server. Never reuse another
