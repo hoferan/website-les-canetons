@@ -71,8 +71,9 @@ deploy CLI, `_api/.env` provisioning, migrations and recovery. ADRs 0004 to
 0008 hold the reasoning. The rules that apply on every task:
 
 - **A merge to `main` deploys to TEST.** QA and PROD are deployed by
-  dispatching `Deploy QA` / `Deploy PROD` with a tag; PROD refuses a commit
-  that has not deployed to QA. Rollback is redeploying an older tag.
+  dispatching `Deploy QA` / `Deploy PROD` with a tag; PROD refuses any commit
+  but the one QA's newest deployment put there, and a dry run records no
+  deployment. Rollback is redeploying an older tag, to QA first for PROD.
 - **Deploy through `npm run deploy:<env>` and `status:<env>`**, never
   `node tools/deploy/cli.mjs`. `--dry-run` the first deploy to a new
   environment. Exit 2 means a guard or the mass-delete brake refused.

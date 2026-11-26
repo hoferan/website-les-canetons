@@ -11,7 +11,7 @@ Three servers on `easy-hebergement.net`, one build for all of them:
 | --- | --- | --- |
 | TEST | On every merge to `main`, once CI is green | Behind Basic Auth |
 | QA | When you dispatch `Deploy QA` with a tag | Behind Basic Auth |
-| PROD | When you dispatch `Deploy PROD` with a tag | Refuses a commit that is not the last one deployed to QA |
+| PROD | When you dispatch `Deploy PROD` with a tag | Refuses a commit that QA is not running |
 
 QA and PROD still run the old server-rendered site until their cutover. Until
 then, read [the cutover trap](../traps.md#a-deploy-alone-does-not-turn-a-server-over--it-breaks-it)
@@ -37,16 +37,18 @@ unhealthy.
    the ref.
 3. Check QA.
 4. Dispatch **Deploy PROD** with the same tag. It asks the GitHub Deployments
-   API whether that commit is the last successful QA deployment, and refuses if
-   not.
+   API whether QA's newest deployment succeeded with that commit, and refuses
+   if not.
 
-Each deploy workflow has a `dry_run` input. There is no reviewer gate:
+Each deploy workflow has a `dry_run` input. A dry run records no deployment,
+so a QA dry run never moves what PROD accepts. There is no reviewer gate:
 dispatching is the decision.
 
 ## Roll back
 
 Dispatch the deploy workflow again with an older tag. There is no other
-rollback.
+rollback. To roll PROD back, deploy the older tag to QA first: PROD refuses
+any commit QA is not running.
 
 A migration does not roll back with the code. The older code runs against the
 newer schema, which is why every migration has to be backward compatible (see

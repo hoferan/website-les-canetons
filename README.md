@@ -144,9 +144,10 @@ approvals in that same run:
   that commit `YYYY-MM-DD-<short-sha>` (no-ops if already tagged).
 - **`Deploy QA`** / **`Deploy PROD`** — dispatch either by picking a tag from
   GitHub's native ref selector. `Deploy PROD` first checks, via the GitHub
-  Deployments API, that its target commit was already successfully deployed to
-  QA — refusing to proceed otherwise. Rolling back is redeploying an older tag;
-  there is no separate rollback mechanism.
+  Deployments API, that QA's newest deployment succeeded with the same commit,
+  and refuses otherwise. A dry run records no deployment, so it never counts.
+  Rolling back is redeploying an older tag, and a PROD rollback goes to QA
+  first; there is no separate rollback mechanism.
 - Each deploy writes a `deployment.json` to the site root recording the deployed
   commit, ref, time and run URL. The site's catch-all answers that URL with the
   SPA shell, so read it through `GET /api/health`, which also reports whether
