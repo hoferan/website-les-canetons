@@ -161,7 +161,7 @@ async function main() {
   const remoteRoot = process.env.FTP_DIR;
 
   // Safety: the one FTP account reaches every environment; refuse unless the
-  // target path clearly names the intended env.
+  // target path clearly names the intended env and is absolute.
   const guard = checkTargetDir(target, remoteRoot);
   if (!guard.ok) {
     console.error(guard.message);

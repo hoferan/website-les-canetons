@@ -101,7 +101,9 @@ files and more than 20% of the server's tree. Read the dry-run plan. If those
 deletions are what you want, pass `--force-delete`.
 
 **The wrong folder.** One FTP account reaches all three servers, so the deploy
-refuses unless `FTP_DIR` names the environment you asked for.
+refuses unless `FTP_DIR` names the environment you asked for. It also refuses a
+`FTP_DIR` that does not start with `/`, because the FTP client resolves a
+relative path against whatever folder the connection is in.
 
 **PROD before QA.** Deploy the tag to QA first.
 
