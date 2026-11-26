@@ -16,30 +16,36 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('roles', function (Blueprint $table) {
-            $table->id();
-            // The stable identifier used in seeds and tests.
-            $table->string('key')->unique();
-            // The French label shown in the admin UI. The only French in the
-            // database, and it is display copy, never an identifier.
-            $table->string('label_fr');
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('roles')) {
+            Schema::create('roles', function (Blueprint $table) {
+                $table->id();
+                // The stable identifier used in seeds and tests.
+                $table->string('key')->unique();
+                // The French label shown in the admin UI. The only French in the
+                // database, and it is display copy, never an identifier.
+                $table->string('label_fr');
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('role_permissions', function (Blueprint $table) {
-            $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
-            // A Permission enum VALUE. Stored as a string, not an enum column:
-            // adding a permission must be a code change plus a data row, never
-            // an ALTER TABLE on a live shared host.
-            $table->string('permission', 64);
-            $table->primary(['role_id', 'permission']);
-        });
+        if (! Schema::hasTable('role_permissions')) {
+            Schema::create('role_permissions', function (Blueprint $table) {
+                $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
+                // A Permission enum VALUE. Stored as a string, not an enum column:
+                // adding a permission must be a code change plus a data row, never
+                // an ALTER TABLE on a live shared host.
+                $table->string('permission', 64);
+                $table->primary(['role_id', 'permission']);
+            });
+        }
 
-        Schema::create('member_roles', function (Blueprint $table) {
-            $table->foreignId('member_id')->constrained('members')->cascadeOnDelete();
-            $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
-            $table->primary(['member_id', 'role_id']);
-        });
+        if (! Schema::hasTable('member_roles')) {
+            Schema::create('member_roles', function (Blueprint $table) {
+                $table->foreignId('member_id')->constrained('members')->cascadeOnDelete();
+                $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
+                $table->primary(['member_id', 'role_id']);
+            });
+        }
     }
 
     public function down(): void

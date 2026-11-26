@@ -16,11 +16,20 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    private const REBUILT_EVENTS = '2026_09_09_000001_create_events_table';
+
     public function up(): void
     {
         Schema::dropIfExists('responses');
         Schema::dropIfExists('signups');
-        Schema::dropIfExists('events');
+
+        // The rebuild's own table is called `events` too. Once its migration
+        // has run, the table here is the live one, so a second run of this
+        // file must leave it alone (#422).
+        if (! in_array(self::REBUILT_EVENTS, app('migration.repository')->getRan(), true)) {
+            Schema::dropIfExists('events');
+        }
+
         Schema::dropIfExists('users');
         Schema::dropIfExists('instruments');
     }

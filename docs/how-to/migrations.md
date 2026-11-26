@@ -68,8 +68,13 @@ For data, use `insertOrIgnore` against a primary or unique key, or check with
 `exists()` first. No migration in the repository uses `upsert` or
 `updateOrInsert`; they would overwrite whatever the committee has edited since.
 
-The early migrations from `2026_09_05` call `Schema::create` with no guard.
-They ran long ago on every server; do not copy them.
+A guard on the table alone is enough only for a table with nothing added
+after it. Laravel adds each foreign key and each index in its own `ALTER`, so
+a table that has them needs a guard per statement, as the attendance and photo
+slot migrations do. The creates up to `2026_09_05` guard only the table. QA
+and PROD run them on the first request after their cutover, and the whole run
+takes seconds. #422 judged a cut between a table and its keys in that window
+too unlikely to be worth a repair.
 
 ## Make it backward compatible
 
@@ -157,12 +162,15 @@ Cover at least:
   survives;
 - `down()` undoes only what `up()` did.
 
-For a migration that can stop halfway, `ImageSchemaTest` has a test that cuts
-a run off between the table and its key and checks that the next run adds the
-key.
+For a migration that can stop halfway, `ImageSchemaTest` and
+`AttendanceSchemaTest` cut a run off between the table and its keys and check
+that the next run adds them.
 
-No test runs every migration twice, so a migration without a test of its own
-is checked by nobody.
+`MigrationsRunAgainTest` runs every file in `api/database/migrations/` a
+second time against the migrated schema, so a new migration that cannot run
+twice fails the suite without a test of its own. It does not show that a file
+finishes a run cut off halfway, or that a data migration leaves the
+committee's edits alone: those still need their own test.
 
 ## Run it
 

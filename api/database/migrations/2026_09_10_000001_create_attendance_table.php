@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Schema\ForeignKeyDefinition;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -37,41 +38,63 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Idempotent, like every migration here: RunPendingMigrations
-        // re-checks for pending work on every request, so a partial failure
-        // mid-deploy can re-enter this file against a database where the
-        // table already exists.
-        if (Schema::hasTable('attendance')) {
-            return;
+        // ONE GUARD PER STATEMENT, as in 2026_10_02_000002. MariaDB commits
+        // the CREATE TABLE and each ALTER that adds a key or an index on its
+        // own, so a run cut off in between leaves a table without them, and a
+        // guard on the table alone would skip them for good.
+        if (! Schema::hasTable('attendance')) {
+            Schema::create('attendance', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('event_id');
+                $table->foreignId('member_id');
+                $table->string('status', 16);
+                $table->string('note')->nullable();
+                $table->foreignId('recorded_by_member_id')->nullable();
+                $table->timestamps();
+            });
         }
 
-        Schema::create('attendance', function (Blueprint $table) {
-            $table->id();
+        // The indexes come before the foreign keys, so each key rests on one
+        // of them instead of MariaDB making an index of its own.
+        if (! Schema::hasIndex('attendance', ['event_id', 'member_id'], 'unique')) {
+            Schema::table('attendance', function (Blueprint $table) {
+                $table->unique(['event_id', 'member_id']);
+            });
+        }
 
-            // Both CASCADE: an answer to a deleted event, or from a deleted
-            // member, is not a record of anything. DELETE /api/events reports
-            // how many went with it rather than letting the deletion be
-            // silent.
-            $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
-            $table->foreignId('member_id')->constrained('members')->cascadeOnDelete();
+        // The chase list reads every answer for one event, and
+        // GET /api/events joins the caller's own answers across all of them.
+        // The unique index above already covers (event_id, …); this one serves
+        // the second query.
+        if (! Schema::hasIndex('attendance', ['member_id'])) {
+            Schema::table('attendance', function (Blueprint $table) {
+                $table->index('member_id');
+            });
+        }
 
-            $table->string('status', 16);
-            $table->string('note')->nullable();
+        // Both CASCADE: an answer to a deleted event, or from a deleted
+        // member, is not a record of anything. DELETE /api/events reports how
+        // many went with it rather than letting the deletion be silent.
+        $this->foreignKey('event_id', 'events', fn (ForeignKeyDefinition $key) => $key->cascadeOnDelete());
+        $this->foreignKey('member_id', 'members', fn (ForeignKeyDefinition $key) => $key->cascadeOnDelete());
+        $this->foreignKey('recorded_by_member_id', 'members', fn (ForeignKeyDefinition $key) => $key->nullOnDelete());
+    }
 
-            $table->foreignId('recorded_by_member_id')
-                ->nullable()
-                ->constrained('members')
-                ->nullOnDelete();
+    /**
+     * Adds the key on $column unless one is there already.
+     *
+     * @param  Closure(ForeignKeyDefinition): mixed  $onDelete
+     */
+    private function foreignKey(string $column, string $references, Closure $onDelete): void
+    {
+        foreach (Schema::getForeignKeys('attendance') as $key) {
+            if ($key['columns'] === [$column]) {
+                return;
+            }
+        }
 
-            $table->timestamps();
-
-            $table->unique(['event_id', 'member_id']);
-
-            // The chase list reads every answer for one event, and
-            // GET /api/events joins the caller's own answers across all of
-            // them. The unique index above already covers (event_id, …); this
-            // one serves the second query.
-            $table->index('member_id');
+        Schema::table('attendance', function (Blueprint $table) use ($column, $references, $onDelete) {
+            $onDelete($table->foreign($column)->references('id')->on($references));
         });
     }
 

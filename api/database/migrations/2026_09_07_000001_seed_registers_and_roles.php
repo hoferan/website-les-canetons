@@ -127,15 +127,19 @@ return new class extends Migration
             $payload['label_fr'] = $labelFr;
         }
 
-        $roleId = DB::table('roles')->insertGetId($payload);
+        // One transaction, because a retry skips any role that exists (above):
+        // a role written without its permissions would grant nothing for good.
+        DB::transaction(function () use ($payload, $permissions): void {
+            $roleId = DB::table('roles')->insertGetId($payload);
 
-        DB::table('role_permissions')->insert(
-            collect($permissions)
-                ->map(fn (Permission $permission): array => [
-                    'role_id' => $roleId,
-                    'permission' => $permission->value,
-                ])
-                ->all(),
-        );
+            DB::table('role_permissions')->insert(
+                collect($permissions)
+                    ->map(fn (Permission $permission): array => [
+                        'role_id' => $roleId,
+                        'permission' => $permission->value,
+                    ])
+                    ->all(),
+            );
+        });
     }
 };

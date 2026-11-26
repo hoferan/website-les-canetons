@@ -130,8 +130,9 @@ These pin rules that span the whole API. They are the ones that fail when you ad
 | `ApiVersionTest` | A route escapes `/api/v1`, or a meta route enters it |
 | `RequestIdTest` | A response has no request ID, or it differs from the problem document's |
 
-**Migrations.** There is no generic migration guard. Each migration that changes
-data has its own test, which runs it twice; see
+**Migrations.** `MigrationsRunAgainTest` runs every migration a second time
+against the migrated schema and fails on one that cannot run twice. Each
+migration that changes data also has its own test; see
 [Write a migration](migrations.md#test-it). `AutoMigrateTest` and
 `MigrateTest` cover the machinery that runs them.
 

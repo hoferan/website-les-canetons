@@ -29,32 +29,34 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('members', function (Blueprint $table) {
-            $table->id();
-            $table->string('first_name');
-            $table->string('last_name');
+        if (! Schema::hasTable('members')) {
+            Schema::create('members', function (Blueprint $table) {
+                $table->id();
+                $table->string('first_name');
+                $table->string('last_name');
 
-            // The register this person plays in. Its presence is also what makes
-            // them answerable for events — an instructor with no register is not
-            // in the attendance list, so no spurious "sans réponse" is counted.
-            $table->foreignId('section_id')->nullable()
-                ->constrained('sections')->nullOnDelete();
+                // The register this person plays in. Its presence is also what makes
+                // them answerable for events — an instructor with no register is not
+                // in the attendance list, so no spurious "sans réponse" is counted.
+                $table->foreignId('section_id')->nullable()
+                    ->constrained('sections')->nullOnDelete();
 
-            $table->string('username')->nullable()->unique();
-            $table->string('password')->nullable();
-            $table->boolean('must_change_password')->default(false);
-            $table->timestamp('last_login_at')->nullable();
+                $table->string('username')->nullable()->unique();
+                $table->string('password')->nullable();
+                $table->boolean('must_change_password')->default(false);
+                $table->timestamp('last_login_at')->nullable();
 
-            $table->string('committee_title')->nullable();
-            $table->foreignId('instructor_of_section_id')->nullable()
-                ->constrained('sections')->nullOnDelete();
+                $table->string('committee_title')->nullable();
+                $table->foreignId('instructor_of_section_id')->nullable()
+                    ->constrained('sections')->nullOnDelete();
 
-            // Consent, per person, to appear on the public roster. Defaults to
-            // false: these are minors, so publication is opt-in.
-            $table->boolean('public_visible')->default(false);
+                // Consent, per person, to appear on the public roster. Defaults to
+                // false: these are minors, so publication is opt-in.
+                $table->boolean('public_visible')->default(false);
 
-            $table->timestamps();
-        });
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void
