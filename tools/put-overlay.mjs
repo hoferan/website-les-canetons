@@ -26,7 +26,7 @@ import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadDotEnv } from './dotenv.mjs';
-import { TARGETS, checkTargetDir } from './deploy/preflight.mjs';
+import { TARGETS, checkTargetDir, isNotFound } from './deploy/preflight.mjs';
 
 // A refusal is a deliberate guard stop (exit 2), distinct from a genuine
 // transport/auth/timeout failure (exit 1) — mirrors tools/deploy/cli.mjs's
@@ -138,12 +138,11 @@ export function backupFilePath(target, dryRun = false, now = new Date()) {
   return `${dir}/${target}-${timestamp}.htaccess`;
 }
 
-// A 550 reply covers BOTH "no such file" and "permission denied" (RFC 959
-// does not distinguish them by code). Only the former means "nothing to back
-// up" — the latter is a real problem on a server that DOES have a live
-// .htaccess, and treating it as "new environment" would overwrite that file
-// with no backup, defeating the one guarantee this function exists to give.
-const NOT_FOUND_REPLY = /no such file|not found|cannot find/i;
+// isNotFound() tells a 550 "no such file" from a 550 "permission denied". Only
+// the former means "nothing to back up". The latter is a real problem on a
+// server that DOES have a live .htaccess, and treating it as "new environment"
+// would overwrite that file with no backup, defeating the one guarantee this
+// function exists to give.
 
 /**
  * Back up the live .htaccess, then upload the overlay files.
@@ -191,7 +190,7 @@ export async function putOverlay({ client, remoteRoot, localDir, files, backupPa
     backedUp = true;
     log(`backed up the live .htaccess -> ${backupPath}`);
   } catch (err) {
-    if (err.code === 550 && NOT_FOUND_REPLY.test(err.message)) {
+    if (isNotFound(err)) {
       log(`no live .htaccess on the server — nothing to back up (new environment). Server said: ${err.message}`);
     } else {
       throw Object.assign(

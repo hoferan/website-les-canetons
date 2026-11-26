@@ -157,7 +157,7 @@ What the deploy does:
   listing runs only on the first deploy (no state file) or with `--relist`, and
   only those runs can see, and delete, files this tool did not deploy.
 - **It refuses** unless `FTP_DIR` names the target environment, since one FTP
-  account reaches all three.
+  account reaches all three, and unless it starts with `/`.
 - **It brakes** (exit 2) when it would delete more than 50 files and more than
   20% of the remote tree. Read the plan, then pass `--force-delete`.
 - **It fans out** over `FTP_CONCURRENCY` connections (default 6, clamped 1 to

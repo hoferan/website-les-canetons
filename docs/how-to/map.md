@@ -169,9 +169,11 @@ migration that changes data also has its own test; see
 
 The deploy exits 2, before uploading anything, when:
 
-- `FTP_DIR` does not name the environment you asked for;
-- the server's `_api/.env` keys differ from `api/.env.example`. If that file
-  cannot be read, the check is skipped with a notice rather than refused;
+- `FTP_DIR` does not start with `/` or does not name the environment you asked
+  for;
+- the server's `_api/.env` keys differ from `api/.env.example`. If the server
+  answers that the file does not exist, the check is skipped with a notice. Any
+  other failure to read it stops the deploy;
 - it would delete more than 50 files and more than 20% of the server;
 - `--prebuilt` was given an artifact missing its `.htaccess` files or `vendor/`.
 

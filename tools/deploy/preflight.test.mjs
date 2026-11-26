@@ -10,9 +10,19 @@ import {
   PROTECTED_PATHS,
   TARGETS,
   checkTargetDir,
+  checkEnvShape,
   envKeys,
   compareEnvShape,
 } from './preflight.mjs';
+
+// A client whose download of _api/.env fails the way basic-ftp reports it.
+function failingClient(error) {
+  return { downloadTo: async () => { throw error; } };
+}
+
+function ftpError(code, message) {
+  return Object.assign(new Error(`${code} ${message}`), { code });
+}
 
 test('PROTECTED_PATHS: the server-owned files, as ROOT-RELATIVE paths', () => {
   // Paths, not basenames. The basename form protected `.htaccess` at any
@@ -125,8 +135,15 @@ test('TARGETS: exactly test/qa/prod', () => {
 
 test('checkTargetDir: accepts paths that name the env as a path/subdomain segment', () => {
   assert.equal(checkTargetDir('test', '/www/test.lescanetons.ch').ok, true);
-  assert.equal(checkTargetDir('qa', 'sites/qa.lescanetons.ch/web').ok, true);
+  assert.equal(checkTargetDir('qa', '/sites/qa.lescanetons.ch/web').ok, true);
   assert.equal(checkTargetDir('prod', '/www/prod/htdocs').ok, true);
+});
+
+test('checkTargetDir: refuses a relative FTP_DIR, which basic-ftp resolves against the current directory', () => {
+  const r = checkTargetDir('qa', 'sites/qa.lescanetons.ch/web');
+  assert.equal(r.ok, false);
+  assert.match(r.message, /Refusing to run/);
+  assert.match(r.message, /must start with "\/"/);
 });
 
 test('checkTargetDir: refuses a dir that does not name the env (wrong-env protection)', () => {
@@ -172,6 +189,38 @@ test('compareEnvShape: reports keys the server has that the code no longer expec
   assert.equal(r.ok, false);
   assert.deepEqual(r.missing, []);
   assert.deepEqual(r.extra, ['OLD_FLAG']);
+});
+
+test('checkEnvShape: skips on a 550 that says the file is not there (a new environment)', async () => {
+  const shape = await checkEnvShape(failingClient(ftpError(550, 'No such file or directory')), '/www/test');
+  assert.equal(shape.skipped, true);
+  assert.equal(shape.ok, true);
+});
+
+test('checkEnvShape: fails on a timeout rather than skipping the check', async () => {
+  // Only a 550 "not found" means a new environment. A timeout says nothing
+  // about whether the file is there, so the deploy must not pass the check.
+  await assert.rejects(
+    checkEnvShape(failingClient(new Error('Timeout (control socket)')), '/www/test'),
+    /could not read _api\/\.env.*Timeout/,
+  );
+});
+
+test('checkEnvShape: fails on a 550 that means permission denied', async () => {
+  // RFC 959 gives "not found" and "permission denied" the same code, so only
+  // the reply text tells them apart.
+  await assert.rejects(
+    checkEnvShape(failingClient(ftpError(550, 'Permission denied')), '/www/test'),
+    /could not read _api\/\.env/,
+  );
+});
+
+test('checkEnvShape: compares the downloaded key set when the file is there', async () => {
+  const client = { downloadTo: async (local) => writeFileSync(local, 'ONLY_THIS_KEY=x\n') };
+  const shape = await checkEnvShape(client, '/www/test');
+  assert.equal(shape.skipped, false);
+  assert.equal(shape.ok, false);
+  assert.deepEqual(shape.extra, ['ONLY_THIS_KEY']);
 });
 
 test('compareEnvShape: ok when the key sets match, whatever the order', () => {

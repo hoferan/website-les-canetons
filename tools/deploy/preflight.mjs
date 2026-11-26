@@ -69,6 +69,20 @@ const GUARDS = {
 export const TARGETS = Object.keys(GUARDS);
 
 export function checkTargetDir(target, dir) {
+  // basic-ftp's ensureDir() goes back to the FTP root only for a path that
+  // starts with "/". A relative one resolves against the current directory, and
+  // the CLI keeps using remoteRoot-prefixed paths on the connection ensureDir()
+  // left inside the docroot. Every later path then nests, the _api/.env fetch
+  // and the state file miss, and the run turns into a bootstrap that uploads
+  // into a copy of the tree one level down.
+  if (!dir.startsWith('/')) {
+    return {
+      ok: false,
+      message:
+        `Refusing to run: FTP_DIR="${dir}" must start with "/". ` +
+        `A relative path resolves against whatever directory the FTP connection is in, so the deploy would write to the wrong place.`,
+    };
+  }
   if (GUARDS[target].test(dir)) {
     return { ok: true };
   }
@@ -109,13 +123,24 @@ export function compareEnvShape(expected, actual) {
   return { ok: missing.length === 0 && extra.length === 0, missing, extra };
 }
 
+// A 550 reply covers both "no such file" and "permission denied" (RFC 959 does
+// not tell them apart by code), so only the reply text says a file is absent.
+const NOT_FOUND_REPLY = /no such file|not found|cannot find/i;
+
+export function isNotFound(err) {
+  return err.code === 550 && NOT_FOUND_REPLY.test(err.message);
+}
+
 // Fetch the target's _api/.env and compare its key set against
 // api/.env.example (the source of truth for what the deployed code expects), so
 // a deploy that would land code needing a key the server has never been given
-// fails here rather than 500ing every /api/* request afterwards. Best-effort on
-// fetch: a brand-new environment has no .env yet — the API can't run either
-// way, so blocking wouldn't add protection there; report `skipped` and let the
-// caller warn.
+// fails here rather than 500ing every /api/* request afterwards.
+//
+// A brand-new environment has no .env yet. The API can't run there either way,
+// so blocking would add no protection: a 550 "not found" reports `skipped` and
+// the caller warns. Any other failure (a timeout, a dropped connection, a
+// permission error) throws, because then the check cannot tell whether the
+// file is there.
 export async function checkEnvShape(client, remoteRoot) {
   const expected = envKeys(readFileSync('api/.env.example', 'utf8'));
   const tmpDir = mkdtempSync(path.join(tmpdir(), 'lc-env-'));
@@ -124,7 +149,14 @@ export async function checkEnvShape(client, remoteRoot) {
     try {
       await client.downloadTo(tmpEnv, `${remoteRoot}/_api/.env`);
     } catch (err) {
-      return { ok: true, skipped: true, reason: err.message, missing: [], extra: [] };
+      if (isNotFound(err)) {
+        return { ok: true, skipped: true, reason: err.message, missing: [], extra: [] };
+      }
+      throw new Error(
+        `could not read _api/.env to check its keys (${err.message}). ` +
+          'Refusing to deploy without knowing whether the server has the keys this code needs.',
+        { cause: err },
+      );
     }
     return { skipped: false, ...compareEnvShape(expected, envKeys(readFileSync(tmpEnv, 'utf8'))) };
   } finally {
