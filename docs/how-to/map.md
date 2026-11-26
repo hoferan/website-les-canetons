@@ -179,8 +179,9 @@ It never uploads or deletes `.htaccess`, `robots.txt`, `.htpasswd`,
 `config.php`, `_api/.env` or its own state file. After uploading, it compares
 file sizes and leaves the deploy resumable if anything is missing.
 
-`Deploy PROD` refuses a commit that is not QA's last successful deployment, and
-`Tag Release` refuses to move an existing tag.
+`Deploy PROD` refuses a commit that QA's newest deployment did not put there
+(`tools/deploy/qa-gate.mjs`), and `Tag Release` refuses to move an existing
+tag.
 
 ### What nothing guards
 

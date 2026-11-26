@@ -25,45 +25,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Verify this commit was deployed to QA
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+
+      # The script imports nothing outside Node, so no npm ci.
+      - name: Verify this commit is the one QA is running
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          repo="${{ github.repository }}"
-
-          # Assumes <100 lifetime qa deployments; picks latest by created_at from page 1 (no pagination).
-          deployment=$(gh api "repos/${repo}/deployments?environment=qa&per_page=100" \
-            --jq 'sort_by(.created_at) | reverse | .[0]')
-
-          if [ -z "$deployment" ] || [ "$deployment" = "null" ]; then
-            echo "::error::No deployments found for the qa environment — deploy this ref to QA first."
-            exit 1
-          fi
-
-          deployment_id=$(echo "$deployment" | jq -r '.id')
-          qa_sha=$(echo "$deployment" | jq -r '.sha')
-          qa_ref=$(echo "$deployment" | jq -r '.ref')
-
-          latest_status=$(gh api "repos/${repo}/deployments/${deployment_id}/statuses?per_page=100" \
-            --jq 'sort_by(.created_at) | reverse | .[0].state // empty')
-
-          if [ "$latest_status" != "success" ]; then
-            echo "::error::QA's most recent deployment (tag ${qa_ref}, commit ${qa_sha}) has status '${latest_status:-unknown}', not success — refusing to deploy to PROD."
-            exit 1
-          fi
-
-          if [ "$qa_sha" != "$GITHUB_SHA" ]; then
-            echo "::error::This ref (${GITHUB_REF_NAME}, commit ${GITHUB_SHA}) does not match QA's last successful deployment (tag ${qa_ref}, commit ${qa_sha}). Deploy this ref to QA first."
-            exit 1
-          fi
-
-          echo "Confirmed: ${GITHUB_REF_NAME} (${GITHUB_SHA}) matches QA's last successful deployment (${qa_ref})."
-          {
-            echo "### PROD validation"
-            echo "- Deploying tag: \`${GITHUB_REF_NAME}\` (\`${GITHUB_SHA}\`)"
-            echo "- Matched QA deployment: \`${qa_ref}\` (\`${qa_sha}\`)"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: node tools/deploy/qa-gate.mjs
 
   deploy:
     needs: [validate-qa]

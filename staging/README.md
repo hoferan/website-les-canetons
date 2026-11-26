@@ -119,9 +119,12 @@ promoted by hand:
   never a typed ref. All three call `_deploy.yml`. Each has `dry_run` and
   `force` inputs, and there is no reviewer gate: dispatching is the decision.
 - **Deploy PROD** first checks, through the GitHub Deployments API, that the
-  same commit is the last successful deployment to `qa`, and refuses otherwise,
-  even with `dry_run`.
-- **Rollback** is redeploying an older tag.
+  newest deployment to `qa` succeeded with the same commit, and refuses
+  otherwise, even with `dry_run` (`tools/deploy/qa-gate.mjs`). A dry run
+  records no deployment, so a QA dry run can neither pass this check nor
+  block it.
+- **Rollback** is redeploying an older tag. Rolling PROD back means
+  redeploying that tag to QA first.
 - Each environment needs the secrets `FTP_HOST`, `FTP_USER`, `FTP_PASS` and its
   own `FTP_DIR`.
 

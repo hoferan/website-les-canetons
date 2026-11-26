@@ -26,6 +26,8 @@ How does a commit reach TEST, QA and PROD, and how is a deploy rolled back?
 - A free-text ref input
 - Read QA's `deployment.json` over HTTP
 - A check that QA matches TEST
+- Mark a dry run's deployment inactive (#425)
+- A `deployed/qa` ref that a real deploy moves (#425)
 
 ## Decision Outcome
 
@@ -46,6 +48,14 @@ safety, and dispatching a workflow with a chosen ref can itself be the gate.
   successful deployment is the same commit, and refuses otherwise, even on a dry run.
 - Rolling back is redeploying an older tag.
 
+*Amended by #425: `tools/deploy/qa-gate.mjs` makes the check. It reads every page of
+QA's deployments and takes the newest, which must have succeeded and carry the same
+commit. Every run of `_deploy.yml` used to record a deployment, so
+a QA dry run of a tag passed the check for a commit QA never received, and blocked the
+one QA was running. A dry run now records none (`deployment:` in `_deploy.yml`). Rolling
+PROD back takes QA back to the same tag first, because the check refuses any commit QA
+is not running.*
+
 Every deploy builds from the chosen ref. No artifact is carried between runs, so the
 build has to be reproducible.
 
@@ -53,16 +63,18 @@ build has to be reproducible.
 
 - Good, because promotions are deliberate.
 - Good, because every tag is a permanent rollback target.
-- Bad, because PROD cannot move until QA has been deployed with the same commit.
-- Bad, because the Deployments API query reads one page, which holds while QA
-  has fewer than 100 deployments.
+- Bad, because PROD cannot move until QA has been deployed with the same commit, a
+  rollback included.
+- Bad, because a dispatch runs the workflow files of the tag it names, so a dry run of
+  a tag cut before #425 still records a deployment and moves the check.
 
 As of 2026-09-25 QA and PROD both still run the site from before the rebuild.
 
 ### Confirmation
 
 `tools/build.mjs` fails a build whose Composer metadata carries version-control
-stamps.
+stamps. `tools/deploy/qa-gate.test.mjs` covers the check and pins the `deployment:`
+line in `_deploy.yml`.
 
 ## Pros and Cons of the Options
 
@@ -96,3 +108,15 @@ Rejected; no reason was recorded. Rolling back is redeploying an older tag inste
 ### A check that QA matches TEST
 
 - Bad, because it would block rolling QA back.
+
+### Mark a dry run's deployment inactive
+
+- Bad, because Actions posts the job's own final status after the last step, so the
+  mark needs a second job and a window opens between the two.
+- Bad, because until 2026-11-17 GitHub marked the previous successful deployment
+  `inactive` whenever a newer one succeeded. A dry run's success then switched off the
+  real deployment before it, and the check would have found nothing to accept.
+
+### A `deployed/qa` ref that a real deploy moves
+
+- Bad, because the job that holds the FTP password would need `contents: write`.

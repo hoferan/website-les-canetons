@@ -20,7 +20,14 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment:
+      name: ${{ inputs.environment }}
+      # A dry run needs the environment's FTP secrets but must not record a
+      # deployment. Deploy PROD takes QA's newest deployment as the commit QA
+      # is running, so a dry run's record would stand in for it (#425).
+      # This fails a job whose environment has custom deployment protection
+      # rules; none of ours does.
+      deployment: ${{ !inputs.dry_run }}
     # Generous on purpose, as for ci.yml's deploy-test: a bootstrap or
     # --relist deploy is slow on this host. It only has to stop a hung session.
     timeout-minutes: 30
